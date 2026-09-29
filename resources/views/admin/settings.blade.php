@@ -1,58 +1,53 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 @section('title', 'Paramètres')
-@section('page-title', "Paramètres de l'application")
+@php
+    $header      = 'Paramètres de l’application';
+    $subheader   = 'Réglages généraux partagés par le site et l’application mobile.';
+    $breadcrumbs = [
+        ['label' => 'Accueil', 'url' => route('home')],
+        ['label' => 'Administration', 'url' => route('admin.dashboard')],
+        ['label' => 'Paramètres'],
+    ];
+@endphp
 
 @section('content')
-
-<form method="POST" action="{{ route('admin.settings.update') }}">
+@if($settings->isEmpty())
+    @include('components.empty-state', [
+        'title' => 'Aucun paramètre configuré',
+        'text' => 'Lancez le seeder des paramètres pour initialiser les valeurs par défaut.',
+    ])
+@else
+<form method="POST" action="{{ route('admin.settings.update') }}" class="max-w-4xl space-y-6" data-loading-label="Enregistrement des paramètres…">
     @csrf @method('PUT')
 
-    @if($settings->isEmpty())
-    <div class="alert alert-secondary text-center py-5">
-        <i class="bi bi-gear fs-2 d-block mb-2"></i>
-        Aucun paramètre configuré. Lancez le seeder pour initialiser les paramètres par défaut.
-    </div>
-    @else
-
     @foreach($settings as $group => $groupSettings)
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white border-bottom py-3">
-            <h6 class="fw-semibold mb-0 text-capitalize">{{ $group }}</h6>
-        </div>
-        <div class="card-body p-0">
+    <section class="card">
+        <h2 class="card-title border-b border-slate-100 px-5 py-4">{{ Str::ucfirst($group) }}</h2>
+        <div class="divide-y divide-slate-100">
             @foreach($groupSettings as $setting)
-            <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom">
-                <div>
-                    <p class="fw-medium small mb-0">{{ $setting->label ?? $setting->key }}</p>
-                    <code class="text-muted" style="font-size:.72rem;">{{ $setting->key }}</code>
+            <div class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0">
+                    <label for="setting-{{ $loop->parent->index }}-{{ $loop->index }}" class="text-sm font-medium text-slate-900">{{ $setting->label ?? $setting->key }}</label>
+                    <p class="font-mono text-xs break-all text-slate-400">{{ $setting->key }}</p>
                 </div>
-                <div style="min-width:200px;">
+                <div class="sm:w-60 sm:shrink-0 {{ $setting->type === 'boolean' ? 'flex sm:justify-end' : '' }}">
                     @if($setting->type === 'boolean')
-                    <div class="form-check form-switch d-flex justify-content-end mb-0">
-                        <input type="checkbox" class="form-check-input" role="switch"
-                               name="{{ $setting->key }}" value="1"
-                               {{ $setting->typedValue() ? 'checked' : '' }}>
-                    </div>
+                        @include('components.switch', ['name' => $setting->key, 'checked' => (bool) $setting->typedValue(), 'label' => $setting->label ?? $setting->key, 'sendFalse' => true])
                     @elseif($setting->type === 'integer')
-                    <input type="number" name="{{ $setting->key }}" value="{{ $setting->value }}"
-                           class="form-control form-control-sm text-end">
+                        <input id="setting-{{ $loop->parent->index }}-{{ $loop->index }}" type="number" name="{{ $setting->key }}" value="{{ $setting->value }}" class="form-input sm:text-right">
                     @else
-                    <input type="text" name="{{ $setting->key }}" value="{{ $setting->value }}"
-                           class="form-control form-control-sm">
+                        <input id="setting-{{ $loop->parent->index }}-{{ $loop->index }}" type="text" name="{{ $setting->key }}" value="{{ $setting->value }}" class="form-input">
                     @endif
                 </div>
             </div>
             @endforeach
         </div>
-    </div>
+    </section>
     @endforeach
 
-    <div class="d-flex justify-content-end">
-        <button type="submit" class="btn btn-primary px-5">
-            <i class="bi bi-floppy me-1"></i>Enregistrer les paramètres
-        </button>
+    <div class="flex justify-end">
+        <button type="submit" class="btn-primary">Enregistrer les paramètres</button>
     </div>
-
-    @endif
 </form>
+@endif
 @endsection

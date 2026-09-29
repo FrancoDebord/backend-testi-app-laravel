@@ -1,0 +1,9 @@
+# Documentation réservée aux administrateurs : elle se lit dans la plateforme (/admin/documentation).
+# Garde-fou si le serveur exposait par erreur la racine du projet au lieu de public/.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

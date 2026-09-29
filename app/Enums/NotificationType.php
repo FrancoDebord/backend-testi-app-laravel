@@ -14,6 +14,11 @@ enum NotificationType: string
     case Share              = 'share';
     case NewFollowedTestimony = 'new_followed_testimony';
     case PendingCorrection  = 'pending_correction';
+    // Comptes organisation (docs/fonctionnalites/comptes-organisation.md)
+    case OrganizationVerified = 'organization_verified';
+    case OrganizationRejected = 'organization_rejected';
+    // Témoignages en direct (docs/fonctionnalites/lives.md)
+    case LiveStarted          = 'live_started';
 
     public function isSystem(): bool
     {
@@ -21,6 +26,8 @@ enum NotificationType: string
             self::TestimonyApproved,
             self::TestimonyRejected,
             self::PendingCorrection,
+            self::OrganizationVerified,
+            self::OrganizationRejected,
         ]);
     }
 

@@ -113,15 +113,19 @@ class BibleController extends Controller
     // GET /bible/translations  — liste les traductions installées
     public function translations(): JsonResponse
     {
+        $registry = config('bible.translations', []);
+
         $translations = BibleBook::selectRaw('translation, COUNT(*) as books_count')
                                  ->groupBy('translation')
                                  ->get()
-                                 ->map(function ($row) {
+                                 ->map(function ($row) use ($registry) {
+                                     $meta        = $registry[$row->translation] ?? [];
                                      $versesCount = BibleVerse::where('translation', $row->translation)->count();
                                      return [
                                          'code'        => $row->translation,
-                                         'name'        => $this->translationName($row->translation),
-                                         'language'    => $this->translationLanguage($row->translation),
+                                         'name'        => $meta['name']      ?? $this->translationName($row->translation),
+                                         'language'    => $meta['language']  ?? $this->translationLanguage($row->translation),
+                                         'lang_name'   => $meta['lang_name'] ?? null,
                                          'booksCount'  => $row->books_count,
                                          'versesCount' => $versesCount,
                                      ];
@@ -178,23 +182,12 @@ class BibleController extends Controller
 
     private function translationName(string $code): string
     {
-        return match($code) {
-            'LSG'  => 'Louis Segond 1910',
-            'NEG'  => 'Nouvelle Edition de Genève 1979',
-            'KJV'  => 'King James Version',
-            'ESV'  => 'English Standard Version',
-            'NIV'  => 'New International Version',
-            default => $code,
-        };
+        return config("bible.translations.{$code}.name", $code);
     }
 
     private function translationLanguage(string $code): string
     {
-        return match($code) {
-            'LSG', 'NEG' => 'fr',
-            'KJV', 'ESV', 'NIV', 'NKJV' => 'en',
-            default => 'unknown',
-        };
+        return config("bible.translations.{$code}.language", 'unknown');
     }
 
     // GET /bible/search?q=amour&translation=LSG&book=1&limit=20

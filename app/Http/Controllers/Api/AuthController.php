@@ -13,6 +13,8 @@ use App\Http\Resources\UserResource;
 use App\Models\SocialAuthProvider;
 use App\Models\User;
 use App\Models\UserSetting;
+use App\Services\OrganizationAccounts;
+use App\Support\PhoneNumber;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,7 +41,7 @@ class AuthController extends Controller
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return $this->success([
-            'user'          => new UserResource($user),
+            'user'          => UserResource::owner($user),
             'access_token'  => $token,
             'token_type'    => 'Bearer',
         ], 'Connexion réussie');
@@ -47,20 +49,27 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
+        // Téléphone de contact, non vérifié : il ne permet pas la connexion par téléphone.
+        $phone = PhoneNumber::toE164($request->phone_country, $request->phone);
+
         $user = User::create([
             'display_name' => $request->display_name,
             'email'        => $request->email,
             'password'     => $request->password,
             'country'      => $request->country,
+            'phone'        => $phone,
+            'phone_country' => $phone ? strtolower($request->phone_country) : null,
             'role'         => UserRole::Utilisateur->value,
-        ]);
+            // Explicite : sans cela, UserResource lisait un statut null (valeur par défaut SQL non rechargée).
+            'status'       => UserAccountStatus::Active->value,
+        ] + OrganizationAccounts::registrationAttributes($request->validated())); // organisation : en attente de vérification
 
         UserSetting::create(['user_id' => $user->id]);
 
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return $this->created([
-            'user'          => new UserResource($user),
+            'user'          => UserResource::owner($user),
             'access_token'  => $token,
             'token_type'    => 'Bearer',
             'is_new_user'   => true,
@@ -79,8 +88,10 @@ class AuthController extends Controller
         $uid   = $firebaseData['uid'];
         $phone = $request->phone;
 
+        // Seul un numéro vérifié par SMS désigne un compte : un numéro de contact saisi sur le site ou dans
+        // le profil ne permet jamais d'entrer dans le compte qui l'a déclaré (docs/fonctionnalites/telephone.md).
         $user = User::where('firebase_uid', $uid)
-                    ->orWhere('phone', $phone)
+                    ->orWhere(fn ($q) => $q->where('phone', $phone)->whereNotNull('phone_verified_at'))
                     ->first();
 
         $isNewUser = false;
@@ -95,12 +106,19 @@ class AuthController extends Controller
                 ], 'Nouveau profil requis');
             }
 
+            // Le numéro appartient à la personne qui vient de le confirmer par SMS : il est retiré d'un
+            // éventuel compte qui l'avait seulement déclaré (sinon la création échouerait : numéro unique).
+            User::where('phone', $phone)->whereNull('phone_verified_at')
+                ->update(['phone' => null, 'phone_country' => null]);
+
             $user = User::create([
                 'display_name' => trim($request->first_name . ' ' . $request->last_name),
                 'phone'        => $phone,
+                'phone_verified_at' => now(),
                 'firebase_uid' => $uid,
                 'country'      => $request->country,
                 'role'         => UserRole::Utilisateur->value,
+                'status'       => UserAccountStatus::Active->value,
             ]);
 
             UserSetting::create(['user_id' => $user->id]);
@@ -112,7 +130,7 @@ class AuthController extends Controller
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return $this->success([
-            'user'          => new UserResource($user),
+            'user'          => UserResource::owner($user),
             'access_token'  => $token,
             'token_type'    => 'Bearer',
             'is_new_user'   => $isNewUser,
@@ -198,7 +216,7 @@ class AuthController extends Controller
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return $this->success([
-            'user'         => new UserResource($user),
+            'user'         => UserResource::owner($user),
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'is_new_user'  => $user->wasRecentlyCreated,
@@ -207,7 +225,7 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return $this->success(new UserResource($request->user()), '');
+        return $this->success(UserResource::owner($request->user()), '');
     }
 
     public function logout(Request $request): JsonResponse
@@ -229,6 +247,27 @@ class AuthController extends Controller
             'access_token' => $token,
             'token_type'   => 'Bearer',
         ], 'Token rafraîchi');
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password'      => 'required|string',
+            'new_password'          => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user->password || !Hash::check($request->current_password, $user->password)) {
+            return $this->error('Mot de passe actuel incorrect', 403);
+        }
+
+        $user->update(['password' => $request->new_password]);
+
+        // Révoquer tous les autres tokens pour forcer une reconnexion sur les autres appareils
+        $user->tokens()->where('id', '!=', $request->user()->currentAccessToken()->id)->delete();
+
+        return $this->success(null, 'Mot de passe mis à jour');
     }
 
     public function forgotPassword(Request $request): JsonResponse

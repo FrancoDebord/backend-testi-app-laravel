@@ -55,6 +55,13 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | Adresse publique des liens de partage des témoignages (share_url), indépendante de
+    | APP_URL : un lien partagé doit toujours ouvrir le site public, même s'il a été créé
+    | depuis un serveur de développement. Voir docs/fonctionnalites/lien-de-partage.md
+    */
+    'share_url' => env('SHARE_URL', 'https://testi.airid-africa.com'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
@@ -78,7 +85,7 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'fr'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 

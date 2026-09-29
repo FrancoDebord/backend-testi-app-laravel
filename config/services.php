@@ -39,4 +39,17 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID', '78564751626-m3e7ll7olaj58oce4id71tmrc2q6lkus.apps.googleusercontent.com'),
     ],
 
+    // Notifications push Firebase Cloud Messaging (API HTTP v1) — docs/fonctionnalites/notifications-push.md
+    'fcm' => [
+        // Chemin du fichier JSON du compte de service Firebase (absolu, ou relatif à la racine du projet).
+        'credentials'     => env('FIREBASE_CREDENTIALS'),
+        // Facultatif : sinon lu dans le fichier JSON (project_id).
+        'project_id'      => env('FIREBASE_PROJECT_ID'),
+        // null = activé dès que le fichier de compte de service est lisible.
+        'enabled'         => env('FCM_ENABLED'),
+        // Canal Android créé par l'application (lib/services/fcm_service.dart).
+        'android_channel' => env('FCM_ANDROID_CHANNEL', 'testi_notifications'),
+        'timeout'         => (int) env('FCM_TIMEOUT', 10),
+    ],
+
 ];

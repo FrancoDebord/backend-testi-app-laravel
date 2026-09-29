@@ -15,7 +15,7 @@ class PhoneAuthRequest extends FormRequest
             'phone'          => ['required', 'string', 'max:20'],
             'first_name'     => ['nullable', 'string', 'max:50'],
             'last_name'      => ['nullable', 'string', 'max:50'],
-            'country'        => ['nullable', 'string', 'max:3'],
+            'country'        => ['nullable', 'string', 'max:100'],
         ];
     }
 }

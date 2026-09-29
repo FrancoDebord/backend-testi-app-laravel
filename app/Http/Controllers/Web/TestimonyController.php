@@ -6,6 +6,7 @@ use App\Enums\TestimonyStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Comment;
+use App\Models\MediaFile;
 use App\Models\Reaction;
 use App\Models\Testimony;
 use Illuminate\Http\JsonResponse;
@@ -17,40 +18,29 @@ use Illuminate\View\View;
 
 class TestimonyController extends Controller
 {
-    public function show(string $id): View
+    public function show(Request $request, string $id): View|JsonResponse
     {
-        $testimony = Testimony::with(['user', 'category'])->find($id);
+        $testimony = Testimony::with(['user', 'category', 'liveSession:id,testimony_id,started_at', 'mediaFile:id,url,processing_status'])->find($id);
 
         if (!$testimony) abort(404);
 
-        if ($testimony->visibility->value === 'private' && Auth::id() !== $testimony->user_id) {
-            abort(403);
+        // Carnet privé : 404 pour toute autre personne que l'auteur (son existence n'est pas révélée).
+        if ($testimony->isInJournal() && Auth::id() !== $testimony->user_id) {
+            abort(404);
         }
 
-        $testimony->increment('views_count');
+        $watch = app(\App\Services\WatchPage::class);
 
-        $comments = Comment::with('user')
-            ->where('testimony_id', $id)
-            ->whereNull('parent_id')
-            ->latest()
-            ->paginate(15);
+        // « Afficher plus de commentaires »
+        if ($request->expectsJson()) {
+            return $watch->commentsResponse($testimony, 'testimonies.show');
+        }
 
-        $userReactions = Auth::check()
-            ? Reaction::where('testimony_id', $id)
-                       ->where('user_id', Auth::id())
-                       ->pluck('type')
-                       ->map(fn($t) => $t->value)
-                       ->toArray()
-            : [];
+        // Une vue par personne et par période (même règle que la page Vidéos).
+        app(\App\Services\ViewCounter::class)->record($testimony, $request);
 
-        $isSaved = Auth::check()
-            ? DB::table('saved_testimonies')
-                ->where('user_id', Auth::id())
-                ->where('testimony_id', $id)
-                ->exists()
-            : false;
-
-        return view('testimonies.show', compact('testimony', 'comments', 'userReactions', 'isSaved'));
+        // Même page de lecture que /videos/{id} (docs/fonctionnalites/videos.md).
+        return view('testimonies.show', $watch->data($testimony, $request->user(), 'testimonies.show'));
     }
 
     public function create(): View
@@ -62,20 +52,32 @@ class TestimonyController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'title'       => 'required|string|max:200',
-            'type'        => 'required|in:text,audio,video',
-            'category'    => 'required|string',
-            'body_text'   => 'nullable|string',
-            'bible_verse' => 'nullable|string|max:500',
-            'bible_ref'   => 'nullable|string|max:100',
-            'tags'        => 'nullable|string',
-            'visibility'  => 'nullable|in:public,private,followers',
-            'cover'       => 'nullable|image|max:5120',
-            'media_file'  => 'nullable|file|max:102400',
+            'title'         => 'required|string|max:200',
+            'type'          => 'required|in:text,audio,video',
+            'category'      => 'required|string|exists:categories,slug',
+            'body_text'     => 'nullable|required_if:type,text|string',
+            'bible_verse'   => 'nullable|string|max:500',
+            'bible_ref'     => 'nullable|string|max:100',
+            'tags'          => 'nullable|string',
+            'visibility'    => 'nullable|in:public,private,followers',
+            'cover'         => 'nullable|image|max:5120',
+            'media_file'    => 'nullable|file|max:102400|mimetypes:audio/*,video/*',
+            'consent_given' => 'accepted',
+        ], [
+            'title.required'         => 'Merci de donner un titre à votre témoignage.',
+            'category.required'      => 'Merci de choisir une catégorie.',
+            'category.exists'        => "La catégorie choisie n'existe plus. Merci d'en choisir une autre.",
+            'body_text.required_if'  => 'Merci de rédiger votre témoignage.',
+            'cover.image'            => "L'image de couverture doit être une image (JPG, PNG…).",
+            'cover.max'              => "L'image de couverture ne doit pas dépasser 5 Mo.",
+            'media_file.max'         => 'Le fichier ne doit pas dépasser 100 Mo.',
+            'media_file.mimetypes'   => 'Le fichier doit être un enregistrement audio ou vidéo.',
+            'consent_given.accepted' => 'Merci de confirmer votre engagement avant l\'envoi.',
         ]);
 
         $coverUrl = null;
         $mediaUrl = null;
+        $media    = null;
 
         if ($request->hasFile('cover')) {
             $path     = $request->file('cover')->store('covers', 'public');
@@ -83,12 +85,26 @@ class TestimonyController extends Controller
         }
 
         if ($request->hasFile('media_file')) {
-            $path     = $request->file('media_file')->store('media', 'public');
+            $file     = $request->file('media_file');
+            $path     = $file->store('media', 'public');
             $mediaUrl = asset('storage/' . $path);
+            $mimeType = (string) $file->getMimeType();
+
+            $media = MediaFile::create([
+                'user_id'       => Auth::id(),
+                'disk'          => 'public',
+                'path'          => $path,
+                'url'           => $mediaUrl,
+                'mime_type'     => mb_substr($mimeType, 0, 50),
+                'type'          => str_starts_with($mimeType, 'video/') ? 'video' : 'audio',
+                'size_bytes'    => $file->getSize(),
+                'original_name' => $file->getClientOriginalName(),
+            ]);
         }
 
-        $category = Category::where('slug', $data['category'])->first();
-        $tags     = $data['tags'] ? array_map('trim', explode(',', $data['tags'])) : [];
+        $category  = Category::where('slug', $data['category'])->first();
+        $isJournal = ($data['visibility'] ?? 'public') === 'private';
+        $tags     = !empty($data['tags']) ? array_map('trim', explode(',', $data['tags'])) : [];
 
         $testimony = Testimony::create([
             'user_id'       => Auth::id(),
@@ -103,17 +119,22 @@ class TestimonyController extends Controller
             'bible_ref'     => $data['bible_ref'] ?? null,
             'tags'          => $tags,
             'visibility'    => $data['visibility'] ?? 'public',
-            'status'        => TestimonyStatus::Pending->value,
+            // Carnet privé (docs/fonctionnalites/carnet-prive.md) : jamais soumis à la modération, comme dans l'API.
+            'status'        => ($isJournal ? TestimonyStatus::Draft : TestimonyStatus::Pending)->value,
         ]);
 
+        // Versions allégées produites en file d'attente, puis recopiées sur le témoignage
+        // (docs/fonctionnalites/qualites-media.md).
+        $media?->queueTranscoding();
+
         return redirect()->route('testimonies.show', $testimony->id)
-                         ->with('success', 'Témoignage soumis pour modération.');
+                         ->with('success', $isJournal ? 'Témoignage enregistré dans votre carnet privé.' : 'Témoignage soumis pour modération.');
     }
 
     public function myTestimonies(Request $request): View
     {
         $status = $request->query('status', 'all');
-        $query  = Testimony::where('user_id', Auth::id())->latest();
+        $query  = Testimony::with(['user', 'category'])->where('user_id', Auth::id())->latest();
 
         if ($status !== 'all') $query->where('status', $status);
 
@@ -140,7 +161,7 @@ class TestimonyController extends Controller
 
     public function storeReaction(Request $request, string $id): JsonResponse|RedirectResponse
     {
-        $request->validate(['type' => 'required|in:like,love,pray,amen,fire']);
+        $request->validate(['type' => ['required', \Illuminate\Validation\Rule::enum(\App\Enums\ReactionType::class)]]);
 
         $testimony = Testimony::findOrFail($id);
 
@@ -151,7 +172,7 @@ class TestimonyController extends Controller
         ])->first();
 
         if ($existing) {
-            $field = in_array($existing->type->value, ['pray', 'amen']) ? 'prayer_count' : 'like_count';
+            $field = $existing->type->counterField();
             $testimony->decrement($field);
             $existing->delete();
             $reacted = false;
@@ -161,7 +182,7 @@ class TestimonyController extends Controller
                 'testimony_id' => $id,
                 'type'         => $request->type,
             ]);
-            $field = in_array($request->type, ['pray', 'amen']) ? 'prayer_count' : 'like_count';
+            $field = \App\Enums\ReactionType::from($request->type)->counterField();
             $testimony->increment($field);
             $reacted = true;
         }

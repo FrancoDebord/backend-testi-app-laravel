@@ -1,150 +1,200 @@
 @extends('layouts.app')
 @section('title', 'Publier un témoignage')
+@php
+    $header      = 'Publier un témoignage';
+    $subheader   = 'Partagez comment Dieu a agi dans votre vie. Votre témoignage sera relu avant publication.';
+    $breadcrumbs = [
+        ['label' => 'Accueil', 'url' => route('home')],
+        ['label' => 'Mon espace', 'url' => route('testimonies.mine')],
+        ['label' => 'Publier'],
+    ];
+    $types = ['text' => ['Texte', 'fa-file-lines'], 'audio' => ['Audio', 'fa-microphone'], 'video' => ['Vidéo', 'fa-video']];
+    $visibilities = ['public' => 'Public', 'followers' => 'Abonnés uniquement', 'private' => 'Privé'];
+    $currentType = old('type', 'text');
+@endphp
 
 @section('content')
-<div class="container-fluid px-4 py-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-8 col-xl-7">
+<div class="mx-auto max-w-3xl">
 
-            <div class="mb-4">
-                <h4 class="fw-bold"><i class="bi bi-pencil-square me-2 text-primary"></i>Publier un témoignage</h4>
-                <p class="text-muted small">Partagez comment Dieu a agi dans votre vie. Il sera examiné avant publication.</p>
+    <div class="alert-warning mb-4" data-offline-notice hidden role="status">
+        <i class="fa-solid fa-wifi mt-0.5"></i>
+        <p>Vous êtes hors connexion. Votre brouillon est conservé sur cet appareil ; l'envoi sera possible dès le retour de la connexion.</p>
+    </div>
+
+    @if($errors->any())
+    <div class="alert-error mb-4" role="alert">
+        <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+        <p>Le témoignage n'a pas pu être envoyé. Merci de corriger les champs signalés ci-dessous.</p>
+    </div>
+    @endif
+
+    <form method="POST" action="{{ route('testimonies.store') }}" enctype="multipart/form-data" id="testimony-form"
+          class="card divide-y divide-slate-100"
+          data-autosave="testimony-create" data-has-old="{{ session()->hasOldInput() ? '1' : '0' }}"
+          data-online-only data-loading-label="Envoi du témoignage…">
+        @csrf
+
+        {{-- Contenu --}}
+        <section class="space-y-4 p-5 sm:p-6">
+            <h2 class="card-title">Contenu</h2>
+
+            <div>
+                <span class="form-label">Type de témoignage *</span>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    @foreach($types as $val => [$label, $icon])
+                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50 has-[:checked]:text-slate-900">
+                        <input type="radio" name="type" value="{{ $val }}" @checked($currentType === $val)>
+                        <i class="fa-solid {{ $icon }} text-slate-400"></i>{{ $label }}
+                    </label>
+                    @endforeach
+                </div>
+                @error('type')<p class="form-error">{{ $message }}</p>@enderror
             </div>
 
-            @if($errors->any())
-            <div class="alert alert-danger small">
-                @foreach($errors->all() as $e)<p class="mb-0">{{ $e }}</p>@endforeach
+            <div>
+                <label for="title" class="form-label">Titre *</label>
+                <input id="title" type="text" name="title" value="{{ old('title') }}" required maxlength="200" class="form-input"
+                       placeholder="Ex. : Comment Dieu m'a guéri d'une maladie">
+                @error('title')<p class="form-error">{{ $message }}</p>@enderror
             </div>
-            @endif
 
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <form method="POST" action="{{ route('testimonies.store') }}" enctype="multipart/form-data" id="testimonyForm">
-                        @csrf
+            <div>
+                <label for="category" class="form-label">Catégorie *</label>
+                <select id="category" name="category" required class="form-input">
+                    <option value="">Choisir une catégorie</option>
+                    @foreach($categories as $cat)
+                    <option value="{{ $cat->slug }}" @selected(old('category') === $cat->slug)>{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+                @error('category')<p class="form-error">{{ $message }}</p>@enderror
+            </div>
 
-                        {{-- Type selector --}}
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold">Type de témoignage *</label>
-                            <div class="d-flex gap-3">
-                                @foreach(['text' => ['📝', 'Texte'], 'audio' => ['🎵', 'Audio'], 'video' => ['🎬', 'Vidéo']] as $val => [$emoji, $label])
-                                <div class="form-check form-check-inline border rounded-3 px-3 py-2 flex-fill text-center" style="cursor:pointer;" onclick="switchType('{{ $val }}')">
-                                    <input class="form-check-input" type="radio" name="type" id="type_{{ $val }}" value="{{ $val }}" {{ old('type', 'text') === $val ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-semibold" for="type_{{ $val }}" style="cursor:pointer;">{{ $emoji }} {{ $label }}</label>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
+            <div data-type-section="text">
+                <span id="body_text_label" class="form-label">Votre témoignage <span data-type-required>*</span></span>
+                @include('components.rich-editor', [
+                    'name' => 'body_text',
+                    'id' => 'body_text',
+                    'value' => old('body_text'),
+                    'labelId' => 'body_text_label',
+                    'placeholder' => 'Racontez comment Dieu a agi dans votre vie…',
+                    'requiredMessage' => 'Merci de rédiger votre témoignage.',
+                ])
+                <p class="form-hint">Vous pouvez mettre des passages en gras ou en italique et ajouter des émojis.</p>
+                <p class="form-hint" data-media-summary-hint hidden>Pour un témoignage audio ou vidéo, ce texte est facultatif et sert de résumé.</p>
+                @error('body_text')<p class="form-error">{{ $message }}</p>@enderror
+            </div>
 
-                        {{-- Title --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Titre *</label>
-                            <input type="text" name="title" value="{{ old('title') }}" required class="form-control" placeholder="Ex: Comment Dieu m'a guéri d'une maladie incurable...">
-                        </div>
+            <div data-type-section="audio video">
+                <label for="media_file" class="form-label" data-media-label>Fichier média</label>
+                <input id="media_file" type="file" name="media_file" accept="audio/*,video/*" class="form-input">
+                <p class="form-hint" data-media-hint>Audio : MP3, M4A, WAV. Vidéo : MP4, MOV. 100 Mo maximum.</p>
+                @error('media_file')<p class="form-error">{{ $message }}</p>@enderror
+            </div>
 
-                        {{-- Category --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Catégorie *</label>
-                            <select name="category_id" required class="form-select">
-                                <option value="">-- Choisir une catégorie --</option>
-                                @foreach($categories as $cat)
-                                <option value="{{ $cat->id }}" {{ old('category_id') == $cat->id ? 'selected' : '' }}>
-                                    {{ $cat->icon }} {{ $cat->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
+            <div>
+                <label for="cover" class="form-label">Image de couverture (facultatif)</label>
+                <input id="cover" type="file" name="cover" accept="image/*" class="form-input">
+                <p class="form-hint">JPG ou PNG, 5 Mo maximum.</p>
+                @error('cover')<p class="form-error">{{ $message }}</p>@enderror
+            </div>
+        </section>
 
-                        {{-- Text content --}}
-                        <div id="section_text" class="type-section mb-3">
-                            <label class="form-label fw-semibold small">Votre témoignage *</label>
-                            <textarea name="body_text" rows="8" class="form-control"
-                                placeholder="Racontez comment Dieu a agi dans votre vie...">{{ old('body_text') }}</textarea>
-                        </div>
+        {{-- Référence biblique --}}
+        <section class="space-y-4 p-5 sm:p-6">
+            <h2 class="card-title">Référence biblique (facultatif)</h2>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div class="md:col-span-2">
+                    <label for="bible_verse" class="form-label">Verset</label>
+                    <textarea id="bible_verse" name="bible_verse" rows="2" maxlength="500" class="form-input"
+                              placeholder="« Car je connais les projets que j'ai formés sur vous… »">{{ old('bible_verse') }}</textarea>
+                    @error('bible_verse')<p class="form-error">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="bible_ref" class="form-label">Référence</label>
+                    <input id="bible_ref" type="text" name="bible_ref" value="{{ old('bible_ref') }}" maxlength="100" class="form-input" placeholder="Jérémie 29:11">
+                    @error('bible_ref')<p class="form-error">{{ $message }}</p>@enderror
+                </div>
+            </div>
+        </section>
 
-                        {{-- Audio section --}}
-                        <div id="section_audio" class="type-section mb-3 d-none">
-                            <label class="form-label fw-semibold small">Fichier audio</label>
-                            <input type="file" name="audio_file" accept="audio/*" class="form-control">
-                            <div class="form-text">Format MP3, M4A, WAV — Max 100 Mo</div>
-                        </div>
+        {{-- Diffusion --}}
+        <section class="space-y-4 p-5 sm:p-6">
+            <h2 class="card-title">Diffusion</h2>
+            <div>
+                <label for="tags" class="form-label">Mots-clés</label>
+                <input id="tags" type="text" name="tags" value="{{ old('tags') }}" class="form-input" placeholder="guérison, miracle, foi">
+                <p class="form-hint">Séparez les mots-clés par des virgules.</p>
+            </div>
+            <div>
+                <span class="form-label">Visibilité</span>
+                <div class="flex flex-wrap gap-x-6 gap-y-2">
+                    @foreach($visibilities as $val => $label)
+                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                        <input type="radio" name="visibility" value="{{ $val }}" @checked(old('visibility', 'public') === $val)>
+                        {{ $label }}
+                    </label>
+                    @endforeach
+                </div>
+                @error('visibility')<p class="form-error">{{ $message }}</p>@enderror
+            </div>
+        </section>
 
-                        {{-- Video section --}}
-                        <div id="section_video" class="type-section mb-3 d-none">
-                            <label class="form-label fw-semibold small">Fichier vidéo</label>
-                            <input type="file" name="video_file" accept="video/*" class="form-control">
-                            <div class="form-text">Format MP4, MOV — Max 100 Mo</div>
-                        </div>
+        {{-- Engagement --}}
+        <div class="space-y-4 p-5 sm:p-6">
+            <label class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <input type="checkbox" name="consent_given" value="1" required class="mt-0.5 rounded"
+                       data-required-check data-autosave-ignore @checked(old('consent_given'))>
+                <span>Je certifie que ce témoignage est authentique et personnel, et j'accepte qu'il soit partagé sur la plateforme TestiApp après relecture. *</span>
+            </label>
+            @error('consent_given')<p class="form-error">{{ $message }}</p>@enderror
 
-                        {{-- Cover image --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Image de couverture (optionnel)</label>
-                            <input type="file" name="cover_image" accept="image/*" class="form-control">
-                        </div>
-
-                        {{-- Bible verse --}}
-                        <div class="row g-3 mb-3">
-                            <div class="col-12 col-md-8">
-                                <label class="form-label fw-semibold small">Verset biblique (optionnel)</label>
-                                <textarea name="bible_verse" rows="2" class="form-control" placeholder="« Car je connais les projets... »">{{ old('bible_verse') }}</textarea>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label class="form-label fw-semibold small">Référence</label>
-                                <input type="text" name="bible_ref" value="{{ old('bible_ref') }}" class="form-control" placeholder="Jérémie 29:11">
-                            </div>
-                        </div>
-
-                        {{-- Tags --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Tags (séparés par des virgules)</label>
-                            <input type="text" name="tags" value="{{ old('tags') }}" class="form-control" placeholder="guérison, miracle, foi">
-                        </div>
-
-                        {{-- Visibility --}}
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold small">Visibilité</label>
-                            <div class="d-flex gap-3">
-                                @foreach(['public' => ['bi-globe', 'Public'], 'followers' => ['bi-people', 'Abonnés'], 'private' => ['bi-lock', 'Privé']] as $val => [$icon, $label])
-                                <div class="form-check border rounded-3 px-3 py-2">
-                                    <input class="form-check-input" type="radio" name="visibility" id="vis_{{ $val }}" value="{{ $val }}" {{ old('visibility', 'public') === $val ? 'checked' : '' }}>
-                                    <label class="form-check-label small" for="vis_{{ $val }}"><i class="bi {{ $icon }} me-1 text-primary"></i>{{ $label }}</label>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        {{-- Consent --}}
-                        <div class="mb-4 p-3 bg-light rounded-3">
-                            <div class="form-check">
-                                <input type="checkbox" name="consent_given" id="consent" value="1" required class="form-check-input @error('consent_given') is-invalid @enderror" {{ old('consent_given') ? 'checked' : '' }}>
-                                <label for="consent" class="form-check-label small">
-                                    J'accepte que mon témoignage soit partagé sur la plateforme TestiApp. Je certifie que ce témoignage est authentique et personnel.
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="d-flex gap-3">
-                            <button type="submit" class="btn btn-primary px-5 fw-semibold">
-                                <i class="bi bi-send me-2"></i>Soumettre pour révision
-                            </button>
-                            <a href="{{ route('home') }}" class="btn btn-light">Annuler</a>
-                        </div>
-                    </form>
+            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-xs text-slate-500" data-autosave-status>Votre brouillon est enregistré automatiquement sur cet appareil.</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ route('home') }}" class="btn-secondary">Annuler</a>
+                    <button type="submit" class="btn-primary" data-submit-guard disabled>Soumettre pour relecture</button>
                 </div>
             </div>
         </div>
-    </div>
+    </form>
 </div>
+@endsection
 
 @push('scripts')
 <script>
-function switchType(type) {
-    document.querySelectorAll('.type-section').forEach(el => el.classList.add('d-none'));
-    const section = document.getElementById('section_' + type);
-    if (section) section.classList.remove('d-none');
-}
-// Init on load
-switchType(document.querySelector('input[name="type"]:checked')?.value || 'text');
-document.querySelectorAll('input[name="type"]').forEach(r => r.addEventListener('change', e => switchType(e.target.value)));
+(function () {
+    const form = document.getElementById('testimony-form');
+    const bodyText = document.getElementById('body_text');
+    const media = document.getElementById('media_file');
+    const MEDIA = {
+        audio: { label: 'Fichier audio', accept: 'audio/*', hint: 'MP3, M4A ou WAV, 100 Mo maximum.' },
+        video: { label: 'Fichier vidéo', accept: 'video/*', hint: 'MP4 ou MOV, 100 Mo maximum.' },
+    };
+
+    function syncType() {
+        const type = form.querySelector('input[name="type"]:checked')?.value || 'text';
+        form.querySelectorAll('[data-type-section]').forEach(function (el) {
+            // Le texte reste visible pour tous les types (résumé facultatif).
+            const types = el.dataset.typeSection.split(' ');
+            el.hidden = !(types.includes(type) || el.dataset.typeSection === 'text');
+        });
+        const isText = type === 'text';
+        // Champ obligatoire vérifié par l'éditeur au moment de l'envoi (le champ source est caché).
+        bodyText.toggleAttribute('data-rt-required', isText);
+        form.querySelector('[data-type-required]').hidden = !isText;
+        form.querySelector('[data-media-summary-hint]').hidden = isText;
+        if (MEDIA[type]) {
+            form.querySelector('[data-media-label]').textContent = MEDIA[type].label;
+            form.querySelector('[data-media-hint]').textContent = MEDIA[type].hint;
+            media.accept = MEDIA[type].accept;
+        }
+    }
+
+    form.addEventListener('change', function (e) {
+        if (e.target.name === 'type') syncType();
+    });
+    form.addEventListener('autosave:ready', syncType);
+    syncType();
+})();
 </script>
 @endpush
-@endsection

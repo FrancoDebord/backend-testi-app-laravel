@@ -20,9 +20,9 @@ enum UserAccountStatus: string
     public function badgeClass(): string
     {
         return match($this) {
-            self::Active    => 'bg-green-100 text-green-700',
-            self::Suspended => 'bg-yellow-100 text-yellow-700',
-            self::Banned    => 'bg-red-100 text-red-700',
+            self::Active    => 'badge-active',
+            self::Suspended => 'badge-suspended',
+            self::Banned    => 'badge-banned',
         };
     }
 }

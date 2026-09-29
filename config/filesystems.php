@@ -33,7 +33,10 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // false : Laravel enregistrerait sinon sa propre route storage/{path}
+            // (disque privé), qui masquerait celle qui sert les fichiers envoyés
+            // (disque public) quand le lien public/storage manque sur le serveur.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
@@ -56,6 +59,25 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Enregistrements des directs (docs/fonctionnalites/lives.md), déposés par LiveKit Egress.
+        // Utilisé pour produire leurs versions allégées (docs/fonctionnalites/qualites-media.md) :
+        // demande le paquet league/flysystem-aws-s3-v3. Les URL publiques sont construites avec
+        // LIVEKIT_RECORDING_PUBLIC_URL (MediaFile::urlFor).
+        'recordings' => [
+            'driver' => 's3',
+            'key' => env('LIVEKIT_RECORDING_S3_KEY'),
+            'secret' => env('LIVEKIT_RECORDING_S3_SECRET'),
+            'region' => env('LIVEKIT_RECORDING_S3_REGION', 'auto'),
+            'bucket' => env('LIVEKIT_RECORDING_S3_BUCKET'),
+            'url' => env('LIVEKIT_RECORDING_PUBLIC_URL'),
+            'endpoint' => env('LIVEKIT_RECORDING_S3_ENDPOINT') ?: null,
+            'use_path_style_endpoint' => (bool) env('LIVEKIT_RECORDING_S3_PATH_STYLE', false),
+            // « public » si la lecture publique du bucket repose sur les ACL (AWS) ; vide pour R2 / B2.
+            'visibility' => env('LIVEKIT_RECORDING_S3_VISIBILITY') ?: null,
             'throw' => false,
             'report' => false,
         ],

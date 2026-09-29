@@ -22,10 +22,10 @@ enum TestimonyStatus: string
     public function badgeClass(): string
     {
         return match($this) {
-            self::Draft    => 'bg-gray-100 text-gray-600',
-            self::Pending  => 'bg-yellow-100 text-yellow-700',
-            self::Approved => 'bg-green-100 text-green-700',
-            self::Rejected => 'bg-red-100 text-red-700',
+            self::Draft    => 'badge-draft',
+            self::Pending  => 'badge-pending',
+            self::Approved => 'badge-validated',
+            self::Rejected => 'badge-rejected',
         };
     }
 }

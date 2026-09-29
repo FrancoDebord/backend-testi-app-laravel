@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\AccountType;
+use App\Enums\OrganizationType;
 use App\Enums\UserRole;
 use App\Enums\UserAccountStatus;
+use App\Enums\VerificationStatus;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,10 +23,15 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'display_name', 'email', 'phone', 'firebase_uid', 'password',
-        'avatar_url', 'country', 'bio', 'role', 'status', 'is_active',
+        'display_name', 'email', 'phone', 'phone_country', 'phone_verified_at', 'firebase_uid', 'password',
+        'avatar_url', 'cover_url', 'country', 'bio', 'role', 'status', 'is_active',
         'email_verified_at', 'testimony_count', 'like_count', 'prayer_count',
         'follower_count', 'following_count',
+        // Comptes organisation (docs/fonctionnalites/comptes-organisation.md).
+        // verification_status / verified_* ne sont modifiés que par le serveur.
+        'account_type', 'organization_name', 'organization_type', 'organization_city',
+        'organization_website', 'verification_status', 'verified_at', 'verified_by',
+        'verification_note',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -31,6 +40,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password'          => 'hashed',
             'is_active'         => 'boolean',
             'role'              => UserRole::class,
@@ -40,6 +50,10 @@ class User extends Authenticatable
             'prayer_count'      => 'integer',
             'follower_count'    => 'integer',
             'following_count'   => 'integer',
+            'account_type'        => AccountType::class,
+            'organization_type'   => OrganizationType::class,
+            'verification_status' => VerificationStatus::class,
+            'verified_at'         => 'datetime',
         ];
     }
 
@@ -115,10 +129,94 @@ class User extends Authenticatable
         return $this->role->isAdmin();
     }
 
+    public function isOrganization(): bool
+    {
+        return $this->account_type === AccountType::Organization;
+    }
+
+    /** Organisation dont l'identité a été confirmée par un administrateur. */
+    public function isVerified(): bool
+    {
+        return $this->isOrganization() && $this->verification_status === VerificationStatus::Verified;
+    }
+
+    // ---------- Téléphone (docs/fonctionnalites/telephone.md) ----------
+
+    /** Numéro confirmé par SMS (connexion par téléphone). Seul un numéro vérifié permet de se connecter. */
+    public function hasVerifiedPhone(): bool
+    {
+        return $this->phone !== null && $this->phone_verified_at !== null;
+    }
+
+    /**
+     * Enregistre un numéro de contact. Un numéro différent n'est plus vérifié (il n'a pas été confirmé par SMS).
+     * @param string|null $e164 numéro international (+229…) ou null pour le retirer
+     */
+    public function setContactPhone(?string $e164, ?string $country): void
+    {
+        if ($e164 === $this->phone) {
+            if ($country) {
+                $this->phone_country = $country;
+            }
+            return;
+        }
+        $this->phone             = $e164;
+        $this->phone_country     = $e164 ? $country : null;
+        $this->phone_verified_at = null;
+    }
+
+    /**
+     * Ajoute « is_followed » (la personne connectée suit-elle ce compte ?) en une seule requête.
+     * Lu par UserResource (« is_following »). Voir docs/fonctionnalites/abonnements.md
+     */
+    /**
+     * Nombre réel de témoignages publiés (`published_testimony_count`), lu en priorité par
+     * UserResource et les cartes de la Communauté à la place du compteur `testimony_count`.
+     */
+    public function scopeWithPublishedTestimonyCount($query)
+    {
+        return $query->withCount(['testimonies as published_testimony_count' => fn ($t) => $t->published()]);
+    }
+
+    /** Témoignages à afficher : nombre réel si chargé, sinon le compteur enregistré. */
+    public function publishedTestimonyCount(): int
+    {
+        return (int) ($this->published_testimony_count ?? $this->testimony_count ?? 0);
+    }
+
+    public function scopeWithFollowState($query, ?User $viewer)
+    {
+        if (!$viewer) {
+            return $query;
+        }
+
+        return $query->withExists(['followers as is_followed' => fn ($q) => $q->where('follows.follower_id', $viewer->id)]);
+    }
+
+    public function scopeOrganizations($query)
+    {
+        return $query->where('account_type', AccountType::Organization->value);
+    }
+
+    public function scopePendingVerification($query)
+    {
+        return $query->where('account_type', AccountType::Organization->value)
+                     ->where('verification_status', VerificationStatus::Pending->value);
+    }
+
+    public function verifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
     public function getInitialsAttribute(): string
     {
-        $parts = explode(' ', trim($this->display_name));
-        return strtoupper(substr($parts[0], 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
+        // mb_* : « Église Évangélique » → « ÉÉ » (substr couperait l'octet UTF-8).
+        $parts = preg_split('/\s+/u', trim((string) $this->display_name), -1, PREG_SPLIT_NO_EMPTY);
+        if ($parts === []) {
+            return '?';
+        }
+        return mb_strtoupper(mb_substr($parts[0], 0, 1) . (isset($parts[1]) ? mb_substr($parts[1], 0, 1) : ''));
     }
 
     public function isFollowing(string $userId): bool

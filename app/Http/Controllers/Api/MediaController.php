@@ -37,6 +37,9 @@ class MediaController extends Controller
             'original_name' => $file->getClientOriginalName(),
         ]);
 
+        // Versions allégées (360p, 64k…) produites en file d'attente : docs/fonctionnalites/qualites-media.md
+        $media->queueTranscoding();
+
         return $this->created([
             'id'  => $media->id,
             'url' => $url,

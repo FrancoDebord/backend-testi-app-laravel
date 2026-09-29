@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\ModerationLog;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Services\OrganizationAccounts;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,12 +55,52 @@ class AdminController extends Controller
             $query->where('status', $status);
         }
 
+        // Comptes organisation (docs/fonctionnalites/comptes-organisation.md)
+        if ($accountType = $request->query('account_type')) {
+            $query->where('account_type', $accountType);
+        }
+
+        if ($verification = $request->query('verification_status')) {
+            $query->where('verification_status', $verification);
+        }
+
         $users = $query->latest()->paginate(20);
 
         return $this->paginated(
             UserResource::collection($users->items()),
-            ['total' => $users->total()]
+            [
+                'total'                 => $users->total(),
+                'pending_organizations' => User::pendingVerification()->count(),
+            ]
         );
+    }
+
+    public function verifyOrganization(Request $request, string $id): JsonResponse
+    {
+        $user = User::find($id);
+        if (!$user) return $this->notFound();
+        if (!$user->isOrganization()) {
+            return $this->error('Seul un compte organisation peut être vérifié', 422);
+        }
+
+        OrganizationAccounts::verify($user, $request->user());
+
+        return $this->success(new UserResource($user->fresh()), 'Organisation vérifiée');
+    }
+
+    public function rejectOrganization(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
+
+        $user = User::find($id);
+        if (!$user) return $this->notFound();
+        if (!$user->isOrganization()) {
+            return $this->error('Seul un compte organisation peut faire l’objet d’une vérification', 422);
+        }
+
+        OrganizationAccounts::reject($user, $request->user(), $request->input('reason'));
+
+        return $this->success(new UserResource($user->fresh()), 'Vérification refusée');
     }
 
     public function showUser(string $id): JsonResponse
@@ -109,6 +150,10 @@ class AdminController extends Controller
     {
         $request->validate(['role' => 'required|in:utilisateur,moderateur,administrateur']);
 
+        if ($request->user()->id === $id) {
+            return $this->forbidden('Vous ne pouvez pas modifier votre propre rôle');
+        }
+
         $user = User::find($id);
         if (!$user) return $this->notFound();
 
@@ -119,7 +164,7 @@ class AdminController extends Controller
 
     public function content(Request $request): JsonResponse
     {
-        $query = Testimony::with('user');
+        $query = Testimony::with('user')->withoutJournal(); // carnet privé exclu
 
         if ($status = $request->query('status')) {
             $query->where('status', $status);

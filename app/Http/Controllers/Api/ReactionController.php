@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ReactionType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreReactionRequest;
 use App\Http\Resources\ReactionResource;
@@ -48,10 +49,7 @@ class ReactionController extends Controller
         ]);
 
         // Update counts on testimony
-        $field = match($request->type) {
-            'pray', 'amen' => 'prayer_count',
-            default        => 'like_count',
-        };
+        $field = ReactionType::from($request->type)->counterField();
         $testimony->increment($field);
 
         // Notify author
@@ -81,7 +79,7 @@ class ReactionController extends Controller
         if (!$reaction) return $this->notFound();
 
         $testimony = Testimony::find($testimonyId);
-        $field = in_array($reaction->type->value, ['pray', 'amen']) ? 'prayer_count' : 'like_count';
+        $field = $reaction->type->counterField();
         $testimony?->decrement($field);
 
         $reaction->delete();

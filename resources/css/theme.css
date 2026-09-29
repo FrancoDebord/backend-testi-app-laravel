@@ -1,0 +1,148 @@
+/*
+|--------------------------------------------------------------------------
+| Charte ARISE & SHINE Krea — jetons de style (source unique)
+|--------------------------------------------------------------------------
+| Couleurs, typographie, arrondis et ombres de toute l'interface.
+| Guide complet : docs/interface.md (§ Charte Krea).
+|
+| Logique de la marque :
+|   BLEU   = confiance, structure (navigation, titres, action principale)   ~25 %
+|   ORANGE = action, énergie (appel à l'action, élément actif important)     ~10 %
+|   JAUNE  = lumière, inspiration (accents, nouveautés, encouragements)      ~5 %
+|   BLANC  = espace, clarté (fonds, cartes)                                  ~60 %
+|
+| Règle : jamais de texte blanc sur le jaune (texte bleu foncé #103675).
+|
+| Utilisation dans Tailwind : primary-* (bleu), accent-* (orange), sun-* (jaune),
+| success-*, warning-*, error-* (messages). Les neutres slate-* sont redéfinis
+| sur les gris de la charte : aucune page n'a besoin d'être réécrite.
+*/
+
+@theme {
+    /* ── Typographie : Plus Jakarta Sans (chargée dans layouts/app et layouts/guest) */
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+
+    /* ── Krea Blue : couleur principale (600 = #184797, 700 = Blue Dark, 50 = Blue Light) */
+    --color-primary-50: #eaf1fc;
+    --color-primary-100: #d5e3f8;
+    --color-primary-200: #afc8ef;
+    --color-primary-300: #7fa5e2;
+    --color-primary-400: #4b7acb;
+    --color-primary-500: #2b5db0;
+    --color-primary-600: #184797;
+    --color-primary-700: #103675;
+    --color-primary-800: #0c2a5c;
+    --color-primary-900: #0a2149;
+    --color-primary-950: #06152f;
+
+    /* ── Krea Orange : actions importantes (500 = #F18717, 600 = survol, 50 = Orange Light) */
+    --color-accent-50: #fff1e2;
+    --color-accent-100: #ffe0bf;
+    --color-accent-200: #fec48a;
+    --color-accent-300: #fba552;
+    --color-accent-400: #f7942f;
+    --color-accent-500: #f18717;
+    --color-accent-600: #d96f0b;
+    --color-accent-700: #b4570a;
+    --color-accent-800: #8f450e;
+    --color-accent-900: #743a10;
+
+    /* ── Krea Sun : accent lumière (400 = #FCC11D, 50 = Yellow Light, 700 = texte de badge) */
+    --color-sun-50: #fff8d9;
+    --color-sun-100: #fef0b3;
+    --color-sun-200: #fde7a0;
+    --color-sun-300: #fdd55c;
+    --color-sun-400: #fcc11d;
+    --color-sun-500: #e8a90b;
+    --color-sun-600: #c48a06;
+    --color-sun-700: #8a6500;
+    --color-sun-800: #6e5006;
+    --color-sun-900: #5b420a;
+
+    /* ── Neutres de la charte (Text #263238, Muted #667085, Border #E4E7EC, fond #F8FAFC) */
+    --color-slate-50: #f8fafc;
+    --color-slate-100: #f2f4f7;
+    --color-slate-200: #e4e7ec;
+    --color-slate-300: #d0d5dd;
+    --color-slate-400: #98a2b3;
+    --color-slate-500: #667085;
+    --color-slate-600: #475467;
+    --color-slate-700: #344054;
+    --color-slate-800: #2d3a42;
+    --color-slate-900: #263238;
+    --color-slate-950: #101828;
+
+    /* ── Messages (distincts des couleurs de marque) */
+    --color-success-50: #ecfdf3;
+    --color-success-200: #abefc6;
+    --color-success-500: #12b76a;
+    --color-success-700: #067647;
+    --color-warning-50: #fffaeb;
+    --color-warning-200: #fedf89;
+    --color-warning-500: #f79009;
+    --color-warning-700: #b54708;
+    --color-error-50: #fef3f2;
+    --color-error-200: #fecdca;
+    --color-error-500: #d92d20;
+    --color-error-700: #b42318;
+
+    /* ── Arrondis : champs et boutons 10 px, cartes 16 px, grandes cartes 20 px */
+    --radius-xs: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 16px;
+    --radius-2xl: 20px;
+    --radius-3xl: 24px;
+
+    /* ── Ombres très légères, teintées de bleu */
+    --shadow-card: 0 4px 20px rgb(16 54 117 / 0.08);
+    --shadow-soft: 0 1px 3px rgb(16 54 117 / 0.06);
+}
+
+/* Variables CSS de la charte (§27), pour un style hors Tailwind ou un script.
+   Les arrondis sont préfixés --krea-radius-* : les noms --radius-* appartiennent à Tailwind
+   (rounded-lg = 10 px, rounded-xl = 16 px ci-dessus). */
+:root {
+    --krea-blue: #184797;
+    --krea-blue-dark: #103675;
+    --krea-blue-light: #eaf1fc;
+    --krea-orange: #f18717;
+    --krea-orange-dark: #d96f0b;
+    --krea-orange-light: #fff1e2;
+    --krea-yellow: #fcc11d;
+    --krea-yellow-light: #fff8d9;
+    --krea-text: #263238;
+    --krea-muted: #667085;
+    --krea-border: #e4e7ec;
+    --krea-background: #f8fafc;
+
+    /* Noms du guide de la charte */
+    --white: #ffffff;
+    --text: #263238;
+    --text-muted: #667085;
+    --border: #e4e7ec;
+    --background: #f8fafc;
+
+    --success: #12b76a;
+    --success-bg: #ecfdf3;
+    --warning: #f79009;
+    --warning-bg: #fffaeb;
+    --error: #d92d20;
+    --error-bg: #fef3f2;
+    --info: #184797;
+    --info-bg: #eaf1fc;
+
+    --krea-radius-xs: 6px;
+    --krea-radius-sm: 8px;
+    --krea-radius-md: 10px;
+    --krea-radius-lg: 16px;
+    --krea-radius-xl: 20px;
+    --krea-radius-2xl: 24px;
+    --krea-radius-pill: 999px;
+
+    --font-family: 'Plus Jakarta Sans', sans-serif;
+
+    /* Dégradés autorisés (très peu : grandes illustrations, bandeaux ; jamais sur les boutons) */
+    --krea-gradient-blue: linear-gradient(135deg, #184797 0%, #103675 100%);
+    --krea-gradient-sun: linear-gradient(135deg, #f18717 0%, #fcc11d 100%);
+}

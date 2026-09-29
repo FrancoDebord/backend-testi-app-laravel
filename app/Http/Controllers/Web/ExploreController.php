@@ -17,7 +17,7 @@ class ExploreController extends Controller
         $sort     = $request->query('sort', 'recent');
         $category = $request->query('category');
 
-        $query = Testimony::with('user')->published();
+        $query = Testimony::with(['user', 'category'])->published();
 
         if ($q) {
             $query->where(fn($q2) => $q2->where('title', 'like', "%{$q}%")

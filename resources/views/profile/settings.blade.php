@@ -1,105 +1,78 @@
 @extends('layouts.app')
 @section('title', 'Paramètres du compte')
+@php
+    $header      = 'Paramètres du compte';
+    $subheader   = 'Confidentialité, notifications et affichage.';
+    $breadcrumbs = [
+        ['label' => 'Accueil', 'url' => route('home')],
+        ['label' => 'Paramètres'],
+    ];
+    $pushOptions = [
+        ['push_comments', 'Nouveaux commentaires'],
+        ['push_likes', 'Réactions (j’aime, prières…)'],
+        ['push_prayers', 'Prières'],
+        ['push_approval', 'Validation de mes témoignages'],
+        ['push_new_followed', 'Nouveaux témoignages de mes abonnements'],
+    ];
+@endphp
 
 @section('content')
-<div class="container-fluid px-4 py-4">
-<div class="row justify-content-center">
-<div class="col-12 col-lg-7 col-xl-6">
+<form method="POST" action="{{ route('profile.settings.update') }}" class="mx-auto max-w-2xl space-y-6" data-loading-label="Enregistrement…">
+    @csrf @method('PUT')
 
-    <h4 class="fw-bold mb-4">
-        <i class="bi bi-gear-fill text-primary me-2"></i>Paramètres du compte
-    </h4>
-
-    <form method="POST" action="{{ route('profile.settings.update') }}">
-        @csrf @method('PUT')
-
-        {{-- Privacy --}}
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-bottom py-3">
-                <h6 class="fw-semibold mb-0"><i class="bi bi-lock me-2"></i>Confidentialité</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom">
-                    <div>
-                        <p class="fw-medium mb-0">Compte privé</p>
-                        <p class="text-muted small mb-0">Seuls vos abonnés verront vos témoignages</p>
-                    </div>
-                    <div class="form-check form-switch mb-0">
-                        <input type="checkbox" class="form-check-input" role="switch"
-                               name="is_private_account" value="1"
-                               {{ $settings->is_private_account ? 'checked' : '' }}>
-                    </div>
+    <section class="card">
+        <h2 class="card-title border-b border-slate-100 px-5 py-4">Confidentialité</h2>
+        <div class="divide-y divide-slate-100">
+            <div class="flex items-center justify-between gap-4 px-5 py-4">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-slate-900">Compte privé</p>
+                    <p class="text-sm text-slate-500">Seuls vos abonnés voient vos témoignages.</p>
                 </div>
-
-                <div class="px-4 py-3">
-                    <p class="fw-medium mb-2">Qui peut commenter</p>
-                    <div class="d-flex gap-4">
-                        @foreach(['everyone' => 'Tout le monde', 'followers' => 'Abonnés', 'nobody' => 'Personne'] as $val => $label)
-                        <div class="form-check">
-                            <input type="radio" name="comment_permission" value="{{ $val }}"
-                                   id="comment_{{ $val }}"
-                                   {{ ($settings->comment_permission ?? 'everyone') === $val ? 'checked' : '' }}
-                                   class="form-check-input">
-                            <label class="form-check-label small" for="comment_{{ $val }}">{{ $label }}</label>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
+                @include('components.switch', ['name' => 'is_private_account', 'checked' => (bool) $settings->is_private_account, 'label' => 'Compte privé'])
             </div>
-        </div>
-
-        {{-- Push notifications --}}
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-bottom py-3">
-                <h6 class="fw-semibold mb-0"><i class="bi bi-bell me-2"></i>Notifications push</h6>
-            </div>
-            <div class="card-body p-0">
-                @foreach([
-                    ['push_comments', 'Nouveaux commentaires'],
-                    ['push_likes', 'Réactions (likes, prières...)'],
-                    ['push_prayers', 'Prières'],
-                    ['push_approval', 'Approbation de témoignage'],
-                    ['push_new_followed', "Nouveaux témoignages d'abonnements"],
-                ] as [$key, $label])
-                <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom">
-                    <span class="small">{{ $label }}</span>
-                    <div class="form-check form-switch mb-0">
-                        <input type="checkbox" class="form-check-input" role="switch"
-                               name="{{ $key }}" value="1"
-                               {{ ($settings->$key ?? true) ? 'checked' : '' }}>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- Appearance --}}
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-bottom py-3">
-                <h6 class="fw-semibold mb-0"><i class="bi bi-palette me-2"></i>Apparence</h6>
-            </div>
-            <div class="card-body px-4 py-3">
-                <p class="small fw-medium mb-2">Thème</p>
-                <div class="d-flex gap-4">
-                    @foreach(['light' => 'Clair', 'dark' => 'Sombre', 'system' => 'Système'] as $val => $label)
-                    <div class="form-check">
-                        <input type="radio" name="app_theme" value="{{ $val }}"
-                               id="theme_{{ $val }}"
-                               {{ ($settings->app_theme ?? 'system') === $val ? 'checked' : '' }}
-                               class="form-check-input">
-                        <label class="form-check-label small" for="theme_{{ $val }}">{{ $label }}</label>
-                    </div>
+            <div class="px-5 py-4">
+                <p class="mb-2 text-sm font-medium text-slate-900">Qui peut commenter</p>
+                <div class="flex flex-wrap gap-x-6 gap-y-2">
+                    @foreach(['everyone' => 'Tout le monde', 'followers' => 'Mes abonnés', 'nobody' => 'Personne'] as $val => $label)
+                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                        <input type="radio" name="comment_permission" value="{{ $val }}" @checked(($settings->comment_permission ?? 'everyone') === $val)>
+                        {{ $label }}
+                    </label>
                     @endforeach
                 </div>
             </div>
         </div>
+    </section>
 
-        <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold">
-            <i class="bi bi-floppy me-1"></i>Enregistrer les paramètres
-        </button>
-    </form>
+    <section class="card">
+        <h2 class="card-title border-b border-slate-100 px-5 py-4">Notifications sur mobile</h2>
+        <div class="divide-y divide-slate-100">
+            @foreach($pushOptions as [$key, $label])
+            <div class="flex items-center justify-between gap-4 px-5 py-3">
+                <span class="text-sm text-slate-700">{{ $label }}</span>
+                @include('components.switch', ['name' => $key, 'checked' => (bool) ($settings->$key ?? true), 'label' => $label])
+            </div>
+            @endforeach
+        </div>
+    </section>
 
-</div>
-</div>
-</div>
+    <section class="card">
+        <h2 class="card-title border-b border-slate-100 px-5 py-4">Apparence de l’application mobile</h2>
+        <div class="px-5 py-4">
+            <p class="mb-2 text-sm font-medium text-slate-900">Thème</p>
+            <div class="flex flex-wrap gap-x-6 gap-y-2">
+                @foreach(['light' => 'Clair', 'dark' => 'Sombre', 'system' => 'Selon le système'] as $val => $label)
+                <label class="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="radio" name="app_theme" value="{{ $val }}" @checked(($settings->app_theme ?? 'system') === $val)>
+                    {{ $label }}
+                </label>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    <div class="flex justify-end">
+        <button type="submit" class="btn-primary">Enregistrer les paramètres</button>
+    </div>
+</form>
 @endsection

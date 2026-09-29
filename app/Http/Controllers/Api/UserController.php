@@ -9,9 +9,17 @@ use App\Models\AppNotification;
 use App\Models\Follow;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Services\CommunityDirectory;
+use App\Services\FollowException;
+use App\Services\FollowService;
+use App\Services\OrganizationAccounts;
+use App\Services\ProfileCover;
+use App\Support\PhoneNumber;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -19,7 +27,7 @@ class UserController extends Controller
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $user = User::find($id);
+        $user = User::withFollowState($request->user('sanctum'))->withPublishedTestimonyCount()->find($id);
         if (!$user) return $this->notFound();
 
         return $this->success(new UserResource($user));
@@ -27,16 +35,38 @@ class UserController extends Controller
 
     public function updateMe(Request $request): JsonResponse
     {
-        $request->validate([
+        $user = $request->user();
+
+        // Téléphone : avec « phone_country » (indicatif), le numéro national est vérifié puis mis au format
+        // international, comme sur le site ; sans, ancien format (numéro libre). docs/fonctionnalites/telephone.md
+        $withCountry = $request->filled('phone_country');
+        $phoneRules  = $withCountry
+            ? PhoneNumber::rules(false, $user)
+            : ['phone' => ['nullable', 'string', 'max:30', Rule::unique('users', 'phone')->ignore($user->id)]];
+
+        $validated = $request->validate([
             'display_name' => ['nullable', 'string', 'max:100'],
-            'country'      => ['nullable', 'string'],
+            'country'      => ['nullable', 'string', 'max:100'],
             'bio'          => ['nullable', 'string', 'max:500'],
             'avatar_url'   => ['nullable', 'string'],
+        ] + $phoneRules + OrganizationAccounts::updateRules($user), PhoneNumber::MESSAGES + [
+            'phone.unique' => 'Ce numéro est déjà associé à un autre compte.',
         ]);
 
-        $request->user()->update($request->only(['display_name', 'country', 'bio', 'avatar_url']));
+        // Un numéro modifié n'est plus vérifié par SMS : il ne sert plus à la connexion.
+        // Numéro vérifié : il ne se change que par une nouvelle connexion par SMS.
+        if ($request->has('phone') && !($user->hasVerifiedPhone() && $withCountry)) {
+            $withCountry
+                ? $user->setContactPhone(PhoneNumber::toE164($validated['phone_country'], $validated['phone'] ?? null), strtolower($validated['phone_country']))
+                : $user->setContactPhone($request->input('phone') ?: null, null);
+        }
+        $user->update($request->only(['display_name', 'country', 'bio', 'avatar_url']));
 
-        return $this->success(new UserResource($request->user()->fresh()), 'Profil mis à jour');
+        // Champs organisation : account_type, verification_status et verified_*
+        // ne sont jamais modifiables ici (docs/fonctionnalites/comptes-organisation.md).
+        OrganizationAccounts::updateProfile($user, $validated);
+
+        return $this->success(UserResource::owner($request->user()->fresh()), 'Profil mis à jour');
     }
 
     public function uploadAvatar(Request $request): JsonResponse
@@ -49,6 +79,23 @@ class UserController extends Controller
         $request->user()->update(['avatar_url' => $url]);
 
         return $this->success(['avatar_url' => $url], 'Avatar mis à jour');
+    }
+
+    /** Photo de couverture du profil (multipart « cover »). Voir docs/fonctionnalites/photo-de-couverture.md */
+    public function uploadCover(Request $request): JsonResponse
+    {
+        $request->validate(['cover' => ProfileCover::rules(required: true)], ProfileCover::MESSAGES);
+
+        $url = ProfileCover::store($request->user(), $request->file('cover'));
+
+        return $this->success(['cover_url' => $url], 'Photo de couverture mise à jour');
+    }
+
+    public function deleteCover(Request $request): JsonResponse
+    {
+        ProfileCover::remove($request->user());
+
+        return $this->success(['cover_url' => null], 'Photo de couverture retirée');
     }
 
     public function testimonies(Request $request, string $id): JsonResponse
@@ -70,56 +117,53 @@ class UserController extends Controller
         );
     }
 
-    public function follow(Request $request, string $id): JsonResponse
+    /**
+     * Identifiants des comptes suivis par la personne connectée : l'application affiche ainsi le bon état
+     * de tous ses boutons « Suivre » sans une requête par auteur. docs/fonctionnalites/abonnements.md
+     */
+    public function followingIds(Request $request): JsonResponse
     {
-        if ($id === $request->user()->id) {
-            return $this->error('Vous ne pouvez pas vous suivre vous-même');
-        }
+        return $this->success(
+            DB::table('follows')->where('follower_id', $request->user()->id)->limit(5000)->pluck('following_id')
+        );
+    }
 
+    /** « Mes abonnements » : GET /users/me/following?q=&page= (UserResource paginés, meta de pagination). */
+    public function following(Request $request, CommunityDirectory $directory): JsonResponse
+    {
+        $request->validate(['q' => 'nullable|string|max:100']);
+        $accounts = $directory->following($request->user(), $request->query('q'));
+
+        return $this->paginated(UserResource::collection($accounts->items()), [
+            'current_page' => $accounts->currentPage(),
+            'last_page'    => $accounts->lastPage(),
+            'total'        => $accounts->total(),
+        ]);
+    }
+
+    /** Suivre un compte (jamais soi-même). Réponse : { following, followerCount }. */
+    public function follow(Request $request, string $id, FollowService $follows): JsonResponse
+    {
         $target = User::find($id);
         if (!$target) return $this->notFound();
 
-        $exists = Follow::where('follower_id', $request->user()->id)
-                        ->where('following_id', $id)
-                        ->exists();
-
-        if (!$exists) {
-            Follow::create([
-                'follower_id'  => $request->user()->id,
-                'following_id' => $id,
-                'created_at'   => now(),
-            ]);
-
-            $request->user()->increment('following_count');
-            $target->increment('follower_count');
-
-            // Notify followed user
-            AppNotification::create([
-                'recipient_id' => $id,
-                'actor_id'     => $request->user()->id,
-                'actor_name'   => $request->user()->display_name,
-                'actor_avatar' => $request->user()->avatar_url,
-                'type'         => 'follow',
-                'message'      => $request->user()->display_name . ' vous suit maintenant',
-                'created_at'   => now(),
-            ]);
+        try {
+            $follows->follow($request->user(), $target);
+        } catch (FollowException $e) {
+            return $this->error($e->getMessage(), $e->status());
         }
 
-        return $this->success(null, 'Abonnement effectué');
+        return $this->success(['following' => true, 'followerCount' => $target->fresh()->follower_count], 'Abonnement effectué');
     }
 
-    public function unfollow(Request $request, string $id): JsonResponse
+    public function unfollow(Request $request, string $id, FollowService $follows): JsonResponse
     {
-        $deleted = Follow::where('follower_id', $request->user()->id)
-                         ->where('following_id', $id)
-                         ->delete();
+        $target = User::find($id);
+        if (!$target) return $this->notFound();
 
-        if ($deleted) {
-            $request->user()->decrement('following_count');
-            User::where('id', $id)->decrement('follower_count');
-        }
+        $follows->unfollow($request->user(), $target);
 
-        return $this->success(null, 'Abonnement annulé');
+        return $this->success(['following' => false, 'followerCount' => $target->fresh()->follower_count], 'Abonnement annulé');
     }
 
     public function updateSettings(Request $request): JsonResponse

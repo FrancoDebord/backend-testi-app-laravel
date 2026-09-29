@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
 use App\Models\ModerationLog;
 use App\Models\Testimony;
+use App\Services\FollowerNotifications;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,7 @@ class ModerationController extends Controller
         $today  = now()->toDateString();
 
         $query = Testimony::with('user')
+            ->withoutJournal() // carnet privé exclu
             ->whereIn('status', $status === 'all' ? ['pending', 'approved', 'rejected'] : [$status])
             ->latest();
 
@@ -40,7 +42,7 @@ class ModerationController extends Controller
 
     public function show(string $id): View
     {
-        $testimony = Testimony::with(['user', 'moderationLogs.moderator'])->findOrFail($id);
+        $testimony = Testimony::with(['user', 'moderationLogs.moderator'])->withoutJournal()->findOrFail($id);
 
         if ($testimony->status->value === 'pending') {
             ModerationLog::create([
@@ -57,7 +59,8 @@ class ModerationController extends Controller
 
     public function approve(Request $request, string $id): RedirectResponse
     {
-        $testimony = Testimony::findOrFail($id);
+        // Même traitement que Api\ModerationController::approve (carnet privé exclu).
+        $testimony = Testimony::with('user')->withoutJournal()->findOrFail($id);
 
         $testimony->update([
             'status'      => TestimonyStatus::Approved->value,
@@ -83,6 +86,9 @@ class ModerationController extends Controller
             'created_at'      => now(),
         ]);
 
+        // Abonnés de l'auteur (insertion groupée + push : App\Services\FollowerNotifications)
+        FollowerNotifications::newTestimony($testimony->fresh('user'));
+
         $testimony->user->increment('testimony_count');
 
         return redirect()->route('moderation.index')->with('success', 'Témoignage approuvé.');
@@ -95,7 +101,7 @@ class ModerationController extends Controller
             'moderator_note' => 'nullable|string|max:1000',
         ]);
 
-        $testimony = Testimony::findOrFail($id);
+        $testimony = Testimony::withoutJournal()->findOrFail($id);
         $testimony->update(['status' => TestimonyStatus::Rejected->value]);
 
         ModerationLog::create([
@@ -114,7 +120,8 @@ class ModerationController extends Controller
             'type'            => 'testimony_rejected',
             'testimony_id'    => $id,
             'testimony_title' => $testimony->title,
-            'message'         => 'Votre témoignage "' . $testimony->title . '" a été rejeté',
+            'message'         => 'Votre témoignage "' . $testimony->title . '" a été rejeté : '
+                                 . (RejectionReason::tryFrom((string) $request->reason)?->label() ?? 'Non conforme'),
             'created_at'      => now(),
         ]);
 

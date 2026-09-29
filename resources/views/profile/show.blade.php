@@ -1,62 +1,97 @@
 @extends('layouts.app')
 @section('title', $profile->display_name)
+@php
+    // Présentation « chaîne » : bandeau, avatar, statistiques, puis les témoignages en grille.
+    // Bouton Suivre : components/follow-button (le nombre d'abonnés se met à jour sans recharger).
+    $stats = [
+        [$profile->publishedTestimonyCount(), 'témoignage', 'témoignages'],
+        [$profile->follower_count,  'abonné',     'abonnés'],
+        [$profile->following_count, 'abonnement', 'abonnements'],
+    ];
+@endphp
 
 @section('content')
-<div class="container-fluid px-4 py-4">
+<section class="mb-8" aria-label="Profil">
+    {{-- Bandeau : photo de couverture (docs/fonctionnalites/photo-de-couverture.md), sinon dégradé neutre. --}}
+    <div class="h-28 overflow-hidden rounded-xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 sm:h-44 lg:h-52" aria-hidden="true">
+        @if($profile->cover_url)
+        <img src="{{ $profile->cover_url }}" alt="" class="h-full w-full object-cover" loading="eager" decoding="async">
+        @endif
+    </div>
 
-    {{-- Header card --}}
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body p-4">
-            <div class="d-flex flex-column flex-md-row align-items-center align-items-md-start gap-4">
-                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width:90px;height:90px;font-size:2rem;font-weight:800;">
-                    {{ $profile->initials }}
-                </div>
-                <div class="flex-grow-1 text-center text-md-start">
-                    <h4 class="fw-bold mb-1">{{ $profile->display_name }}</h4>
-                    @if($profile->country)<p class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>{{ $profile->country }}</p>@endif
-                    @if($profile->bio)<p class="text-muted small mb-2">{{ $profile->bio }}</p>@endif
-
-                    <div class="d-flex gap-4 justify-content-center justify-content-md-start mb-3">
-                        <div class="text-center"><span class="fw-bold fs-5">{{ $profile->testimony_count }}</span><br><small class="text-muted">Témoignages</small></div>
-                        <div class="text-center"><span class="fw-bold fs-5">{{ $profile->follower_count }}</span><br><small class="text-muted">Abonnés</small></div>
-                        <div class="text-center"><span class="fw-bold fs-5">{{ $profile->following_count }}</span><br><small class="text-muted">Abonnements</small></div>
-                    </div>
-
-                    @auth
-                    @if($isOwner)
-                    <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-pencil me-1"></i>Modifier le profil
-                    </a>
-                    @else
-                    <form method="POST" action="{{ $isFollowing ? route('users.unfollow', $profile->id) : route('users.follow', $profile->id) }}" class="d-inline">
-                        @csrf
-                        @if($isFollowing)@method('DELETE')@endif
-                        <button type="submit" class="btn btn-sm {{ $isFollowing ? 'btn-outline-secondary' : 'btn-primary' }}">
-                            <i class="bi {{ $isFollowing ? 'bi-person-dash' : 'bi-person-plus' }} me-1"></i>
-                            {{ $isFollowing ? 'Se désabonner' : "S'abonner" }}
-                        </button>
-                    </form>
-                    @endif
-                    @endauth
-                </div>
-            </div>
+    <div class="-mt-10 flex flex-col gap-4 px-2 sm:-mt-12 sm:flex-row sm:items-start sm:px-6">
+        <div class="shrink-0 self-start rounded-full ring-4 ring-slate-50">
+            @include('components.avatar', ['user' => $profile, 'size' => 'xl'])
+        </div>
+        <div class="min-w-0 flex-1 sm:pt-14">
+            {{-- La coche reste accrochée au dernier mot du nom (jamais seule sur une ligne). --}}
+            @php
+                $nameHead = Str::contains($profile->display_name, ' ') ? Str::beforeLast($profile->display_name, ' ') . ' ' : '';
+                $nameTail = Str::afterLast($profile->display_name, ' ');
+                // Un très long mot doit pouvoir se couper (390 px) : pas de nowrap dans ce cas.
+                $tailNowrap = mb_strlen($nameTail) <= 20;
+            @endphp
+            <h1 class="text-xl font-semibold break-words text-primary-600 sm:text-2xl">{{ $nameHead }}<span class="{{ $tailNowrap ? 'whitespace-nowrap' : '' }}">{{ $nameTail }}@if($profile->isVerified())&nbsp;@include('components.verified-badge', ['user' => $profile])@endif</span></h1>
+            <p class="mt-1 flex flex-wrap gap-x-2 text-sm text-slate-500">
+                @if($profile->isOrganization())<span>{{ $profile->organization_type?->label() ?? 'Organisation' }}@if($profile->organization_city) · {{ $profile->organization_city }}@endif</span><span aria-hidden="true">·</span>@endif
+                @if($profile->country)<span>{{ $profile->country }}</span><span aria-hidden="true">·</span>@endif
+                @foreach($stats as [$count, $one, $many])
+                @if($isOwner && $one === 'abonnement')
+                <a href="{{ route('profile.following') }}" class="hover:underline"><span class="font-semibold text-slate-900">{{ number_format($count ?? 0, 0, ',', ' ') }}</span> {{ ($count ?? 0) > 1 ? $many : $one }}</a>
+                @else
+                <span><span class="font-semibold text-slate-900" @if($one === 'abonné') data-follower-count="{{ $profile->id }}" @endif>{{ number_format($count ?? 0, 0, ',', ' ') }}</span> {{ ($count ?? 0) > 1 ? $many : $one }}</span>
+                @endif
+                @if(!$loop->last)<span aria-hidden="true">·</span>@endif
+                @endforeach
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-2 sm:pt-14">
+            @if($isOwner)
+                <a href="{{ route('profile.edit') }}" class="btn-secondary"><i class="fa-solid fa-pen" aria-hidden="true"></i>Modifier le profil</a>
+                <a href="{{ route('publish') }}" class="btn-cta"><i class="fa-solid fa-plus" aria-hidden="true"></i>Publier</a>
+            @else
+                {{-- Suivre : docs/fonctionnalites/abonnements.md (personne non connectée : lien vers la connexion) --}}
+                @include('components.follow-button', ['user' => $profile, 'following' => $isFollowing, 'primary' => true])
+            @endif
         </div>
     </div>
 
-    {{-- Testimonies --}}
-    <h5 class="fw-bold mb-3">Témoignages de {{ $profile->display_name }}</h5>
-    @if($testimonies->isEmpty())
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-journal-x" style="font-size:3.5rem;opacity:.2;"></i>
-        <p class="mt-3">Aucun témoignage publié.</p>
+    {{-- Suivi de la vérification, visible par l'organisation elle-même uniquement. --}}
+    @if($isOwner && $profile->isOrganization() && $profile->verification_status === \App\Enums\VerificationStatus::Pending)
+    <div class="alert-info mt-4" role="status">
+        <i class="fa-solid fa-hourglass-half mt-0.5 text-slate-400" aria-hidden="true"></i>
+        <p class="min-w-0"><span class="font-semibold text-slate-900">Vérification en cours.</span> Notre équipe vérifie votre organisation. La coche « vérifiée » apparaîtra ensuite sur votre profil et vos témoignages.</p>
     </div>
-    @else
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-4 mb-4">
-        @foreach($testimonies as $testimony)
-        <div class="col">@include('components.testimony-card', ['testimony' => $testimony])</div>
-        @endforeach
+    @elseif($isOwner && $profile->isOrganization() && $profile->verification_status === \App\Enums\VerificationStatus::Rejected)
+    <div class="alert-warning mt-4" role="status">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i>
+        <p class="min-w-0 break-words"><span class="font-semibold">Vérification refusée</span>@if($profile->verification_note) : {{ rtrim($profile->verification_note, " .") }}@endif. Vous pouvez corriger les informations de votre organisation depuis <a href="{{ route('profile.edit') }}" class="font-semibold underline">Modifier le profil</a> ou l'application mobile : la demande sera alors réexaminée.</p>
     </div>
-    <div class="d-flex justify-content-center">{{ $testimonies->links() }}</div>
     @endif
+
+    @if($profile->bio)
+    <p class="mt-4 max-w-3xl px-2 text-sm break-words whitespace-pre-line text-slate-700 sm:px-6">{{ $profile->bio }}</p>
+    @elseif($isOwner)
+    <p class="mt-4 px-2 text-sm text-slate-500 sm:px-6">Ajoutez une présentation pour que l'on vous connaisse mieux.</p>
+    @endif
+</section>
+
+<div class="mb-6 flex items-center justify-between gap-3 border-b border-slate-200">
+    <h2 class="tab-active">Témoignages</h2>
+    @if($testimonies->isNotEmpty())@include('components.layout-toggle')@endif
 </div>
+
+@if($testimonies->isEmpty())
+    @include('components.empty-state', [
+        'title'       => 'Aucun témoignage publié',
+        'text'        => $isOwner ? 'Vos témoignages publiés apparaîtront ici.' : null,
+        'actionUrl'   => $isOwner ? route('publish') : null,
+        'actionLabel' => 'Publier un témoignage',
+    ])
+@else
+    <div class="mb-8">
+        @include('components.testimony-list', ['items' => $testimonies, 'routeName' => 'testimonies.show'])
+    </div>
+    {{ $testimonies->links() }}
+@endif
 @endsection
