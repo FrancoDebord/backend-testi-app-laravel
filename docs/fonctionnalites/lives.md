@@ -10,7 +10,7 @@ Diffuser un témoignage **en vidéo, en direct, depuis un téléphone**, et perm
 
 | Règle | Détail |
 |---|---|
-| **Qui peut diffuser** | Uniquement les **modérateurs** et **administrateurs** dont le compte est actif |
+| **Qui peut diffuser** | Les **modérateurs** et **administrateurs** dont le compte est actif ; l'**organisateur d'un événement** (organisation vérifiée) pour le direct de **son** événement publié (`event_id`, voir [evenements.md](evenements.md)) |
 | Un direct à la fois | Un diffuseur ne peut pas lancer un second direct tant que le premier n'est pas terminé (il est renvoyé vers son studio) |
 | **Qui peut regarder** | Tout le monde, même sans compte |
 | **Qui peut commenter et réagir** | Les personnes connectées, avec un compte actif, non exclues du direct |
@@ -20,6 +20,10 @@ Diffuser un témoignage **en vidéo, en direct, depuis un téléphone**, et perm
 | Réactions | J'aime, Prière, Amen, Adorer, Feu · **20 par 10 secondes** et par personne |
 | **Modération** | Le diffuseur, les modérateurs et les administrateurs peuvent **masquer un commentaire**, **exclure une personne** du direct (ses commentaires sont masqués, elle ne peut plus commenter ni réagir) et **couper le direct** |
 | Protection | Le diffuseur et les modérateurs ne peuvent pas être exclus |
+
+## Caméra IP ou encodeur (2026-09-30)
+
+Un direct peut aussi être diffusé depuis une caméra IP, OBS ou un encodeur (RTMP, ou adresse du flux) : voir [lives-camera-ip.md](lives-camera-ip.md).
 
 ## Qui regarde, commentaires, message épinglé (2026-09-29)
 

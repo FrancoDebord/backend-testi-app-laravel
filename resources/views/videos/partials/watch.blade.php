@@ -38,6 +38,8 @@
         'data-renditions' => json_encode($renditions, JSON_UNESCAPED_SLASHES),
         'data-up-next'    => json_encode($upNext, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
     ];
+    // Preuves : auteur et équipe de modération (docs/fonctionnalites/preuves.md).
+    $proofList = \App\Services\TestimonyProofs::canView(Auth::user(), $testimony) ? $testimony->proofs : collect();
     // Valeurs échappées par e() : le JSON reste valide dans l'attribut.
     $playerAttrs = collect($playerData)->map(fn ($v, $k) => $v === true ? $k : $k . '="' . e($v) . '"')->implode(' ');
 @endphp
@@ -51,10 +53,44 @@
         {{-- ── Lecture ─────────────────────────────────────────────────── --}}
         <div class="min-w-0">
             @if($inJournal)
-            <div class="alert-info mb-4" role="status">
-                <i class="fa-solid fa-lock mt-0.5 text-slate-400" aria-hidden="true"></i>
-                <p>Ce témoignage est dans votre <strong>carnet privé</strong> : vous seul pouvez le voir.</p>
-            </div>
+            {{-- Carnet privé (docs/fonctionnalites/carnet-prive.md) : partager (relecture par la modération) ou supprimer --}}
+            <section class="card mb-4 p-4 sm:p-5" aria-labelledby="journal-entry-title">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-lock mt-1 text-slate-400" aria-hidden="true"></i>
+                    <div class="min-w-0 flex-1">
+                        <h2 id="journal-entry-title" class="text-sm font-semibold text-slate-900">Dans votre carnet privé</h2>
+                        <p class="mt-0.5 text-sm text-slate-500">Vous seul pouvez voir ce témoignage. Partagez-le quand vous le souhaitez : il sera relu par la modération avant d'être publié.</p>
+                    </div>
+                </div>
+                <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    @if(Auth::user()->canPublish())
+                    <form method="POST" action="{{ route('journal.share', $testimony->id) }}" class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end" data-loading-label="Partage…">
+                        @csrf
+                        <div class="min-w-0 sm:w-64">
+                            <label for="share-category" class="form-label">Catégorie</label>
+                            <select id="share-category" name="category" required class="form-input" @error('category') aria-invalid="true" @enderror>
+                                <option value="">Choisir une catégorie</option>
+                                @foreach(\App\Models\Category::active()->get(['slug', 'name']) as $cat)
+                                <option value="{{ $cat->slug }}" @selected(old('category', $testimony->category_slug !== 'autre' ? $testimony->category_slug : null) === $cat->slug)>{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i>Partager</button>
+                    </form>
+                    @endif
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ route('journal.index') }}" class="btn-secondary"><i class="fa-solid fa-book-open" aria-hidden="true"></i>Mon carnet</a>
+                        <button type="button" class="btn-ghost text-error-700"
+                                onclick="openConfirmModal('journal-delete-form', 'Cette entrée sera supprimée de votre carnet, avec son enregistrement.', 'Supprimer du carnet', 'Supprimer', 'fa-trash')">
+                            <i class="fa-solid fa-trash" aria-hidden="true"></i>Supprimer
+                        </button>
+                    </div>
+                </div>
+                @error('category')<p class="form-error">{{ $message }}</p>@enderror
+                <form id="journal-delete-form" method="POST" action="{{ route('journal.destroy', $testimony->id) }}" data-loading-label="Suppression…" hidden>
+                    @csrf @method('DELETE')
+                </form>
+            </section>
             @elseif($testimony->status->value !== 'approved')
             <div class="alert-warning mb-4" role="status">
                 <i class="fa-solid fa-eye-slash mt-0.5" aria-hidden="true"></i>
@@ -62,7 +98,18 @@
             </div>
             @endif
 
-            @if($type === 'video')
+            @if($type === 'video' && $testimony->isYouTube())
+                {{-- Vidéo YouTube (docs/fonctionnalites/videos-youtube.md) : lecteur sans cookie publicitaire avant la lecture --}}
+                <div class="relative aspect-video overflow-hidden rounded-xl bg-black">
+                    <iframe src="{{ $testimony->youtubeEmbedUrl() }}" title="{{ $testimony->title }}" class="absolute inset-0 h-full w-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
+                </div>
+                <p class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                    <i class="fa-brands fa-youtube text-error-500" aria-hidden="true"></i>Vidéo hébergée sur YouTube ·
+                    <a href="{{ \App\Support\YouTube::watchUrl($testimony->youtube_id) }}" target="_blank" rel="noopener" class="font-medium text-primary-600 hover:underline">Ouvrir sur YouTube</a>
+                </p>
+            @elseif($type === 'video')
                 @if($testimony->media_url)
                 <div class="relative overflow-hidden rounded-xl bg-black {{ $isShort ? 'flex justify-center' : '' }}">
                     <video {!! $playerAttrs !!}
@@ -110,7 +157,38 @@
                     @if($testimony->cover_url)
                     <img src="{{ $testimony->cover_url }}" alt="" class="max-h-96 w-full object-cover">
                     @endif
-                    <div class="p-5 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800 sm:p-8 sm:text-base [&_strong]:font-semibold [&_strong]:text-slate-900">{{ $testimony->body_html }}</div>
+                    {{-- Lecture à voix haute (resources/js/tts.js) : affichée seulement si le navigateur sait lire. --}}
+                    <div class="border-b border-primary-100 bg-primary-50 px-5 py-3 sm:px-8" role="group" aria-label="Lecture à voix haute"
+                         data-tts data-tts-source="testimony-body" data-tts-title="{{ $testimony->title }}"
+                         data-tts-verse="{{ $testimony->bible_verse ? trim($testimony->bible_verse . ($testimony->bible_ref ? ' — ' . $testimony->bible_ref : '')) : '' }}" hidden>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" class="btn-primary btn-sm" data-tts-play aria-pressed="false">
+                                <i class="fa-solid fa-volume-high" aria-hidden="true"></i><span data-tts-play-label>Écouter le témoignage</span>
+                            </button>
+                            <button type="button" class="btn-ghost btn-sm" data-tts-stop hidden>
+                                <i class="fa-solid fa-stop" aria-hidden="true"></i>Arrêter
+                            </button>
+                            <label class="sr-only" for="tts-rate">Vitesse de lecture</label>
+                            <select id="tts-rate" class="form-input min-h-9 w-auto py-1.5 text-xs" data-tts-rate>
+                                @foreach([0.75, 1, 1.25, 1.5, 2] as $rate)
+                                <option value="{{ $rate }}" @selected($rate == 1)>Vitesse {{ str_replace('.', ',', $rate) }}×</option>
+                                @endforeach
+                            </select>
+                            <label class="sr-only" for="tts-lang">Langue de lecture</label>
+                            <select id="tts-lang" class="form-input min-h-9 w-auto py-1.5 text-xs" data-tts-lang-select>
+                                <option value="fr" lang="fr">Français</option>
+                                <option value="en" lang="en">English</option>
+                            </select>
+                            <label class="sr-only" for="tts-voice">Voix</label>
+                            <select id="tts-voice" class="form-input min-h-9 w-auto max-w-full py-1.5 text-xs" data-tts-voice hidden></select>
+                            <span class="text-xs text-slate-500" data-tts-status aria-live="polite"></span>
+                        </div>
+                        <p class="mt-2 text-sm text-slate-700 italic" data-tts-current hidden></p>
+                        <div class="mt-3 h-1 overflow-hidden rounded-full bg-primary-100" data-tts-progress-wrap hidden>
+                            <div class="h-full rounded-full bg-primary-600" style="width: 0%" data-tts-progress></div>
+                        </div>
+                    </div>
+                    <div id="testimony-body" class="p-5 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800 sm:p-8 sm:text-base [&_strong]:font-semibold [&_strong]:text-slate-900">{{ $testimony->body_html }}</div>
                 </article>
             @endif
 
@@ -203,6 +281,14 @@
                         <i class="{{ $isSaved ? 'fa-solid' : 'fa-regular' }} fa-bookmark" aria-hidden="true" data-save-icon></i><span data-save-label>{{ $isSaved ? 'Sauvegardé' : 'Sauvegarder' }}</span>
                     </button>
                     @endauth
+                    @if(!$inJournal && Auth::id() === $testimony->user_id)
+                    {{-- Retirer du public et ranger dans le carnet privé (docs/fonctionnalites/carnet-prive.md) --}}
+                    <button type="button" class="chip" title="Ranger dans mon carnet privé"
+                            onclick="openConfirmModal('journal-store-form', 'Le témoignage sera retiré du public et rangé dans votre carnet privé : vous seul pourrez le voir. Vous pourrez le partager de nouveau (nouvelle relecture).', 'Ranger dans mon carnet', 'Ranger', 'fa-lock')">
+                        <i class="fa-solid fa-lock" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">Ranger dans mon carnet</span><span class="sr-only">Ranger dans mon carnet privé</span>
+                    </button>
+                    <form id="journal-store-form" method="POST" action="{{ route('journal.store', $testimony->id) }}" data-loading-label="Enregistrement…" hidden>@csrf</form>
+                    @endif
                     @if($canReport)
                     <button type="button" class="chip" data-modal-open="report-modal" aria-label="Signaler ce témoignage" title="Signaler">
                         <i class="fa-regular fa-flag" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">Signaler</span>
@@ -237,6 +323,13 @@
                     @endif
                     @if($type === 'text')<span class="font-medium text-slate-600">{{ $testimony->readingMinutes() }} min de lecture</span>@endif
                 </p>
+                {{-- Témoignage officiel d'un événement (docs/fonctionnalites/evenements.md) --}}
+                @if($testimony->event_id && $testimony->event?->isVisibleTo(Auth::user()))
+                <p class="mt-2 text-slate-700">
+                    <i class="fa-solid fa-calendar-days mr-1 text-primary-600" aria-hidden="true"></i>Témoignage de l'événement :
+                    <a href="{{ route('events.show', $testimony->event_id) }}" class="font-semibold text-primary-600 hover:underline">{{ $testimony->event->title }}</a>
+                </p>
+                @endif
 
                 @if($description)
                 <div id="video-description" class="{{ $longDesc ? 'line-clamp-4' : '' }} mt-2 break-words whitespace-pre-line text-slate-700 [&_strong]:font-semibold">{{ $testimony->body_html }}</div>
@@ -259,7 +352,67 @@
                     @foreach($testimony->tags as $tag)<span>#{{ $tag }}</span>@endforeach
                 </p>
                 @endif
+
+                @if($proofList->isNotEmpty())
+                @include('testimonies.partials.proofs', ['testimony' => $testimony, 'proofs' => $proofList])
+                @endif
             </section>
+
+            {{-- ── Parole prophétique accomplie (docs/fonctionnalites/paroles-prophetiques.md) ── --}}
+            {{-- Montrée si l'auteur l'a rendue publique ; l'auteur la voit toujours, avec un lien vers la parole de son carnet. --}}
+            @php $prophecy = $testimony->prophecy; @endphp
+            @if($prophecy && ($prophecy->is_public || Auth::id() === $testimony->user_id))
+            @php
+                $fmtDate = fn ($d) => $d?->translatedFormat('j F Y');
+                $audioLength = $prophecy->audio_duration ? sprintf('%d:%02d', intdiv($prophecy->audio_duration, 60), $prophecy->audio_duration % 60) : null;
+            @endphp
+            <section class="card-insight mt-4 p-4 text-sm sm:p-5" aria-labelledby="prophecy-title">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h2 id="prophecy-title" class="flex items-center gap-2 text-base font-bold text-primary-700">
+                        <i class="fa-solid fa-scroll text-sun-500" aria-hidden="true"></i>Parole prophétique accomplie
+                    </h2>
+                    @if(!$prophecy->is_public)
+                    <span class="badge-neutral">Visible de vous seul</span>
+                    @endif
+                    @if(Auth::id() === $testimony->user_id)
+                    <a href="{{ route('prophecies.show', $prophecy->id) }}" class="ml-auto text-xs font-semibold text-primary-600 hover:underline">Voir dans mon carnet</a>
+                    @endif
+                </div>
+                @if(filled($prophecy->title))
+                <p class="mt-2 font-semibold break-words text-slate-900">{{ $prophecy->title }}</p>
+                @endif
+
+                <dl class="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+                    @if($prophecy->received_on)
+                    <div class="min-w-0"><dt class="text-xs text-slate-500">Reçue le</dt><dd class="font-medium text-slate-900">{{ $fmtDate($prophecy->received_on) }}</dd></div>
+                    @endif
+                    @if(filled($prophecy->given_by))
+                    <div class="min-w-0"><dt class="text-xs text-slate-500">Donnée par</dt><dd class="font-medium break-words text-slate-900">{{ $prophecy->given_by }}</dd></div>
+                    @endif
+                    @if($prophecy->due_on)
+                    <div class="min-w-0"><dt class="text-xs text-slate-500">Échéance annoncée</dt><dd class="font-medium text-slate-900">{{ $fmtDate($prophecy->due_on) }}</dd></div>
+                    @endif
+                    @if($prophecy->fulfilled_on)
+                    <div class="min-w-0"><dt class="text-xs text-slate-500">Accomplie le</dt><dd class="font-semibold text-success-700"><i class="fa-solid fa-circle-check mr-1" aria-hidden="true"></i>{{ $fmtDate($prophecy->fulfilled_on) }}</dd></div>
+                    @endif
+                </dl>
+
+                @if(filled($prophecy->body_text))
+                <blockquote class="mt-3 border-l-2 border-sun-400 pl-3 break-words whitespace-pre-line text-slate-800">{{ $prophecy->body_text }}</blockquote>
+                @endif
+                @if($prophecy->audio_url)
+                <div class="mt-3">
+                    <p class="mb-1 text-xs text-slate-500">Parole enregistrée @if($audioLength)<span class="tabular-nums">({{ $audioLength }})</span>@endif</p>
+                    <audio controls preload="none" src="{{ $prophecy->audio_url }}" class="w-full" aria-label="Écouter la parole prophétique"></audio>
+                </div>
+                @endif
+            </section>
+            @endif
+
+            {{-- ── Pourquoi témoigner ? (docs/fonctionnalites/pourquoi-temoigner.md), pas dans le carnet privé ── --}}
+            @if($testimony->visibility !== \App\Enums\TestimonyVisibility::Private)
+            <x-why-testify collapsible class="mt-8" />
+            @endif
 
             {{-- ── Commentaires ─────────────────────────────────────────── --}}
             <section class="mt-8" aria-labelledby="comments-title" id="commentaires">

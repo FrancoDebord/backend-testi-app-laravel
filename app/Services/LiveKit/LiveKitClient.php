@@ -132,6 +132,32 @@ class LiveKitClient
         ], $room, 'Egress', ['roomRecord' => true]);
     }
 
+    // ─── Caméra IP / encodeur (Ingress) ──────────────────────────────────────
+
+    /**
+     * Point d'entrée d'un flux externe vers la salle : RTMP (la caméra ou l'encodeur pousse le flux,
+     * avec une adresse et une clé) ou URL (LiveKit lit le flux : HLS, HTTP, SRT…). Le flux apparaît
+     * dans la salle sous l'identité $identity. Voir docs/fonctionnalites/lives-camera-ip.md
+     * @return array<string, mixed> IngressInfo (ingress_id, url, stream_key…)
+     */
+    public function createIngress(string $room, string $inputType, string $identity, string $name, ?string $url = null): array
+    {
+        return $this->call('CreateIngress', array_filter([
+            'input_type'           => $inputType, // RTMP_INPUT ou URL_INPUT
+            'name'                 => $room,
+            'room_name'            => $room,
+            'participant_identity' => $identity,
+            'participant_name'     => $name,
+            'url'                  => $url,
+            'enable_transcoding'   => true,       // plusieurs qualités pour les spectateurs
+        ], fn ($v) => $v !== null), $room, 'Ingress', ['ingressAdmin' => true]);
+    }
+
+    public function deleteIngress(string $ingressId): void
+    {
+        $this->call('DeleteIngress', ['ingress_id' => $ingressId], '', 'Ingress', ['ingressAdmin' => true]);
+    }
+
     public function stopEgress(string $egressId): array
     {
         return $this->call('StopEgress', ['egress_id' => $egressId], '', 'Egress', ['roomRecord' => true]);

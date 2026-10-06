@@ -44,11 +44,18 @@
         'actionUrl' => route('publish'),
         'actionLabel' => 'Publier un témoignage',
     ])
+    @if($currentStatus === 'all')
+    {{-- Encouragement (le bouton « Publier » est déjà au-dessus) --}}
+    <x-encouragement class="mx-auto mt-6 max-w-2xl" kind="verse" :action="false" />
+    <x-why-testify class="mx-auto mt-6 max-w-2xl" :open="0" :action="false" />
+    @endif
 @else
     <div class="mb-3 flex justify-end">@include('components.layout-toggle')</div>
     <div class="mb-8">
         @include('components.testimony-list', ['items' => $testimonies, 'routeName' => 'testimonies.show'])
     </div>
     {{ $testimonies->withQueryString()->links() }}
+    {{-- Pourquoi témoigner ? (docs/fonctionnalites/pourquoi-temoigner.md) --}}
+    <x-why-testify collapsible class="mt-8" />
 @endif
 @endsection

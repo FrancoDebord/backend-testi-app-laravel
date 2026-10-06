@@ -37,6 +37,37 @@
             @include('lives.partials.stage-pip')
         </div>
 
+        @if($live->usesExternalCamera())
+        {{-- Caméra IP / encodeur : informations de connexion (visibles du seul diffuseur) --}}
+        <section class="card p-4 sm:p-5" aria-labelledby="camera-setup-title" data-live-camera-panel>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 id="camera-setup-title" class="card-title flex items-center gap-2"><i class="fa-solid fa-video text-primary-600" aria-hidden="true"></i>Caméra IP</h2>
+                <span class="badge-pending" data-live-camera-state>En attente du flux</span>
+            </div>
+            @if($live->source === 'rtmp')
+            <p class="mt-1 text-sm text-slate-600">Dans les réglages de la caméra (ou d'OBS, vMix, d'un boîtier d'encodage), choisissez une diffusion <strong>RTMP</strong> et saisissez :</p>
+            <dl class="mt-3 space-y-3">
+                @foreach([['Adresse du serveur (URL)', $live->ingress_url, 'camera-url'], ['Clé de diffusion', $live->ingress_stream_key, 'camera-key']] as [$label, $value, $fieldId])
+                <div>
+                    <dt class="form-label" id="{{ $fieldId }}-label">{{ $label }}</dt>
+                    <dd class="flex gap-2">
+                        <input id="{{ $fieldId }}" type="{{ $fieldId === 'camera-key' ? 'password' : 'text' }}" value="{{ $value }}" readonly class="form-input font-mono text-xs" aria-labelledby="{{ $fieldId }}-label">
+                        @if($fieldId === 'camera-key')
+                        <button type="button" class="btn-secondary btn-sm shrink-0" data-reveal="{{ $fieldId }}" aria-label="Afficher la clé"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+                        @endif
+                        <button type="button" class="btn-soft btn-sm shrink-0" data-copy="{{ $fieldId }}"><i class="fa-regular fa-copy" aria-hidden="true"></i>Copier</button>
+                    </dd>
+                </div>
+                @endforeach
+            </dl>
+            <p class="form-hint mt-2">Ne partagez pas la clé : elle permet de diffuser dans ce direct. Caméra seulement compatible RTSP : utilisez OBS ou un relais (voir la documentation).</p>
+            @else
+            <p class="mt-1 text-sm text-slate-600">Le service vidéo lit le flux de la caméra à l'adresse indiquée à la création du direct. L'aperçu apparaît ci-dessus dès que le flux est reçu.</p>
+            @endif
+            <p class="mt-3 text-xs text-slate-500">L'image et le son de la caméra s'affichent dans l'aperçu ; vérifiez-les puis cliquez sur <strong>Passer à l'antenne</strong>.</p>
+        </section>
+        @endif
+
         {{-- Commandes --}}
         <div class="card flex flex-wrap items-center gap-2 p-3">
             <button type="button" class="btn-primary" data-live-start disabled>

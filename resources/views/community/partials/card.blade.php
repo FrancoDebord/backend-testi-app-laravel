@@ -32,7 +32,7 @@
     <p class="line-clamp-2 text-sm break-words text-slate-600">{{ $account->bio }}</p>
     @endif
     <div class="mt-auto flex flex-wrap items-center gap-2">
-        @include('components.follow-button', ['user' => $account, 'following' => (bool) ($account->is_followed ?? false), 'small' => true])
+        @include('components.follow-button', ['user' => $account, 'following' => (bool) ($account->is_followed ?? false), 'small' => true, 'idleLabel' => $followIdleLabel ?? null])
         <a href="{{ $profileUrl }}" class="btn-ghost btn-sm">Voir le profil</a>
     </div>
 </article>

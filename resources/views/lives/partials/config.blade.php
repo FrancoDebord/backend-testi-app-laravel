@@ -7,6 +7,7 @@
         'liveId'          => $live->id,
         'title'           => $live->title,
         'status'          => $live->status->value,
+        'source'          => $live->source ?? 'browser',  // browser, rtmp ou url (docs/fonctionnalites/lives-camera-ip.md)
         'startedAt'       => $live->started_at?->toIso8601String(),
         'commentsEnabled' => $live->comments_enabled,
         'hostId'          => $live->host_id,

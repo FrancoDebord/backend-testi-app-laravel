@@ -41,7 +41,7 @@ class WatchPage
             'isSaved'       => $isSaved,
             // Bouton « Suivre » à côté de l'auteur (docs/fonctionnalites/abonnements.md)
             'isFollowingAuthor' => $testimony->user && app(FollowService::class)->isFollowing($user, $testimony->user),
-            'recommended'   => $this->recommendations($testimony),
+            'recommended'   => $this->recommendations($testimony, $user),
             'pageRoute'     => $pageRoute,
         ];
     }
@@ -69,31 +69,11 @@ class WatchPage
     }
 
     /**
-     * « À regarder également » : même type et même catégorie, puis même type récents,
-     * puis les plus vus. Trois requêtes au plus.
+     * « À regarder également » : recommandations automatiques selon le témoignage en cours,
+     * les centres d'intérêt de la personne et les comptes qu'elle suit (App\Services\Recommendations).
      */
-    public function recommendations(Testimony $testimony): Collection
+    public function recommendations(Testimony $testimony, ?User $user = null): Collection
     {
-        $picked = collect();
-        $steps  = [
-            fn ($q) => $q->where('type', $testimony->type)->where('category_slug', $testimony->category_slug)->latestPublished(),
-            fn ($q) => $q->where('type', $testimony->type)->latestPublished(),
-            fn ($q) => $q->orderByDesc('views_count'),
-        ];
-
-        foreach ($steps as $step) {
-            $missing = self::RECOMMENDED - $picked->count();
-            if ($missing <= 0) {
-                break;
-            }
-
-            $query = Testimony::with(['user', 'category'])->published()
-                ->whereKeyNot($testimony->id)
-                ->whereNotIn('id', $picked->pluck('id'));
-
-            $picked = $picked->concat($step($query)->limit($missing)->get());
-        }
-
-        return $picked;
+        return app(Recommendations::class)->forTestimony($testimony, $user, self::RECOMMENDED);
     }
 }

@@ -18,8 +18,15 @@ class TestimonyResource extends JsonResource
             'title'        => $this->title,
             'type'         => $this->type->value,
             'category'     => $this->category_slug,
+            // Événement auquel le témoignage est rattaché (docs/fonctionnalites/evenements.md).
+            'eventId'      => $this->event_id,
+            // Parole prophétique accomplie : montrée si l'auteur l'a rendue publique ; à l'auteur toujours.
+            'prophecy'     => $this->prophecyFor($request),
             'bodyText'     => $this->body_text,
             'mediaUrl'     => $this->media_url,
+            // Vidéo YouTube (docs/fonctionnalites/videos-youtube.md) : l'application l'affiche avec le lecteur YouTube.
+            'youtubeId'    => $this->youtube_id,
+            'youtubeUrl'   => $this->youtube_id ? \App\Support\YouTube::watchUrl($this->youtube_id) : null,
             // Versions allégées, débit croissant ; [] si aucune (docs/fonctionnalites/qualites-media.md).
             'renditions'   => \App\Models\MediaFile::renditionsForApi($this->renditions),
             // État des versions allégées (détail d'un témoignage) : done, pending, processing, failed, none ou null.
@@ -45,8 +52,33 @@ class TestimonyResource extends JsonResource
             'isLikedByMe'     => $userId ? $this->isLikedBy($userId) : false,
             'isPrayedByMe'    => $userId ? $this->isPrayedBy($userId) : false,
             'isBookmarkedByMe' => $userId ? $this->isSavedBy($userId) : false,
+            // Preuves (docs/fonctionnalites/preuves.md) : auteur et équipe, ou tout le monde si l'auteur l'a accepté.
+            'proofsPublic' => (bool) $this->proofs_public,
+            'proofs'       => $this->when(
+                \App\Services\TestimonyProofs::canView($request->user() ?? $request->user('sanctum'), $this->resource),
+                fn () => $this->proofs->map(fn ($p) => [
+                    'id'       => $p->id,
+                    'position' => $p->position,
+                    'name'     => $p->original_name,
+                    'mimeType' => $p->mime_type,
+                    'size'     => $p->size_bytes,
+                    'isPdf'    => $p->isPdf(),
+                    'url'      => url("/api/v1/testimonies/{$this->id}/proofs/{$p->id}"),
+                ])->values()
+            ),
             'createdAt'    => $this->created_at?->toIso8601String(),
             'updatedAt'    => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    /** Parole prophétique accomplie (docs/fonctionnalites/paroles-prophetiques.md). */
+    private function prophecyFor(Request $request): ?array
+    {
+        $prophecy = $this->prophecy;
+        if (!$prophecy) return null;
+        $viewer = $request->user() ?? $request->user('sanctum');
+        if (!$prophecy->is_public && $viewer?->id !== $this->user_id) return null;
+
+        return [...$prophecy->publicPayload(), 'isPublic' => $prophecy->is_public];
     }
 }

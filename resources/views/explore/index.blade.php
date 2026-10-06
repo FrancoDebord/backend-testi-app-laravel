@@ -72,7 +72,7 @@
 @else
     <div class="mb-3 flex justify-end">@include('components.layout-toggle')</div>
     <div class="mb-8">
-        @include('components.testimony-list', ['items' => $results, 'routeName' => 'testimonies.show'])
+        @include('components.testimony-list', ['items' => $results, 'routeName' => 'testimonies.show', 'encourage' => true])
     </div>
     {{ $results->withQueryString()->links() }}
 @endif

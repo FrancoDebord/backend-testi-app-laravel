@@ -71,6 +71,24 @@ class CommunityDirectory
         return $query->paginate($perPage)->withQueryString();
     }
 
+    /**
+     * « Mes abonnés » : comptes qui suivent $viewer, les plus récents d'abord, avec `is_followed`
+     * (« je le suis en retour »). Comptes suspendus ou supprimés exclus. Voir docs/fonctionnalites/abonnements.md
+     */
+    public function followers(User $viewer, ?string $q = null, int $perPage = self::PER_PAGE): LengthAwarePaginator
+    {
+        $query = $viewer->followers()
+            ->where('users.status', UserAccountStatus::Active->value)
+            ->withFollowState($viewer)
+            ->withPublishedTestimonyCount()
+            ->orderByDesc('follows.created_at')
+            ->orderBy('users.display_name');
+
+        $this->filter($query, $q);
+
+        return $query->paginate($perPage)->withQueryString();
+    }
+
     private function filter($query, ?string $q): void
     {
         $term = mb_substr(trim((string) $q), 0, 100);

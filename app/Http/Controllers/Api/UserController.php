@@ -141,6 +141,22 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * « Mes abonnés » : GET /users/me/followers?q=&page= (même forme que following ; `is_following` indique
+     * si je suis cet abonné en retour). Pas de liste publique des abonnés d'un autre compte (« Compte privé »).
+     */
+    public function followers(Request $request, CommunityDirectory $directory): JsonResponse
+    {
+        $request->validate(['q' => 'nullable|string|max:100']);
+        $accounts = $directory->followers($request->user(), $request->query('q'));
+
+        return $this->paginated(UserResource::collection($accounts->items()), [
+            'current_page' => $accounts->currentPage(),
+            'last_page'    => $accounts->lastPage(),
+            'total'        => $accounts->total(),
+        ]);
+    }
+
     /** Suivre un compte (jamais soi-même). Réponse : { following, followerCount }. */
     public function follow(Request $request, string $id, FollowService $follows): JsonResponse
     {

@@ -19,6 +19,10 @@ enum NotificationType: string
     case OrganizationRejected = 'organization_rejected';
     // Témoignages en direct (docs/fonctionnalites/lives.md)
     case LiveStarted          = 'live_started';
+    // Requêtes et sessions de prière (docs/fonctionnalites/requetes-de-priere.md, sessions-de-priere.md)
+    case PrayerEncouragement   = 'prayer_encouragement';
+    case PrayerSessionStarted  = 'prayer_session_started';
+    case PrayerSessionReminder = 'prayer_session_reminder';
 
     public function isSystem(): bool
     {

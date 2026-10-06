@@ -63,10 +63,16 @@ class LiveController extends Controller
             'title'            => 'required|string|max:150',
             'description'      => 'nullable|string|max:1000',
             'category_slug'    => 'nullable|string|exists:categories,slug',
+            'event_id'         => 'nullable|uuid', // direct d'un événement (docs/fonctionnalites/evenements.md)
             'comments_enabled' => 'nullable|boolean',
             'record'           => 'nullable|boolean',
+            // Caméra IP / encodeur (docs/fonctionnalites/lives-camera-ip.md)
+            'source'           => 'nullable|in:browser,rtmp,url',
+            'camera_url'       => ['nullable', 'required_if:source,url', 'string', 'max:500', 'regex:#^(rtsps?|rtmps?|https?|srt)://[^\s]+$#i'],
         ], [
             'title.required' => 'Merci de donner un titre au direct.',
+            'camera_url.required_if' => "Indiquez l'adresse du flux de la caméra.",
+            'camera_url.regex'       => "Adresse non reconnue : elle doit commencer par rtsp://, rtmp://, http(s):// ou srt://.",
         ]);
 
         return $this->attempt(function () use ($request, $data) {

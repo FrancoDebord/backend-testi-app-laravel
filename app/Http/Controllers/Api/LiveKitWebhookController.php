@@ -43,7 +43,9 @@ class LiveKitWebhookController extends Controller
         $identity = $event['participant']['identity'] ?? '';
 
         match ($event['event'] ?? null) {
-            'track_published' => str_starts_with($identity, 'host-') && $live->status === LiveStatus::Preparing
+            // Flux d'une caméra IP (« host-camera-… ») : aperçu dans le studio, le diffuseur lance lui-même.
+            'track_published' => str_starts_with($identity, 'host-') && !str_starts_with($identity, 'host-camera-')
+                && $live->status === LiveStatus::Preparing
                 ? $lives->goLive($live, $live->host)
                 : null,
             'room_finished'   => $lives->end($live, null, 'connection'),

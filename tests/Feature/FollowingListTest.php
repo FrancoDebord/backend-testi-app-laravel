@@ -112,6 +112,65 @@ class FollowingListTest extends TestCase
         $this->get('/profile/abonnements')->assertRedirect('/login');
     }
 
+    public function test_api_lists_my_followers_with_follow_back_state_search_and_meta(): void
+    {
+        $me = $this->user('Moi');
+        $church = $this->org('Église Lumière');
+        $paul = $this->user('Paul Martin');
+        $banned = $this->user('Compte Banni');
+        $followed = $this->user('Suivi Seulement');
+
+        $follows = app(FollowService::class);
+        $follows->follow($church, $me);
+        $this->travel(1)->minutes();
+        $follows->follow($paul, $me);
+        $follows->follow($banned, $me);
+        $follows->follow($me, $church);    // je suis l'église en retour
+        $follows->follow($me, $followed);  // abonnement, pas abonné
+        $banned->update(['status' => 'banned']);
+
+        $this->actingAs($me)->getJson('/api/v1/users/me/followers')->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.id', $paul->id)          // le plus récent d'abord
+            ->assertJsonPath('data.0.is_following', false)    // « Suivre en retour »
+            ->assertJsonPath('data.1.id', $church->id)
+            ->assertJsonPath('data.1.is_following', true)
+            ->assertJsonPath('data.0.email', null)
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.last_page', 1);
+
+        $this->actingAs($me)->getJson('/api/v1/users/me/followers?q=paul')
+            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $paul->id);
+
+        $this->forgetGuards();
+        $this->getJson('/api/v1/users/me/followers')->assertUnauthorized();
+    }
+
+    public function test_web_followers_page_offers_follow_back_and_is_linked_from_profile(): void
+    {
+        $me = $this->user('Moi');
+        $this->actingAs($me)->get('/profile/abonnes')->assertOk()
+            ->assertSee('Personne ne vous suit encore.')
+            ->assertSee(route('profile.following'), false);
+
+        $paul = $this->user('Paul Martin');
+        app(FollowService::class)->follow($paul, $me);
+
+        $this->actingAs($me)->get('/profile/abonnes')->assertOk()
+            ->assertSee('Paul Martin')
+            ->assertSee('Suivre en retour')
+            ->assertSee('data-follow-user="' . $paul->id . '"', false);
+
+        $this->actingAs($me)->get('/profile/abonnements')->assertOk()
+            ->assertSee(route('profile.followers'), false);
+
+        $this->actingAs($me)->get("/profiles/{$me->id}")->assertOk()
+            ->assertSee(route('profile.followers'), false);
+
+        $this->forgetGuards();
+        $this->get('/profile/abonnes')->assertRedirect('/login');
+    }
+
     private function forgetGuards(): void
     {
         $this->app['auth']->forgetGuards();

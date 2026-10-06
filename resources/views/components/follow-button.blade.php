@@ -5,6 +5,7 @@
     - personne non connectée : lien vers la connexion ;
     - sinon formulaire (fonctionne sans JavaScript), transformé par app.js en bascule sans rechargement
       (data-follow-form) ; les éléments [data-follower-count="{id}"] sont mis à jour.
+    idleLabel : texte du bouton tant qu'on ne suit pas (« Suivre » par défaut, « Suivre en retour » dans Mes abonnés).
     primary : bouton principal (en-tête d'un profil) ; dans les listes, bouton secondaire.
 --}}
 @php
@@ -13,6 +14,7 @@
     $followState     = (bool) ($following ?? false);
     $followPrimary   = ($primary ?? false) === true;
     $followSmall     = ($small ?? false) === true;
+    $followLabel     = ($idleLabel ?? null) ?: 'Suivre'; // « Suivre en retour » dans « Mes abonnés »
     $followClass     = $followState || !$followPrimary ? 'btn-secondary' : 'btn-primary';
 @endphp
 @if($followIsSelf)
@@ -28,7 +30,7 @@
         <button type="submit" class="{{ $followClass }} {{ $followSmall ? 'btn-sm' : '' }}" aria-pressed="{{ $followState ? 'true' : 'false' }}"
                 aria-label="{{ $followState ? 'Ne plus suivre ' : 'Suivre ' }}{{ $user->display_name }}">
             <i class="fa-solid {{ $followState ? 'fa-check' : 'fa-user-plus' }}" aria-hidden="true" data-follow-icon></i>
-            <span data-follow-label>{{ $followState ? 'Abonné' : 'Suivre' }}</span>
+            <span data-follow-label>{{ $followState ? 'Abonné' : $followLabel }}</span>
         </button>
     </form>
 @endif

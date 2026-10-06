@@ -77,7 +77,7 @@ class VideoController extends Controller
         // « Afficher plus » : seules les cartes suivantes sont renvoyées.
         if ($request->expectsJson()) {
             return response()->json([
-                'html' => view('videos.partials.cards', ['items' => $items, 'tab' => $tab])->render(),
+                'html' => view('videos.partials.cards', ['items' => $items, 'tab' => $tab, 'encourage' => true])->render(),
                 'next' => $items->nextPageUrl(),
             ]);
         }

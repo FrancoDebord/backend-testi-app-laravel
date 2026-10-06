@@ -1,5 +1,6 @@
 import './bootstrap';
 import './videos';
+import './tts';
 
 /*
 |--------------------------------------------------------------------------
@@ -784,6 +785,32 @@ function initFollowCountry(dial) {
     });
 }
 
+// Copier la valeur d'un champ : <button data-copy="id-du-champ"> ; afficher un secret : <button data-reveal="id">.
+document.addEventListener('click', async (e) => {
+    const copy = e.target.closest('[data-copy]');
+    if (copy) {
+        const field = document.getElementById(copy.dataset.copy);
+        try {
+            await navigator.clipboard.writeText(field?.value ?? '');
+            flash('Copié dans le presse-papiers.');
+        } catch {
+            field?.select();
+            flash('Copie impossible : sélectionnez le texte puis copiez-le.', 'warning');
+        }
+        return;
+    }
+    const reveal = e.target.closest('[data-reveal]');
+    if (reveal) {
+        const field = document.getElementById(reveal.dataset.reveal);
+        if (!field) return;
+        const shown = field.type === 'text';
+        field.type = shown ? 'password' : 'text';
+        const what = reveal.dataset.revealLabel || 'la clé';
+        reveal.setAttribute('aria-label', `${shown ? 'Afficher' : 'Masquer'} ${what}`);
+        reveal.querySelector('i').className = shown ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+    }
+});
+
 // Photo de couverture (profile/edit) : aperçu avant l'envoi ; « Retirer » masque l'aperçu.
 function initCoverPreview(input) {
     const form = input.form;
@@ -817,8 +844,220 @@ function initCoverPreview(input) {
     });
 }
 
+// ── Événements (docs/fonctionnalites/evenements.md) ─────────────────────
+// Carrousel [data-carousel] : défilement natif (glisser au doigt), boutons précédent / suivant,
+// points [data-carousel-dot] (aria-current), flèches du clavier quand le carrousel a le focus.
+function initCarousel(root) {
+    const track = root.querySelector('[data-carousel-track]');
+    const slides = [...root.querySelectorAll('[data-carousel-slide]')];
+    const dots = [...root.querySelectorAll('[data-carousel-dot]')];
+    if (!track || slides.length < 2) return;
+
+    const current = () => Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+    const go = (index) => {
+        const i = (index + slides.length) % slides.length;
+        track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
+    };
+    const sync = () => {
+        const i = current();
+        dots.forEach((dot, d) => dot.setAttribute('aria-current', d === i ? 'true' : 'false'));
+    };
+
+    root.querySelector('[data-carousel-prev]')?.addEventListener('click', () => go(current() - 1));
+    root.querySelector('[data-carousel-next]')?.addEventListener('click', () => go(current() + 1));
+    dots.forEach((dot) => dot.addEventListener('click', () => go(Number(dot.dataset.carouselDot))));
+    track.addEventListener('scroll', () => window.requestAnimationFrame(sync), { passive: true });
+    root.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); go(current() - 1); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); go(current() + 1); }
+    });
+}
+
+// Invités [data-guests] : ajout / retrait de lignes (modèle <template data-guest-template>, __INDEX__), data-max lignes au plus.
+function initGuests(root) {
+    const list = root.querySelector('[data-guests-list]');
+    const template = root.querySelector('template[data-guest-template]');
+    const add = root.querySelector('[data-guest-add]');
+    const limit = root.querySelector('[data-guests-limit]');
+    const max = Number(root.dataset.max) || 10;
+    if (!list || !template || !add) return;
+    let next = list.querySelectorAll('[data-guest-row]').length;
+    const count = () => list.querySelectorAll('[data-guest-row]').length;
+
+    const sync = () => {
+        const full = count() >= max;
+        add.disabled = full;
+        if (limit) limit.hidden = !full;
+    };
+
+    add.addEventListener('click', () => {
+        if (count() >= max) return;
+        list.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__INDEX__', String(next++)));
+        list.lastElementChild?.querySelector('input')?.focus();
+        sync();
+    });
+    list.addEventListener('click', (e) => {
+        const remove = e.target.closest('[data-guest-remove]');
+        if (!remove) return;
+        const row = remove.closest('[data-guest-row]');
+        if (count() > 1) {
+            row.remove();
+        } else {
+            row.querySelectorAll('input').forEach((input) => { input.value = ''; });
+        }
+        add.focus();
+        sync();
+    });
+    sync();
+}
+
+// Images choisies [data-event-images] : vignettes d'aperçu, data-max fichiers au plus.
+function initEventImages(input) {
+    const form = input.form;
+    const preview = form?.querySelector('[data-event-images-preview]');
+    const error = form?.querySelector('[data-event-images-error]');
+    const max = Number(input.dataset.max) || 6;
+    let urls = [];
+
+    input.addEventListener('change', () => {
+        urls.forEach((u) => URL.revokeObjectURL(u));
+        urls = [];
+        preview?.replaceChildren();
+        const files = [...(input.files || [])];
+        const message = files.length > max ? `Vous pouvez choisir ${max} image${max > 1 ? 's' : ''} au plus.` : '';
+        input.setCustomValidity(message);
+        input.setAttribute('aria-invalid', message ? 'true' : 'false');
+        if (error) {
+            error.textContent = message;
+            error.hidden = !message;
+        }
+
+        files.filter((f) => f.type.startsWith('image/')).forEach((file) => {
+            const url = URL.createObjectURL(file);
+            urls.push(url);
+            const li = document.createElement('li');
+            li.className = 'aspect-video overflow-hidden rounded-md border border-slate-200 bg-slate-100';
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = file.name;
+            img.className = 'h-full w-full object-cover';
+            li.appendChild(img);
+            preview?.appendChild(li);
+        });
+    });
+}
+
+// « Enregistrer comme témoignage » : une seule modale ; l'adresse du commentaire vient du bouton.
+document.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-promote-url]');
+    const form = document.getElementById('promote-form');
+    if (button && form) form.action = button.dataset.promoteUrl;
+});
+
+// ── Choisir une personne (components/user-picker) ───────────────────────
+// Résultats au fil de la saisie (JSON, route users.search) ; chaque résultat est un formulaire POST
+// « Ajouter » (envoi classique). Sans JavaScript, la recherche recharge la page (?personne=…).
+function initUserPicker(root) {
+    const form = root.querySelector('[data-user-picker-form]');
+    const input = root.querySelector('[data-user-picker-input]');
+    const list = root.querySelector('[data-user-picker-results]');
+    const status = root.querySelector('[data-user-picker-status]');
+    if (!form || !input || !list) return;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    let timer = null;
+    let controller = null;
+
+    const setStatus = (text) => { if (status) status.textContent = text; };
+
+    const avatar = (person) => {
+        if (person.avatarUrl) {
+            const img = document.createElement('img');
+            img.src = person.avatarUrl;
+            img.alt = '';
+            img.className = 'h-8 w-8 text-xs shrink-0 rounded-full object-cover';
+            return img;
+        }
+        const span = document.createElement('span');
+        span.className = 'h-8 w-8 text-xs inline-flex shrink-0 items-center justify-center rounded-full bg-slate-200 font-semibold text-slate-700';
+        span.setAttribute('aria-hidden', 'true');
+        span.textContent = person.initials || '?';
+        return span;
+    };
+
+    const row = (person) => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center gap-3 py-2.5';
+        const name = document.createElement('span');
+        name.className = 'min-w-0 flex-1 truncate text-sm font-semibold text-slate-900';
+        name.textContent = person.displayName;
+
+        const add = document.createElement('form');
+        add.method = 'POST';
+        add.action = root.dataset.addUrl;
+        add.dataset.loadingLabel = 'Ajout…';
+        for (const [field, value] of [['_token', csrf], ['user_id', person.id]]) {
+            const hidden = document.createElement('input');
+            Object.assign(hidden, { type: 'hidden', name: field, value });
+            add.append(hidden);
+        }
+        const button = document.createElement('button');
+        button.type = 'submit';
+        button.className = 'btn-secondary btn-sm';
+        button.setAttribute('aria-label', `Ajouter ${person.displayName}`);
+        button.innerHTML = '<i class="fa-solid fa-user-plus" aria-hidden="true"></i>';
+        button.append('Ajouter');
+        add.append(button);
+
+        li.append(avatar(person), name, add);
+        return li;
+    };
+
+    const search = async () => {
+        const q = input.value.trim();
+        controller?.abort();
+        if (q.length < 2) {
+            list.replaceChildren();
+            setStatus('');
+            return;
+        }
+        controller = new AbortController();
+        const url = new URL(root.dataset.searchUrl, window.location.origin);
+        url.searchParams.set('q', q);
+        if (root.dataset.exclude) url.searchParams.set('exclude', root.dataset.exclude);
+        setStatus('Recherche…');
+        try {
+            const res = await fetch(url, {
+                credentials: 'same-origin',
+                signal: controller.signal,
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!res.ok) throw new Error(res.status === 429 ? 'Trop de recherches en peu de temps. Patientez un instant.' : 'La recherche a échoué. Réessayez.');
+            const people = (await res.json()).data ?? [];
+            list.replaceChildren(...people.map(row));
+            setStatus(people.length ? `${people.length} personne${people.length > 1 ? 's' : ''} trouvée${people.length > 1 ? 's' : ''}.` : 'Aucune personne trouvée.');
+        } catch (err) {
+            if (err.name === 'AbortError') return;
+            setStatus(err.message);
+        }
+    };
+
+    input.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(search, 300);
+    });
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        clearTimeout(timer);
+        search();
+    });
+}
+
 // ── Initialisation ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-carousel]').forEach(initCarousel);
+    document.querySelectorAll('[data-guests]').forEach(initGuests);
+    document.querySelectorAll('[data-user-picker]').forEach(initUserPicker);
+    document.querySelectorAll('input[data-event-images]').forEach(initEventImages);
     document.querySelectorAll('select[data-country-select]').forEach(initCountrySelect);
     document.querySelectorAll('select[data-follow-country]').forEach(initFollowCountry);
     document.querySelectorAll('form[data-account-type-form]').forEach(initAccountTypeForm);

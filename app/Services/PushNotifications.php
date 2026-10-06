@@ -29,6 +29,7 @@ class PushNotifications
         'pending_correction'     => 'push_approval',
         'new_followed_testimony' => 'push_new_followed',
         'live_started'           => 'push_new_followed',
+        'prayer_encouragement'   => 'push_prayers',
     ];
 
     private const TITLES = [
@@ -45,6 +46,9 @@ class PushNotifications
         'organization_verified'  => 'Organisation vérifiée',
         'organization_rejected'  => 'Vérification refusée',
         'live_started'           => 'En direct',
+        'prayer_encouragement'   => 'Encouragement reçu',
+        'prayer_session_started' => 'Session de prière',
+        'prayer_session_reminder' => 'Session de prière bientôt',
     ];
 
     public const DEFAULT_TITLE = 'Témoignages';
@@ -119,6 +123,9 @@ class PushNotifications
             'actor_id'        => $notification->actor_id,
             'notification_id' => $notification->id,
             'live_id'         => $payload['live_id'] ?? null,
+            // Requêtes et sessions de prière (docs/fonctionnalites/sessions-de-priere.md)
+            'prayer_request_id' => $payload['prayer_request_id'] ?? null,
+            'prayer_session_id' => $payload['prayer_session_id'] ?? null,
         ]);
 
         return [

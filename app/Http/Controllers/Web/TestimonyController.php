@@ -10,6 +10,9 @@ use App\Models\MediaFile;
 use App\Models\Reaction;
 use App\Models\Testimony;
 use Illuminate\Http\JsonResponse;
+use App\Services\TestimonyProofs;
+use App\Support\YouTube;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,17 +46,38 @@ class TestimonyController extends Controller
         return view('testimonies.show', $watch->data($testimony, $request->user(), 'testimonies.show'));
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $categories = Category::active()->get();
-        return view('testimonies.create', compact('categories'));
+        // Témoignage officiel d'un événement (?event=) : gestionnaires seulement (docs/fonctionnalites/evenements.md).
+        $event = $this->attachableEvent($request->query('event'), $request);
+        // Témoignage de l'accomplissement d'une parole du carnet (?prophecy=) : son auteur seulement.
+        $prophecy = filled($request->query('prophecy'))
+            ? app(\App\Services\Prophecies::class)->find($request->user(), $request->query('prophecy'))
+            : null;
+
+        return view('testimonies.create', compact('categories', 'event', 'prophecy'));
     }
 
-    public function store(Request $request): RedirectResponse
+    /** Événement auquel rattacher le témoignage ; refuse si la personne n'en est pas gestionnaire. */
+    private function attachableEvent(?string $eventId, Request $request): ?\App\Models\Event
+    {
+        if (blank($eventId)) {
+            return null;
+        }
+        abort_unless(\Illuminate\Support\Str::isUuid($eventId), 404);
+        try {
+            return app(\App\Services\EventService::class)->ensureCanAttach($eventId, $request->user());
+        } catch (\App\Services\EventActionException $e) {
+            abort($e->status() === 404 ? 404 : 403, $e->getMessage());
+        }
+    }
+
+    public function store(Request $request, TestimonyProofs $proofs): RedirectResponse
     {
         $data = $request->validate([
             'title'         => 'required|string|max:200',
-            'type'          => 'required|in:text,audio,video',
+            'type'          => 'required|in:text,audio,video,youtube',
             'category'      => 'required|string|exists:categories,slug',
             'body_text'     => 'nullable|required_if:type,text|string',
             'bible_verse'   => 'nullable|string|max:500',
@@ -62,9 +86,20 @@ class TestimonyController extends Controller
             'visibility'    => 'nullable|in:public,private,followers',
             'cover'         => 'nullable|image|max:5120',
             'media_file'    => 'nullable|file|max:102400|mimetypes:audio/*,video/*',
+            // Lien YouTube : administrateurs seulement (docs/fonctionnalites/videos-youtube.md)
+            'youtube_url'   => 'nullable|required_if:type,youtube|string|max:300',
+            // Preuves : 2 images ou PDF au plus (docs/fonctionnalites/preuves.md)
+            'proof_1'       => TestimonyProofs::rules(),
+            'proof_2'       => TestimonyProofs::rules(),
+            'proofs_public' => 'nullable|boolean',
             'consent_given' => 'accepted',
-        ], [
+            'event_id'      => 'nullable|uuid',
+            // Parole prophétique accomplie (docs/fonctionnalites/paroles-prophetiques.md)
+            'prophecy_id'     => 'nullable|uuid',
+            'prophecy_public' => 'nullable|boolean',
+        ], TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
             'title.required'         => 'Merci de donner un titre à votre témoignage.',
+            'youtube_url.required_if' => 'Collez le lien de la vidéo YouTube.',
             'category.required'      => 'Merci de choisir une catégorie.',
             'category.exists'        => "La catégorie choisie n'existe plus. Merci d'en choisir une autre.",
             'body_text.required_if'  => 'Merci de rédiger votre témoignage.',
@@ -75,16 +110,23 @@ class TestimonyController extends Controller
             'consent_given.accepted' => 'Merci de confirmer votre engagement avant l\'envoi.',
         ]);
 
-        $coverUrl = null;
-        $mediaUrl = null;
-        $media    = null;
+        $event     = $this->attachableEvent($data['event_id'] ?? null, $request);
+        $prophecies = app(\App\Services\Prophecies::class);
+        $prophecy  = filled($data['prophecy_id'] ?? null) ? $prophecies->find($request->user(), $data['prophecy_id']) : null;
+        $coverUrl  = null;
+        $mediaUrl  = null;
+        $media     = null;
+        $youtubeId = $this->youtubeIdFrom($request, $data);
+        if ($youtubeId) {
+            $data['type'] = 'video';
+        }
 
         if ($request->hasFile('cover')) {
             $path     = $request->file('cover')->store('covers', 'public');
             $coverUrl = asset('storage/' . $path);
         }
 
-        if ($request->hasFile('media_file')) {
+        if (!$youtubeId && $request->hasFile('media_file')) {
             $file     = $request->file('media_file');
             $path     = $file->store('media', 'public');
             $mediaUrl = asset('storage/' . $path);
@@ -109,12 +151,15 @@ class TestimonyController extends Controller
         $testimony = Testimony::create([
             'user_id'       => Auth::id(),
             'category_id'   => $category?->id,
+            'event_id'      => $event?->id,
             'title'         => $data['title'],
             'type'          => $data['type'],
             'category_slug' => $data['category'],
             'body_text'     => $data['body_text'] ?? null,
-            'cover_url'     => $coverUrl,
+            'cover_url'     => $coverUrl ?? ($youtubeId ? YouTube::thumbnailUrl($youtubeId) : null),
             'media_url'     => $mediaUrl,
+            'youtube_id'    => $youtubeId,
+            'proofs_public' => $request->boolean('proofs_public'),
             'bible_verse'   => $data['bible_verse'] ?? null,
             'bible_ref'     => $data['bible_ref'] ?? null,
             'tags'          => $tags,
@@ -123,12 +168,51 @@ class TestimonyController extends Controller
             'status'        => ($isJournal ? TestimonyStatus::Draft : TestimonyStatus::Pending)->value,
         ]);
 
+        // Parole accomplie : montrée avec le témoignage une fois publié, si l'auteur le souhaite (jamais pour le carnet).
+        if ($prophecy) {
+            $prophecies->attachTestimony($prophecy, $testimony->id, !$isJournal && $request->boolean('prophecy_public'));
+        }
+
         // Versions allégées produites en file d'attente, puis recopiées sur le témoignage
         // (docs/fonctionnalites/qualites-media.md).
         $media?->queueTranscoding();
 
+        foreach ([1, 2] as $position) {
+            if ($request->hasFile("proof_{$position}")) {
+                $proofs->add($testimony, $request->file("proof_{$position}"), $request->user(), $position);
+            }
+        }
+
         return redirect()->route('testimonies.show', $testimony->id)
                          ->with('success', $isJournal ? 'Témoignage enregistré dans votre carnet privé.' : 'Témoignage soumis pour modération.');
+    }
+
+    /** Lien YouTube du formulaire : administrateurs seulement, identifiant reconnu. */
+    private function youtubeIdFrom(Request $request, array $data): ?string
+    {
+        if (blank($data['youtube_url'] ?? null)) {
+            return null;
+        }
+        if (!$request->user()->isAdmin()) {
+            throw ValidationException::withMessages(['youtube_url' => 'Seuls les administrateurs peuvent publier une vidéo YouTube.']);
+        }
+
+        return YouTube::parseId($data['youtube_url'])
+            ?? throw ValidationException::withMessages(['youtube_url' => "Ce lien YouTube n'est pas reconnu (exemple : https://www.youtube.com/watch?v=…)."]);
+    }
+
+    /** Preuve d'un témoignage (affichée dans le navigateur) : auteur et équipe de modération seulement. */
+    public function proof(Request $request, string $id, string $proofId): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $testimony = Testimony::withTrashed()->findOrFail($id);
+        abort_unless(TestimonyProofs::canView($request->user(), $testimony), 403);
+        $proof = $testimony->proofs()->whereKey($proofId)->firstOrFail();
+
+        return \Illuminate\Support\Facades\Storage::disk($proof->disk)->response($proof->path, $proof->original_name, [
+            'Content-Type'           => $proof->mime_type,
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control'          => TestimonyProofs::arePublic($testimony) ? 'public, max-age=300' : 'private, max-age=300',
+        ], 'inline');
     }
 
     public function myTestimonies(Request $request): View

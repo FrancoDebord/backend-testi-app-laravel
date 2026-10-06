@@ -18,16 +18,30 @@ class LiveSession extends Model
     public const REACTIONS = ['like', 'pray', 'amen', 'worship', 'fire'];
 
     protected $fillable = [
-        'host_id', 'title', 'description', 'category_slug', 'room_name', 'status',
+        'host_id', 'event_id', 'title', 'description', 'category_slug', 'room_name', 'status',
+        'prayer_session_id', // salle d'une session de prière (docs/fonctionnalites/sessions-de-priere.md)
         'comments_enabled', 'speakers_enabled', 'started_at', 'ended_at', 'ended_by', 'end_reason', 'peak_viewers',
         'pinned_comment_id',
         'record', 'recording_status', 'egress_id', 'recording_path', 'recording_duration', 'recording_error', 'testimony_id',
+        // Caméra IP / encodeur (docs/fonctionnalites/lives-camera-ip.md)
+        'source', 'ingress_id', 'ingress_url', 'ingress_stream_key', 'camera_url',
     ];
+
+    /** Sources vidéo d'un direct. */
+    public const SOURCES = [
+        'browser' => "Caméra de cet appareil",
+        'rtmp'    => 'Caméra IP ou encodeur (RTMP)',
+        'url'     => 'Adresse du flux de la caméra',
+    ];
+
+    protected $hidden = ['ingress_stream_key', 'camera_url'];
 
     protected function casts(): array
     {
         return [
             'status'           => LiveStatus::class,
+            'ingress_stream_key' => 'encrypted',
+            'camera_url'       => 'encrypted',
             'comments_enabled' => 'boolean',
             'speakers_enabled' => 'boolean',
             'record'           => 'boolean',
@@ -45,6 +59,18 @@ class LiveSession extends Model
     }
 
     // ---------- Relations ----------
+
+    /** Événement diffusé (docs/fonctionnalites/evenements.md). */
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
+    }
+
+    /** Session de prière dont ce direct est la salle (docs/fonctionnalites/sessions-de-priere.md). */
+    public function prayerSession(): BelongsTo
+    {
+        return $this->belongsTo(PrayerSession::class);
+    }
 
     public function host(): BelongsTo
     {
@@ -142,7 +168,15 @@ class LiveSession extends Model
     /** Un spectateur peut voir le direct en préparation seulement s'il en est modérateur. */
     public function isVisibleTo(?User $user): bool
     {
-        return $this->status !== LiveStatus::Preparing || $this->canBeModeratedBy($user);
+        if ($this->status === LiveStatus::Preparing && !$this->canBeModeratedBy($user)) {
+            return false;
+        }
+        // Salle d'une session de prière : mêmes règles que la session (réservée aux abonnés, supprimée…).
+        if ($this->prayer_session_id) {
+            return $this->isHost($user) || (bool) $this->prayerSession?->isVisibleTo($user);
+        }
+
+        return true;
     }
 
     public function isBanned(User $user): bool
@@ -154,5 +188,17 @@ class LiveSession extends Model
     public function reactionCounts(): array
     {
         return collect(self::REACTIONS)->mapWithKeys(fn ($r) => [$r => (int) $this->{"{$r}_count"}])->all();
+    }
+
+    /** Vidéo fournie par une caméra IP ou un encodeur (et non par l'appareil du diffuseur). */
+    public function usesExternalCamera(): bool
+    {
+        return in_array($this->source, ['rtmp', 'url'], true);
+    }
+
+    /** Identité LiveKit du flux de la caméra : commence par « host- », donc affichée comme le diffuseur. */
+    public function cameraIdentity(): string
+    {
+        return 'host-camera-' . $this->id;
     }
 }

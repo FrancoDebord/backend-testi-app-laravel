@@ -34,7 +34,12 @@
             <div class="p-5 sm:p-6">
                 <h2 class="card-title mb-3">Contenu</h2>
 
-                @if($testimony->media_url && $testimony->type->value === 'audio')
+                @if($testimony->isYouTube())
+                <div class="relative mb-5 aspect-video overflow-hidden rounded-lg bg-black">
+                    <iframe src="{{ $testimony->youtubeEmbedUrl() }}" title="{{ $testimony->title }}" class="absolute inset-0 h-full w-full"
+                            allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                </div>
+                @elseif($testimony->media_url && $testimony->type->value === 'audio')
                 <div class="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-3"><audio controls class="w-full"><source src="{{ $testimony->media_url }}"></audio></div>
                 @elseif($testimony->media_url && $testimony->type->value === 'video')
                 <div class="mb-5 overflow-hidden rounded-lg bg-black"><video controls class="aspect-video w-full"><source src="{{ $testimony->media_url }}"></video></div>
@@ -51,6 +56,23 @@
                     <p class="text-slate-700 italic">« {{ $testimony->bible_verse }} »</p>
                     @if($testimony->bible_ref)<p class="mt-1 text-sm font-medium text-slate-500">{{ $testimony->bible_ref }}</p>@endif
                 </blockquote>
+                @endif
+
+                {{-- Preuves jointes par l'auteur (docs/fonctionnalites/preuves.md) --}}
+                @if($testimony->proofs->isNotEmpty())
+                @include('testimonies.partials.proofs', ['testimony' => $testimony, 'proofs' => $testimony->proofs])
+                @if($testimony->proofs_public)
+                <form id="hide-proofs-form" method="POST" action="{{ route('moderation.hide-proofs', $testimony->id) }}" class="mt-3 flex flex-wrap items-center gap-3">
+                    @csrf
+                    <p class="min-w-0 flex-1 text-xs text-slate-600"><i class="fa-solid fa-globe mr-1 text-primary-600" aria-hidden="true"></i>L'auteur a demandé la <strong>publication de ses preuves</strong>. Retirez-la si un document contient des informations personnelles.</p>
+                    <button type="button" class="btn-secondary btn-sm"
+                            onclick="openConfirmModal('hide-proofs-form', 'Les preuves ne seront plus visibles du public. Seul l\'auteur pourra de nouveau accepter leur publication.', 'Ne pas publier les preuves', 'Retirer', 'fa-eye-slash')">
+                        <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>Ne pas publier les preuves
+                    </button>
+                </form>
+                @endif
+                @else
+                <p class="mt-4 text-xs text-slate-500"><i class="fa-solid fa-file-shield mr-1 text-slate-400" aria-hidden="true"></i>Aucune preuve jointe.</p>
                 @endif
             </div>
         </section>

@@ -13,7 +13,7 @@
     $filtered = $q !== '' || $category;
     $gridClass = $isShorts
         ? 'grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
-        : 'grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+        : 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5';
 @endphp
 
 @section('content')
@@ -101,7 +101,7 @@
         @if($lives->isNotEmpty())<h2 class="card-title">{{ $tab === 'lives' ? 'Rediffusions' : 'Toutes les publications' }}</h2>@endif
         <div class="ml-auto">@include('components.layout-toggle')</div>
     </div>
-    @include('components.testimony-list', ['items' => $items, 'routeName' => 'videos.show', 'listId' => 'videos-grid', 'gridClass' => $gridClass, 'tab' => $tab])
+    @include('components.testimony-list', ['items' => $items, 'routeName' => 'videos.show', 'listId' => 'videos-grid', 'gridClass' => $gridClass, 'tab' => $tab, 'encourage' => true])
 
     @if($items->hasMorePages())
     <div class="mt-8 flex justify-center">

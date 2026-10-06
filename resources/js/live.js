@@ -1210,6 +1210,10 @@ function initStudio() {
     const startBtn = $('[data-live-start]');
     const switchBtn = $('[data-live-switch-camera]');
     const interactions = initInteractions();
+    // Caméra IP / encodeur (docs/fonctionnalites/lives-camera-ip.md) : le flux arrive dans la salle
+    // sous l'identité « host-camera-… » ; le studio l'affiche en aperçu et ne publie rien lui-même.
+    const external = !!config.source && config.source !== 'browser';
+    const isCameraIdentity = (identity) => String(identity || '').startsWith('host-camera-');
     let status = config.status;
     let tracks = [];
     let facing = 'user';
@@ -1278,15 +1282,63 @@ function initStudio() {
 
     // Intervenant : son audio est joué ici (le diffuseur l'entend) ; sa vidéo va dans le médaillon.
     const stage = initStage(room);
-    room.on(RoomEvent.TrackSubscribed, (track) => {
+    room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
+        if (isCameraIdentity(participant.identity)) {
+            // Aperçu de la caméra IP : image dans le lecteur, son coupé ici (pas d'écho dans la salle).
+            if (track.kind === Track.Kind.Video) {
+                track.attach(video);
+                video.classList.remove('-scale-x-100');
+                setCameraState(true);
+            }
+            return;
+        }
         if (track.kind !== Track.Kind.Audio) return;
         const el = track.attach();
         el.hidden = true;
         document.body.append(el);
     });
-    room.on(RoomEvent.TrackUnsubscribed, (track) => {
+    room.on(RoomEvent.TrackUnsubscribed, (track, _pub, participant) => {
+        if (isCameraIdentity(participant.identity)) {
+            if (track.kind === Track.Kind.Video) setCameraState(false);
+            return;
+        }
         if (track.kind === Track.Kind.Audio) track.detach().forEach((el) => el.remove());
     });
+
+    function setCameraState(receiving) {
+        const badge = $('[data-live-camera-state]');
+        if (badge) {
+            badge.className = receiving ? 'badge-active' : 'badge-pending';
+            badge.textContent = receiving ? 'Flux reçu' : 'En attente du flux';
+        }
+        if (!external) return;
+        if (receiving) {
+            setOverlay(status === 'live' ? '' : 'Aperçu de la caméra : vous n\'êtes pas encore à l\'antenne.');
+            if (status !== 'live') startBtn.disabled = false;
+        } else {
+            setOverlay(status === 'live'
+                ? 'Le flux de la caméra est interrompu : les spectateurs voient un écran noir.'
+                : 'En attente du flux de la caméra…');
+            if (status !== 'live') startBtn.disabled = true;
+        }
+    }
+
+    /** Caméra IP : connexion à la salle sans rien publier, pour recevoir l'aperçu. */
+    async function connectForPreview() {
+        setOverlay('En attente du flux de la caméra…');
+        try {
+            const creds = await api(config.urls.hostToken, { method: 'POST' });
+            if (room.state !== ConnectionState.Connected) await room.connect(creds.url, creds.token);
+            const camera = [...room.remoteParticipants.values()].find((p) => isCameraIdentity(p.identity));
+            const pub = camera?.getTrackPublication(Track.Source.Camera);
+            if (pub?.track) {
+                pub.track.attach(video);
+                setCameraState(true);
+            }
+        } catch (err) {
+            flash(err.message || 'Connexion au service vidéo impossible.', 'error');
+        }
+    }
 
     async function prepareTracks() {
         try {
@@ -1319,7 +1371,8 @@ function initStudio() {
             if (room.state !== ConnectionState.Connected) {
                 await room.connect(creds.url, creds.token);
             }
-            for (const track of tracks) {
+            // Caméra IP : rien à publier depuis le navigateur.
+            for (const track of external ? [] : tracks) {
                 const already = [...room.localParticipant.trackPublications.values()].some((p) => p.track === track);
                 if (!already) await room.localParticipant.publishTrack(track, { source: track.kind === Track.Kind.Video ? Track.Source.Camera : Track.Source.Microphone });
             }
@@ -1430,6 +1483,16 @@ function initStudio() {
 
     interactions.loadComments();
     refresh();
+    if (external) {
+        $$('[data-live-toggle], [data-live-switch-camera]').forEach((b) => (b.hidden = true));
+        connectForPreview().then(() => {
+            if (config.status === 'live') {
+                startBtn.querySelector('span').textContent = 'Reprendre le direct';
+                goLive();
+            }
+        });
+        return;
+    }
     prepareTracks().then(() => {
         // Direct déjà à l'antenne (page rechargée) : reprise automatique.
         if (config.status === 'live') {

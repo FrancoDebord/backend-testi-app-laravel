@@ -20,6 +20,23 @@ class TestimonyController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Fil « Pour vous » (docs/fonctionnalites/recommandations.md) : classement selon la personne,
+        // les plus récents et les plus vus pour un nouveau venu.
+        if ($request->query('sort') === 'for_you' && !$request->query('after') && !$request->query('q')) {
+            $viewer = $request->user() ?? $request->user('sanctum');
+            $limit  = min((int) $request->query('limit', 20), 50);
+            $page   = max(1, (int) $request->query('page', 1));
+            $feed   = app(\App\Services\Recommendations::class)->feed($viewer, $page, $limit, $request->query('type'), $request->query('category'));
+
+            return $this->paginated(TestimonyResource::collection($feed->items()), [
+                'currentPage' => $feed->currentPage(),
+                'lastPage'    => $feed->lastPage(),
+                'total'       => $feed->total(),
+                'perPage'     => $feed->perPage(),
+                'nextCursor'  => null,
+            ]);
+        }
+
         $query = Testimony::with('user')
             ->published()
             ->latest('updated_at');
@@ -68,6 +85,23 @@ class TestimonyController extends Controller
         );
     }
 
+    /**
+     * Recommandations pour un témoignage (« Témoignages similaires », lecture automatique) :
+     * GET /testimonies/{id}/recommendations?limit=10. Voir docs/fonctionnalites/recommandations.md
+     */
+    public function recommendations(Request $request, string $id): JsonResponse
+    {
+        $testimony = Testimony::find($id);
+        if (!$testimony || (!($testimony->status->value === 'approved' && $testimony->visibility->value === 'public') && ($request->user('sanctum')?->id !== $testimony->user_id))) {
+            return $this->notFound();
+        }
+
+        $limit = max(1, min((int) $request->query('limit', 10), 30));
+        $items = app(\App\Services\Recommendations::class)->forTestimony($testimony, $request->user() ?? $request->user('sanctum'), $limit);
+
+        return $this->success(TestimonyResource::collection($items));
+    }
+
     public function featured(): JsonResponse
     {
         $testimonies = Testimony::with('user')
@@ -87,23 +121,80 @@ class TestimonyController extends Controller
 
         // Route publique : l'auteur est reconnu via son jeton Sanctum.
         $viewer = $request->user() ?? $request->user('sanctum');
-        if ($testimony->visibility->value !== 'public' && $viewer?->id !== $testimony->user_id) {
+        // L'équipe de modération lit aussi les témoignages réservés aux abonnés (relecture, preuves) ; jamais le carnet privé.
+        $isModerator = $viewer?->canModerate() && !$testimony->isInJournal();
+        if ($testimony->visibility->value !== 'public' && $viewer?->id !== $testimony->user_id && !$isModerator) {
             // 404 : ne pas révéler l'existence d'une entrée du carnet privé.
             return $testimony->isInJournal() ? $this->notFound() : $this->forbidden();
         }
 
-        // Les lectures de son propre carnet ne comptent pas comme des vues.
-        if (!$testimony->isInJournal()) {
+        // Seules les lectures d'un témoignage publié comptent (pas la relecture ni son propre carnet).
+        if (!$testimony->isInJournal() && $testimony->status->value === 'approved') {
             $testimony->increment('views_count');
+            \App\Services\Recommendations::recordView($viewer, $testimony);
         }
 
         return $this->success(new TestimonyResource($testimony));
+    }
+
+    /**
+     * Mon fil (GET /feed) : comptes suivis, avec des suggestions de comptes inconnus.
+     * Chaque témoignage porte `feedReason` = following | suggested. Voir docs/fonctionnalites/recommandations.md
+     */
+    public function personalFeed(Request $request): JsonResponse
+    {
+        $viewer = $request->user();
+        $limit  = min((int) $request->query('limit', 20), 50);
+        [$page, $reasons] = app(\App\Services\Recommendations::class)
+            ->personalFeed($viewer, (int) $request->query('page', 1), $limit);
+
+        return $this->paginated(
+            collect($page->items())->map(fn ($t) => [
+                ...(new TestimonyResource($t))->toArray($request),
+                'feedReason' => $reasons[$t->id] ?? 'suggested',
+            ])->values(),
+            [
+                'currentPage' => $page->currentPage(),
+                'lastPage'    => $page->lastPage(),
+                'total'       => $page->total(),
+                'perPage'     => $page->perPage(),
+                'followingCount' => count(app(\App\Services\Recommendations::class)->followedIds($viewer)),
+            ]
+        );
     }
 
     public function store(StoreTestimonyRequest $request): JsonResponse
     {
         if (!$request->user()->canPublish()) {
             return $this->forbidden('Vous n\'avez pas la permission de publier');
+        }
+
+        // Vidéo YouTube (docs/fonctionnalites/videos-youtube.md) : administrateurs seulement.
+        $youtubeId = null;
+        if (filled($request->youtube_url)) {
+            if (!$request->user()->isAdmin()) {
+                return $this->forbidden('Seuls les administrateurs peuvent publier une vidéo YouTube.');
+            }
+            $youtubeId = \App\Support\YouTube::parseId($request->youtube_url);
+            if (!$youtubeId) {
+                return $this->error("Ce lien YouTube n'est pas reconnu.", 422, ['youtube_url' => ["Ce lien YouTube n'est pas reconnu."]]);
+            }
+        }
+
+        // Rattachement à un événement : seuls ses gestionnaires (docs/fonctionnalites/evenements.md).
+        try {
+            $event = app(\App\Services\EventService::class)->ensureCanAttach($request->event_id, $request->user());
+        } catch (\App\Services\EventActionException $e) {
+            return $this->error($e->getMessage(), $e->status());
+        }
+
+        // Parole prophétique accomplie : elle doit appartenir à l'auteur (docs/fonctionnalites/paroles-prophetiques.md).
+        $prophecy = null;
+        if (filled($request->prophecy_id)) {
+            $prophecy = $request->user()->prophecies()->find($request->prophecy_id);
+            if (!$prophecy) {
+                return $this->notFound('Parole prophétique introuvable.');
+            }
         }
 
         $isJournal    = $request->visibility === TestimonyVisibility::Private->value;
@@ -116,13 +207,16 @@ class TestimonyController extends Controller
         $testimony = Testimony::create([
             'user_id'      => $request->user()->id,
             'category_id'  => $category?->id,
+            'event_id'     => $event?->id,
             'title'        => $request->title,
-            'type'         => $request->type,
+            'type'         => $youtubeId ? 'video' : $request->type,
             'category_slug' => $categorySlug,
             'body_text'    => $request->body_text,
-            'media_url'    => $request->media_url,
-            'renditions'   => $media?->renditions,
-            'cover_url'    => $request->cover_url,
+            'media_url'    => $youtubeId ? null : $request->media_url,
+            'youtube_id'   => $youtubeId,
+            'proofs_public' => $request->boolean('proofs_public'),
+            'renditions'   => $youtubeId ? null : $media?->renditions,
+            'cover_url'    => $request->cover_url ?: ($youtubeId ? \App\Support\YouTube::thumbnailUrl($youtubeId) : null),
             'duration_sec' => ($request->duration ?: $media?->duration_sec) ?? 0,
             'bible_verse'  => $request->bible_verse,
             'bible_ref'    => $request->verse_ref,
@@ -133,6 +227,12 @@ class TestimonyController extends Controller
         ]);
 
         $testimony->load('user');
+
+        if ($prophecy) {
+            // Montrée avec le témoignage (une fois publié), si l'auteur le souhaite.
+            app(\App\Services\Prophecies::class)->attachTestimony($prophecy, $testimony->id, !$isJournal && $request->boolean('prophecy_public'));
+            $testimony->setRelation('prophecy', $prophecy);
+        }
 
         if ($isJournal) {
             return $this->created(new TestimonyResource($testimony), 'Témoignage enregistré dans votre carnet privé');
@@ -204,6 +304,7 @@ class TestimonyController extends Controller
             'bible_ref'    => $request->verse_ref ?? $testimony->bible_ref,
             'tags'         => $request->tags ?? $testimony->tags,
             'visibility'   => $request->visibility ?? $testimony->visibility->value,
+            'proofs_public' => $request->has('proofs_public') ? $request->boolean('proofs_public') : $testimony->proofs_public,
         ]);
         // Carnet privé : reste un brouillon ; sinon nouvelle relecture.
         $testimony->update(['status' => ($testimony->fresh()->isInJournal()

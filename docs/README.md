@@ -9,11 +9,23 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Lien de partage](fonctionnalites/lien-de-partage.md) | Colonne `share_url`, API `shareUrl`, commande de recalcul |
 | [Page Vidéos](fonctionnalites/videos.md) | Page publique `/videos` (vidéos, shorts, directs, audios, textes), lecture, vues uniques, J'aime, commentaires et réponses |
 | [Témoignages en direct](fonctionnalites/lives.md) | Diffusion vidéo depuis un téléphone (modérateurs/admins), commentaires et réactions en temps réel, modération, API mobile |
+| [Événements chrétiens](fonctionnalites/evenements.md) | Croisades, conférences, camps… créés par les organisations vérifiées et les administrateurs : carrousel d'images, invités, « Je participe », commentaires des participants, témoignages officiels, direct de l'événement (site et application) |
+| [Requêtes de prière](fonctionnalites/requetes-de-priere.md) | Publication directe, visibilité publique / abonnés / privée, anonymat, « Je prie », encouragements, exaucée, signalement et retrait par la modération, rattachement à un événement (site et application) |
+| [Sessions de prière](fonctionnalites/sessions-de-priere.md) | Sessions programmées par tout compte, inscriptions « Je serai là », rappel 15 min avant ; la salle est un direct LiveKit ouvert par l'hôte (commentaires, intervenants) |
+| [Paroles prophétiques](fonctionnalites/paroles-prophetiques.md) | Carnet privé (application) : garder les paroles reçues (texte ou audio), journal de prière, rappels, proclamation, témoignage de l'accomplissement et parole rendue publique avec lui |
+| [Messages pour inciter à témoigner](fonctionnalites/encouragements.md) | Versets (Psaume 78:4, Apocalypse 12:11…) et invitations sur les pages et dans les fils, bouton Témoigner |
+| [Pourquoi témoigner ?](fonctionnalites/pourquoi-temoigner.md) | Bloc en accordéon : 7 raisons bibliques de témoigner et leurs versets, sur l'accueil, Publier, Mes témoignages, la lecture d'un témoignage et l'inscription |
 | [Intervenants dans un direct](fonctionnalites/lives-intervenants.md) | File des demandes, invitation, passage à l'antenne (micro, caméra facultative) en médaillon, une personne à la fois |
 | [Ouverture des liens dans l'app](fonctionnalites/app-links.md) | App Links (Android) / Universal Links (iOS) : fichiers `/.well-known/…` |
 | [À la une](fonctionnalites/a-la-une.md) | Témoignages publiés depuis moins de 7 jours ou mis en avant manuellement |
 | [Affichage et lecture](fonctionnalites/affichage-et-lecture.md) | Site : choix de la qualité, en boucle, lecture automatique du suivant ; grandes cartes ou liste compacte dépliable |
+| [Lecture à voix haute](fonctionnalites/lecture-vocale.md) | Écouter un témoignage écrit (synthèse vocale de l'appareil) en français ou en anglais : site et application, vitesse, voix, lecture automatique (application) |
 | [Qualités des médias](fonctionnalites/qualites-media.md) | Versions 240p–720p et 32k–128k produites par ffmpeg, champ `renditions` de l'API, commande `media:transcode` |
+| [Recommandations et fil « Pour vous »](fonctionnalites/recommandations.md) | Récents et plus vus pour un nouveau venu ; recommandations selon le témoignage en cours, les centres d'intérêt et les comptes suivis ; **Mon fil** (comptes suivis + suggestions) |
+| [Preuves d'un témoignage](fonctionnalites/preuves.md) | Deux images ou PDF par témoignage, privés (auteur et équipe de modération) |
+| [Vidéos YouTube](fonctionnalites/videos-youtube.md) | Publication d'un témoignage par lien YouTube (administrateurs), lecture avec le lecteur YouTube |
+| [Direct avec une caméra IP](fonctionnalites/lives-camera-ip.md) | Caméra IP, OBS ou encodeur (RTMP, ou adresse du flux) via LiveKit Ingress ; aperçu et lancement depuis le studio |
+| [Page d'accueil](fonctionnalites/accueil.md) | Maquette « Témoignages de Gloire » : bandeau et chiffres, actions rapides, récents, catégories, statistiques, modération et gestion des contenus selon le rôle |
 | [Photo de couverture](fonctionnalites/photo-de-couverture.md) | Bandeau du profil illustré par une photo (site et application) : ajout, remplacement, retrait |
 | [Suivre et Communauté](fonctionnalites/abonnements.md) | Bouton Suivre (site et application), page Communauté (organisations, personnes), abonnés prévenus des témoignages et directs, menu latéral de l'application |
 | [Téléphone de contact](fonctionnalites/telephone.md) | Numéro avec indicatif (drapeau, suit le pays) à l'inscription et dans le profil, format international, numéro vérifié ou non, confidentialité de l'API |
@@ -127,6 +139,14 @@ Les versions allégées des médias ([qualites-media.md](fonctionnalites/qualite
 - après chaque déploiement : `php artisan queue:restart` ;
 - une fois (rattrapage des médias existants) : `php artisan media:transcode --missing`.
 
+Carnet privé et paroles prophétiques sur le site (2026-10-05) : **aucune migration** ; **recompilation et copie de `public/build/`** et `php artisan view:cache`.
+
+Migration du 2026-10-05 (suite) : `2026_10_05_200001_create_managers_and_prophecies_tables` (gestionnaires d'organisation et co-gestionnaires d'événement, [paroles prophétiques](fonctionnalites/paroles-prophetiques.md) et journal de prière), avec **recompilation et copie de `public/build/`** (recherche de personnes, Mon fil, messages d'encouragement) et `php artisan view:cache`.
+
+Migration du 2026-10-05 : `2026_10_05_100001_create_events_tables` ([événements](fonctionnalites/evenements.md) : tables `events`, `event_images`, `event_participations`, `event_comments`, colonnes `testimonies.event_id` et `live_sessions.event_id`), avec **recompilation et copie de `public/build/`** (carrousel, invités, aperçu des images) et `php artisan view:cache`. Les images sont enregistrées sur le disque `public` (`storage/app/public/event-images`, lien `php artisan storage:link` déjà en place) ; PHP doit accepter des envois de 8 Mo.
+
+Migrations du 2026-09-30 : `2026_09_30_100001_add_youtube_id_to_testimonies_table` ([YouTube](fonctionnalites/videos-youtube.md)), `2026_09_30_100002_create_testimony_proofs_table` ([preuves](fonctionnalites/preuves.md)), `2026_09_30_100003_create_testimony_views_table` ([recommandations](fonctionnalites/recommandations.md)), `2026_09_30_100004_add_camera_source_to_live_sessions_table` ([caméra IP](fonctionnalites/lives-camera-ip.md) ; LiveKit Ingress doit être disponible sur le projet), `2026_09_30_200001_add_proofs_public_to_testimonies_table` (accord de publication des preuves).
+
 Migration de la photo de couverture : `2026_09_29_400001_add_cover_url_to_users_table` ([photo de couverture](fonctionnalites/photo-de-couverture.md) ; PHP doit accepter des envois de 8 Mo).
 
 Migrations du 2026-09-29 (suite) : `2026_09_29_300001_refresh_testimony_share_urls` (liens de partage recalculés avec `SHARE_URL`) et `2026_09_29_300002_add_follows_integrity` ([abonnements](fonctionnalites/abonnements.md) : compteurs recalculés, contrainte « pas d'abonnement à soi-même »). Diagnostic des qualités : `php artisan media:check`.
@@ -201,6 +221,10 @@ php artisan test
 | `tests/Feature/LiveSessionTest.php` | Directs : droits, jetons, commentaires, limites, modération, webhooks, nettoyage |
 | `tests/Feature/LiveRecordingTest.php` | Enregistrement des directs → témoignage vidéo |
 | `tests/Feature/ProfileCoverTest.php` | Photo de couverture : envoi, remplacement, retrait, validation, API, bandeau du profil |
+| `tests/Feature/TestimonyProofsAndYouTubeTest.php` | Preuves (formulaire, accès, API) et vidéos YouTube (liens, réservé aux administrateurs, lecteur) |
+| `tests/Feature/RecommendationsTest.php` | Fil « Pour vous » (nouveau venu, intérêts, suivis), recommandations, historique de lecture |
+| `tests/Feature/LiveCameraTest.php` | Direct avec caméra IP : RTMP, adresse du flux, pas de démarrage automatique, suppression à la fin, échec |
+| `tests/Feature/HomePageTest.php` | Accueil : blocs selon le rôle (visiteur, membre, équipe), gestion des contenus par statut, filtres |
 | `tests/Feature/AdminDashboardTest.php` | Tableau de bord de l'administration : blocs, dates en français, accès réservé |
 | `tests/Feature/FollowingListTest.php` | Mes abonnements (site et API), onglet Personnes et nombre réel de témoignages |
 | `tests/Feature/FollowTest.php` | Suivre (soi-même refusé, doublons, compteurs, notifications), Communauté, identifiants suivis, abonnés prévenus, format compact de la page de lecture |

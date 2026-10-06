@@ -160,6 +160,55 @@
         @apply text-base font-bold text-primary-600;
     }
 
+    /* ── Accordéon (<details> / <summary> natifs) : « Pourquoi témoigner ? » ── */
+    .accordion > * + * {
+        @apply border-t border-slate-100;
+    }
+
+    .accordion-summary,
+    .why-testify-head {
+        @apply flex items-center gap-3 px-4 py-4 @sm:px-5;
+    }
+
+    .accordion-summary {
+        @apply cursor-pointer list-none transition-colors hover:bg-slate-50;
+        @apply focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600;
+    }
+
+    .accordion-summary::-webkit-details-marker,
+    .why-testify-head::-webkit-details-marker {
+        display: none;
+    }
+
+    .why-testify-head {
+        @apply focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600;
+    }
+
+    .accordion-icon {
+        @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-sm text-primary-600 transition-colors;
+    }
+
+    .accordion-item[open] > .accordion-summary {
+        @apply bg-primary-50/60;
+    }
+
+    .accordion-item[open] .accordion-icon {
+        @apply bg-primary-600 text-white;
+    }
+
+    .accordion-chevron {
+        @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs text-slate-400 transition-transform;
+    }
+
+    .accordion-panel {
+        @apply space-y-4 px-4 pt-1 pb-5 @sm:px-5 @md:pl-[4.25rem];
+    }
+
+    /* Verset : filet jaune (accent), texte en italique, référence bleue. */
+    .why-testify-verse {
+        @apply border-l-[3px] border-sun-400 pl-4;
+    }
+
     /* Libellé de groupe (menu latéral) : petites capitales discrètes. */
     .section-title {
         @apply text-xs font-semibold tracking-wide text-slate-500 uppercase;

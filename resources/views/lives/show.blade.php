@@ -89,6 +89,12 @@
                     <p class="text-xs text-slate-500">{{ $live->host->role->label() }}@if($live->category_slug) · {{ $live->category_slug }}@endif</p>
                 </div>
             </div>
+            @if($live->event?->isVisibleTo(Auth::user()))
+            <p class="mt-3 text-sm text-slate-700">
+                <i class="fa-solid fa-calendar-days mr-1 text-primary-600" aria-hidden="true"></i>Direct de l'événement :
+                <a href="{{ route('events.show', $live->event_id) }}" class="font-semibold text-primary-600 hover:underline">{{ $live->event->title }}</a>
+            </p>
+            @endif
             @if($live->description)
             <p class="mt-3 text-sm break-words whitespace-pre-line text-slate-700">{{ $live->description }}</p>
             @endif

@@ -31,9 +31,11 @@ Sur l'accueil (fil « Derniers témoignages »), Explorer, Vidéos, un profil, S
 
 Une **ligne compacte** montre la miniature, le titre, l'auteur (avec la coche d'organisation vérifiée), le type ou le statut, les vues et la date. Le **chevron** déplie : description (4 lignes), référence biblique, catégorie, durée, J'aime, prières, commentaires et un bouton **Regarder** / **Écouter** / **Lire**.
 
+**Grandes cartes** (depuis le 2026-09-30, maquette « Témoignages de Gloire ») : carte encadrée `videos/partials/tile` sur toutes les listes (accueil, Explorer, Vidéos, profil, sauvegardes, mes témoignages, « Afficher plus ») : miniature avec le type en haut à droite (logo YouTube pour une vidéo YouTube), la durée en bas à droite et le statut en haut à gauche pour ses propres témoignages ; **catégorie posée sur le bord de l'image** (teinte de la marque, `Category::presentation()`, retrouvée par son nom court si `category_id` manque) ; titre bleu gras, extrait sur deux lignes, avatar · auteur · vues · date ; puis J'aime (cœur rouge), commentaires et partages. Prévisualisation au survol conservée pour les vidéos.
+
 « À la une », l'étagère Shorts et les directs gardent leur présentation.
 
-**Page d'un témoignage** : « À regarder également » (site) et « Témoignages similaires » (application) utilisent le **format compact** (lignes dépliables) ; sur le site, dans la colonne de droite, miniature réduite (`'narrow' => true` du partiel `videos/partials/row`). L'application complète avec d'autres témoignages récents si la catégorie n'en a pas assez.
+**Page d'un témoignage** : « À regarder également » (site) et « Témoignages similaires » (application) utilisent le **format compact** (lignes dépliables) ; sur le site, dans la colonne de droite, miniature réduite (`'narrow' => true` du partiel `videos/partials/row`). Depuis le 2026-09-30, ces listes viennent des [recommandations automatiques](recommandations.md) (témoignage en cours, centres d'intérêt, comptes suivis).
 
 ## Règles
 

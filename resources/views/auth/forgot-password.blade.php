@@ -3,8 +3,8 @@
 
 @section('content')
 <div class="card p-6 sm:p-8">
-    <h1 class="text-xl font-semibold text-primary-600">Mot de passe oublié</h1>
-    <p class="mt-1 text-sm text-slate-500">Indiquez votre adresse e-mail : nous vous enverrons un lien de réinitialisation.</p>
+    <h1 class="text-h3">Mot de passe oublié</h1>
+    <p class="text-secondary mt-2">Indiquez votre adresse e-mail : nous vous enverrons un lien de réinitialisation.</p>
 
     @if(session('status'))
     <div class="alert-success mt-5" role="status"><i class="fa-solid fa-circle-check mt-0.5"></i><p>{{ session('status') }}</p></div>
@@ -23,8 +23,8 @@
         <button type="submit" class="btn-primary w-full">Envoyer le lien</button>
     </form>
 
-    <p class="mt-6 border-t border-slate-100 pt-4 text-center text-sm">
-        <a href="{{ route('login') }}" class="text-slate-500 hover:text-slate-900 hover:underline">
+    <p class="mt-8 border-t border-slate-200 pt-5 text-center text-sm">
+        <a href="{{ route('login') }}" class="font-medium text-primary-600 hover:text-primary-700 hover:underline">
             <i class="fa-solid fa-arrow-left mr-1"></i>Retour à la connexion
         </a>
     </p>

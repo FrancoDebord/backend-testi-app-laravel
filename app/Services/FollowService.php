@@ -21,6 +21,7 @@ class FollowService
     /** @return bool true si l'abonnement vient d'être créé (false : déjà abonné) */
     public function follow(User $follower, User $target): bool
     {
+        \Illuminate\Support\Facades\Cache::forget("reco:follows:{$follower->id}"); \Illuminate\Support\Facades\Cache::forget("reco:personal:{$follower->id}"); // Mon fil
         if ($follower->id === $target->id) {
             throw new FollowException('Vous ne pouvez pas vous suivre vous-même.', 422);
         }
@@ -60,6 +61,7 @@ class FollowService
     /** @return bool true si l'abonnement existait et a été retiré */
     public function unfollow(User $follower, User $target): bool
     {
+        \Illuminate\Support\Facades\Cache::forget("reco:follows:{$follower->id}"); \Illuminate\Support\Facades\Cache::forget("reco:personal:{$follower->id}"); // Mon fil
         return DB::transaction(function () use ($follower, $target) {
             $deleted = DB::table('follows')
                 ->where('follower_id', $follower->id)

@@ -46,6 +46,17 @@ class CommunityController extends Controller
         ]);
     }
 
+    /** « Mes abonnés » : comptes qui suivent la personne connectée (bouton « Suivre en retour »). */
+    public function followers(Request $request): View
+    {
+        $q = mb_substr(trim((string) $request->query('q', '')), 0, 100);
+
+        return view('community.followers', [
+            'q'        => $q,
+            'accounts' => $this->directory->followers($request->user(), $q),
+        ]);
+    }
+
     public function follow(Request $request, string $id): JsonResponse|RedirectResponse
     {
         $target = User::findOrFail($id);

@@ -34,6 +34,16 @@ class Category extends Model
         return $query->where('is_active', true)->orderBy('display_order');
     }
 
+    /** Catégorie d'un nom court (« guerison »), lue une fois par requête : repli des témoignages sans category_id. */
+    public static function forSlug(?string $slug): ?self
+    {
+        static $bySlug = null;
+        if (!$slug) return null;
+        $bySlug ??= static::query()->get()->keyBy('slug');
+
+        return $bySlug->get($slug);
+    }
+
     /**
      * Présentation dans l'interface (charte ARISE & SHINE Krea) : icône Font Awesome selon la catégorie,
      * teinte de la marque en alternance (bleu, orange, jaune). Classes écrites en entier pour Tailwind.

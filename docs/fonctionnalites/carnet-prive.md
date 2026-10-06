@@ -46,7 +46,7 @@ Migration `2026_09_26_200001_move_private_testimonies_to_journal` : les témoign
 - **Modération** (API et web) : liste, détail, approbation, refus → `withoutJournal()` (une entrée du carnet répond 404).
 - **Administration** (API et web) : tableau de bord, fiche utilisateur, contenus → `withoutJournal()`.
 - Détail `GET /testimonies/{id}` : l'auteur est reconnu via son jeton Sanctum ; pour toute autre personne, une entrée du carnet répond **404** (son existence n'est pas révélée). Les lectures par l'auteur ne comptent pas comme des vues.
-- **Site web** : création en « Privé » → carnet (brouillon) ; `/testimonies/{id}` et `/videos/{id}` répondent 404 à toute autre personne que l'auteur (modération comprise) ; pas de vues comptées, pas de bouton Partager.
+- **Site web** : création en « Privé » → carnet (brouillon) ; `/carnet` ne liste que mes entrées ; `/testimonies/{id}` et `/videos/{id}` répondent 404 à toute autre personne que l'auteur (modération comprise) ; pas de vues comptées, pas de lien de partage public.
 - `GET /testimonies/my` (mes témoignages publiés) n'inclut pas le carnet.
 
 **Limite connue** : les fichiers audio et vidéo sont stockés sur le disque `public`, sous un nom aléatoire (non devinable, mais accessible à qui connaîtrait l'adresse exacte). Une étape ultérieure pourra les servir via des URL signées.
@@ -64,6 +64,22 @@ Préfixe `/api/v1`, authentification Sanctum.
 | DELETE | `testimonies/{id}` | Supprimer |
 | POST | `testimonies/{id}/publish` | Partager : `{ category? }` → public + en attente de modération · **409** si déjà partagée |
 | POST | `testimonies/{id}/make-private` | Retirer du public et ranger dans le carnet |
+
+## Site web
+
+Menu latéral **Carnet privé** (connecté). Onglets **Témoignages** · **Paroles prophétiques** ([paroles-prophetiques.md](paroles-prophetiques.md#site)).
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| GET | `/carnet` `?type=text\|audio\|video` `?q=` | Mes entrées, les plus récentes d'abord (12 par page) |
+| GET | `/publish?visibility=private` | « Nouvelle entrée » : formulaire Publier avec « Privé » coché |
+| POST | `/carnet/{id}/partager` `{ category }` | Partager : public + en attente de modération (catégorie obligatoire ; 404 si ce n'est pas mon entrée du carnet) |
+| DELETE | `/carnet/{id}` | Supprimer une entrée du carnet (une parole accomplie liée reste accomplie, sans témoignage) |
+| POST | `/testimonies/{id}/carnet` | Retirer un de mes témoignages du public et le ranger dans le carnet (la parole liée n'est plus publique) |
+
+Page d'une entrée (`videos/partials/watch`) : bloc « Dans votre carnet privé » avec Partager (choix de la catégorie) et Supprimer. Page d'un de mes témoignages publics : bouton « Ranger dans mon carnet » (confirmation).
+
+Contrôleur `app/Http/Controllers/Web/JournalController.php`, règles partagées `app/Services/Journal.php`, vues `resources/views/journal/`, tests `tests/Feature/WebJournalTest.php`.
 
 ## Fichiers
 

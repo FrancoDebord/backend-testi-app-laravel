@@ -59,12 +59,6 @@
     }
 @endphp
 
-@if($showShelves)
-@push('styles')
-    {{-- Écriture manuscrite du bandeau (« Dieu agit encore ! ») --}}
-    <link href="https://fonts.bunny.net/css?family=caveat:700&display=swap" rel="stylesheet">
-@endpush
-@endif
 
 @section('content')
 <h1 class="sr-only">Accueil — Témoignages de Gloire</h1>
@@ -108,10 +102,10 @@
         </svg>
         <div class="absolute inset-0 -z-10 bg-gradient-to-b from-white/70 via-white/20 to-transparent sm:bg-gradient-to-r sm:from-white/80 sm:via-white/30" aria-hidden="true"></div>
 
-        <div class="flex min-h-[22rem] flex-col p-5 sm:min-h-[25rem] sm:p-8">
+        <div class="flex min-h-[27rem] flex-col p-5 sm:p-8 lg:min-h-[25rem]">
             <h2 id="home-hero-title" class="text-[28px] leading-tight font-extrabold text-primary-600 sm:text-4xl lg:text-[44px]">Témoignages de Gloire</h2>
             <p class="mt-1 text-base font-medium text-primary-700 sm:text-lg">Des vies transformées pour la gloire de Dieu</p>
-            <p class="pointer-events-none absolute top-6 right-6 hidden -rotate-6 text-right text-4xl leading-none text-primary-600 md:block lg:text-5xl" style="font-family: 'Caveat', cursive" aria-hidden="true">Dieu<br>agit encore !</p>
+            <p class="pointer-events-none absolute top-6 right-6 hidden -rotate-6 text-right text-4xl leading-none text-primary-600 md:block lg:text-5xl font-script" aria-hidden="true">Dieu<br>agit encore !</p>
 
             <dl class="mt-auto grid grid-cols-2 gap-4 rounded-xl bg-white/95 p-4 shadow-card lg:grid-cols-4">
                 @foreach($statStrip as [$icon, $bubble, $iconColor, $value, $label])
@@ -146,18 +140,11 @@
     {{-- ══ Colonne principale ════════════════════════════════════════════ --}}
     <div class="min-w-0 space-y-6">
 
+        {{-- Invitation à témoigner (le verset du jour est déjà dans la colonne de droite) --}}
+        <x-encouragement kind="call" />
+
         {{-- En direct --}}
-        @if($lives->isNotEmpty())
-        <section class="card flex flex-wrap items-center gap-3 p-4" aria-labelledby="home-lives">
-            <h2 id="home-lives" class="flex items-center gap-2 text-sm font-bold text-primary-600"><span class="badge-live">En direct</span>Maintenant</h2>
-            <ul class="flex min-w-0 flex-1 flex-wrap gap-2">
-                @foreach($lives as $live)
-                <li><a href="{{ route('lives.show', $live->id) }}" class="chip max-w-64"><i class="fa-solid fa-tower-broadcast text-error-500" aria-hidden="true"></i><span class="truncate">{{ $live->title }}</span></a></li>
-                @endforeach
-            </ul>
-            <a href="{{ route('lives.index') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">Tous les directs<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
-        </section>
-        @endif
+        @include('lives.partials.now', ['lives' => $lives])
 
         @include('home.partials.recent', ['title' => 'Témoignages récents'])
 
@@ -352,6 +339,9 @@
             <p class="mt-2 text-sm font-semibold text-primary-700">{{ $verse->reference }}</p>
         </section>
         @endif
+
+        {{-- Pourquoi témoigner ? (docs/fonctionnalites/pourquoi-temoigner.md) --}}
+        <x-why-testify />
     </div>
 </div>
 

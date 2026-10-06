@@ -33,6 +33,8 @@ class ViewCounter
         }
 
         $testimony->increment('views_count');
+        // Historique de la personne connectée : centres d'intérêt et « déjà vu » (docs/fonctionnalites/recommandations.md)
+        Recommendations::recordView($request->user(), $testimony);
 
         return true;
     }

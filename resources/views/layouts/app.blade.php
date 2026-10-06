@@ -12,6 +12,9 @@
                 ['label' => 'Vidéos',   'icon' => 'fa-circle-play',         'url' => route('videos.index'), 'active' => request()->routeIs('videos.*')],
                 ['label' => 'Bible',    'icon' => 'fa-book-bible',          'url' => route('bible.reader'), 'active' => request()->routeIs('bible.*')],
                 ['label' => 'Directs',  'icon' => 'fa-tower-broadcast',     'url' => route('lives.index'),  'active' => request()->routeIs('lives.index', 'lives.show')],
+                ['label' => 'Événements', 'icon' => 'fa-calendar-days',     'url' => route('events.index'), 'active' => request()->routeIs('events.*')],
+                ['label' => 'Requêtes de prière', 'icon' => 'fa-hands-praying', 'url' => route('prayer.requests.index'), 'active' => request()->routeIs('prayer.requests.*')],
+                ['label' => 'Sessions de prière', 'icon' => 'fa-person-praying', 'url' => route('prayer.sessions.index'), 'active' => request()->routeIs('prayer.sessions.*')],
                 ['label' => 'Communauté', 'icon' => 'fa-people-group',      'url' => route('community.index'), 'active' => request()->routeIs('community.*')],
             ],
         ],
@@ -19,8 +22,11 @@
             'label' => 'Mon espace',
             'visible' => (bool) $authUser,
             'items' => $authUser ? [
+                ['label' => 'Mon fil',               'icon' => 'fa-house-user',    'url' => route('feed.personal'),               'active' => request()->routeIs('feed.personal')],
                 ['label' => 'Publier un témoignage', 'icon' => 'fa-pen-to-square', 'url' => route('publish'),                     'active' => request()->routeIs('publish')],
                 ['label' => 'Mes témoignages',       'icon' => 'fa-list',          'url' => route('testimonies.mine'),            'active' => request()->routeIs('testimonies.mine')],
+                ['label' => 'Carnet privé',          'icon' => 'fa-book-open',     'url' => route('journal.index'),               'active' => request()->routeIs('journal.*')],
+                ['label' => 'Paroles prophétiques',  'icon' => 'fa-scroll',        'url' => route('prophecies.index'),            'active' => request()->routeIs('prophecies.*')],
                 ['label' => 'Mes abonnements',       'icon' => 'fa-user-check',    'url' => route('profile.following'),           'active' => request()->routeIs('profile.following')],
                 ['label' => 'Sauvegardes',           'icon' => 'fa-bookmark',      'url' => route('profile.saved'),               'active' => request()->routeIs('profile.saved')],
                 ['label' => 'Notifications',         'icon' => 'fa-bell',          'url' => route('notifications.index'),         'active' => request()->routeIs('notifications.*')],
@@ -33,6 +39,7 @@
             'visible' => $authUser?->canModerate() ?? false,
             'items' => [
                 ['label' => 'File de modération', 'icon' => 'fa-shield-halved', 'url' => route('moderation.index'), 'active' => request()->routeIs('moderation.*')],
+                ['label' => 'Requêtes de prière signalées', 'icon' => 'fa-flag', 'url' => route('prayer.moderation.index'), 'active' => request()->routeIs('prayer.moderation.*')],
                 ['label' => 'Lancer un direct',   'icon' => 'fa-video',         'url' => route('lives.create'),     'active' => request()->routeIs('lives.create', 'lives.studio')],
             ],
         ],
@@ -66,7 +73,7 @@
     <meta name="theme-color" content="#184797">
 
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700|caveat:600,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -132,6 +139,26 @@
             <a href="{{ route('register') }}" class="btn-cta w-full">Créer un compte</a>
         </div>
         @endauth
+    </div>
+
+    {{-- Bas du menu : citation et paysage (charte ARISE & SHINE Krea). Masqué si l'écran est peu haut,
+         pour laisser toute la place au menu. --}}
+    <div class="pointer-events-none relative hidden shrink-0 overflow-hidden [@media(min-height:860px)]:block" aria-hidden="true">
+        <p class="font-script relative z-10 flex gap-2 px-6 pt-3 text-[22px] leading-tight text-primary-600">
+            <i class="fa-solid fa-sun mt-1 text-lg text-sun-400"></i>
+            <span>“Gloire à Dieu<br>pour chaque vie<br>transformée !”</span>
+        </p>
+        <svg class="-mt-4 block h-36 w-full" viewBox="0 0 256 128" preserveAspectRatio="none" focusable="false">
+            <path d="M0 40 C80 20 160 18 256 30 V128 H0Z" fill="#FFF8D9"/>
+            <path d="M0 52 C70 38 150 36 256 50 V128 H0Z" fill="#FDE7A0"/>
+            <path d="M0 46 C35 42 70 58 110 72 C160 90 215 84 256 70 V128 H0Z" fill="#FCC11D"/>
+            <path d="M0 76 C50 62 100 80 150 88 C200 96 235 86 256 78 V128 H0Z" fill="#2B5DB0"/>
+            <path d="M0 94 C60 82 120 102 180 104 C215 105 240 98 256 94 V128 H0Z" fill="#184797"/>
+            <g stroke="#FCC11D" stroke-width="2.5" stroke-linecap="round">
+                <circle cx="206" cy="40" r="9" fill="#FCC11D" stroke="none"/>
+                <path d="M206 24 V28 M206 52 V56 M190 40 H194 M218 40 H222 M195 29 L198 32 M214 48 L217 51 M195 51 L198 48 M214 32 L217 29"/>
+            </g>
+        </svg>
     </div>
 </aside>
 
@@ -232,7 +259,7 @@
 
     <footer class="border-t border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-            <p>© {{ date('Y') }} TestiApp — African Institute for Research in Infectious Diseases (AIRID)</p>
+            <p>© {{ date('Y') }} TestiApp — ARISE &amp; SHINE Krea</p>
             <p class="flex gap-4">
                 <a href="{{ route('home') }}" class="hover:text-slate-900">Accueil</a>
                 <a href="{{ route('explore') }}" class="hover:text-slate-900">Explorer</a>

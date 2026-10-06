@@ -3,8 +3,8 @@
 
 @section('content')
 <div class="card p-6 sm:p-8">
-    <h1 class="text-xl font-semibold text-primary-600">Créer un compte</h1>
-    <p class="mt-1 text-sm text-slate-500">L'inscription est gratuite. Les champs marqués * sont obligatoires.</p>
+    <h1 class="text-h3">Créer un compte</h1>
+    <p class="text-secondary mt-2">L'inscription est gratuite. Les champs marqués * sont obligatoires.</p>
 
     @if($errors->any())
     <div class="alert-error mt-5" role="alert">
@@ -117,9 +117,12 @@
         <button type="submit" class="btn-cta w-full">Créer mon compte</button>
     </form>
 
-    <p class="mt-6 border-t border-slate-100 pt-4 text-center text-sm text-slate-500">
+    <p class="mt-8 border-t border-slate-200 pt-5 text-center text-sm text-slate-500">
         Déjà inscrit ?
-        <a href="{{ route('login') }}" class="font-medium text-slate-900 hover:underline">Se connecter</a>
+        <a href="{{ route('login') }}" class="font-semibold text-primary-600 hover:text-primary-700 hover:underline">Se connecter</a>
     </p>
 </div>
+
+{{-- Pourquoi témoigner ? (docs/fonctionnalites/pourquoi-temoigner.md) --}}
+<x-why-testify collapsible :action="false" class="mt-6" />
 @endsection

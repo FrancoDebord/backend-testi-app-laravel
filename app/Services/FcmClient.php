@@ -86,8 +86,41 @@ class FcmClient
             return self::DISABLED;
         }
 
-        $payload = $this->buildMessage($token, $title, $body, $data);
+        return $this->deliver($token, $this->buildMessage($token, $title, $body, $data));
+    }
 
+    /**
+     * Message silencieux (données seules, rien n'est affiché) : l'application le traite même fermée
+     * (Android ; iOS en arrière-plan selon le système). Mêmes résultats que send().
+     *
+     * @param array<string, mixed> $data converti en chaînes (exigence de FCM)
+     */
+    public function sendData(string $token, array $data): string
+    {
+        if (!$this->isConfigured()) {
+            Log::debug('FCM non configuré : message silencieux ignoré.', ['type' => $data['type'] ?? null]);
+            return self::DISABLED;
+        }
+
+        return $this->deliver($token, $this->buildDataMessage($token, $data));
+    }
+
+    /** Corps de la requête messages:send pour un message silencieux (public pour les tests). */
+    public function buildDataMessage(string $token, array $data): array
+    {
+        return ['message' => [
+            'token'   => $token,
+            'data'    => self::stringifyData($data),
+            'android' => ['priority' => 'high'],
+            'apns'    => [
+                'headers' => ['apns-push-type' => 'background', 'apns-priority' => '5'],
+                'payload' => ['aps' => ['content-available' => 1]],
+            ],
+        ]];
+    }
+
+    private function deliver(string $token, array $payload): string
+    {
         $response = $this->post($payload);
         if ($response->status() === 401) {
             // Jeton OAuth2 révoqué ou expiré avant l'heure : un nouvel essai avec un jeton neuf.

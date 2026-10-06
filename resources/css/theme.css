@@ -21,6 +21,8 @@
 @theme {
     /* ── Typographie : Plus Jakarta Sans (chargée dans layouts/app et layouts/guest) */
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+    /* Écriture manuscrite (citations décoratives : bas du menu, bandeau de l'accueil) : classe font-script */
+    --font-script: 'Caveat', 'Segoe Script', cursive;
 
     /* ── Krea Blue : couleur principale (600 = #184797, 700 = Blue Dark, 50 = Blue Light) */
     --color-primary-50: #eaf1fc;

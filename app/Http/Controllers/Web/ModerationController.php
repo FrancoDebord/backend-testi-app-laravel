@@ -42,7 +42,7 @@ class ModerationController extends Controller
 
     public function show(string $id): View
     {
-        $testimony = Testimony::with(['user', 'moderationLogs.moderator'])->withoutJournal()->findOrFail($id);
+        $testimony = Testimony::with(['user', 'moderationLogs.moderator', 'proofs'])->withoutJournal()->findOrFail($id);
 
         if ($testimony->status->value === 'pending') {
             ModerationLog::create([
@@ -92,6 +92,17 @@ class ModerationController extends Controller
         $testimony->user->increment('testimony_count');
 
         return redirect()->route('moderation.index')->with('success', 'Témoignage approuvé.');
+    }
+
+    /**
+     * Retire l'affichage public des preuves (document trop personnel, illisible…). Seul l'auteur
+     * peut de nouveau donner son accord (en modifiant son témoignage). Voir docs/fonctionnalites/preuves.md
+     */
+    public function hideProofs(string $id): RedirectResponse
+    {
+        Testimony::withoutJournal()->findOrFail($id)->update(['proofs_public' => false]);
+
+        return back()->with('success', "Les preuves ne sont plus visibles du public : seulement de l'auteur et de l'équipe de modération.");
     }
 
     public function reject(Request $request, string $id): RedirectResponse

@@ -18,6 +18,12 @@ class LiveSessionResource extends JsonResource
             'description'     => $this->description,
             'category'        => $this->category_slug,
             'status'          => $this->status->value,
+            // Caméra IP / encodeur : adresse et clé visibles du seul diffuseur (docs/fonctionnalites/lives-camera-ip.md)
+            'source'          => $this->source ?? 'browser',
+            // Clé ajoutée seulement pour le diffuseur (la ressource est aussi fusionnée à la main : pas de when()).
+            ...($this->usesExternalCamera() && $user?->id === $this->host_id
+                ? ['camera' => ['url' => $this->ingress_url, 'streamKey' => $this->ingress_stream_key, 'sourceUrl' => self::maskCameraUrl($this->camera_url)]]
+                : []),
             'statusLabel'     => $this->status->label(),
             'commentsEnabled' => $this->comments_enabled,
             'speakersEnabled' => (bool) $this->speakers_enabled, // demandes d'intervention ouvertes
@@ -41,6 +47,10 @@ class LiveSessionResource extends JsonResource
                 'durationSec'       => $this->recording_duration,
                 'replayTestimonyId' => $this->testimony?->status?->value === 'approved' ? $this->testimony_id : null,
             ],
+            // Événement diffusé (docs/fonctionnalites/evenements.md)
+            'event'       => $this->event_id ? ['id' => $this->event_id, 'title' => $this->event?->title] : null,
+            // Salle d'une session de prière (docs/fonctionnalites/sessions-de-priere.md)
+            'prayerSession' => $this->prayer_session_id ? ['id' => $this->prayer_session_id, 'title' => $this->prayerSession?->title] : null,
             'isHost'      => $this->isHost($user),
             'canModerate' => $this->canBeModeratedBy($user),
             'webUrl'      => route('lives.show', $this->id),
@@ -49,5 +59,17 @@ class LiveSessionResource extends JsonResource
             'endReason'   => $this->end_reason,
             'createdAt'   => $this->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Adresse du flux de la caméra sans secret : mot de passe et phrase secrète SRT
+     * remplacés par « •••• » (jamais renvoyés en clair, docs/fonctionnalites/lives-camera-ip.md).
+     */
+    public static function maskCameraUrl(?string $url): ?string
+    {
+        if (blank($url)) return $url;
+        $url = preg_replace('#^([a-z][a-z0-9+.-]*://[^:@/?]*):[^?]*@#i', '$1:••••@', $url, 1);
+
+        return preg_replace('#([?&]passphrase=)[^&]*#i', '$1••••', $url);
     }
 }

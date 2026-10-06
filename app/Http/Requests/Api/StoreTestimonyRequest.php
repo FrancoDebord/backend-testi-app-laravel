@@ -26,6 +26,10 @@ class StoreTestimonyRequest extends FormRequest
             ],
             'body_text'    => ['nullable', 'string'],
             'media_url'    => ['nullable', 'string'],
+            // Lien YouTube : administrateurs seulement (docs/fonctionnalites/videos-youtube.md)
+            'youtube_url'  => ['nullable', 'string', 'max:300'],
+            // Accord pour montrer les preuves au public (docs/fonctionnalites/preuves.md)
+            'proofs_public' => ['nullable', 'boolean'],
             'cover_url'    => ['nullable', 'string'],
             'duration'     => ['nullable', 'integer'],
             'bible_verse'  => ['nullable', 'string', 'max:500'],
@@ -33,6 +37,11 @@ class StoreTestimonyRequest extends FormRequest
             'tags'         => ['nullable', 'array'],
             'tags.*'       => ['string', 'max:30'],
             'visibility'   => ['nullable', new Enum(TestimonyVisibility::class)],
+            // Témoignage officiel d'un événement (gestionnaires) : docs/fonctionnalites/evenements.md
+            'event_id'     => ['nullable', 'uuid'],
+            // Témoignage de l'accomplissement d'une parole prophétique (docs/fonctionnalites/paroles-prophetiques.md)
+            'prophecy_id'     => ['nullable', 'uuid'],
+            'prophecy_public' => ['nullable', 'boolean'],
         ];
     }
 }

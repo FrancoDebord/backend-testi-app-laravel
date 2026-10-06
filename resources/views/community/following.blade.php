@@ -13,6 +13,8 @@
 @endphp
 
 @section('content')
+@include('community.partials.follow-tabs', ['active' => 'following'])
+
 @if($q !== '' || $accounts->total() > 0)
 <form method="GET" action="{{ route('profile.following') }}" role="search" class="mb-5 flex max-w-2xl gap-2" data-loading-inline data-loading-label="Recherche…">
     <label for="following-q" class="sr-only">Rechercher dans mes abonnements</label>

@@ -4,6 +4,154 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-05 — Directs, événements et requêtes de prière dans les fils ; thème retiré
+
+- **Nouveau — Fils enrichis** : directs à l'antenne en tête de l'accueil (application) et de « Mon fil » (site et application) ; requêtes de prière publiques insérées dans « Pour vous » / « Témoignages récents » ; dans « Mon fil », événements à venir et requêtes de prière des comptes suivis, en alternance. [recommandations.md](fonctionnalites/recommandations.md#directs-événements-et-requêtes-de-prière-dans-les-fils)
+- **API** : `GET /events?scope=following` (à venir, organisés par les comptes suivis ; vide pour un invité) ; `Event::scopeFollowedBy()`.
+- **Retiré — Thème Clair / Sombre / Système** (paramètres du site et de l'application) : l'application n'a pas de palette sombre, le réglage n'avait aucun effet. La colonne `user_settings.app_theme` et sa validation API restent, inutilisées.
+- **Application** : message clair (« pas encore disponible sur le serveur ») au lieu de « The route … could not be found » quand le serveur n'a pas encore une route de l'API.
+- Vérifié : `php artisan test tests/Feature/FeedInsertsTest.php` (5 tests) ; `php artisan view:cache` ; application : `flutter test test/feed_mix_test.dart test/home_layout_test.dart` (36 tests).
+- **Déploiement** : aucune migration propre à cette entrée ; `php artisan view:cache` ; `php artisan route:cache` si les routes sont en cache. Application : nouvelle version.
+
+## 2026-10-05 — Requêtes et sessions de prière
+
+- **Nouveau — Requêtes de prière** (site `/priere/requetes`, application, menus latéraux) : publication **directe** (sans relecture), visibilité tout le monde / mes abonnés / moi seul, option **anonyme** (nom masqué pour les autres, visible de la modération), **« Je prie »**, messages d'**encouragement** (verset facultatif, l'auteur est prévenu), **exaucée** puis « Témoigner », rattachement à un **événement** (bloc « Prière » de sa page). **Signalement** ; retrait automatique au 3e signalement en attendant la modération ; page **Modération → Requêtes de prière signalées** (`/priere/moderation`). [requetes-de-priere.md](fonctionnalites/requetes-de-priere.md)
+- **Nouveau — Sessions de prière** (site `/priere/sessions`, application) : tout compte connecté programme une session (sujets de prière, date, durée, visibilité, événement facultatif pour ses gestionnaires) ; « **Je serai là** » ; rappel 15 minutes avant et notification à l'ouverture. À l'heure, l'hôte **ouvre la salle** : un **direct** (studio, commentaires, intervenants à tour de rôle), sans enregistrement. [sessions-de-priere.md](fonctionnalites/sessions-de-priere.md)
+- **Développeurs** : `LiveService::start()` accepte `prayer_session_id` (envoyé seulement par `App\Services\PrayerSessions`, l'hôte de la session peut ouvrir sa salle sans être modérateur ; directs classiques inchangés) ; `LiveSession::isVisibleTo()` suit la visibilité de la session ; `LiveSessionResource.prayerSession`. Notifications `prayer_encouragement`, `prayer_session_started`, `prayer_session_reminder` (`NotificationResource.prayerRequestId` / `prayerSessionId`, données push `prayer_request_id` / `prayer_session_id`). API pour les fils : `GET /prayer/requests?scope=feed|following|event`, `PrayerRequestResource` autonome ; partiel Blade `prayer.partials.feed-card` ; application `PrayerRequestFeedCard`, `prayerRequestsPageProvider`.
+- Vérifié : `php artisan test --filter=PrayerTest` (16 tests) et tests des directs, événements et notifications ; `php artisan view:cache` ; application : `flutter analyze` (fichiers touchés), `flutter test test/prayer_test.dart` (38 tests) et tests invité / notifications / événements.
+- **Déploiement** : `php artisan migrate --force` (`2026_10_05_400001_create_prayer_tables`) ; planificateur actif (`prayer-sessions:remind` toutes les 5 minutes) ; recompiler et copier `public/build/` (nouvelles classes Tailwind des pages de prière) ; `php artisan view:cache` ; `php artisan route:cache` si les routes sont en cache. Application : nouvelle version.
+
+## 2026-10-05 — Formulaire de connexion à une caméra IP (directs)
+
+- **Nouveau — Formulaire de la caméra IP** (mode « Caméra IP (adresse du flux) » de *Lancer un direct*, site et application) : **modèle de caméra** (Hikvision, Dahua, Amcrest, Reolink, Axis, TP-Link Tapo, Foscam, ONVIF générique, Autre) qui pré-remplit port et chemin, flux principal / secondaire, protocole (RTSP, RTSPS, RTMP, RTMPS, HTTP/HTTPS (HLS), SRT) avec port par défaut, adresse IP ou nom d'hôte, port, chemin, identifiant, mot de passe masqué (bouton œil), Stream ID et phrase secrète pour SRT. Aperçu de l'adresse composée avec le mot de passe masqué ; avertissement si l'adresse est locale (192.168.x.x, 10.x…) ; mode **Adresse complète** pour coller une adresse (revenir au formulaire le remplit). Le dernier réglage est mémorisé sur l'appareil / dans le navigateur, **sans mot de passe**. [lives-camera-ip.md](fonctionnalites/lives-camera-ip.md#formulaire-de-la-caméra-ip)
+- **API inchangée** : l'adresse est composée par l'application ou le navigateur (identifiants encodés : `@` → `%40`…) et envoyée dans `camera_url`. **Modifié** : `camera.sourceUrl` (diffuseur seulement) est renvoyé avec le mot de passe et la phrase secrète SRT masqués (`••••`).
+- **Sécurité** : `camera_url` n'est plus remise en session après une erreur (site) ; mot de passe et phrase secrète du formulaire n'ont pas d'attribut `name`.
+- **Développeurs** : application `lib/features/live/models/ip_camera_config.dart` (`IpCameraConfig`, `IpCameraPreset`, `IpCameraProtocol`), `lib/features/live/widgets/ip_camera_form.dart` ; site : `lives/create.blade.php` (script en ligne, même logique) ; `LiveSessionResource::maskCameraUrl()` ; `bootstrap/app.php` (`dontFlash`).
+- Vérifié : `php artisan test tests/Feature/LiveCameraTest.php` (1 nouveau test) ; `php artisan view:cache` ; application : `flutter analyze` (fichiers touchés), `flutter test test/ip_camera_test.dart` (18 tests).
+- **Déploiement** : aucune migration ; `php artisan view:cache` ; recompiler `public/build/` seulement pour les nouvelles classes Tailwind de la page (le script est en ligne). Application : nouvelle version.
+
+## 2026-10-05 — Lieu des événements : carte et itinéraire
+
+- **Nouveau — Position sur la carte** (création / modification d'un événement, site et application) : champ **Adresse**, carte OpenStreetMap où l'on touche pour placer le repère, boutons **Ma position**, **Chercher l'adresse** (Nominatim, sur clic) et **Effacer le repère**. Facultatif. [evenements.md](fonctionnalites/evenements.md#lieu-et-itinéraire)
+- **Nouveau — Itinéraire** : sur la page d'un événement, adresse, mini-carte avec repère, boutons **Itinéraire** (application de navigation du téléphone : `geo:` sur Android, Plans sur iOS, Google Maps sinon) et **Copier l'adresse**.
+- **API** : `POST`/`PUT events` acceptent `address`, `latitude`, `longitude` (ensemble, bornes vérifiées) ; `EventResource` gagne `address`, `latitude`, `longitude`, `directionsUrl`.
+- **Développeurs** : `Event::hasCoordinates()`, `fullAddress()`, `directionsUrl()` ; partiel `events/partials/leaflet.blade.php` (Leaflet 1.9.4, cdnjs + SRI). Application : `widgets/event_location_widgets.dart` ; paquets `flutter_map` 8.3, `latlong2` 0.9, `geolocator` 14.1 ; permissions Android `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION`, iOS `NSLocationWhenInUseUsageDescription`, requête `geo:` déclarée dans `<queries>`.
+- Vérifié : `php artisan test tests/Feature/EventLocationTest.php tests/Feature/EventTest.php` (3 nouveaux tests) ; `php artisan view:cache` ; application : `flutter analyze` (fichiers touchés), `flutter test test/event_location_test.dart` (10 tests).
+- **Déploiement** : `php artisan migrate --force` (`2026_10_05_300001_add_geolocation_to_events_table`) ; `php artisan view:cache`. Pas de recompilation des assets (Leaflet par CDN). Application : nouvelle version (`flutter pub get`, nouvelles permissions de localisation).
+
+## 2026-10-05 — Mes abonnés
+
+- **Nouveau — Mes abonnés** (comptes qui me suivent) : site `/profile/abonnes` (nombre d'« abonnés » de son profil, onglets Abonnés / Abonnements en haut de Mes abonnements) ; application `/followers` (statistique « Abonnés » de Mon profil, menu latéral, menu du profil), écran commun à deux onglets avec Mes abonnements. Recherche, pagination, liste vide, bouton **Suivre en retour** pour les abonnés que l'on ne suit pas. [abonnements.md](fonctionnalites/abonnements.md)
+- **API** : `GET /api/v1/users/me/followers?q=&page=` (connecté) — même forme que `users/me/following` ; `is_following` = je le suis en retour. Pas de liste publique des abonnés d'un autre compte (réglage « Compte privé »).
+- **Développeurs** : `CommunityDirectory::followers()`, `UserController::followers`, `Web\CommunityController::followers`, vues `community/followers`, `community/partials/follow-tabs` ; `components/follow-button` accepte `idleLabel`. Application : `FollowsScreen` / `FollowsTab` (`following_screen.dart`), `CommunityRepository.followers()`, `FollowButton.idleLabel`.
+- Vérifié : `php artisan test --filter="FollowingListTest|FollowTest"` (2 nouveaux tests) ; `php artisan view:cache` ; application : `flutter analyze` (fichiers touchés), `flutter test test/followers_test.dart`.
+- **Déploiement** : aucune migration ; `php artisan route:clear` / `optimize:clear` puis `php artisan view:cache`. Application : nouvelle version.
+
+## 2026-10-05 — « Pourquoi témoigner ? » et pied de page ARISE & SHINE Krea
+
+- **Nouveau — Pourquoi témoigner ?** : bloc en accordéon (on ouvre une raison pour lire ses versets) avec 7 raisons bibliques et 17 versets (Louis Segond 1910), sur l'accueil (colonne de droite), Publier, Mes témoignages, la lecture d'un témoignage (avant les commentaires) et l'inscription ; replié sur une ligne sur les pages chargées. Adapté au mobile (390 px) et aux colonnes étroites. [pourquoi-temoigner.md](fonctionnalites/pourquoi-temoigner.md)
+- **Modifié — Pied de page** (site connecté et pages sans connexion) : « © … TestiApp — ARISE & SHINE Krea » remplace la mention AIRID.
+- **Développeurs** : composant `<x-why-testify />` ; contenu `config/encouragements.php` (`why_testify`) ; classes `accordion-*` et `why-testify-*` dans `resources/css/app.css`.
+- Vérifié : `php artisan view:cache` ; `php artisan test` (seul `ExampleTest` échoue comme avant) ; assets recompilés.
+- **Déploiement** : aucune migration ; copier `public/build/` (archive `build-a-deployer.zip`) ; `php artisan view:cache` ; `php artisan config:cache` si la configuration est mise en cache.
+
+## 2026-10-05 — Carnet privé et paroles prophétiques sur le site
+
+- **Nouveau — Carnet privé sur le site** (`/carnet`, menu latéral « Carnet privé ») : liste de mes témoignages privés avec recherche et filtre Texte / Audio / Vidéo ; « Nouvelle entrée » ouvre Publier avec « Privé » coché. Sur la page d'une entrée : **Partager** (catégorie, puis relecture par la modération) et **Supprimer**. Sur un de mes témoignages publics : **Ranger dans mon carnet**. [carnet-prive.md](fonctionnalites/carnet-prive.md#site-web)
+- **Nouveau — Paroles prophétiques sur le site** (`/carnet/paroles`, onglet du carnet et menu latéral) : en attente / accomplies, garder une parole (texte ou fichier audio, date, qui l'a donnée, échéance, rappel), journal « J'ai prié », **Proclamer** en plein écran (Habakuk 2:3), marquer accomplie ou remettre en attente, **Témoigner** (Publier avec « Publier aussi la parole prophétique »). Les rappels réglés sur le site sont envoyés par l'application sur le téléphone. [paroles-prophetiques.md](fonctionnalites/paroles-prophetiques.md#site)
+- **Développeurs** : règles des paroles regroupées dans `App\Services\Prophecies` (API et site) ; le site utilise `App\Services\Journal`. Changement d'API : `PUT /prophecies/{id}` refuse aussi (422, `errors.due_on`) une échéance antérieure à la date de la parole.
+- Vérifié : `php artisan test` (8 nouveaux tests `WebJournalTest` ; seul `ExampleTest` échoue comme avant) ; `php artisan view:cache` ; assets recompilés.
+- **Déploiement** : aucune migration ; copier `public/build/` (archive `build-a-deployer.zip`) ; `php artisan view:cache` ; `php artisan config:cache` si la configuration est mise en cache (`config/encouragements.php` : `prophecy_verses`).
+
+## 2026-10-05 — Gestionnaires, paroles prophétiques, Mon fil, messages pour témoigner
+
+- **Gestionnaires** : une organisation désigne **2 gestionnaires au plus** qui créent et gèrent ses événements en son nom ; chaque événement accepte **2 co-gestionnaires au plus** (modifier, témoignages, direct ; seuls l'organisateur, ses gestionnaires et les administrateurs suppriment et désignent). Site : bloc Co-gestionnaires, choix de l'organisateur, réglages du profil ; application : feuille Co-gestionnaires, écran « Gestionnaires de l'organisation » / « Organisations que je gère ». [evenements.md](fonctionnalites/evenements.md)
+- **Nouveau — Paroles prophétiques** (application, carnet privé) : garder une parole reçue (date du jour par défaut, texte ou audio, qui l'a donnée, échéance, titre), journal « J'ai prié », rappels quotidiens ou hebdomadaires sur le téléphone, lecture en plein écran pour la proclamer ; à l'accomplissement, témoigner (parcours Publier rattaché) et rendre la parole publique avec le témoignage. API `prophecies`. [paroles-prophetiques.md](fonctionnalites/paroles-prophetiques.md)
+- **Nouveau — Mon fil** (`GET /feed`, site `/mon-fil`, menu latéral) : témoignages des comptes suivis, avec une suggestion de compte inconnu tous les trois. [recommandations.md](fonctionnalites/recommandations.md#mon-fil-get-apiv1feedpagelimit-connecté--site-mon-fil)
+- **Nouveau — Messages pour inciter à témoigner** : versets (Psaume 78:4, Apocalypse 12:11, Marc 5:19…) et invitations avec bouton Témoigner, un tous les 8 témoignages dans les fils et en bandeau sur quelques pages. [encouragements.md](fonctionnalites/encouragements.md)
+- **Application** : l'onglet **Événements** remplace Téléchargements dans la barre du bas (Téléchargements : menu latéral, profil, paramètres).
+- Vérifié : `php artisan test` (12 nouveaux tests : gestionnaires, paroles, Mon fil ; seul `ExampleTest` échoue comme avant) ; `php artisan view:cache` ; application : `flutter analyze`, `flutter test`.
+- **Déploiement** : `php artisan migrate --force` (`2026_10_05_200001_create_managers_and_prophecies_tables`) ; copier `public/build/` ; `php artisan view:cache`. Application : nouvelle version (rappels programmés : nouvelle permission Android `RECEIVE_BOOT_COMPLETED`).
+
+## 2026-10-05 — Événements chrétiens
+
+- **Nouveau** : pages **Événements** (croisades d'évangélisation, conférences, séminaires, camps, tournées, concerts de louange, retraites) sur le site (`/evenements`, menu latéral) et dans l'application (menu latéral, bandeau « Événements à venir » de l'accueil, « Créer un événement » dans Publier). [evenements.md](fonctionnalites/evenements.md)
+- Création réservée aux **organisations vérifiées** et aux **administrateurs** : titre, type, description, dates, lieu, invités principaux, jusqu'à 6 images en **carrousel**, brouillon / publié / annulé, commentaires ouverts ou non.
+- Les fidèles répondent **« Je participe » / « Je ne participe pas »** et racontent ce qu'ils ont vécu en **commentaire**. L'organisateur voit la liste des participants.
+- **Témoignages officiels** : l'organisateur **enregistre un commentaire comme témoignage** (au nom de son auteur) ou **publie un témoignage** rattaché à l'événement. Publication directe par un administrateur ou un modérateur, sinon relecture par la modération.
+- **Direct de l'événement** : l'organisateur peut diffuser son événement publié sans être modérateur (`POST /lives` avec `event_id` ; `/lives/create?event=` sur le site). Les autres directs restent réservés à la modération. La page annonce le direct à l'antenne.
+- API : `events` (liste, détail, création, modification, images, participation, participants, commentaires, promotion, témoignages) ; `TestimonyResource.eventId`, `LiveSessionResource.event`, `event_id` accepté par `POST /testimonies` et `POST /lives`.
+- Vérifié : `php artisan test` (15 nouveaux tests `EventTest`, seul `ExampleTest` échoue comme avant) ; `php artisan view:cache` ; application : `flutter analyze`, `flutter test` (23 nouveaux tests : modèle, dates, mise en page à 320 et 390 px, texte ×1 et ×1,3).
+- **Déploiement** : `php artisan migrate --force` (`2026_10_05_100001_create_events_tables`) ; copier `public/build/` ; `php artisan view:cache`. Application : nouvelle version.
+
+## 2026-09-30 — Lecture à voix haute en anglais
+
+- Les témoignages écrits en anglais sont lus avec une voix anglaise. La langue est déduite du texte (mots les plus fréquents) ; quelques mots anglais dans un texte français ne changent pas la voix. [lecture-vocale.md](fonctionnalites/lecture-vocale.md#langue--français-ou-anglais)
+- **Site** : menu « Français / English » dans le bandeau d'écoute pour corriger la langue ; voix proposées selon la langue et retenues pour chacune.
+- **Application** : la voix suit la langue du témoignage (`detectTextLanguage`), et non plus seulement celle de l'application (reprise quand le texte est trop court pour décider).
+- Vérifié : `php artisan test` ; test dans Chrome avec un moteur simulé (détection, passage en anglais, voix retenue) ; application : `flutter analyze` et `flutter test` (4 nouveaux tests).
+- **Déploiement** : copier `public/build/` ; `php artisan view:cache`. Application : nouvelle version.
+
+## 2026-09-30 — Lecture à voix haute des témoignages écrits (site)
+
+- **Nouveau sur le site** : bandeau « Écouter le témoignage » sur la page d'un témoignage texte. La synthèse vocale du navigateur lit le titre, le texte puis le verset, phrase par phrase : pause et reprise, arrêt, vitesse de 0,75× à 2×, choix de la voix française, phrase en cours et progression. Vitesse et voix sont retenues ; emojis et marques `**` ne sont pas lus. Aucun traitement ni coût côté serveur. L'application mobile avait déjà cette lecture (avec « Lecture automatique ») : elle est maintenant documentée. [lecture-vocale.md](fonctionnalites/lecture-vocale.md)
+- Vérifié : `php artisan test` ; test dans Chrome avec un moteur de synthèse simulé (ordre, pause, reprise à une autre vitesse, fin) ; rendu à 390 et 1440 px.
+- **Déploiement** : copier `public/build/` ; `php artisan view:cache`. Aucune migration.
+
+## 2026-09-30 — Connexion, inscription et mot de passe oublié selon la charte (site)
+
+- Pages sans connexion (`layouts/guest`) en deux colonnes dès 1024 px : panneau de marque Blue Light (pastille jaune ARISE & SHINE Krea, « Dieu agit encore. », trois points forts) terminé par le paysage vagues et soleil ; formulaire à droite. En dessous de 1024 px, un bandeau illustré remplace le panneau au-dessus du formulaire. Paysage réutilisable : `layouts/partials/krea-landscape` (`$class`, `$viewBox`). [interface.md](interface.md#4-créer-une-page)
+- Connexion : titre `text-h3`, liens en Krea Blue, bouton « Se connecter » avec flèche, bouton pour afficher le mot de passe. Inscription et mot de passe oublié : mêmes titres et liens.
+- `data-reveal` accepte `data-reveal-label` (« le mot de passe ») pour le libellé du bouton ; « la clé » par défaut.
+- Vérifié : `php artisan test` ; contrôle dans Chrome à 390, 768 et 1440 px, sans défilement horizontal.
+- **Déploiement** : copier `public/build/` ; `php artisan view:cache`. Aucune migration.
+
+## 2026-09-30 — Bas du menu latéral selon la maquette (site)
+
+- Bas du menu latéral : citation « Gloire à Dieu pour chaque vie transformée ! » en écriture manuscrite avec un soleil, et paysage de vagues jaune et bleu avec un soleil (SVG aux couleurs de la charte). Masqué sur les écrans de moins de 860 px de haut. Nouvelle classe `font-script` (police Caveat, chargée sur toutes les pages ; aussi utilisée par le bandeau de l'accueil). [interface.md](interface.md#logo)
+- Vérifié : contrôle dans Chrome (1440 × 1000 : visible ; 1440 × 800 : masqué, menu défilable), sans erreur JavaScript.
+- **Déploiement** : copier `public/build/` ; `php artisan view:cache`.
+
+## 2026-09-30 — Cartes de témoignages selon la maquette (site)
+
+- **Toutes les listes du site** (accueil, Explorer, Vidéos, profil, sauvegardes, mes témoignages, « Afficher plus ») affichent les témoignages avec la carte de la maquette : carte encadrée, miniature (type en haut à droite, durée en bas à droite, statut pour ses propres témoignages), **catégorie en pastille de couleur posée sur le bord de l'image**, titre bleu gras, extrait, auteur · vues · date, puis J'aime / commentaires / partages. La liste compacte reste disponible. [affichage-et-lecture.md](fonctionnalites/affichage-et-lecture.md)
+- Catégorie retrouvée par son nom court pour les témoignages sans `category_id` (`Category::forSlug()`).
+- Vérifié : tests du serveur ; contrôle dans Chrome à 390 et 1440 px (accueil, Explorer, Vidéos, mes témoignages), sans défilement horizontal ni erreur JavaScript.
+- **Déploiement** : copier `public/build/` ; `php artisan view:cache`. Aucune migration.
+
+## 2026-09-30 — Preuves publiées avec l'accord de l'auteur
+
+- **Nouveau** : à la publication, case « **Publier aussi mes preuves pour confirmer le témoignage** » (site et application). Avec cet accord, une fois le témoignage publié, les preuves sont visibles et téléchargeables par tout le monde (page du témoignage, API) ; sans accord, elles restent réservées à l'auteur et à l'équipe de modération. L'équipe peut retirer l'affichage public (« Ne pas publier les preuves ») ; seul l'auteur peut de nouveau accepter. [preuves.md](fonctionnalites/preuves.md)
+- Vérifié : tests du serveur (2 nouveaux, 1 mis à jour) et de l'application (1 nouveau).
+- **Déploiement** : `php artisan migrate --force` (`2026_09_30_200001_add_proofs_public_to_testimonies_table`) ; copier `public/build/` ; `php artisan view:cache`. Application : nouvelle version.
+
+## 2026-09-30 — Lien YouTube visible dès le choix du type
+
+- **Correction** : le champ YouTube n'apparaissait qu'après avoir choisi « Vidéo », sous le fichier vidéo, et dans l'application seulement dans l'étape vidéo : on ne le trouvait pas. Site : 4ᵉ type **Lien YouTube** (administrateurs) à côté de Texte, Audio, Vidéo, avec champ obligatoire et fichier vidéo masqué. Application : carte **Lien YouTube** sur l'écran de choix du format (administrateurs). [videos-youtube.md](fonctionnalites/videos-youtube.md)
+- Vérifié : tests du serveur (1 nouveau) et de l'application ; contrôle dans Chrome à 390 et 1440 px.
+- **Déploiement** : copier `public/build/` ; `php artisan view:cache`. Application : nouvelle version.
+
+## 2026-09-30 — Caméra IP pour les directs, fil « Pour vous », recommandations, YouTube, preuves
+
+- **Nouveau — Direct avec une caméra IP ou un encodeur** : à la création d'un direct, choix « Caméra de cet appareil », « Caméra IP ou encodeur (RTMP) » ou « Adresse du flux de la caméra ». LiveKit Ingress crée un point d'entrée ; le studio affiche l'adresse et la clé (copier, afficher), l'aperçu du flux, puis « Passer à l'antenne » (jamais de démarrage automatique). Clé et adresse chiffrées, visibles du seul diffuseur ; point d'entrée supprimé à la fin. Mode d'emploi pour les caméras RTSP (OBS, ffmpeg). [lives-camera-ip.md](fonctionnalites/lives-camera-ip.md)
+- **Nouveau — Fil « Pour vous »** (`GET /api/v1/testimonies?sort=for_you`) : un nouveau venu ne reçoit plus toute la liste mais **les plus récents et les plus vus** en alternance ; une personne connue reçoit un classement selon ses centres d'intérêt et les comptes qu'elle suit. L'application le charge 20 par 20. [recommandations.md](fonctionnalites/recommandations.md)
+- **Nouveau — Recommandations automatiques** : « À regarder également » (site) et « Témoignages similaires » (application, `GET /api/v1/testimonies/{id}/recommendations`) selon le témoignage en cours (catégorie, auteur, type, mots-clés), les centres d'intérêt (sauvegardes, réactions, commentaires, lectures, publications), les comptes suivis ; déjà vus repoussés. Nouvel historique de lecture `testimony_views`.
+- **Nouveau — Témoignage par lien YouTube** (administrateurs) : champ « Ou lien d'une vidéo YouTube » (site et application), lecture avec le lecteur YouTube (`youtube-nocookie` sur le site), miniature YouTube par défaut, champs `youtubeId` / `youtubeUrl` de l'API. [videos-youtube.md](fonctionnalites/videos-youtube.md)
+- **Nouveau — Preuves du témoignage** : deux images ou PDF (10 Mo chacun), jamais publiés, visibles de l'auteur et de l'équipe de modération (page du témoignage, fiche de relecture) ; stockage privé ; API d'ajout, de lecture et de retrait. [preuves.md](fonctionnalites/preuves.md)
+- **Application mobile** : fil « Pour vous » chargé page par page (20), recommandations dans « Témoignages similaires » et pour la vidéo suivante, lecteur YouTube (`youtube_player_iframe` 6.0.2) et lien YouTube à la publication (administrateurs), deux preuves à la publication et carte « Preuves du témoignage » (détail, modération), choix de la caméra au lancement d'un direct et panneau « Caméra IP » dans le studio (aperçu du flux, adresse et clé).
+- Lecture d'un témoignage par l'API : l'équipe de modération lit aussi les témoignages réservés aux abonnés (jamais le carnet privé) ; seules les lectures d'un témoignage publié comptent comme des vues (la relecture n'en ajoute plus).
+- Limites connues de l'application : preuves envoyées seulement avec une publication en ligne ; pas d'enchaînement automatique après une vidéo YouTube ; pas de bouton de retrait d'une preuve.
+- Vérifié : tests du serveur (18 nouveaux) ; application : analyse sans erreur, 155 tests (38 nouveaux) ; contrôle dans Chrome à 390 et 1440 px (publication, lancement d'un direct, page d'un témoignage YouTube avec preuves), sans défilement horizontal ni erreur JavaScript. Caméra IP contrôlée avec un LiveKit simulé : **pas encore essayée avec une vraie caméra**.
+- **Déploiement** : `php artisan migrate --force` (4 migrations) ; LiveKit Ingress disponible sur le projet ; recompiler et copier `public/build/` ; `php artisan view:cache`. Application : nouvelle version à publier.
+
+## 2026-09-29 — Page d'accueil selon la maquette « Témoignages de Gloire »
+
+- **Accueil refait** selon la maquette et la charte : bandeau « Témoignages de Gloire » (illustration lever de soleil en SVG, « Dieu agit encore ! », chiffres clés), **Actions rapides** selon le rôle, **Témoignages récents** en cartes encadrées (filtres par type, liste compacte toujours disponible), **Catégories populaires**, **Statistiques globales** (courbes des 7 jours, évolution par rapport à la semaine précédente), **À la une**, **Shorts**, **Les plus populaires**, **Verset du jour** ; pour l'équipe : **Modération rapide** et **Gestion des contenus** (onglets par statut) ; pour un membre : **Mes témoignages**. [accueil.md](fonctionnalites/accueil.md)
+- Nouveaux composants : `btn-soft`, carte `videos/partials/tile`, `Category::presentation()` (icône et teinte de marque d'une catégorie), `App\Support\WeeklyActivity` (partagé avec le tableau de bord de l'administration).
+- Différences assumées avec la maquette : 4ᵉ chiffre « Prières reçues » (pas de note des témoignages), pas d'onglets Images / Documents (types non gérés), illustration dessinée (pas de photo).
+- Vérifié : tests du serveur (`HomePageTest`, 4 nouveaux ; tests existants de l'accueil inchangés) ; contrôle dans Chrome, visiteur et administrateur, à 390, 768 et 1440 px, sans défilement horizontal ni erreur JavaScript.
+- **Déploiement** : recompiler et copier `public/build/` ; `php artisan view:cache`. Aucune migration.
+
 ## 2026-09-29 — Tableau de bord de l'administration aux couleurs de la charte
 
 - **`/admin` refait selon la charte ARISE & SHINE Krea** (et la maquette) : bandeau bleu avec les chiffres clés sur fond blanc (pastilles bleue, bleue, orange, jaune : témoignages, utilisateurs, vues totales, taux d'approbation) ; **Actions rapides** (ajouter un témoignage, utilisateurs, modération, catégories, paramètres) ; **Activité des 7 derniers jours** (témoignages en bleu, inscriptions en orange) ; **Modération rapide** (4 plus anciens témoignages en attente, organisations à vérifier) ; **Derniers témoignages** (catégorie, statut) ; **Les plus regardés** ; **Derniers utilisateurs** (« Inscrit il y a… », organisation / rôle) ; **Catégories populaires** (témoignages publiés comptés en direct, barre de proportion). Liens « Voir tout » en bleu.

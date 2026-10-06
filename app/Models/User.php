@@ -112,6 +112,46 @@ class User extends Authenticatable
                     ->withPivot('created_at');
     }
 
+    // ---------- Gestionnaires d'une organisation (docs/fonctionnalites/evenements.md) ----------
+
+    /** Organisation : personnes qui gèrent ses événements en son nom (2 au plus). */
+    public function organizationManagers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'organization_managers', 'organization_id', 'user_id')
+                    ->withTimestamps();
+    }
+
+    /** Organisations dont cette personne est gestionnaire. */
+    public function managedOrganizations(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'organization_managers', 'user_id', 'organization_id')
+                    ->withTimestamps();
+    }
+
+    /** Gère cette organisation : c'est elle, ou l'une de ses gestionnaires. */
+    public function canActForOrganization(?User $organization): bool
+    {
+        if (!$organization) return false;
+        if ($organization->id === $this->id) return true;
+
+        return $this->managedOrganizations()->whereKey($organization->id)->exists();
+    }
+
+    /** Organisations vérifiées au nom desquelles cette personne peut créer des événements. */
+    public function verifiedOrganizationsManaged()
+    {
+        return $this->managedOrganizations()
+            ->where('account_type', AccountType::Organization->value)
+            ->where('verification_status', VerificationStatus::Verified->value);
+    }
+
+    // ---------- Paroles prophétiques (docs/fonctionnalites/paroles-prophetiques.md) ----------
+
+    public function prophecies(): HasMany
+    {
+        return $this->hasMany(Prophecy::class);
+    }
+
     // ---------- Helpers ----------
 
     public function canPublish(): bool

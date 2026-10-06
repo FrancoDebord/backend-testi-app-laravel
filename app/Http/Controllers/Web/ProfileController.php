@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Web;
 use App\Enums\OrganizationType;
 use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Event;
 use App\Models\Follow;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Services\EventActionException;
+use App\Services\EventService;
 use App\Services\OrganizationAccounts;
 use App\Services\ProfileCover;
 use App\Support\Countries;
@@ -126,10 +129,69 @@ class ProfileController extends Controller
         return view('profile.saved', compact('testimonies'));
     }
 
-    public function settings(): View
+    public function settings(Request $request): View
     {
-        $settings = Auth::user()->settings ?? new \App\Models\UserSetting();
-        return view('profile.settings', compact('settings'));
+        $user     = Auth::user();
+        $settings = $user->settings ?? new \App\Models\UserSetting();
+
+        // Gestionnaires de l'organisation (comptes organisation) ou organisations gérées (personnes).
+        $orgManagers = $user->isOrganization() ? $user->organizationManagers()->orderBy('display_name')->get() : collect();
+        $managedOrgs = $user->isOrganization() ? collect() : $user->managedOrganizations()->orderBy('display_name')->get();
+        // Recherche sans JavaScript (?personne=…) : components/user-picker
+        $pickerResults = $user->isOrganization() && $orgManagers->count() < Event::MAX_ORGANIZATION_MANAGERS && $request->filled('personne')
+            ? UserSearchController::search((string) $request->query('personne'), [$user->id, ...$orgManagers->pluck('id')])
+            : null;
+
+        return view('profile.settings', compact('settings', 'orgManagers', 'managedOrgs', 'pickerResults'));
+    }
+
+    // ─── Gestionnaires d'une organisation (docs/fonctionnalites/evenements.md) ───
+
+    public function addOrganizationManager(Request $request, EventService $events): RedirectResponse
+    {
+        $request->validate(['user_id' => 'required|uuid'], [
+            'user_id.required' => 'Choisissez une personne.',
+            'user_id.uuid'     => 'Choisissez une personne dans la liste.',
+        ]);
+        $org = $request->user();
+
+        try {
+            $target = $events->addOrganizationManager($org, $org, $request->input('user_id'));
+        } catch (EventActionException $e) {
+            return redirect()->to(route('profile.settings') . '#gestionnaires')->with('error', $e->getMessage());
+        }
+
+        return redirect()->to(route('profile.settings') . '#gestionnaires')
+            ->with('success', "{$target->display_name} peut maintenant créer et gérer vos événements.");
+    }
+
+    public function removeOrganizationManager(Request $request, EventService $events, string $user): RedirectResponse
+    {
+        $org = $request->user();
+
+        try {
+            $events->removeOrganizationManager($org, $org, $user);
+        } catch (EventActionException $e) {
+            return redirect()->to(route('profile.settings') . '#gestionnaires')->with('error', $e->getMessage());
+        }
+
+        return redirect()->to(route('profile.settings') . '#gestionnaires')->with('success', 'Gestionnaire retiré.');
+    }
+
+    /** Ne plus gérer les événements d'une organisation. */
+    public function leaveOrganization(Request $request, EventService $events, string $organization): RedirectResponse
+    {
+        $org = User::find($organization);
+        abort_if(!$org, 404);
+
+        try {
+            $events->removeOrganizationManager($org, $request->user(), $request->user()->id);
+        } catch (EventActionException $e) {
+            return redirect()->to(route('profile.settings') . '#organisations-gerees')->with('error', $e->getMessage());
+        }
+
+        return redirect()->to(route('profile.settings') . '#organisations-gerees')
+            ->with('success', 'Vous ne gérez plus les événements de ' . ($org->organization_name ?: $org->display_name) . '.');
     }
 
     public function updateSettings(Request $request): RedirectResponse

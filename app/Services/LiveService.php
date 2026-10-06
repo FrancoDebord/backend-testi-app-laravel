@@ -50,7 +50,32 @@ class LiveService
     {
         $this->ensureConfigured();
         $this->ensureActiveAccount($host);
-        if (!$host->canModerate()) {
+        // Direct d'un événement : son organisateur (organisation vérifiée) peut le diffuser,
+        // même sans être modérateur. Voir docs/fonctionnalites/evenements.md
+        $event = null;
+        $prayer = null; // session de prière (voir plus bas)
+        if (!empty($data['event_id'])) {
+            $event = \App\Models\Event::find($data['event_id']);
+            if (!$event || !$event->canBeManagedBy($host)) {
+                throw new LiveActionException("Seuls l'organisateur et les administrateurs peuvent diffuser cet événement.", 403);
+            }
+            if ($event->status !== \App\Enums\EventStatus::Published) {
+                throw new LiveActionException("L'événement doit être publié (et non annulé) pour être diffusé.", 422);
+            }
+            // L'événement doit appartenir à une organisation encore vérifiée (ou à un administrateur).
+            $organizer = $event->organizer;
+            if (!$host->canModerate() && !($organizer?->isVerified() || $organizer?->isAdmin())) {
+                throw new LiveActionException("Seules les organisations vérifiées peuvent diffuser leurs événements.", 403);
+            }
+        } elseif (!empty($data['prayer_session_id'])) {
+            // Salle d'une session de prière : ouverte par son hôte, même simple utilisateur.
+            // Jamais passé par les formulaires des directs : seul App\Services\PrayerSessions l'envoie.
+            // Voir docs/fonctionnalites/sessions-de-priere.md
+            $prayer = \App\Models\PrayerSession::find($data['prayer_session_id']);
+            if (!$prayer || !$prayer->isHost($host)) {
+                throw new LiveActionException("Seul l'hôte peut ouvrir la salle de cette session de prière.", 403);
+            }
+        } elseif (!$host->canModerate()) {
             throw new LiveActionException('Seuls les modérateurs et les administrateurs peuvent diffuser en direct.', 403);
         }
 
@@ -66,8 +91,14 @@ class LiveService
             throw new LiveActionException('Le service vidéo est injoignable pour le moment. Réessayez dans quelques instants.', 503);
         }
 
-        return LiveSession::create([
+        $source = $data['source'] ?? 'browser';
+
+        $live = LiveSession::create([
+            'source'           => $source,
+            'camera_url'       => $source === 'url' ? ($data['camera_url'] ?? null) : null,
             'host_id'          => $host->id,
+            'event_id'         => $event?->id,
+            'prayer_session_id' => $prayer?->id,
             'title'            => $data['title'],
             'description'      => $data['description'] ?? null,
             'category_slug'    => $data['category_slug'] ?? null,
@@ -76,6 +107,52 @@ class LiveService
             'room_name'        => $room,
             'status'           => LiveStatus::Preparing,
         ]);
+
+        if ($live->usesExternalCamera()) {
+            $this->connectCamera($live, $host);
+        }
+
+        return $live;
+    }
+
+    /**
+     * Caméra IP / encodeur : crée le point d'entrée LiveKit (Ingress). RTMP : adresse et clé à saisir
+     * dans la caméra ; URL : LiveKit lit l'adresse du flux. Voir docs/fonctionnalites/lives-camera-ip.md
+     */
+    private function connectCamera(LiveSession $live, User $host): void
+    {
+        try {
+            $info = $this->livekit->createIngress(
+                $live->room_name,
+                $live->source === 'url' ? 'URL_INPUT' : 'RTMP_INPUT',
+                $live->cameraIdentity(),
+                $host->display_name . ' (caméra)',
+                $live->source === 'url' ? $live->camera_url : null,
+            );
+        } catch (LiveKitException $e) {
+            $live->update(['status' => LiveStatus::Ended, 'ended_at' => now(), 'end_reason' => 'camera']);
+            try { $this->livekit->deleteRoom($live->room_name); } catch (\Throwable) {}
+            throw new LiveActionException($live->source === 'url'
+                ? "Le service vidéo n'accepte pas cette adresse de flux. Vérifiez-la (HLS, HTTP, SRT, RTMP) ou utilisez le mode RTMP."
+                : "Le point d'entrée de la caméra n'a pas pu être créé. Réessayez dans quelques instants.", 503);
+        }
+
+        $live->update([
+            'ingress_id'         => $info['ingress_id'] ?? $info['ingressId'] ?? null,
+            'ingress_url'        => $info['url'] ?? null,
+            'ingress_stream_key' => $info['stream_key'] ?? $info['streamKey'] ?? null,
+        ]);
+    }
+
+    /** Ferme le point d'entrée de la caméra (fin du direct). */
+    private function disconnectCamera(LiveSession $live): void
+    {
+        if (!$live->ingress_id) return;
+        try {
+            $this->livekit->deleteIngress($live->ingress_id);
+        } catch (\Throwable $e) {
+            // Déjà supprimé : sans conséquence.
+        }
     }
 
     /** Le diffuseur publie sa caméra : le direct devient visible de tous. */
@@ -243,6 +320,8 @@ class LiveService
             }
             $live->update(['recording_status' => 'processing']);
         }
+
+        $this->disconnectCamera($live);
 
         try {
             $this->livekit->deleteRoom($live->room_name);

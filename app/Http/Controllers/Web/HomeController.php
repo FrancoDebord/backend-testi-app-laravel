@@ -10,6 +10,7 @@ use App\Models\DailyVerse;
 use App\Models\LiveSession;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Services\PrayerRequests;
 use App\Support\WeeklyActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -49,7 +50,11 @@ class HomeController extends Controller
 
         // Blocs de la page d'accueil : première page, sans filtre.
         $showShelves = !$category && !$type && $feed->onFirstPage();
-        $data = compact('feed', 'categories', 'category', 'type', 'showShelves');
+        // Requêtes de prière publiques récentes, insérées dans « Témoignages récents » (sans filtre).
+        $inserts = !$category && !$type
+            ? app(PrayerRequests::class)->list($viewer, 'feed')->limit(10)->get()
+            : collect();
+        $data = compact('feed', 'categories', 'category', 'type', 'showShelves', 'inserts');
 
         if (!$showShelves) {
             return view('home.index', $data + [

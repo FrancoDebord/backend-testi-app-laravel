@@ -22,8 +22,8 @@ class Testimony extends Model
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'category_id', 'title', 'type', 'category_slug',
-        'body_text', 'media_url', 'renditions', 'cover_url', 'duration_sec',
+        'user_id', 'category_id', 'event_id', 'title', 'type', 'category_slug',
+        'body_text', 'media_url', 'youtube_id', 'proofs_public', 'renditions', 'cover_url', 'duration_sec',
         'bible_verse', 'bible_ref', 'tags', 'visibility', 'status',
         'is_featured', 'views_count', 'like_count', 'prayer_count',
         'comment_count', 'share_count', 'bookmark_count',
@@ -39,6 +39,7 @@ class Testimony extends Model
             'tags'        => 'array',
             'renditions'  => 'array', // docs/fonctionnalites/qualites-media.md
             'is_featured' => 'boolean',
+            'proofs_public' => 'boolean',
             'approved_at' => 'datetime',
             'duration_sec'    => 'integer',
             'views_count'     => 'integer',
@@ -83,6 +84,18 @@ class Testimony extends Model
 
     // ---------- Relations ----------
 
+    /** Parole prophétique dont ce témoignage raconte l'accomplissement. */
+    public function prophecy(): HasOne
+    {
+        return $this->hasOne(Prophecy::class);
+    }
+
+    /** Événement auquel le témoignage est rattaché (docs/fonctionnalites/evenements.md). */
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -91,6 +104,23 @@ class Testimony extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** Preuves (2 au plus, privées). Voir docs/fonctionnalites/preuves.md */
+    public function proofs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TestimonyProof::class)->orderBy('position');
+    }
+
+    /** Vidéo hébergée sur YouTube (publication par lien, administrateurs). Voir docs/fonctionnalites/videos-youtube.md */
+    public function isYouTube(): bool
+    {
+        return filled($this->youtube_id);
+    }
+
+    public function youtubeEmbedUrl(): ?string
+    {
+        return $this->isYouTube() ? \App\Support\YouTube::embedUrl($this->youtube_id) : null;
     }
 
     public function comments(): HasMany

@@ -18,7 +18,9 @@ Toutes les pages du site suivent la charte **ARISE & SHINE Krea** : **lumineuse,
 | `public/icons/arise-shine-krea.png` | Logo complet, fond transparent (477 × 493), dans le menu latéral (56 px de haut), l'en-tête mobile (44 px) et les pages sans connexion |
 | `public/icons/arise-shine-krea-star.png` | Étoile seule : icône d'onglet du navigateur |
 
-Couleur de la barre du navigateur mobile : `<meta name="theme-color" content="#184797">`. L'ancien logo `public/icons/airid.png` n'est plus utilisé.
+Couleur de la barre du navigateur mobile : `<meta name="theme-color" content="#184797">`.
+
+**Bas du menu latéral** (`layouts/app`) : citation « Gloire à Dieu pour chaque vie transformée ! » en écriture manuscrite (`font-script`, police Caveat) avec un soleil, puis paysage de vagues (jaune clair, jaune, bleu) et soleil, dessinés en SVG aux couleurs de la charte. Décoratif (`aria-hidden`), masqué quand l'écran fait moins de 860 px de haut pour laisser la place au menu. L'ancien logo `public/icons/airid.png` n'est plus utilisé.
 
 ## 1. Jetons de style : `resources/css/theme.css`
 
@@ -50,7 +52,7 @@ Les neutres `slate-*` de Tailwind sont **redéfinis** sur les gris de la charte 
 
 ### Typographie
 
-Police **Plus Jakarta Sans** (400, 500, 600, 700), chargée depuis `fonts.bunny.net` dans `layouts/app` et `layouts/guest`, avec repli sur les polices du système et des émojis. Texte courant 14–16 px, interligne 1,6.
+Police **Plus Jakarta Sans** (400, 500, 600, 700), chargée depuis `fonts.bunny.net` dans `layouts/app` et `layouts/guest`, avec repli sur les polices du système et des émojis. Écriture manuscrite **Caveat** (600, 700) pour les citations décoratives : classe `font-script` (jeton `--font-script`). Texte courant 14–16 px, interligne 1,6.
 
 | Niveau | Style |
 |---|---|
@@ -107,7 +109,8 @@ Définis dans `resources/css/app.css`. À réutiliser tels quels : ne pas créer
 | Appel à l'action très important | `btn-cta` (orange : Publier un témoignage, Nouveau témoignage, Créer mon compte, S'inscrire ; un seul par page, avec parcimonie) |
 | Taille des boutons | 48 px de haut, 20 px de marge intérieure, 15 px / 600 ; `btn-sm` : 36 px, 13 px |
 | Accent inspiration | `btn-accent` (jaune, texte bleu foncé : Découvrir) |
-| Autres boutons | `btn-secondary` (contour bleu), `btn-ghost` ; taille réduite : ajouter `btn-sm` |
+| Autres boutons | `btn-soft` (fond bleu clair, texte bleu foncé : actions secondaires des « Actions rapides »), `btn-secondary` (contour bleu), `btn-ghost` ; taille réduite : ajouter `btn-sm` |
+| Carte de témoignage encadrée | `videos/partials/tile` (accueil : miniature, catégorie, titre, auteur, J'aime / commentaires / partages) ; `components.testimony-list` avec `'variant' => 'tile'` |
 | Carte | `card` (blanche, bordure fine, ombre légère, 16 px) ; `card-brand` (fond bleu, texte blanc, accent `text-sun-400`) ; `card-orange` (fond orange clair, titre orange, ponctuelle) ; `card-insight` (fond jaune clair, bordure `#FDE7A0`, avec une icône soleil ou étoile) |
 | Titre de carte ou de section | `card-title` (bleu, gras) |
 | Libellé de groupe (menu latéral) | `section-title` (petites capitales grises) |
@@ -117,6 +120,7 @@ Définis dans `resources/css/app.css`. À réutiliser tels quels : ne pas créer
 | Badges de statut | `badge-draft`, `badge-pending`, `badge-validated`, `badge-active`, `badge-rejected`, `badge-suspended`, `badge-banned`, `badge-expired`, `badge-live` (pastille rouge « En direct »), `badge-neutral` |
 | Étiquettes de marque | `badge-blue`, `badge-orange`, `badge-yellow` (catégorie, nouveauté ; pilule 6 × 10 px, 12 px / 600) |
 | Filtres / bascules | `chip`, `chip-active` (bleu) |
+| Accordéon | `accordion` > `details.accordion-item` > `summary.accordion-summary` (`accordion-icon`, `accordion-chevron` avec `group-open:rotate-180`) + `accordion-panel` ; balises natives, sans JavaScript (voir [Pourquoi témoigner ?](fonctionnalites/pourquoi-temoigner.md)) |
 | Onglets | `tab`, `tab-active` (souligné bleu) |
 | Messages | `alert-success`, `alert-error`, `alert-info` (bleu clair), `alert-warning` |
 | Chargement | `spinner` |
@@ -148,6 +152,9 @@ Les enums `TestimonyStatus` et `UserAccountStatus` renvoient la bonne classe de 
 | `components/testimony-list.blade.php` | **Liste de témoignages à utiliser pour toute nouvelle liste** : grandes cartes ou lignes compactes dépliables selon le choix de la personne. `@include('components.testimony-list', ['items' => $list, 'routeName' => 'testimonies.show'])` (options `listId`, `gridClass` littérale, `tab`). Voir [affichage et lecture](fonctionnalites/affichage-et-lecture.md) |
 | `components/country-select.blade.php` | Choix du pays : `@include('components.country-select', ['name' => 'country', 'id' => 'country', 'value' => old('country', …)])`. `<select>` classique (sans JavaScript), transformé en liste avec recherche et drapeaux (`public/flags/{code}.svg`, flag-icons, MIT). Liste et codes ISO : `App\Support\Countries` ; valider avec `Rule::in(Countries::all())`, ou `Countries::allowed($valeurActuelle)` pour garder une ancienne valeur |
 | `components/follow-button.blade.php` | Bouton « Suivre » : `@include('components.follow-button', ['user' => $u, 'following' => bool, 'primary' => false, 'small' => true])`. Rien pour son propre compte ; lien de connexion sans compte ; bascule sans rechargement (`data-follow-form`) et mise à jour des `[data-follower-count="{id}"]`. Voir [abonnements](fonctionnalites/abonnements.md) |
+| `components/encouragement.blade.php` | Message pour inciter à témoigner (verset ou invitation de `config/encouragements.php`, bouton Témoigner) : `<x-encouragement variant="banner\|feed" :index … />`. Les listes l'insèrent tous les 8 témoignages avec l'option `encourage`. Voir [encouragements](fonctionnalites/encouragements.md) |
+| `components/why-testify.blade.php` | « Pourquoi témoigner ? » : raisons bibliques en accordéon (`config/encouragements.php`, `why_testify`) : `<x-why-testify collapsible :open="0" :action="false" />`. Voir [Pourquoi témoigner ?](fonctionnalites/pourquoi-temoigner.md) |
+| `components/user-picker.blade.php` | Recherche d'une personne (comptes personnels actifs) pour désigner un gestionnaire : fonctionne sans JavaScript (`?personne=`), recherche à la frappe avec (`initUserPicker`, route `users.search`). Voir [événements](fonctionnalites/evenements.md) |
 | `components/layout-toggle.blade.php` | Boutons « Grandes cartes / Liste compacte », à placer au-dessus d'une `testimony-list` |
 | `vendor/pagination/tailwind.blade.php` | Pagination (`{{ $items->links() }}`) |
 
@@ -175,7 +182,7 @@ Layout principal : `layouts/app.blade.php` (menu latéral + barre supérieure + 
 ```
 
 - **Menu latéral** : ajouter la page dans `$navGroups` en haut de `layouts/app.blade.php`. Chaque groupe a une condition `visible` (connexion, `canModerate()`, `isAdmin()`), et chaque entrée a `label`, `icon` (Font Awesome), `url` et `active`.
-- **Pages sans connexion** (connexion, inscription, mot de passe oublié) : `@extends('layouts.guest')`.
+- **Pages sans connexion** (connexion, inscription, mot de passe oublié) : `@extends('layouts.guest')`. Le layout affiche le panneau de marque (dès 1024 px) ou un bandeau illustré, puis la carte du formulaire (`card p-6 sm:p-8`, titre `text-h3`, sous-titre `text-secondary`). Paysage vagues et soleil : `@include('layouts.partials.krea-landscape', ['class' => '…', 'viewBox' => '0 50 400 150'])` (le cadrage est facultatif).
 - **Messages** : `session('success')`, `session('status')`, `session('error')` et `withErrors(['error' => …])` sont affichés automatiquement en haut du contenu.
 
 ## 5. Comportements JavaScript (`resources/js/app.js`)
@@ -193,6 +200,7 @@ Tout s'active par attributs HTML, sans code supplémentaire dans la page.
 | **Blocage hors connexion** | `data-online-only` sur le `<form>` ; bandeau optionnel `data-offline-notice hidden` |
 | **Engagement obligatoire** | Case `data-required-check` + bouton d'envoi `data-submit-guard disabled` |
 | **Personne / organisation** (inscription) | `data-account-type-form` sur le `<form>` (radios `account_type`) ; blocs `data-account-section="individual"` / `"organization"` ; champs `data-section-required` rendus obligatoires dans le bloc visible ; mentions `data-account-nojs-hint` masquées. Sans JavaScript, tout reste visible (voir [comptes organisation](fonctionnalites/comptes-organisation.md#inscription-depuis-le-site)) |
+| **Afficher un mot de passe ou une clé** | `<button type="button" data-reveal="id-du-champ" data-reveal-label="le mot de passe" aria-label="Afficher le mot de passe"><i class="fa-solid fa-eye"></i></button>` : bascule le champ entre masqué et visible, met à jour l'icône et le libellé (« la clé » par défaut) |
 | **Message éphémère** | `window.flash('Texte', 'success|error|warning|info')` |
 | **Liste avec recherche** (pays) | `<select data-country-select>` : remplacé par un champ `role="combobox"` qui filtre sans tenir compte des accents (« cote » → Côte d'Ivoire), pays commençant par la saisie en premier ; flèches, Entrée, Échap ; champ vidé = aucun pays. Le `<select>` masqué reste celui qui est envoyé, et le `<label for>` désigne le champ de recherche |
 | **Ligne dépliable** (liste compacte) | Bouton `data-row-toggle` avec `aria-controls="id"` et `aria-expanded="false"` ; panneau `id="…" hidden` ; icône `data-row-icon` retournée à l'ouverture (`resources/js/videos.js`) |

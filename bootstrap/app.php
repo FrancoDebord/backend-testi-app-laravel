@@ -20,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Adresse de caméra IP (peut contenir un mot de passe) : jamais remise en session (docs/fonctionnalites/lives-camera-ip.md)
+        $exceptions->dontFlash(['camera_url', 'camera_password', 'camera_passphrase']);
+
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);

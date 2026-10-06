@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\BibleController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DailyVerseController;
+use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\LiveController;
 use App\Http\Controllers\Api\LiveKitWebhookController;
 use App\Http\Controllers\Api\CommentController;
@@ -82,6 +83,8 @@ Route::prefix('v1')->group(function () {
     Route::get('testimonies/featured',  [TestimonyController::class, 'featured']);
     Route::get('testimonies/my',        [TestimonyController::class, 'myTestimonies'])->middleware('auth:sanctum');
     Route::get('testimonies/{id}',      [TestimonyController::class, 'show']);
+    Route::get('testimonies/{id}/proofs/{proofId}', [\App\Http\Controllers\Api\TestimonyProofController::class, 'show']); // public si accepté par l'auteur
+    Route::get('testimonies/{id}/recommendations', [TestimonyController::class, 'recommendations'])->middleware('throttle:60,1');
     Route::get('testimonies/{id}/comments',  [CommentController::class, 'index']);
     Route::get('testimonies/{id}/reactions', [ReactionController::class, 'index']);
     Route::get('users/{id}',           [UserController::class, 'show']);
@@ -100,7 +103,7 @@ Route::prefix('v1')->group(function () {
     Route::post('livekit/webhook',          LiveKitWebhookController::class)->name('livekit.webhook');
 
     Route::middleware('auth:sanctum')->whereUuid('id')->group(function () {
-        Route::post('lives',                               [LiveController::class, 'store'])->middleware('role:moderateur,administrateur');
+        Route::post('lives',                               [LiveController::class, 'store']); // droits vérifiés par LiveService::start (modération, ou gestionnaire de l'événement)
         Route::post('lives/{id}/host-token',               [LiveController::class, 'hostToken']);
         Route::post('lives/{id}/go-live',                  [LiveController::class, 'goLive']);
         Route::post('lives/{id}/end',                      [LiveController::class, 'end']);
@@ -121,6 +124,74 @@ Route::prefix('v1')->group(function () {
     });
 
     // ── Authenticated routes ─────────────────────────────────────────────
+    // ── Événements chrétiens ─ docs/fonctionnalites/evenements.md ──────────
+    Route::get('events',                  [EventController::class, 'index']);
+    Route::whereUuid('id')->group(function () {
+        Route::get('events/{id}',             [EventController::class, 'show']);
+        Route::get('events/{id}/comments',    [EventController::class, 'comments']);
+        Route::get('events/{id}/testimonies', [EventController::class, 'testimonies']);
+    });
+    Route::middleware('auth:sanctum')->whereUuid(['id', 'imageId', 'commentId'])->group(function () {
+        Route::post('events',                                   [EventController::class, 'store'])->middleware('throttle:20,1');
+        Route::put('events/{id}',                               [EventController::class, 'update']);
+        Route::delete('events/{id}',                            [EventController::class, 'destroy']);
+        Route::post('events/{id}/images',                       [EventController::class, 'storeImage'])->middleware('throttle:30,1');
+        Route::delete('events/{id}/images/{imageId}',           [EventController::class, 'destroyImage']);
+        Route::post('events/{id}/images/{imageId}/cover',       [EventController::class, 'coverImage']);
+        Route::post('events/{id}/participation',                [EventController::class, 'participate'])->middleware('throttle:30,1');
+        Route::delete('events/{id}/participation',              [EventController::class, 'cancelParticipation']);
+        Route::get('events/{id}/participants',                  [EventController::class, 'participants']);
+        Route::post('events/{id}/comments',                     [EventController::class, 'storeComment']);
+        Route::delete('events/{id}/comments/{commentId}',       [EventController::class, 'destroyComment']);
+        Route::post('events/{id}/comments/{commentId}/promote', [EventController::class, 'promoteComment']);
+        // Co-gestionnaires d'un événement (2 au plus)
+        Route::post('events/{id}/managers',                     [EventController::class, 'addManager']);
+        Route::delete('events/{id}/managers/{userId}',          [EventController::class, 'removeManager'])->whereUuid('userId');
+        // Gestionnaires d'une organisation (2 au plus)
+        Route::get('users/me/managers',                         [\App\Http\Controllers\Api\OrganizationManagerController::class, 'index']);
+        Route::post('users/me/managers',                        [\App\Http\Controllers\Api\OrganizationManagerController::class, 'store']);
+        Route::delete('users/me/managers/{userId}',             [\App\Http\Controllers\Api\OrganizationManagerController::class, 'destroy'])->whereUuid('userId');
+        Route::get('users/me/managed-organizations',            [\App\Http\Controllers\Api\OrganizationManagerController::class, 'managed']);
+        Route::delete('users/me/managed-organizations/{organizationId}', [\App\Http\Controllers\Api\OrganizationManagerController::class, 'leave'])->whereUuid('organizationId');
+    });
+
+    // ── Requêtes et sessions de prière ─ docs/fonctionnalites/requetes-de-priere.md, sessions-de-priere.md
+    // Lecture publique (selon la visibilité) ; la salle d'une session est un direct : routes lives/{id}/….
+    Route::get('prayer/requests',                 [\App\Http\Controllers\Api\PrayerRequestController::class, 'index']); // ?scope=all|feed|following|mine|event&event_id=&status=
+    Route::get('prayer/sessions',                 [\App\Http\Controllers\Api\PrayerSessionController::class, 'index']); // ?scope=upcoming|past|mine|joined|event&event_id=
+    Route::whereUuid('id')->group(function () {
+        Route::get('prayer/requests/{id}',          [\App\Http\Controllers\Api\PrayerRequestController::class, 'show']);
+        Route::get('prayer/requests/{id}/messages', [\App\Http\Controllers\Api\PrayerRequestController::class, 'messages']);
+        Route::get('prayer/sessions/{id}',          [\App\Http\Controllers\Api\PrayerSessionController::class, 'show']);
+    });
+    Route::middleware('auth:sanctum')->whereUuid(['id', 'messageId'])->group(function () {
+        Route::post('prayer/requests',                              [\App\Http\Controllers\Api\PrayerRequestController::class, 'store'])->middleware('throttle:20,1');
+        Route::put('prayer/requests/{id}',                          [\App\Http\Controllers\Api\PrayerRequestController::class, 'update']);
+        Route::delete('prayer/requests/{id}',                       [\App\Http\Controllers\Api\PrayerRequestController::class, 'destroy']);
+        Route::post('prayer/requests/{id}/pray',                    [\App\Http\Controllers\Api\PrayerRequestController::class, 'pray'])->middleware('throttle:60,1'); // bascule « Je prie » ({ prayed? })
+        Route::post('prayer/requests/{id}/answered',                [\App\Http\Controllers\Api\PrayerRequestController::class, 'answered']);
+        Route::delete('prayer/requests/{id}/answered',              [\App\Http\Controllers\Api\PrayerRequestController::class, 'reopen']);
+        Route::post('prayer/requests/{id}/messages',                [\App\Http\Controllers\Api\PrayerRequestController::class, 'storeMessage'])->middleware('throttle:20,1');
+        Route::delete('prayer/requests/{id}/messages/{messageId}',  [\App\Http\Controllers\Api\PrayerRequestController::class, 'destroyMessage']);
+        Route::post('prayer/requests/{id}/report',                  [\App\Http\Controllers\Api\PrayerRequestController::class, 'report'])->middleware('throttle:20,1');
+
+        Route::post('prayer/sessions',                  [\App\Http\Controllers\Api\PrayerSessionController::class, 'store'])->middleware('throttle:20,1');
+        Route::put('prayer/sessions/{id}',              [\App\Http\Controllers\Api\PrayerSessionController::class, 'update']);
+        Route::delete('prayer/sessions/{id}',           [\App\Http\Controllers\Api\PrayerSessionController::class, 'destroy']);
+        Route::post('prayer/sessions/{id}/cancel',      [\App\Http\Controllers\Api\PrayerSessionController::class, 'cancel']);
+        Route::post('prayer/sessions/{id}/join',        [\App\Http\Controllers\Api\PrayerSessionController::class, 'join'])->middleware('throttle:30,1');
+        Route::delete('prayer/sessions/{id}/join',      [\App\Http\Controllers\Api\PrayerSessionController::class, 'leave'])->middleware('throttle:30,1');
+        Route::get('prayer/sessions/{id}/participants', [\App\Http\Controllers\Api\PrayerSessionController::class, 'participants']);
+        Route::post('prayer/sessions/{id}/start',       [\App\Http\Controllers\Api\PrayerSessionController::class, 'start'])->middleware('throttle:10,1'); // hôte : ouvre la salle (direct)
+
+        // Modération des requêtes (modérateurs et administrateurs)
+        Route::middleware('role:moderateur,administrateur')->group(function () {
+            Route::get('prayer/moderation',              [\App\Http\Controllers\Api\PrayerRequestController::class, 'moderation']); // ?filter=reported|hidden
+            Route::post('prayer/requests/{id}/hide',     [\App\Http\Controllers\Api\PrayerRequestController::class, 'hide']);
+            Route::post('prayer/requests/{id}/restore',  [\App\Http\Controllers\Api\PrayerRequestController::class, 'restore']);
+        });
+    });
+
     Route::middleware('auth:sanctum')->group(function () {
 
         // Auth
@@ -138,6 +209,23 @@ Route::prefix('v1')->group(function () {
         Route::get('testimonies/saved/list',   [TestimonyController::class, 'saved']);
         Route::post('testimonies/{id}/share',  [TestimonyController::class, 'recordShare']);
         Route::post('testimonies/{id}/report', [ReportController::class, 'store']);
+        // Preuves (docs/fonctionnalites/preuves.md)
+        Route::post('testimonies/{id}/proofs',             [\App\Http\Controllers\Api\TestimonyProofController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('testimonies/{id}/proofs/{proofId}', [\App\Http\Controllers\Api\TestimonyProofController::class, 'destroy']);
+
+        // Paroles prophétiques du carnet privé ─ docs/fonctionnalites/paroles-prophetiques.md
+        Route::whereUuid('id')->group(function () {
+            Route::get('prophecies',                         [\App\Http\Controllers\Api\ProphecyController::class, 'index']);
+            Route::post('prophecies',                        [\App\Http\Controllers\Api\ProphecyController::class, 'store'])->middleware('throttle:30,1');
+            Route::get('prophecies/{id}',                    [\App\Http\Controllers\Api\ProphecyController::class, 'show']);
+            Route::put('prophecies/{id}',                    [\App\Http\Controllers\Api\ProphecyController::class, 'update']);
+            Route::delete('prophecies/{id}',                 [\App\Http\Controllers\Api\ProphecyController::class, 'destroy']);
+            Route::get('prophecies/{id}/prayers',            [\App\Http\Controllers\Api\ProphecyController::class, 'prayers']);
+            Route::post('prophecies/{id}/prayers',           [\App\Http\Controllers\Api\ProphecyController::class, 'pray'])->middleware('throttle:60,1');
+            Route::delete('prophecies/{id}/prayers/{prayerId}', [\App\Http\Controllers\Api\ProphecyController::class, 'deletePrayer'])->whereNumber('prayerId');
+        });
+        // Mon fil : comptes suivis, complétés de suggestions ─ docs/fonctionnalites/recommandations.md
+        Route::get('feed', [TestimonyController::class, 'personalFeed']);
 
         // Carnet privé ─ docs/fonctionnalites/carnet-prive.md
         Route::get('journal',                       [TestimonyController::class, 'journal']);
@@ -156,6 +244,7 @@ Route::prefix('v1')->group(function () {
         // Users (self management)
         Route::put('users/me',            [UserController::class, 'updateMe']);
         Route::get('users/me/following',  [UserController::class, 'following']);    // Mes abonnements
+        Route::get('users/me/followers',  [UserController::class, 'followers']);    // Mes abonnés
         Route::get('users/me/following-ids', [UserController::class, 'followingIds']); // boutons « Suivre » de l'application
         Route::post('users/me/avatar',    [UserController::class, 'uploadAvatar']);
         Route::post('users/me/cover',     [UserController::class, 'uploadCover'])->middleware('throttle:20,1'); // photo de couverture

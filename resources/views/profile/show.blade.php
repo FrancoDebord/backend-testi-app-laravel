@@ -36,8 +36,8 @@
                 @if($profile->isOrganization())<span>{{ $profile->organization_type?->label() ?? 'Organisation' }}@if($profile->organization_city) · {{ $profile->organization_city }}@endif</span><span aria-hidden="true">·</span>@endif
                 @if($profile->country)<span>{{ $profile->country }}</span><span aria-hidden="true">·</span>@endif
                 @foreach($stats as [$count, $one, $many])
-                @if($isOwner && $one === 'abonnement')
-                <a href="{{ route('profile.following') }}" class="hover:underline"><span class="font-semibold text-slate-900">{{ number_format($count ?? 0, 0, ',', ' ') }}</span> {{ ($count ?? 0) > 1 ? $many : $one }}</a>
+                @if($isOwner && in_array($one, ['abonnement', 'abonné'], true))
+                <a href="{{ route($one === 'abonné' ? 'profile.followers' : 'profile.following') }}" class="hover:underline"><span class="font-semibold text-slate-900">{{ number_format($count ?? 0, 0, ',', ' ') }}</span> {{ ($count ?? 0) > 1 ? $many : $one }}</a>
                 @else
                 <span><span class="font-semibold text-slate-900" @if($one === 'abonné') data-follower-count="{{ $profile->id }}" @endif>{{ number_format($count ?? 0, 0, ',', ' ') }}</span> {{ ($count ?? 0) > 1 ? $many : $one }}</span>
                 @endif

@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Testi App'),
 
     /*
     |--------------------------------------------------------------------------
@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    'url' => env('APP_URL', 'https://testi.airid-africa.com'),
 
     /*
     | Adresse publique des liens de partage des témoignages (share_url), indépendante de
@@ -104,7 +104,7 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
-    'key' => env('APP_KEY'),
+    'key' => env('APP_KEY',"base64:yEJw1uhmt0Bw5bnFnrQxwfnJpEoRhOQxoVnxnYXV3OE="),
 
     'previous_keys' => [
         ...array_filter(
