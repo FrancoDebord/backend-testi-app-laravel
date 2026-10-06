@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+/**
+ * Commentaire sous un verset du jour. Retiré automatiquement après AUTO_HIDE_REPORTS signalements
+ * distincts ; supprimable par son auteur et la modération. Voir docs/fonctionnalites/verset-du-jour.md
+ */
+class DailyVerseComment extends Model
+{
+    use HasUuids, SoftDeletes;
+
+    public const AUTO_HIDE_REPORTS = 3;
+
+    protected $fillable = ['daily_verse_id', 'user_id', 'body', 'report_count', 'hidden_at'];
+
+    protected function casts(): array
+    {
+        return [
+            'report_count' => 'integer',
+            'hidden_at'    => 'datetime',
+        ];
+    }
+
+    public function verse(): BelongsTo
+    {
+        return $this->belongsTo(DailyVerse::class, 'daily_verse_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function isHidden(): bool
+    {
+        return $this->hidden_at !== null;
+    }
+
+    public function canBeDeletedBy(?User $user): bool
+    {
+        return $user !== null && ($user->id === $this->user_id || $user->canModerate());
+    }
+}

@@ -31,7 +31,8 @@ class PrayerRequestController extends Controller
     {
         $user  = $this->user($request);
         $scope = in_array($request->query('scope'), PrayerRequests::SCOPES, true) ? $request->query('scope') : 'all';
-        $items = $this->requests->list($user, $scope, $request->query('event_id'), $request->query('status'))
+        $verseId = $request->query('daily_verse_id');
+        $items = $this->requests->list($user, $scope, $request->query('event_id'), $request->query('status'), is_numeric($verseId) ? (int) $verseId : null)
             ->paginate(min(max((int) $request->query('limit', 20), 1), 50));
 
         return $this->paginated(PrayerRequestResource::collection($items->items()), [

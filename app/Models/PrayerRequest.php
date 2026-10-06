@@ -42,7 +42,7 @@ class PrayerRequest extends Model
     ];
 
     protected $fillable = [
-        'user_id', 'event_id', 'body', 'visibility', 'is_anonymous', 'status', 'answered_at', 'answer_note',
+        'user_id', 'event_id', 'daily_verse_id', 'body', 'visibility', 'is_anonymous', 'status', 'answered_at', 'answer_note',
         'testimony_id', 'prayer_count', 'message_count', 'report_count', 'hidden_at', 'hidden_by', 'hidden_reason',
     ];
 
@@ -68,6 +68,12 @@ class PrayerRequest extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    /** Verset du jour sur lequel la requête a été confiée (docs/fonctionnalites/verset-du-jour.md). */
+    public function dailyVerse(): BelongsTo
+    {
+        return $this->belongsTo(DailyVerse::class);
     }
 
     public function testimony(): BelongsTo

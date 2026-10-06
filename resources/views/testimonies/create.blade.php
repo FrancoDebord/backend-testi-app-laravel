@@ -158,12 +158,12 @@
                 <div class="md:col-span-2">
                     <label for="bible_verse" class="form-label">Verset</label>
                     <textarea id="bible_verse" name="bible_verse" rows="2" maxlength="500" class="form-input"
-                              placeholder="« Car je connais les projets que j'ai formés sur vous… »">{{ old('bible_verse') }}</textarea>
+                              placeholder="« Car je connais les projets que j'ai formés sur vous… »">{{ old('bible_verse', request('verset')) }}</textarea>
                     @error('bible_verse')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="bible_ref" class="form-label">Référence</label>
-                    <input id="bible_ref" type="text" name="bible_ref" value="{{ old('bible_ref') }}" maxlength="100" class="form-input" placeholder="Jérémie 29:11">
+                    <input id="bible_ref" type="text" name="bible_ref" value="{{ old('bible_ref', request('reference')) }}" maxlength="100" class="form-input" placeholder="Jérémie 29:11">
                     @error('bible_ref')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
             </div>

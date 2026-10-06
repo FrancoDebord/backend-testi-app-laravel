@@ -49,6 +49,7 @@ class PrayerRequestResource extends JsonResource
             'messageCount' => $this->message_count,
             'hasPrayed'   => $this->hasPrayed($viewer),
             'event'       => $this->event_id && $this->event ? ['id' => $this->event_id, 'title' => $this->event->title] : null,
+            'dailyVerseId' => $this->daily_verse_id, // verset du jour de rattachement (docs/fonctionnalites/verset-du-jour.md)
             'isMine'      => $isAuthor,
             // Retrait par la modération : seuls l'auteur et la modération voient la requête et ce motif.
             'isHidden'    => ($isAuthor || $moderator) ? $this->isHidden() : false,
