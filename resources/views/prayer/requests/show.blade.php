@@ -106,7 +106,7 @@
                     @include('components.avatar', ['user' => $message->user, 'size' => 'sm'])
                     <div class="min-w-0 flex-1 rounded-lg bg-slate-50 p-3">
                         <p class="text-xs text-slate-500"><span class="font-semibold text-slate-900">{{ $message->user?->display_name }}</span> · {{ $message->created_at?->diffForHumans() }}</p>
-                        <p class="mt-1 text-sm break-words whitespace-pre-line text-slate-800">{{ $message->body }}</p>
+                        <p class="mt-1 text-sm break-words whitespace-pre-line text-slate-800">{{ \App\Services\Mentions::html($message->body) }}</p>
                         @if($message->bible_reference)
                         <p class="mt-1 text-xs font-semibold text-primary-700"><i class="fa-solid fa-book-bible mr-1" aria-hidden="true"></i>{{ $message->bible_reference }}</p>
                         @endif
@@ -128,7 +128,8 @@
                 @csrf
                 <div>
                     <label for="message" class="form-label">Votre message d'encouragement</label>
-                    <textarea id="message" name="message" rows="3" maxlength="1000" required class="form-input" placeholder="Je prie avec vous…">{{ old('message') }}</textarea>
+                    <textarea id="message" name="message" rows="3" maxlength="1000" required class="form-input" placeholder="Je prie avec vous… (@ pour mentionner)" data-mention-input>{{ old('message') }}</textarea>
+                    @include('components.mention-input')
                     @error('message')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
                 <div class="sm:w-1/2">

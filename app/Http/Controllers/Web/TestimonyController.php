@@ -319,20 +319,26 @@ class TestimonyController extends Controller
 
         $testimony = Testimony::findOrFail($id);
 
+        // Mentions « @ » (docs/fonctionnalites/mentions.md)
+        $mentions = \App\Services\Mentions::prepare((string) $request->body);
+
         $comment = Comment::create([
             'testimony_id' => $id,
             'user_id'      => Auth::id(),
-            'body'         => $request->body,
+            'body'         => $mentions['text'],
         ]);
 
         $testimony->increment('comment_count');
+        \App\Services\Mentions::notify($mentions['ids'], Auth::user(), [
+            'testimony_id' => $testimony->id, 'testimony_title' => $testimony->title, 'comment_id' => $comment->id,
+        ]);
 
         if ($request->ajax()) {
             $user = Auth::user();
             return response()->json([
                 'comment' => [
                     'id'           => $comment->id,
-                    'body'         => $comment->body,
+                    'body'         => \App\Services\Mentions::plain($comment->body),
                     'display_name' => $user->display_name,
                     'initials'     => $user->initials,
                 ],

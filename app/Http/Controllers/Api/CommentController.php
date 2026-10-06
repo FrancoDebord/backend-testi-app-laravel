@@ -8,6 +8,7 @@ use App\Http\Resources\CommentResource;
 use App\Models\AppNotification;
 use App\Models\Comment;
 use App\Models\Testimony;
+use App\Services\Mentions;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,11 +39,14 @@ class CommentController extends Controller
         $testimony = Testimony::find($testimonyId);
         if (!$testimony) return $this->notFound();
 
+        // Mentions « @ » validées (docs/fonctionnalites/mentions.md)
+        $mentions = Mentions::prepare((string) $request->text, (array) $request->input('mention_ids', []));
+
         $comment = Comment::create([
             'testimony_id' => $testimonyId,
             'user_id'      => $request->user()->id,
             'parent_id'    => $request->parent_id,
-            'body'         => $request->text,
+            'body'         => $mentions['text'],
         ]);
 
         // Update counts
@@ -68,6 +72,13 @@ class CommentController extends Controller
             ]);
         }
 
+        // L'auteur du témoignage, déjà prévenu du commentaire, ne reçoit pas de seconde notification.
+        Mentions::notify($mentions['ids'], $request->user(), [
+            'testimony_id'    => $testimonyId,
+            'testimony_title' => $testimony->title,
+            'comment_id'      => $comment->id,
+        ], [$testimony->user_id]);
+
         $comment->load('user');
 
         return $this->created(new CommentResource($comment), 'Commentaire ajouté');
@@ -75,7 +86,11 @@ class CommentController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $request->validate(['text' => 'required|string|max:2000']);
+        $request->validate([
+            'text'          => 'required|string|max:2000',
+            'mention_ids'   => 'nullable|array|max:20',
+            'mention_ids.*' => 'string|uuid',
+        ]);
 
         $comment = Comment::find($id);
         if (!$comment) return $this->notFound();
@@ -84,7 +99,15 @@ class CommentController extends Controller
             return $this->forbidden();
         }
 
-        $comment->update(['body' => $request->text]);
+        // Les mentions déjà présentes restent reconnues ; seules les nouvelles sont notifiées.
+        $before   = Mentions::ids($comment->body);
+        $mentions = Mentions::prepare((string) $request->text, (array) $request->input('mention_ids', []), $comment->body);
+        $comment->update(['body' => $mentions['text']]);
+        Mentions::notify(array_diff($mentions['ids'], $before), $request->user(), [
+            'testimony_id'    => $comment->testimony_id,
+            'testimony_title' => $comment->testimony?->title,
+            'comment_id'      => $comment->id,
+        ]);
 
         return $this->success(new CommentResource($comment->fresh('user')));
     }

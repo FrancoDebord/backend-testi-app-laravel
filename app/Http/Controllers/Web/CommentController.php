@@ -8,6 +8,7 @@ use App\Models\AppNotification;
 use App\Models\Comment;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Services\Mentions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,12 +31,15 @@ class CommentController extends Controller
         $user      = $request->user();
         $parent    = $this->resolveParent($testimony, $request->validated('parent_id'));
 
-        $comment = DB::transaction(function () use ($testimony, $user, $parent, $request) {
+        // Mentions « @ » (docs/fonctionnalites/mentions.md) : jetons envoyés par l'autocomplétion.
+        $mentions = Mentions::prepare($request->validated('body'), $this->mentionHints($request));
+
+        $comment = DB::transaction(function () use ($testimony, $user, $parent, $mentions) {
             $comment = Comment::create([
                 'testimony_id' => $testimony->id,
                 'user_id'      => $user->id,
                 'parent_id'    => $parent?->id,
-                'body'         => $request->validated('body'),
+                'body'         => $mentions['text'],
             ]);
 
             // Même règle que l'API : comment_count compte aussi les réponses.
@@ -45,7 +49,12 @@ class CommentController extends Controller
             return $comment;
         });
 
-        $this->notify($testimony, $comment, $parent, $user);
+        $notified = $this->notify($testimony, $comment, $parent, $user);
+        Mentions::notify($mentions['ids'], $user, [
+            'testimony_id'    => $testimony->id,
+            'testimony_title' => $testimony->title,
+            'comment_id'      => $comment->id,
+        ], $notified);
         $comment->setRelation('user', $user);
 
         if ($request->expectsJson()) {
@@ -66,10 +75,22 @@ class CommentController extends Controller
         Gate::authorize('update', $comment);
         VideoController::findVisible($request, $comment->testimony_id);
 
-        $comment->update(['body' => $request->validated('body')]);
+        // Les mentions déjà présentes restent reconnues (« @Nom » en clair) ; seules les nouvelles sont notifiées.
+        $before   = Mentions::ids($comment->body);
+        $mentions = Mentions::prepare($request->validated('body'), $this->mentionHints($request), $comment->body);
+        $comment->update(['body' => $mentions['text']]);
+        Mentions::notify(array_diff($mentions['ids'], $before), $request->user(), [
+            'testimony_id'    => $comment->testimony_id,
+            'testimony_title' => $comment->testimony?->title,
+            'comment_id'      => $comment->id,
+        ]);
 
         if ($request->expectsJson()) {
-            return response()->json(['body' => $comment->body]);
+            return response()->json([
+                'body'     => Mentions::plain($comment->body),
+                'html'     => (string) Mentions::html($comment->body),
+                'mentions' => Mentions::of($comment->body),
+            ]);
         }
 
         return redirect(route('videos.show', $comment->testimony_id) . '#comment-' . $comment->id)
@@ -155,8 +176,20 @@ class CommentController extends Controller
         return $parent;
     }
 
-    /** Même notification que l'API pour l'auteur du témoignage, plus l'auteur du commentaire en cas de réponse. */
-    private function notify(Testimony $testimony, Comment $comment, ?Comment $parent, User $actor): void
+    /** @return string[] comptes choisis dans l'autocomplétion « @ » (champ mention_ids : liste ou texte séparé par des virgules). */
+    private function mentionHints(Request $request): array
+    {
+        $raw = $request->input('mention_ids', []);
+        $ids = is_array($raw) ? $raw : explode(',', (string) $raw);
+
+        return array_slice(array_values(array_filter($ids, fn ($id) => is_string($id) && \Illuminate\Support\Str::isUuid($id))), 0, 20);
+    }
+
+    /**
+     * Même notification que l'API pour l'auteur du témoignage, plus l'auteur du commentaire en cas de réponse.
+     * @return string[] personnes prévenues (elles ne reçoivent pas en plus la notification de mention)
+     */
+    private function notify(Testimony $testimony, Comment $comment, ?Comment $parent, User $actor): array
     {
         $recipients = [];
         if ($testimony->user_id !== $actor->id) {
@@ -180,5 +213,7 @@ class CommentController extends Controller
                 'created_at'      => now(),
             ]);
         }
+
+        return array_map('strval', array_keys($recipients));
     }
 }

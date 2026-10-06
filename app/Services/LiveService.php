@@ -400,7 +400,10 @@ class LiveService
         if ($body === '') {
             throw new LiveActionException('Le commentaire est vide.', 422);
         }
-        if (mb_strlen($body) > config('livekit.comment_max_length')) {
+        // Mentions « @ » (docs/fonctionnalites/mentions.md) : la longueur se mesure sur le texte affiché.
+        $mentions = Mentions::prepare($body);
+        $body = $mentions['text'];
+        if (mb_strlen(Mentions::plain($body)) > config('livekit.comment_max_length')) {
             throw new LiveActionException('Le commentaire ne doit pas dépasser ' . config('livekit.comment_max_length') . ' caractères.', 422);
         }
 
@@ -413,6 +416,10 @@ class LiveService
             return $comment;
         });
         $comment->setRelation('user', $user);
+        Mentions::notify($mentions['ids'], $user, [
+            'where'   => 'un direct',
+            'payload' => ['live_id' => $live->id],
+        ]);
 
         $this->broadcast($live, ['type' => 'comment', 'comment' => $comment->toPayload()]);
 

@@ -32,7 +32,9 @@ class LiveComment extends Model
     {
         return [
             'id'        => $this->id,
-            'body'      => $this->body,
+            // Mentions « @ » : texte affichable + comptes mentionnés (docs/fonctionnalites/mentions.md)
+            'body'      => \App\Services\Mentions::plain($this->body),
+            'mentions'  => \App\Services\Mentions::of($this->body),
             'createdAt' => $this->created_at?->toIso8601String(),
             'user'      => [
                 'id'          => $this->user_id,

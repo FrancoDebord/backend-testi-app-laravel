@@ -13,6 +13,9 @@ class StoreCommentRequest extends FormRequest
         return [
             'text'      => ['required', 'string', 'max:2000'],
             'parent_id' => ['nullable', 'string', 'exists:comments,id'],
+            // Comptes choisis dans l'autocomplétion « @ » (docs/fonctionnalites/mentions.md)
+            'mention_ids'   => ['nullable', 'array', 'max:20'],
+            'mention_ids.*' => ['string', 'uuid'],
         ];
     }
 }

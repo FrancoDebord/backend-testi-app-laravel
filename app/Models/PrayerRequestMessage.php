@@ -35,7 +35,9 @@ class PrayerRequestMessage extends Model
     {
         return [
             'id'             => $this->id,
-            'body'           => $this->body,
+            // Mentions « @ » : texte affichable + comptes mentionnés (docs/fonctionnalites/mentions.md)
+            'body'           => \App\Services\Mentions::plain($this->body),
+            'mentions'       => \App\Services\Mentions::of($this->body),
             'bibleReference' => $this->bible_reference,
             'author'         => [
                 'id'          => $this->user_id,

@@ -24,8 +24,8 @@ use Illuminate\Validation\Rule;
  */
 class PrayerRequests
 {
-    /** Listes : all (tout ce que je peux voir) · feed (publiques) · following (comptes suivis) · mine · event. */
-    public const SCOPES = ['all', 'feed', 'following', 'mine', 'event'];
+    /** Listes : all (tout ce que je peux voir) · feed (publiques) · following (comptes suivis) · mine · event · verse (verset du jour). */
+    public const SCOPES = ['all', 'feed', 'following', 'mine', 'event', 'verse'];
 
     public const MESSAGES = [
         'body.required'      => 'Écrivez votre requête de prière.',
@@ -33,6 +33,7 @@ class PrayerRequests
         'body.max'           => '2 000 caractères au plus.',
         'visibility.in'      => 'Choisissez qui peut voir la requête.',
         'event_id.uuid'      => 'Événement introuvable.',
+        'daily_verse_id.exists' => 'Verset du jour introuvable.',
         'message.required'   => "Écrivez votre message d'encouragement.",
         'message.max'        => '1 000 caractères au plus.',
         'reason.required'    => 'Choisissez la raison du signalement.',
@@ -48,6 +49,7 @@ class PrayerRequests
             'visibility'   => ['sometimes', Rule::in(PrayerRequest::VISIBILITIES)],
             'is_anonymous' => ['sometimes', 'boolean'],
             'event_id'     => ['sometimes', 'nullable', 'uuid'],
+            'daily_verse_id' => ['sometimes', 'nullable', 'integer', 'exists:daily_verses,id'],
             'testimony_id' => ['sometimes', 'nullable', 'uuid'],
         ];
     }
@@ -71,7 +73,7 @@ class PrayerRequests
     // ─── Lecture ─────────────────────────────────────────────────────────────
 
     /** Requête de liste (les plus récentes d'abord). `status` = open | answered. */
-    public function list(?User $viewer, string $scope = 'all', ?string $eventId = null, ?string $status = null): Builder
+    public function list(?User $viewer, string $scope = 'all', ?string $eventId = null, ?string $status = null, ?int $dailyVerseId = null): Builder
     {
         $q = PrayerRequest::query()->with(['user', 'event'])->withPrayedBy($viewer)->latest();
 
@@ -87,6 +89,9 @@ class PrayerRequests
             'mine'      => $viewer ? $q->where('user_id', $viewer->id) : $q->whereRaw('1 = 0'),
             'event'     => $eventId && Str::isUuid($eventId)
                 ? $q->where('event_id', $eventId)->visibleTo($viewer)
+                : $q->whereRaw('1 = 0'),
+            'verse'     => $dailyVerseId
+                ? $q->where('daily_verse_id', $dailyVerseId)->visibleTo($viewer)
                 : $q->whereRaw('1 = 0'),
             default     => $q->visibleTo($viewer),
         };
@@ -121,6 +126,7 @@ class PrayerRequests
             'visibility'   => $data['visibility'] ?? PrayerRequest::PUBLIC,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
             'event_id'     => $this->eventFor($user, $data['event_id'] ?? null)?->id,
+            'daily_verse_id' => filled($data['daily_verse_id'] ?? null) ? (int) $data['daily_verse_id'] : null,
         ])->load(['user', 'event']);
     }
 
@@ -208,11 +214,14 @@ class PrayerRequests
             throw new PrayerActionException("Les messages ne sont pas ouverts pour cette requête.", 403);
         }
 
-        $message = DB::transaction(function () use ($request, $user, $body, $reference) {
+        // Mentions « @ » (docs/fonctionnalites/mentions.md)
+        $mentions = Mentions::prepare(trim($body));
+
+        $message = DB::transaction(function () use ($request, $user, $mentions, $reference) {
             $message = PrayerRequestMessage::create([
                 'prayer_request_id' => $request->id,
                 'user_id'           => $user->id,
-                'body'              => trim($body),
+                'body'              => $mentions['text'],
                 'bible_reference'   => filled($reference) ? trim($reference) : null,
             ]);
             $request->increment('message_count');
@@ -223,6 +232,16 @@ class PrayerRequests
 
         if (!$request->isAuthor($user)) {
             $this->notifyAuthor($request, $user);
+        }
+
+        // Personnes mentionnées qui peuvent voir la requête (l'auteur est déjà prévenu ci-dessus).
+        if ($mentions['ids'] !== []) {
+            $visible = User::whereIn('id', $mentions['ids'])->get()
+                ->filter(fn (User $u) => $request->isVisibleTo($u))->pluck('id')->all();
+            Mentions::notify($visible, $user, [
+                'where'   => 'un message de prière',
+                'payload' => ['prayer_request_id' => $request->id],
+            ], [$request->user_id]);
         }
 
         return $message;

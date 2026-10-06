@@ -23,14 +23,14 @@
             <time class="text-xs text-slate-500" datetime="{{ $comment->created_at->toIso8601String() }}" title="{{ $comment->created_at->translatedFormat('d F Y à H:i') }}">{{ $comment->created_at->diffForHumans() }}</time>
         </p>
 
-        <p class="mt-0.5 text-sm break-words whitespace-pre-line text-slate-700" data-comment-body>{{ $comment->body }}</p>
+        <p class="mt-0.5 text-sm break-words whitespace-pre-line text-slate-700" data-comment-body>{{ \App\Services\Mentions::html($comment->body) }}</p>
 
         @if($canUpdate)
         <form method="POST" action="{{ route('comments.update', $comment->id) }}" class="mt-2" data-comment-edit data-no-loading hidden>
             @csrf
             @method('PUT')
             <label for="comment-edit-{{ $comment->id }}" class="sr-only">Modifier le commentaire</label>
-            <textarea id="comment-edit-{{ $comment->id }}" name="body" rows="2" required maxlength="{{ \App\Http\Requests\CommentRequest::MAX_LENGTH }}" class="form-input">{{ $comment->body }}</textarea>
+            <textarea id="comment-edit-{{ $comment->id }}" name="body" rows="2" required maxlength="{{ \App\Http\Requests\CommentRequest::MAX_LENGTH }}" class="form-input" data-mention-input>{{ \App\Services\Mentions::plain($comment->body) }}</textarea>
             <div class="mt-2 flex justify-end gap-2">
                 <button type="button" class="btn-ghost btn-sm" data-edit-cancel>Annuler</button>
                 <button type="submit" class="btn-primary btn-sm">Enregistrer</button>
@@ -40,7 +40,7 @@
 
         <div class="mt-1 flex flex-wrap items-center gap-1" data-comment-actions>
             @auth
-            <button type="button" class="btn-ghost btn-sm -ml-3" data-reply-toggle="{{ $rootId }}" @if($isReply) data-mention="{{ $comment->user->display_name }}" @endif>
+            <button type="button" class="btn-ghost btn-sm -ml-3" data-reply-toggle="{{ $rootId }}" @if($isReply) data-mention="{{ $comment->user->display_name }}" data-mention-id="{{ $comment->user_id }}" @endif>
                 <i class="fa-regular fa-comment" aria-hidden="true"></i>Répondre
             </button>
             @else
@@ -70,7 +70,7 @@
                 <div class="min-w-0 flex-1">
                     <label for="reply-{{ $comment->id }}" class="sr-only">Répondre à {{ $comment->user->display_name }}</label>
                     <textarea id="reply-{{ $comment->id }}" name="body" rows="2" required maxlength="{{ \App\Http\Requests\CommentRequest::MAX_LENGTH }}"
-                              class="form-input" placeholder="Ajouter une réponse…"></textarea>
+                              class="form-input" placeholder="Ajouter une réponse…" data-mention-input data-mention-testimony="{{ $testimony->id }}"></textarea>
                     <div class="mt-2 flex justify-end gap-2">
                         <button type="button" class="btn-ghost btn-sm" data-reply-cancel>Annuler</button>
                         <button type="submit" class="btn-primary btn-sm">Répondre</button>

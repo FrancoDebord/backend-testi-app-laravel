@@ -27,6 +27,25 @@ Le bouton bascule sans recharger la page (« Suivre » ↔ « Abonné ») ; sans
 - **Profil d'un auteur** (`/users/{id}`), ouvert depuis l'avatar ou le nom sur une carte, la page d'un témoignage, le lecteur vidéo ou « Qui regarde » d'un direct : présentation, compteurs, **Suivre**, témoignages publiés.
 - Les boutons **Suivre** des cartes, du lecteur vidéo et de la page d'un témoignage fonctionnent désormais (ils ne changeaient qu'un affichage local).
 
+### Comptes à suivre (suggestions)
+
+- **Site** : en haut de la Communauté, « Suggestions pour vous » (organisations ou personnes selon l'onglet) ; le partiel `community.partials.suggested` peut être inclus ailleurs (Mon fil, accueil) sans variable.
+- **Application** : onglet **Suggestions** (premier onglet de la Communauté), avec la raison de chaque suggestion ; bandeau réutilisable **« Comptes à suivre »** (`SuggestedAccountsStrip`) : cartes horizontales (avatar, nom, coche, raison, **Suivre**), « Voir plus » vers la Communauté. Une carte suivie disparaît et la suggestion suivante prend sa place ; le bandeau est **masqué** pendant le chargement, si la liste est vide ou en cas d'erreur.
+
+| Critère (score) | Détail |
+|---|---|
+| Candidats | Comptes **actifs**, **non suivis**, jamais soi-même ; organisations non refusées, personnes avec au moins un témoignage publié |
+| Organisation vérifiée | +3 |
+| Témoignages approuvés et publics | récents pondérés (moins de 30 jours ×3, moins de 180 jours ×2, sinon ×1), échelle logarithmique |
+| Engagement | vues, prières et réactions de ses témoignages (logarithmique) ; abonnés (faible poids) |
+| Réseau | +3 par compte que je suis qui le suit (3 au plus) ; +2 s'il me suit déjà |
+| Centres d'intérêt | catégories communes avec mes interactions (`Recommendations::interests`), +3 au plus |
+| Invité | pas de réseau ni d'intérêts : comptes vérifiés et les plus actifs |
+
+**Raison affichée** (la plus personnelle) : « Suivi par X que vous suivez » (« et N autres »), « Vous suit », « Organisation vérifiée », « Publie souvent des témoignages » (3 en 90 jours ou 5 au total), « Témoigne sur des sujets qui vous intéressent », « Organisation de la communauté », « Partage des témoignages ».
+
+**Cache** : classement gardé 5 minutes par personne et par type (`suggest:{id|guest}:{type}`) ; les comptes suivis depuis sont retirés à chaque lecture (pas d'attente).
+
 ## Règles
 
 | Règle | Détail |
@@ -55,6 +74,7 @@ Le bouton bascule sans recharger la page (« Suivre » ↔ « Abonné ») ; sans
 | Mes abonnés | `CommunityDirectory::followers($viewer, $q)` ; `UserController::followers` ; site `CommunityController::followers`, vues `community/followers`, `community/partials/follow-tabs` (onglets Abonnés / Abonnements) ; `components/follow-button` accepte `idleLabel` (« Suivre en retour ») |
 | Site | `Web\CommunityController` (`index`, `following`, `follow`, `unfollow`), vues `community/index`, `community/following`, `community/partials/card`, `components/follow-button` ; JavaScript `data-follow-form` dans `resources/js/app.js` |
 | Migration | `2026_09_29_300002_add_follows_integrity` : suppression des abonnements à soi-même, recalcul des compteurs, contrainte `follows_not_self` |
+| Comptes à suivre | `app/Services/AccountSuggestions.php` (`for($viewer, $limit, $type)`, `toArray()`, `forget()`) ; `Api\CommunityController::suggestions` ; partiel `community/partials/suggested.blade.php` (variables facultatives `$suggestions`, `$suggestedLimit`, `$suggestedType`, `$suggestedTitle`, `$suggestedMore`) |
 
 ### Routes
 
@@ -71,6 +91,7 @@ Le bouton bascule sans recharger la page (« Suivre » ↔ « Abonné ») ; sans
 | GET | `/profile/abonnes?q=` (`profile.followers`) | Connecté : Mes abonnés |
 | GET | `/api/v1/users/me/followers?q=&page=` | Connecté : Mes abonnés, même forme que `following` ; `is_following` = je le suis en retour ; `meta` : `current_page`, `last_page`, `total` |
 | GET | `/api/v1/users/me/following-ids` | Connecté : identifiants des comptes suivis (l'application affiche ainsi le bon état de tous ses boutons) |
+| GET | `/api/v1/users/suggestions?limit=10&type=all\|organizations\|people` | Public (personnalisé si connecté) ; 30 au plus ; `data` : profil public (`id`, `display_name`, `avatar_url`, `account_type`, `organization_*`, `country`, `bio`, `follower_count`, `testimony_count`, `is_verified`, `is_following: false`) + `displayName`, `avatarUrl`, `isFollowing`, `testimonyCount`, `followersCount`, `isVerified`, `isOrganization`, `reason` ; jamais d'e-mail ni de téléphone |
 
 ### Application (Flutter, `testi_app`)
 
@@ -81,7 +102,8 @@ Le bouton bascule sans recharger la page (« Suivre » ↔ « Abonné ») ; sans
 | Bouton, fiche, écrans | `widgets/follow_button.dart`, `widgets/account_tile.dart`, `widgets/paged_account_list.dart` (liste paginée partagée, `accountListErrorMessage`), `screens/community_screen.dart`, `screens/following_screen.dart` (`FollowsScreen`, onglets `FollowsTab.followers` / `following` ; `FollowButton.idleLabel`), `screens/user_profile_screen.dart` |
 | Menu latéral | `lib/shared/widgets/app_drawer.dart` (ouvert depuis l'accueil) |
 | Routes | `/community`, `/following`, `/followers`, `/users/:id` dans `lib/core/router/app_router.dart` |
-| Tests | `test/community_follow_test.dart`, `test/following_list_test.dart`, `test/followers_test.dart` |
+| Comptes à suivre | `models/suggested_account.dart`, `CommunityRepository.suggestions()`, `providers/suggestions_provider.dart` (`suggestedAccountsProvider`), `widgets/suggested_accounts_strip.dart` (`SuggestedAccountsStrip()`, sans paramètre obligatoire), onglet Suggestions de `screens/community_screen.dart` |
+| Tests | `test/community_follow_test.dart`, `test/following_list_test.dart`, `test/followers_test.dart`, `test/suggested_accounts_test.dart` |
 
 ## Déploiement
 
@@ -92,6 +114,8 @@ Le bouton bascule sans recharger la page (« Suivre » ↔ « Abonné ») ; sans
 ## Tests
 
 `tests/Feature/FollowingListTest.php` : onglet Personnes et compteurs justes malgré un `testimony_count` faux, API Mes abonnements (ordre, comptes bannis masqués, recherche, `meta`), connexion exigée, page du site (liste vide, fiches, lien depuis le profil, menu) ; API Mes abonnés (ordre, `is_following` en retour, comptes bannis masqués, recherche, connexion exigée) et page du site (« Suivre en retour », liens depuis le profil et Mes abonnements).
+
+`tests/Feature/AccountSuggestionsTest.php` : invité (vérifiés et actifs, sans coordonnées), exclusion de soi et des comptes suivis même après mise en cache, « Suivi par X que vous suivez » en tête, filtre de type et récence, partiel du site sans variable (masqué si vide) et page Communauté.
 
 `tests/Feature/FollowTest.php` : pas d'abonnement à soi-même (API et site), double abonnement compté une fois et notifié une fois, compteurs jamais négatifs, compte inactif, recalcul, bouton du site (JSON, sans JavaScript, personne non connectée), bouton de la page de lecture, autres témoignages en format compact, Communauté (ordre, exclusions, recherche), API Communauté avec `is_following` et sans coordonnées, identifiants suivis, abonnés prévenus (jamais pour le carnet).
 

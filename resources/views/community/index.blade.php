@@ -24,6 +24,11 @@
     <button type="submit" class="btn-primary"><i class="fa-solid fa-magnifying-glass sm:hidden" aria-hidden="true"></i><span class="max-sm:sr-only">Rechercher</span></button>
 </form>
 
+{{-- Suggestions personnalisées du type de l'onglet (première page, sans recherche) ─ docs/fonctionnalites/abonnements.md --}}
+@if($q === '' && (int) request('page', 1) <= 1)
+    @include('community.partials.suggested', ['suggestedTitle' => 'Suggestions pour vous', 'suggestedMore' => false, 'suggestedType' => $tab])
+@endif
+
 <nav aria-label="Type de compte" class="mb-6 border-b border-slate-200">
     <ul class="-mb-px flex gap-5 overflow-x-auto">
         @foreach(\App\Services\CommunityDirectory::TABS as $key => $label)
