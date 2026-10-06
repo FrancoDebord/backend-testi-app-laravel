@@ -15,14 +15,7 @@
             <i class="fa-solid {{ $event->type->icon() }}" aria-hidden="true"></i>
         @endif
         <div class="absolute top-2 left-2 flex flex-wrap gap-1.5">
-            @if($onAir)<span class="badge-live">En direct</span>@endif
-            @if($event->isCancelled())
-                <span class="badge-rejected">Annulé</span>
-            @elseif(!empty($showStatus) && $event->status !== \App\Enums\EventStatus::Published)
-                <span class="{{ $event->status->badgeClass() }}">{{ $event->status->label() }}</span>
-            @elseif($event->phase() === 'ongoing')
-                <span class="badge-validated">En cours</span>
-            @endif
+            @include('events.partials.status-badges', ['event' => $event, 'showStatus' => $showStatus ?? false, 'onAir' => $onAir])
         </div>
     </div>
     <div class="flex flex-1 flex-col gap-1.5 p-4">
@@ -32,7 +25,14 @@
         </h3>
         <p class="text-sm text-slate-700">
             <i class="fa-regular fa-calendar mr-1 w-4 text-center text-slate-400" aria-hidden="true"></i>
-            <time datetime="{{ $event->starts_at?->toIso8601String() }}">{{ $event->starts_at?->translatedFormat('D j M Y · H:i') }}</time>
+            @if($event->isDateTbd())
+                <span class="font-semibold text-amber-600">Date à confirmer</span>
+            @else
+                <time datetime="{{ $event->starts_at?->toIso8601String() }}">{{ $event->starts_at?->translatedFormat('D j M Y · H:i') }}</time>
+            @endif
+            @if($event->isPostponed() && $event->original_starts_at)
+                <del class="ml-1 text-xs text-slate-400"><span class="sr-only">Date initiale : </span>{{ $event->original_starts_at->translatedFormat('j M Y') }}</del>
+            @endif
         </p>
         @if($place)
         <p class="truncate text-sm text-slate-600"><i class="fa-solid fa-location-dot mr-1 w-4 text-center text-slate-400" aria-hidden="true"></i>{{ $place }}</p>

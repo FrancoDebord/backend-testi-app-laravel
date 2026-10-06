@@ -21,6 +21,10 @@
         EventStatus::Draft->value     => ['Brouillon', 'Visible de vous seul, à publier plus tard.'],
         EventStatus::Published->value => ['Publié', 'Visible de tous ; les participants peuvent répondre.'],
     ];
+    if ($editing && $event->status === EventStatus::Postponed) {
+        // Reporté sans date : changer la date de début le reprogramme (il redevient « Publié »).
+        $statuses[EventStatus::Postponed->value] = ['Reporté — date à confirmer', 'Indiquez les nouvelles dates ci-dessous pour le reprogrammer.'];
+    }
     if ($editing) {
         $statuses[EventStatus::Cancelled->value] = ['Annulé', "Reste visible avec la mention « Annulé » ; plus de réponse possible."];
     }

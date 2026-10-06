@@ -16,6 +16,7 @@
     $guests   = collect($event->guests ?? [])->filter(fn ($g) => filled($g['name'] ?? null));
     $phaseBadge = match (true) {
         $event->isCancelled()           => 'badge-rejected',
+        $event->isDateTbd()             => 'badge-orange',
         $event->phase() === 'ongoing'   => 'badge-validated',
         $event->phase() === 'past'      => 'badge-draft',
         default                         => 'badge-pending',
@@ -40,6 +41,10 @@
     <a href="{{ route('publish', ['event' => $event->id]) }}" class="btn-secondary btn-sm"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Publier un témoignage</a>
     <a href="{{ route('events.participants', $event->id) }}" class="btn-secondary btn-sm"><i class="fa-solid fa-users" aria-hidden="true"></i>Participants</a>
     <a href="#co-gestionnaires" class="btn-secondary btn-sm"><i class="fa-solid fa-user-gear" aria-hidden="true"></i>Co-gestionnaires</a>
+    @if($event->isOpen() && $event->phase() !== 'past')
+    <button type="button" class="btn-secondary btn-sm" data-modal-open="postpone-modal"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i>Reporter</button>
+    <button type="button" class="btn-secondary btn-sm text-error-700" data-modal-open="cancel-modal"><i class="fa-solid fa-ban" aria-hidden="true"></i>Annuler l'événement</button>
+    @endif
     @if($administrator)
     <form id="event-delete-form" method="POST" action="{{ route('events.destroy', $event->id) }}" class="sm:ml-auto" data-loading-label="Suppression…">
         @csrf @method('DELETE')
@@ -55,10 +60,35 @@
 </div>
 @endif
 
+@if($event->isHidden())
+<div class="alert-warning mb-6" role="status">
+    <i class="fa-solid fa-eye-slash mt-0.5"></i>
+    <p><strong>Événement masqué par la modération.</strong> Il n'apparaît plus au public. {{ $event->hidden_reason }}</p>
+</div>
+@endif
+
 @if($event->isCancelled())
 <div class="alert-error mb-6" role="status">
     <i class="fa-solid fa-ban mt-0.5"></i>
-    <p><strong>Événement annulé.</strong> Les réponses de participation ne sont plus possibles.</p>
+    <p><strong>Événement annulé.</strong> Les réponses de participation ne sont plus possibles.@if(filled($event->status_reason)) Motif : {{ $event->status_reason }}@endif</p>
+</div>
+@elseif($event->isPostponed())
+<div class="alert-warning mb-6" role="status">
+    <i class="fa-solid fa-calendar-days mt-0.5"></i>
+    <p>
+        <strong>{{ $event->isDateTbd() ? 'Événement reporté — date à confirmer.' : 'Événement reporté.' }}</strong>
+        @if($event->original_starts_at)Date initiale : <del>{{ EventPage::dateRange($event, original: true) }}</del>.@endif
+        @unless($event->isDateTbd()) Nouvelle date : <strong>{{ EventPage::dateRange($event) }}</strong>.@endunless
+        @if(filled($event->status_reason)) Motif : {{ $event->status_reason }}@endif
+        Votre réponse « Je participe » est conservée.
+    </p>
+</div>
+@endif
+
+@if($event->isUnconfirmed())
+<div class="alert-warning mb-6" role="status">
+    <i class="fa-solid fa-circle-question mt-0.5"></i>
+    <p><strong>Non confirmé.</strong> La majorité des personnes qui ont répondu au sondage disent que cet événement n'a pas eu lieu. La modération vérifie.</p>
 </div>
 @endif
 
@@ -103,6 +133,8 @@
                 @if($manager && $event->status === \App\Enums\EventStatus::Draft)
                     <span class="badge-draft">Brouillon</span>
                 @endif
+                @if($event->isPostponed() && !$event->isDateTbd())<span class="badge-orange">Reporté</span>@endif
+                @if($event->isUnconfirmed())<span class="badge-rejected">Non confirmé</span>@endif
                 @if($live && $live->isOnAir())<span class="badge-live">En direct</span>@endif
             </div>
             <h2 id="event-about" class="card-title mt-4">À propos</h2>
@@ -158,7 +190,8 @@
                     @csrf
                     <label for="event-comment" class="form-label">Racontez ce que vous avez vécu</label>
                     <textarea id="event-comment" name="body" rows="4" required minlength="2" maxlength="3000" class="form-input"
-                              placeholder="Une guérison, une délivrance, une parole reçue…" @error('body') aria-invalid="true" @enderror>{{ old('body') }}</textarea>
+                              placeholder="Une guérison, une délivrance, une parole reçue… (@ pour mentionner)" data-mention-input @error('body') aria-invalid="true" @enderror>{{ old('body') }}</textarea>
+                    @include('components.mention-input')
                     @error('body')<p class="form-error">{{ $message }}</p>@enderror
                     @if(!$event->comments_enabled)
                     <p class="form-hint">Les commentaires sont fermés au public ; en tant que gestionnaire, vous pouvez encore écrire.</p>
@@ -201,7 +234,7 @@
                                 <a href="{{ route('testimonies.show', $comment->testimony_id) }}" class="badge-validated hover:underline">Enregistré comme témoignage</a>
                                 @endif
                             </p>
-                            <p class="mt-1 text-sm break-words whitespace-pre-line text-slate-700">{{ $comment->body }}</p>
+                            <p class="mt-1 text-sm break-words whitespace-pre-line text-slate-700">{{ \App\Services\Mentions::html($comment->body) }}</p>
 
                             @if($canDelete || ($manager && !$comment->testimony))
                             <div class="mt-2 flex flex-wrap gap-2">
@@ -285,6 +318,11 @@
             @endif
         </section>
 
+        {{-- Sondage d'après l'événement : « Votre avis » (docs/fonctionnalites/evenements.md) --}}
+        @if($event->acceptsReviews() || $event->surveyTotal() > 0)
+        @include('events.partials.survey', ['event' => $event, 'myReview' => $myReview, 'canReview' => $canReview, 'manager' => $manager])
+        @endif
+
         {{-- Requêtes et sessions de prière (docs/fonctionnalites/requetes-de-priere.md) --}}
         @if($event->status === \App\Enums\EventStatus::Published)
         @include('prayer.partials.event-section', ['event' => $event])
@@ -296,7 +334,12 @@
             <dl class="mt-3 space-y-3 text-sm">
                 <div class="flex gap-3">
                     <dt class="w-5 shrink-0 text-center text-slate-400"><i class="fa-regular fa-calendar" aria-hidden="true"></i><span class="sr-only">Dates</span></dt>
-                    <dd class="min-w-0 text-slate-700">{{ EventPage::dateRange($event) }}</dd>
+                    <dd class="min-w-0 text-slate-700">
+                        {{ EventPage::dateRange($event) }}
+                        @if($event->isPostponed() && $event->original_starts_at)
+                        <del class="block text-xs text-slate-400"><span class="sr-only">Date initiale : </span>{{ EventPage::dateRange($event, original: true) }}</del>
+                        @endif
+                    </dd>
                 </div>
                 @if($place)
                 <div class="flex gap-3">
@@ -316,6 +359,9 @@
                         @if($event->organizer)
                         <a href="{{ route('profiles.show', $event->organizer_id) }}" class="truncate font-semibold text-primary-600 hover:underline">{{ $event->organizer->display_name }}</a>
                         @include('components.verified-badge', ['user' => $event->organizer])
+                        @endif
+                        @if($reliability['reliable'])
+                        <span class="badge-validated shrink-0" title="{{ $reliability['confirmed'] }} événements confirmés par les participants"><i class="fa-solid fa-shield-heart" aria-hidden="true"></i>Organisateur fiable</span>
                         @endif
                     </dd>
                 </div>
@@ -393,12 +439,72 @@
             @endif
         </section>
         @endif
+
+        {{-- Modération (modérateurs et administrateurs) --}}
+        @if($moderator)
+        @include('events.partials.moderation-card', ['event' => $event, 'reliability' => $reliability])
+        @endif
+
+        {{-- Signaler (comptes connectés, pas les gestionnaires) --}}
+        @if($authUser && !$manager && $event->status !== \App\Enums\EventStatus::Draft)
+        <details class="card p-5" @if($errors->has('reason')) open @endif>
+            <summary class="cursor-pointer text-sm font-medium text-slate-700"><i class="fa-regular fa-flag mr-1" aria-hidden="true"></i>Signaler cet événement</summary>
+            @if($hasReported)
+            <p class="mt-3 text-sm text-slate-600">Vous avez signalé cet événement. Merci, la modération va l'examiner.</p>
+            @else
+            <form method="POST" action="{{ route('events.report', $event->id) }}" class="mt-3 space-y-3" data-loading-label="Envoi…">
+                @csrf
+                <label for="report-reason" class="form-label">Raison</label>
+                <select id="report-reason" name="reason" required class="form-input">
+                    @foreach($reportReasons as $value => $label)
+                    <option value="{{ $value }}" @selected(old('reason') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                @error('reason')<p class="form-error">{{ $message }}</p>@enderror
+                <label for="report-comment" class="sr-only">Précisions</label>
+                <textarea id="report-comment" name="comment" rows="2" maxlength="500" class="form-input" placeholder="Précisions (facultatif)">{{ old('comment') }}</textarea>
+                <button type="submit" class="btn-secondary w-full">Envoyer le signalement</button>
+            </form>
+            @endif
+        </details>
+        @endif
     </aside>
 </div>
+
+{{-- Avis des participants (sondage d'après l'événement) --}}
+@if($reviews && $reviews->isNotEmpty())
+<section class="mt-8" aria-labelledby="event-reviews-title" id="avis">
+    <h2 id="event-reviews-title" class="card-title mb-3">Avis des participants</h2>
+    <ul class="card divide-y divide-slate-100">
+        @foreach($reviews as $review)
+        <li class="flex gap-3 px-4 py-4 sm:px-5">
+            @include('components.avatar', ['user' => $review->user, 'size' => 'sm'])
+            <div class="min-w-0 flex-1">
+                <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                    <span class="truncate font-semibold text-slate-900">{{ $review->user?->display_name ?? 'Compte supprimé' }}</span>
+                    @if($review->rating)
+                    <span class="text-amber-500" role="img" aria-label="{{ $review->rating }} sur 5">@for($i = 1; $i <= 5; $i++)<i class="fa-{{ $i <= $review->rating ? 'solid' : 'regular' }} fa-star text-xs" aria-hidden="true"></i>@endfor</span>
+                    @endif
+                    <span class="{{ $review->attended === 'yes' ? 'badge-validated' : ($review->attended === 'no' ? 'badge-rejected' : 'badge-neutral') }}">{{ \App\Models\EventReview::ATTENDED[$review->attended] ?? $review->attended }}</span>
+                    <time class="text-xs text-slate-500" datetime="{{ $review->updated_at?->toIso8601String() }}">{{ $review->updated_at?->diffForHumans() }}</time>
+                </p>
+                @if($review->body)<p class="mt-1 text-sm break-words whitespace-pre-line text-slate-700">{{ $review->body }}</p>@endif
+            </div>
+        </li>
+        @endforeach
+    </ul>
+    <div class="mt-4">{{ $reviews->fragment('avis')->links() }}</div>
+</section>
+@endif
 
 {{-- Inviter à témoigner (événement en cours ou terminé) --}}
 @if($event->status === \App\Enums\EventStatus::Published && $event->phase() !== 'upcoming')
 <x-encouragement class="mt-8" message="Vous avez vécu quelque chose pendant cet événement ? Témoignez : votre histoire peut fortifier quelqu'un." />
+@endif
+
+{{-- ── Modales « Reporter » et « Annuler l'événement » (gestionnaires) ── --}}
+@if($manager && $event->isOpen() && $event->phase() !== 'past')
+@include('events.partials.status-modals', ['event' => $event])
 @endif
 
 {{-- ── Modale « Enregistrer comme témoignage » (gestionnaires) ───────── --}}

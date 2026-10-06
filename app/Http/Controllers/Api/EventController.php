@@ -13,6 +13,7 @@ use App\Models\EventComment;
 use App\Models\EventParticipation;
 use App\Models\User;
 use App\Services\EventActionException;
+use App\Services\EventModeration;
 use App\Services\EventService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -284,6 +285,158 @@ class EventController extends Controller
             ->paginate(min((int) $request->query('limit', 20), 50));
 
         return $this->paginated(TestimonyResource::collection($items->items()), $this->meta($items));
+    }
+
+    // ─── Report et annulation (gestionnaires) ────────────────────────────────
+
+    /** `{ date_tbd: true, reason? }` ou `{ starts_at, ends_at, reason? }`. */
+    public function postpone(Request $request, string $id): JsonResponse
+    {
+        $event = $this->find($id, $request);
+        $tbd   = $request->boolean('date_tbd');
+        $data  = $request->validate(EventService::postponeRules($tbd), EventService::POSTPONE_MESSAGES);
+
+        return $this->attempt(function () use ($request, $event, $data, $tbd) {
+            $event = $this->events->postpone($event, $this->user($request),
+                $tbd ? null : $data['starts_at'], $tbd ? null : $data['ends_at'], $data['reason'] ?? null);
+
+            return $this->success(new EventResource($event->load($this->relations())), $tbd
+                ? 'Événement reporté : date à confirmer. Les participants sont prévenus.'
+                : 'Événement reporté. Les participants sont prévenus.');
+        });
+    }
+
+    /** `{ reason? }` */
+    public function cancel(Request $request, string $id): JsonResponse
+    {
+        $event = $this->find($id, $request);
+        $data  = $request->validate(['reason' => 'nullable|string|max:500'], EventService::POSTPONE_MESSAGES);
+
+        return $this->attempt(function () use ($request, $event, $data) {
+            $event = $this->events->cancel($event, $this->user($request), $data['reason'] ?? null);
+
+            return $this->success(new EventResource($event->load($this->relations())), 'Événement annulé. Les participants sont prévenus.');
+        });
+    }
+
+    // ─── Signalement et modération ───────────────────────────────────────────
+
+    /** `{ reason: not_christian|fake|inappropriate_content|scam|other, comment? }` — une fois par personne. */
+    public function report(Request $request, string $id): JsonResponse
+    {
+        $event = $this->find($id, $request);
+        $data  = $request->validate(EventModeration::reportRules(), EventModeration::MESSAGES);
+
+        return $this->attempt(function () use ($request, $event, $data) {
+            app(EventModeration::class)->report($event, $this->user($request), $data['reason'], $data['comment'] ?? null);
+
+            return $this->created(null, 'Merci. Votre signalement sera examiné par la modération.');
+        });
+    }
+
+    /** Modérateurs : `filter` = reported (défaut) | unconfirmed | hidden. */
+    public function moderation(Request $request): JsonResponse
+    {
+        $filter = in_array($request->query('filter'), ['hidden', 'unconfirmed'], true) ? $request->query('filter') : 'reported';
+        $items  = app(EventModeration::class)->queue($filter)->paginate(20);
+
+        return $this->paginated(collect($items->items())->map(fn (Event $e) => [
+            'event'          => (new EventResource($e))->resolve($request),
+            'pendingReports' => (int) $e->pending_reports_count,
+            'reports'        => $e->reports->map(fn ($r) => [
+                'id'          => $r->id,
+                'reason'      => $r->reason,
+                'reasonLabel' => Event::REPORT_REASONS[$r->reason] ?? $r->reason,
+                'comment'     => $r->comment,
+                'reporter'    => $r->reporter?->display_name,
+                'reviewed'    => $r->reviewed_at !== null,
+                'createdAt'   => $r->created_at?->toIso8601String(),
+            ])->values(),
+            'reliability'    => Event::reliabilityOf($e->organizer_id),
+        ])->values(), [
+            ...$this->meta($items),
+            'filter'  => $filter,
+            'reasons' => Event::REPORT_REASONS,
+        ]);
+    }
+
+    public function hide(Request $request, string $id): JsonResponse
+    {
+        $event = $this->find($id, $request);
+        $data  = $request->validate(['reason' => 'nullable|string|max:300']);
+
+        return $this->attempt(fn () => $this->success(new EventResource(
+            app(EventModeration::class)->hide($event, $this->user($request), $data['reason'] ?? null)->load($this->relations())
+        ), 'Événement masqué.'));
+    }
+
+    public function restore(Request $request, string $id): JsonResponse
+    {
+        $event = $this->find($id, $request);
+
+        return $this->attempt(fn () => $this->success(new EventResource(
+            app(EventModeration::class)->restore($event, $this->user($request))->load($this->relations())
+        ), 'Événement rétabli.'));
+    }
+
+    public function dismiss(Request $request, string $id): JsonResponse
+    {
+        $event = $this->find($id, $request);
+
+        return $this->attempt(fn () => $this->success(new EventResource(
+            app(EventModeration::class)->dismiss($event, $this->user($request))->load($this->relations())
+        ), 'Signalements classés.'));
+    }
+
+    // ─── Sondage d'après l'événement ─────────────────────────────────────────
+
+    /** Avis publics (réponses avec note ou texte), les plus récents d'abord. */
+    public function reviews(Request $request, string $id): JsonResponse
+    {
+        $event = $this->find($id, $request);
+        $user  = $this->user($request);
+        $items = $event->reviews()->with('user')
+            ->where(fn ($q) => $q->whereNotNull('rating')->orWhereNotNull('body'))
+            ->latest('updated_at')->paginate(min(max((int) $request->query('limit', 20), 1), 50));
+
+        return $this->paginated(collect($items->items())->map(fn ($r) => self::reviewJson($r, $user))->values(), [
+            ...$this->meta($items),
+            'confirmedPercent' => $event->confirmedPercent(),
+            'ratingAverage'    => $event->ratingAverage(),
+            'answers'          => $event->surveyTotal(),
+        ]);
+    }
+
+    /** `{ attended: yes|no|absent, rating?: 1-5 (obligatoire si yes), body? }` — modifiable 30 jours. */
+    public function review(Request $request, string $id): JsonResponse
+    {
+        $event = $this->find($id, $request);
+        $data  = $request->validate(EventModeration::reviewRules(), EventModeration::MESSAGES);
+
+        return $this->attempt(function () use ($request, $event, $data) {
+            app(EventModeration::class)->review($event, $this->user($request), $data);
+
+            return $this->success(new EventResource($event->refresh()->load($this->relations())), 'Merci pour votre avis !');
+        });
+    }
+
+    public static function reviewJson($review, ?User $user): array
+    {
+        return [
+            'id'        => $review->id,
+            'attended'  => $review->attended,
+            'rating'    => $review->rating,
+            'body'      => $review->body,
+            'user'      => [
+                'id'          => $review->user_id,
+                'displayName' => $review->user?->display_name ?? 'Compte supprimé',
+                'initials'    => $review->user?->initials,
+                'avatarUrl'   => $review->user?->avatar_url,
+            ],
+            'isMine'    => $user !== null && $user->id === $review->user_id,
+            'createdAt' => $review->created_at?->toIso8601String(),
+            'updatedAt' => $review->updated_at?->toIso8601String(),
+        ];
     }
 
     // ─── Outils ──────────────────────────────────────────────────────────────

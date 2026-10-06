@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\Mentions;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,7 +15,9 @@ class EventCommentResource extends JsonResource
 
         return [
             'id'          => $this->id,
-            'body'        => $this->body,
+            // Texte lisible (« @Nom ») + mentions cliquables (docs/fonctionnalites/mentions.md).
+            'body'        => Mentions::plain($this->body),
+            'mentions'    => Mentions::of($this->body),
             'user'        => [
                 'id'          => $this->user_id,
                 'displayName' => $this->user?->display_name ?? 'Anonyme',

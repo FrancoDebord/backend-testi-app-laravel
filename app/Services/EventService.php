@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Enums\EventStatus;
 use App\Enums\EventType;
+use App\Enums\NotificationType;
 use App\Enums\TestimonyStatus;
+use App\Services\Mentions;
 use App\Enums\UserAccountStatus;
 use App\Models\Category;
 use App\Models\Event;
@@ -38,7 +40,8 @@ class EventService
             'title'            => [$req, 'string', 'max:150'],
             'description'      => ['nullable', 'string', 'max:5000'],
             'type'             => [$req, Rule::enum(EventType::class)],
-            'status'           => ['nullable', Rule::in([EventStatus::Draft->value, EventStatus::Published->value, EventStatus::Cancelled->value])],
+            // « postponed » : accepté seulement s'il l'est déjà (le report passe par POST events/{id}/postpone).
+            'status'           => ['nullable', Rule::in([EventStatus::Draft->value, EventStatus::Published->value, EventStatus::Postponed->value, EventStatus::Cancelled->value])],
             'starts_at'        => [$req, 'date'],
             'ends_at'          => [$req, 'date', 'after_or_equal:starts_at'],
             'location'         => ['nullable', 'string', 'max:200'],
@@ -98,10 +101,15 @@ class EventService
                 'Seules les organisations vérifiées et les administrateurs peuvent créer un événement.', 403);
         }
 
+        $status = $data['status'] ?? EventStatus::Published->value;
+        if ($status === EventStatus::Postponed->value) { // le report passe par l'action Reporter
+            $status = EventStatus::Published->value;
+        }
+
         return Event::create([
             ...$this->attributes($data),
             'organizer_id' => $this->organizerFor($user, $data['organization_id'] ?? null)->id,
-            'status'       => $data['status'] ?? EventStatus::Published->value,
+            'status'       => $status,
         ]);
     }
 
@@ -132,12 +140,171 @@ class EventService
         throw new EventActionException("Choisissez l'organisation au nom de laquelle créer l'événement.", 422);
     }
 
+    /**
+     * Modification. Passer à « Annulé » depuis le formulaire prévient les participants comme
+     * l'action « Annuler » ; changer la date d'un événement « date à confirmer » le reprogramme
+     * (il redevient « Publié », l'ancienne date restant affichée barrée).
+     */
     public function update(Event $event, User $user, array $data): Event
     {
         $this->ensureManager($event, $user);
-        $event->update($this->attributes($data, $event));
+        $attrs        = $this->attributes($data, $event);
+        $wasCancelled = $event->isCancelled();
+        $wasTbd       = $event->isDateTbd();
+        $rescheduled  = false;
 
-        return $event->refresh();
+        // Le statut « Reporté » ne s'obtient que par l'action Reporter.
+        if (($attrs['status'] ?? null) === EventStatus::Postponed->value && $event->status !== EventStatus::Postponed) {
+            unset($attrs['status']);
+        }
+        if ($wasTbd) {
+            $newStart = isset($attrs['starts_at']) ? \Illuminate\Support\Carbon::parse($attrs['starts_at']) : null;
+            if ($newStart && !$newStart->equalTo($event->starts_at)) {
+                $rescheduled = true;
+                $attrs['date_tbd'] = false;
+                if (($attrs['status'] ?? EventStatus::Postponed->value) === EventStatus::Postponed->value) {
+                    $attrs['status'] = EventStatus::Published->value;
+                }
+            } elseif (isset($attrs['status']) && $attrs['status'] !== EventStatus::Postponed->value) {
+                $attrs['date_tbd'] = false;
+            }
+        }
+        if (isset($attrs['status']) && $attrs['status'] !== ($event->status?->value)) {
+            $attrs['status_changed_at'] = now();
+        }
+
+        $event->update($attrs);
+        $event->refresh();
+
+        if (!$wasCancelled && $event->isCancelled()) {
+            $this->notifyGoing($event, NotificationType::EventCancelled, $this->cancelMessage($event), $user);
+        } elseif ($rescheduled && $event->isOpen()) {
+            $this->notifyGoing($event, NotificationType::EventPostponed, $this->postponeMessage($event), $user);
+        }
+
+        return $event;
+    }
+
+    // ─── Report et annulation ────────────────────────────────────────────────
+
+    /** Report : nouvelle date (début et fin) ou « date à confirmer » (`date_tbd`), motif facultatif. */
+    public static function postponeRules(bool $dateTbd): array
+    {
+        return [
+            'date_tbd'  => ['nullable', 'boolean'],
+            'reason'    => ['nullable', 'string', 'max:500'],
+            ...($dateTbd ? [] : [
+                'starts_at' => ['required', 'date', 'after:now'],
+                'ends_at'   => ['required', 'date', 'after_or_equal:starts_at'],
+            ]),
+        ];
+    }
+
+    public const POSTPONE_MESSAGES = [
+        'starts_at.required'     => 'Indiquez la nouvelle date de début, ou choisissez « Date à confirmer ».',
+        'starts_at.after'        => 'La nouvelle date doit être dans le futur.',
+        'starts_at.date'         => 'Date de début non valide.',
+        'ends_at.required'       => 'Indiquez la nouvelle date de fin.',
+        'ends_at.date'           => 'Date de fin non valide.',
+        'ends_at.after_or_equal' => 'La fin doit être après le début.',
+        'reason.max'             => 'Le motif ne doit pas dépasser 500 caractères.',
+    ];
+
+    /**
+     * Reporte l'événement (gestionnaires). Avec nouvelle date : il redevient « à venir » (statut
+     * Publié) ; sans date : statut Reporté, « date à confirmer ». La première date annoncée est
+     * conservée (`original_starts_at`). Les personnes qui participent sont prévenues.
+     */
+    public function postpone(Event $event, User $user, ?string $startsAt, ?string $endsAt, ?string $reason = null): Event
+    {
+        $this->ensureManager($event, $user);
+        if (!$event->isOpen()) {
+            throw new EventActionException($event->isCancelled()
+                ? 'Un événement annulé ne peut pas être reporté.'
+                : "Publiez l'événement avant de le reporter.", 422);
+        }
+        if ($event->phase() === 'past') {
+            throw new EventActionException('Cet événement est terminé.', 422);
+        }
+
+        $attrs = [
+            'original_starts_at' => $event->original_starts_at ?? $event->starts_at,
+            'original_ends_at'   => $event->original_ends_at ?? $event->ends_at,
+            'postponed_at'       => now(),
+            'status_changed_at'  => now(),
+            'status_reason'      => filled($reason) ? trim($reason) : null,
+        ];
+        if ($startsAt === null) {
+            $attrs += ['status' => EventStatus::Postponed->value, 'date_tbd' => true];
+        } else {
+            $start = \Illuminate\Support\Carbon::parse($startsAt);
+            $end   = \Illuminate\Support\Carbon::parse($endsAt ?? $startsAt);
+            if ($end->lt($start)) {
+                throw new EventActionException('La fin doit être après le début.', 422);
+            }
+            $attrs += [
+                'status' => EventStatus::Published->value, 'date_tbd' => false,
+                'starts_at' => $start, 'ends_at' => $end, 'survey_sent_at' => null,
+            ];
+        }
+        $event->update($attrs);
+        $event->refresh();
+        $this->notifyGoing($event, NotificationType::EventPostponed, $this->postponeMessage($event), $user);
+
+        return $event;
+    }
+
+    /** Annule l'événement (gestionnaires), motif facultatif ; les personnes qui participent sont prévenues. */
+    public function cancel(Event $event, User $user, ?string $reason = null): Event
+    {
+        $this->ensureManager($event, $user);
+        if ($event->isCancelled()) {
+            throw new EventActionException('Cet événement est déjà annulé.', 422);
+        }
+        if ($event->status === EventStatus::Draft) {
+            throw new EventActionException("Un brouillon n'est pas annoncé : supprimez-le simplement.", 422);
+        }
+        if ($event->phase() === 'past') {
+            throw new EventActionException('Cet événement est terminé.', 422);
+        }
+        $event->update([
+            'status'            => EventStatus::Cancelled->value,
+            'date_tbd'          => false,
+            'status_reason'     => filled($reason) ? trim($reason) : null,
+            'status_changed_at' => now(),
+        ]);
+        $event->refresh();
+        $this->notifyGoing($event, NotificationType::EventCancelled, $this->cancelMessage($event), $user);
+
+        return $event;
+    }
+
+    private function postponeMessage(Event $event): string
+    {
+        $text = $event->isDateTbd()
+            ? "L'événement « {$event->title} » est reporté. La nouvelle date sera annoncée prochainement."
+            : "L'événement « {$event->title} » est reporté au " . $event->starts_at->translatedFormat('l j F Y à H:i') . '.';
+
+        return filled($event->status_reason) ? $text . ' Motif : ' . $event->status_reason : $text;
+    }
+
+    private function cancelMessage(Event $event): string
+    {
+        $text = "L'événement « {$event->title} » est annulé.";
+
+        return filled($event->status_reason) ? $text . ' Motif : ' . $event->status_reason : $text;
+    }
+
+    /** Notification (et push) aux personnes qui ont répondu « Je participe ». Ne bloque jamais l'action. */
+    private function notifyGoing(Event $event, NotificationType $type, string $message, ?User $actor = null): int
+    {
+        return EventModeration::notify(
+            $event,
+            $event->participations()->where('status', EventParticipation::GOING)->pluck('user_id')->all(),
+            $type,
+            $message,
+            exclude: array_filter([$actor?->id]),
+        );
     }
 
     public function delete(Event $event, User $user): void
@@ -283,8 +450,17 @@ class EventService
         $this->throttle("event-comment:{$event->id}:{$user->id}", 5, 60,
             'Vous commentez trop vite. Patientez un instant.');
 
-        $comment = $event->comments()->create(['user_id' => $user->id, 'body' => trim($body)]);
+        // Mentions « @ » (docs/fonctionnalites/mentions.md) : jetons validés avant l'enregistrement.
+        $mentions = Mentions::prepare(trim($body));
+        $comment  = $event->comments()->create(['user_id' => $user->id, 'body' => $mentions['text']]);
         $event->increment('comment_count');
+
+        if ($mentions['ids'] !== []) {
+            Mentions::notify($mentions['ids'], $user, [
+                'where'   => "un commentaire de l'événement « {$event->title} »",
+                'payload' => ['event_id' => $event->id],
+            ]);
+        }
 
         return $comment->load('user');
     }
@@ -318,7 +494,8 @@ class EventService
         $slug     = $data['category'] ?? 'autre';
         $category = Category::where('slug', $slug)->first();
         $approved = $actor->canModerate();
-        $body     = trim($data['body_text'] ?? '') ?: $comment->body;
+        // Texte lisible (« @Nom ») : les jetons de mention ne passent pas dans le témoignage.
+        $body     = trim($data['body_text'] ?? '') ?: Mentions::plain($comment->body);
 
         $testimony = DB::transaction(function () use ($comment, $event, $actor, $data, $slug, $category, $approved, $body) {
             $testimony = Testimony::create([

@@ -67,11 +67,23 @@
         'actionLabel' => $filtered ? 'Effacer les filtres' : 'Créer un événement',
     ])
 @else
+    <div class="mb-3 flex items-center justify-between gap-3">
+        <p class="text-sm text-slate-500">{{ number_format($events->total(), 0, ',', ' ') }} événement{{ $events->total() > 1 ? 's' : '' }}</p>
+        @include('events.partials.layout-toggle')
+    </div>
+    @if($compact)
+    <ul class="card mb-8 divide-y divide-slate-100 overflow-hidden">
+        @foreach($events as $event)
+            @include('events.partials.row', ['event' => $event, 'showStatus' => $tab === 'mine'])
+        @endforeach
+    </ul>
+    @else
     <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-5">
         @foreach($events as $event)
             @include('events.partials.card', ['event' => $event, 'showStatus' => $tab === 'mine'])
         @endforeach
     </div>
+    @endif
     {{ $events->links() }}
 @endif
 @endsection

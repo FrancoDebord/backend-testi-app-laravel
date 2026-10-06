@@ -49,6 +49,37 @@ Page de l'événement : carrousel, dates, lieu (adresse, mini-carte, **Itinérai
 - **Cartes** : tuiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, attribution « © contributeurs OpenStreetMap » toujours affichée ; application : `userAgentPackageName` = `com.airid.testi_app` ; site : Leaflet 1.9.4 depuis cdnjs (avec SRI), partiel `events/partials/leaflet.blade.php`. Nominatim : en-tête `User-Agent: TestiApp/1.0 (com.airid.testi_app)` dans l'application (le navigateur envoie le sien sur le web).
 - **Permissions** : Android `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` ; iOS `NSLocationWhenInUseUsageDescription` ; navigateur : autorisation de localisation du site (HTTPS requis).
 
+## Liste compacte
+
+Bascule **Cartes / Liste compacte** sur la liste des événements (site `/evenements`, application écran Événements). Liste compacte : une ligne par événement (vignette date, titre, lieu / ville, organisateur, pastilles d'état). Choix mémorisé : site → cookie `event_layout` (aussi sans compte, `App\Support\EventLayout`, route `events.layout`) ; application → stockage local `event_layout` (`eventLayoutProvider`, `EventCompactTile`).
+
+## Report, annulation, signalement et sondage
+
+### Reporter / annuler (gestionnaires)
+
+- **Reporter** un événement publié pas encore terminé : soit une **nouvelle date** (début / fin ; l'événement redevient « à venir »), soit **« Date à confirmer »** (statut `postponed`, `date_tbd`, badge « Reporté — date à confirmer », participations conservées). Motif facultatif. La **première date annoncée** (`original_starts_at` / `original_ends_at`) reste affichée **barrée**.
+- **Annuler** : action distincte, motif facultatif ; l'événement reste visible avec la mention « Annulé », plus de participation.
+- Dans les deux cas, les personnes « Je participe » sont **notifiées** (notification + push `event_postponed` / `event_cancelled`). Passer à « Annulé » depuis le formulaire prévient aussi.
+- Site : bloc Gestion de la page (fenêtres `events/partials/status-modals`) ; application : panneau « Gestion de la page » (`showPostponeSheet`).
+
+### Signaler (comptes connectés, sauf gestionnaires)
+
+- Motifs : **Pas un événement chrétien** (`not_christian`) · **Événement faux / n'existe pas** (`fake`) · **Contenu inapproprié** · **Arnaque / demande d'argent** (`scam`) · **Autre**, + commentaire (500). Une fois par personne (409 ensuite) ; un brouillon ne peut pas être signalé.
+- **Masquage automatique** au **3e signalement non traité**, en attendant la modération (l'événement disparaît des listes ; les gestionnaires et la modération le voient avec la mention « Masqué »).
+- File **Modération → Événements signalés** (`/evenements/moderation`, onglets Signalés · Non confirmés · Masqués) : **Masquer**, **Rétablir**, **Rejeter les signalements** (classer).
+
+### Sondage « A-t-il vraiment eu lieu ? »
+
+- À la fin d'un événement publié, la commande `events:send-surveys` (**planifiée toutes les heures**) envoie **une seule fois** (`survey_sent_at`) une invitation `event_survey` aux participants : « Je participe » et auteurs de commentaires, **sauf les gestionnaires**.
+- Bloc **« Votre avis »** de la page : **A-t-il eu lieu ?** (Oui / Non / Je n'y étais pas), **note 1-5** (si Oui), **avis** facultatif. Une réponse par personne, **modifiable 30 jours**. Les gestionnaires ne répondent pas pour leur propre événement.
+- Résultats publics : « 87 % confirment qu'il a eu lieu · ★ 4,6 · 23 avis » et liste des avis.
+- **Faux événements** : après au moins **3 réponses Oui / Non**, une **majorité de « Non »** marque l'événement **« Non confirmé »** (`unconfirmed_at`, badge) et l'envoie dans la file de modération.
+- **Fiabilité de l'organisateur** (événements confirmés / non confirmés / signalés) : visible des modérateurs (page de l'événement, file, profil ; `events/partials/reliability`). Badge public **« Organisateur fiable »** : au moins 3 événements confirmés et aucun non confirmé (`organizer.isReliable`).
+
+### Mentions
+
+Commentaires d'événements avec mentions « @ » (site `<x-mention-input>`, application `MentionTextField` / `MentionText`) ; notification `mention` avec `payload.event_id`. Voir [mentions.md](mentions.md).
+
 ## Données
 
 | Table | Contenu |
@@ -59,6 +90,9 @@ Page de l'événement : carrousel, dates, lieu (adresse, mini-carte, **Itinérai
 | `event_comments` | `event_id`, `user_id`, `body`, `testimony_id` (promu) ; suppression douce |
 | `testimonies.event_id` | Témoignage officiel de l'événement (`null` à la suppression de l'événement) |
 | `live_sessions.event_id` | Direct de l'événement |
+| `events` (2026-10-06) | Report : `original_starts_at`, `original_ends_at`, `date_tbd`, `postponed_at`, `status_reason` (500), `status_changed_at` ; signalements : `report_count`, `hidden_at`, `hidden_by`, `hidden_reason` ; sondage : `survey_sent_at`, `survey_yes_count`, `survey_no_count`, `survey_absent_count`, `rating_count`, `rating_sum`, `unconfirmed_at`, `unconfirmed_reviewed_at` |
+| `event_reports` | `event_id`, `reporter_id` (unique ensemble), `reason`, `comment`, `reviewed_at` |
+| `event_reviews` | `event_id`, `user_id` (unique ensemble), `attended` (`yes` \| `no` \| `absent`), `rating` (1-5), `body` |
 
 Supprimer un événement efface ses images, réponses et commentaires ; les témoignages déjà enregistrés restent publiés.
 
@@ -82,12 +116,19 @@ Supprimer un événement efface ses images, réponses et commentaires ; les tém
 | POST | `events/{id}/comments/{commentId}/promote` `{ title?, body_text?, category? }` | gestionnaires | Témoignage officiel (201, `TestimonyResource`) |
 | POST | `lives` `{ …, event_id }` | gestionnaires de l'événement | Direct de l'événement |
 | POST | `testimonies` `{ …, event_id }` | gestionnaires de l'événement | Témoignage rattaché (403 sinon) |
+| POST | `events/{id}/postpone` `{ date_tbd: true }` ou `{ starts_at, ends_at }`, `reason?` | gestionnaires | Reporter |
+| POST | `events/{id}/cancel` `{ reason? }` | gestionnaires | Annuler |
+| POST | `events/{id}/report` `{ reason, comment? }` | connecté (pas les gestionnaires) | Signaler (409 si déjà signalé) |
+| POST · GET | `events/{id}/review` `{ attended, rating?, body? }` · `events/{id}/reviews` | participants · public | Répondre au sondage · avis |
+| GET | `events/moderation?filter=reported\|unconfirmed\|hidden` | modérateurs | File de modération |
+| POST | `events/{id}/hide` · `restore` · `dismiss` | modérateurs | Masquer · rétablir · classer les signalements |
+| GET | `events?scope=following` | connecté | À venir, organisés par les comptes suivis (Mon fil) |
 
 `GET events` renvoie aussi `meta.organizations` : au nom de qui la personne peut créer (elle-même, les organisations vérifiées qu'elle gère) ; `scope=mine` = événements gérés (organisateur, organisation gérée, co-gestionnaire). `POST events` accepte `organization_id`.
 
 `POST` / `PUT events` acceptent `address` (≤ 300), `latitude` (-90 à 90) et `longitude` (-180 à 180), facultatifs mais **ensemble** (422 sinon : `errors.latitude` / `errors.longitude`) ; envoyer `latitude: null, longitude: null` efface le repère. Valeurs arrondies à 7 décimales.
 
-`EventResource` : `id`, `title`, `description`, `type`, `typeLabel`, `status`, `statusLabel`, `phase`, `phaseLabel`, `startsAt`, `endsAt`, `location`, `city`, `country`, `address`, `latitude`, `longitude` (nombres ou `null`), `directionsUrl` (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`, ou l'adresse encodée à défaut de repère, `null` sans lieu), `guests[]`, `commentsEnabled`, `images[{id,url}]`, `coverUrl`, `organizer{id,displayName,initials,avatarUrl,isOrganization,isVerified}`, `stats{going,notGoing,comments,testimonies}`, `myParticipation`, `acceptsParticipation`, `canManage`, `canAdministrate`, `managers[{id,displayName,initials,avatarUrl}]` (aux gestionnaires), `live{id,status,title}|null`, `webUrl`, `createdAt`. `TestimonyResource` gagne `eventId` ; `LiveSessionResource` gagne `event{id,title}`.
+`EventResource` : `id`, `title`, `description`, `type`, `typeLabel`, `status`, `statusLabel`, `phase`, `phaseLabel`, `startsAt`, `endsAt`, `location`, `city`, `country`, `address`, `latitude`, `longitude` (nombres ou `null`), `directionsUrl` (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`, ou l'adresse encodée à défaut de repère, `null` sans lieu), `guests[]`, `commentsEnabled`, `images[{id,url}]`, `coverUrl`, `organizer{id,displayName,initials,avatarUrl,isOrganization,isVerified}`, `stats{going,notGoing,comments,testimonies}`, `myParticipation`, `acceptsParticipation`, `canManage`, `canAdministrate`, `managers[{id,displayName,initials,avatarUrl}]` (aux gestionnaires), `live{id,status,title}|null`, `webUrl`, `createdAt`. `TestimonyResource` gagne `eventId` ; `LiveSessionResource` gagne `event{id,title}`. Depuis le 2026-10-06 (rétrocompatible) : `isPostponed`, `dateTbd`, `originalStartsAt`, `originalEndsAt`, `statusReason`, `statusChangedAt`, `isHidden`, `hiddenReason`, `isUnconfirmed`, `canReport`, `hasReported`, `survey{…}`, `organizer.isReliable`, `moderation{…}` (modérateurs) ; `EventCommentResource` : `body` lisible + `mentions`.
 
 Erreurs : message lisible dans `message` ; 403 droits, 404 introuvable ou brouillon, 409 commentaire déjà promu, 422 validation / événement annulé ou terminé, 429 trop de commentaires.
 
@@ -103,6 +144,10 @@ Erreurs : message lisible dans `message` ; 403 droits, 404 introuvable ou brouil
 | `events.images.store` / `.destroy` / `.cover` | POST / DELETE / POST | `/evenements/{id}/images`, `…/images/{image}`, `…/images/{image}/premiere` |
 | `events.participate` / `events.participation.cancel` | POST / DELETE | `/evenements/{id}/participation` |
 | `events.comments.store` / `.destroy` / `.promote` | POST / DELETE / POST | `/evenements/{id}/commentaires`, `…/{comment}`, `…/{comment}/temoignage` |
+| `events.postpone` / `events.cancel` | POST | `/evenements/{id}/reporter`, `/evenements/{id}/annuler` |
+| `events.report` / `events.review` | POST | `/evenements/{id}/signaler`, `/evenements/{id}/avis` |
+| `events.layout` | POST | `/evenements/affichage` (cartes / liste compacte) |
+| `events.moderation.index` / `.hide` / `.restore` / `.dismiss` | GET / POST | `/evenements/moderation`, `…/{id}/masquer`, `…/{id}/retablir`, `…/{id}/classer` |
 
 - Menu latéral : **Événements** (après Directs), pour tous.
 - Page d'un événement : bloc **Co-gestionnaires** (2 au plus ; « Retirer », « Me retirer », ajout par recherche de personne : `users.search` GET `/personnes/recherche`) ; `events.managers.store` POST et `events.managers.destroy` DELETE `/evenements/{id}/co-gestionnaires[/{user}]`. « Supprimer » réservé aux responsables.
@@ -115,8 +160,8 @@ Erreurs : message lisible dans `message` ; 403 droits, 404 introuvable ou brouil
 
 ## Fichiers
 
-- Serveur : `app/Models/Event.php`, `EventImage.php`, `EventParticipation.php`, `EventComment.php` · `app/Enums/EventType.php`, `EventStatus.php` · `app/Services/EventService.php` (toutes les règles, partagé site / API), `EventActionException.php` · `app/Http/Controllers/Api/EventController.php`, `Web/EventController.php` · `app/Http/Resources/EventResource.php`, `EventCommentResource.php` · `resources/views/events/` · migrations `2026_10_05_100001_create_events_tables`, `2026_10_05_300001_add_geolocation_to_events_table` · tests `tests/Feature/EventTest.php`, `EventLocationTest.php`.
-- Application : `lib/features/events/` (modèles, dépôt, fournisseurs, écrans liste / détail / formulaire, carrousel), routes `/events`, `/events/new`, `/events/:id`, `/events/:id/edit`, `/lives/new?event=` ; `publishEventProvider` (rattachement du témoignage publié) ; lieu et cartes : `widgets/event_location_widgets.dart` (`EventMapPicker`, `EventPlaceCard`, `EventDirections`, `EventLocationService`) ; paquets `flutter_map`, `latlong2`, `geolocator` ; tests `test/events_test.dart`, `test/event_location_test.dart`.
+- Serveur : `app/Models/Event.php`, `EventImage.php`, `EventParticipation.php`, `EventComment.php` · `app/Enums/EventType.php`, `EventStatus.php` · `app/Services/EventService.php` (toutes les règles, partagé site / API), `EventActionException.php` · `app/Http/Controllers/Api/EventController.php`, `Web/EventController.php` · `app/Http/Resources/EventResource.php`, `EventCommentResource.php` · `resources/views/events/` · migrations `2026_10_05_100001_create_events_tables`, `2026_10_05_300001_add_geolocation_to_events_table`, `2026_10_06_100001_add_postpone_reports_and_reviews_to_events` · signalement, modération, sondage : `app/Services/EventModeration.php`, modèles `EventReport`, `EventReview`, commande `app/Console/Commands/SendEventSurveys.php` (`events:send-surveys`, `routes/console.php`), `App\Support\EventLayout`, vues `events/moderation`, `events/partials/{row,layout-toggle,status-badges,status-modals,survey,moderation-card,reliability}` · tests `tests/Feature/EventTest.php`, `EventLocationTest.php`, `EventModerationTest.php`.
+- Application : `lib/features/events/` (modèles, dépôt, fournisseurs, écrans liste / détail / formulaire, carrousel), routes `/events`, `/events/new`, `/events/:id`, `/events/:id/edit`, `/lives/new?event=` ; `publishEventProvider` (rattachement du témoignage publié) ; lieu et cartes : `widgets/event_location_widgets.dart` (`EventMapPicker`, `EventPlaceCard`, `EventDirections`, `EventLocationService`) ; paquets `flutter_map`, `latlong2`, `geolocator` ; report, signalement, sondage, fiabilité : `widgets/event_trust_widgets.dart`, `EventCompactTile`, `eventLayoutProvider`, `eventReviewsProvider` ; tests `test/events_test.dart`, `test/event_location_test.dart`.
 
 ## Limites connues
 
@@ -125,3 +170,6 @@ Erreurs : message lisible dans `message` ; 403 droits, 404 introuvable ou brouil
 - Pas de type « en ligne » : un événement sans lieu ni repère n'affiche simplement pas de bloc Lieu.
 - Recherche d'adresse : premier résultat Nominatim seulement (à ajuster en déplaçant le repère) ; couverture inégale des adresses en Afrique de l'Ouest.
 - Les gestionnaires et co-gestionnaires sont choisis parmi les comptes personnels (recherche par nom, ou adresse e-mail complète sur le site).
+- Sondage : sans planificateur (`schedule:run`), aucune invitation n'est envoyée (le bloc « Votre avis » reste accessible sur la page). Les seuils (3 signalements, 3 réponses, majorité de « Non ») sont fixés dans le code, pas dans les réglages.
+- Un événement « Non confirmé » n'est pas masqué automatiquement : la décision revient à la modération.
+- Le score de fiabilité ne compte que les événements passés par le sondage (à partir du 2026-10-06).

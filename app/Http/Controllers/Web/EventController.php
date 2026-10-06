@@ -11,7 +11,9 @@ use App\Models\Event;
 use App\Models\EventComment;
 use App\Models\EventParticipation;
 use App\Services\EventActionException;
+use App\Services\EventModeration;
 use App\Services\EventService;
+use App\Support\EventLayout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -64,8 +66,12 @@ class EventController extends Controller
                 ->orWhere('location', 'like', "%{$q}%"));
         }
 
+        $compact = EventLayout::isCompact($request);
+
         return view('events.index', [
-            'events'    => $query->paginate(12)->withQueryString(),
+            // Liste compacte : plus d'événements par page.
+            'events'    => $query->paginate($compact ? 24 : 12)->withQueryString(),
+            'compact'   => $compact,
             'tabs'      => $tabs,
             'tab'       => $tab,
             'type'      => $type?->value,
@@ -92,7 +98,23 @@ class EventController extends Controller
         $activeLive = $event->activeLive();
         $live       = $activeLive?->isVisibleTo($user) ? $activeLive : null;
 
+        // Sondage d'après l'événement, signalement, modération (docs/fonctionnalites/evenements.md)
+        $moderation = app(EventModeration::class);
+        $myReview   = $moderation->reviewOf($event, $user);
+        $moderator  = (bool) $user?->canModerate();
+        $reviews    = $event->acceptsReviews() || $event->surveyTotal() > 0
+            ? $event->reviews()->with('user')->where(fn ($q) => $q->whereNotNull('rating')->orWhereNotNull('body'))
+                ->latest('updated_at')->paginate(10, ['*'], 'apage')->withQueryString()
+            : null;
+
         return view('events.show', [
+            'myReview'      => $myReview,
+            'canReview'     => $moderation->canReview($event, $user, $myReview),
+            'reviews'       => $reviews,
+            'hasReported'   => $moderation->hasReported($event, $user),
+            'moderator'     => $moderator,
+            'reliability'   => Event::reliabilityOf($event->organizer_id),
+            'reportReasons' => Event::REPORT_REASONS,
             'event'         => $event,
             'manager'       => $manager,
             'participation' => $event->participationOf($user),
@@ -355,13 +377,141 @@ class EventController extends Controller
         });
     }
 
+    // ─── Affichage de la liste (cartes / liste compacte) ─────────────────────
+
+    public function layout(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['layout' => ['required', Rule::in(array_keys(EventLayout::LABELS))]]);
+
+        return redirect()->back(fallback: route('events.index'))
+            ->withCookie(cookie(EventLayout::COOKIE, $data['layout'], EventLayout::LIFETIME));
+    }
+
+    // ─── Report et annulation (gestionnaires) ────────────────────────────────
+
+    public function postpone(Request $request, string $id): RedirectResponse
+    {
+        $event = $this->find($id);
+        $tbd   = $request->boolean('date_tbd');
+        $data  = $request->validate(EventService::postponeRules($tbd), EventService::POSTPONE_MESSAGES);
+
+        return $this->attempt(function () use ($request, $event, $data, $tbd) {
+            $this->events->postpone($event, $request->user(),
+                $tbd ? null : $data['starts_at'], $tbd ? null : $data['ends_at'], $data['reason'] ?? null);
+
+            return redirect()->route('events.show', $event->id)->with('success', $tbd
+                ? 'Événement reporté : date à confirmer. Les participants sont prévenus.'
+                : 'Événement reporté. Les participants sont prévenus.');
+        }, withInput: true);
+    }
+
+    public function cancel(Request $request, string $id): RedirectResponse
+    {
+        $event = $this->find($id);
+        $data  = $request->validate(['reason' => 'nullable|string|max:500'], EventService::POSTPONE_MESSAGES);
+
+        return $this->attempt(function () use ($request, $event, $data) {
+            $this->events->cancel($event, $request->user(), $data['reason'] ?? null);
+
+            return redirect()->route('events.show', $event->id)->with('success', 'Événement annulé. Les participants sont prévenus.');
+        });
+    }
+
+    // ─── Signalement ─────────────────────────────────────────────────────────
+
+    public function report(Request $request, string $id): RedirectResponse
+    {
+        $event = $this->find($id);
+        $data  = $request->validate(EventModeration::reportRules(), EventModeration::MESSAGES);
+
+        return $this->attempt(function () use ($request, $event, $data) {
+            app(EventModeration::class)->report($event, $request->user(), $data['reason'], $data['comment'] ?? null);
+            $event->refresh();
+
+            // Masqué automatiquement : la page n'est plus visible pour la personne.
+            return $event->isVisibleTo($request->user())
+                ? back()->with('success', 'Merci. Votre signalement sera examiné par la modération.')
+                : redirect()->route('events.index')->with('success', 'Merci. Votre signalement sera examiné par la modération.');
+        });
+    }
+
+    // ─── Sondage d'après l'événement ─────────────────────────────────────────
+
+    public function review(Request $request, string $id): RedirectResponse
+    {
+        $event = $this->find($id);
+        $data  = $request->validate(EventModeration::reviewRules(), EventModeration::MESSAGES);
+
+        return $this->attempt(function () use ($request, $event, $data) {
+            app(EventModeration::class)->review($event, $request->user(), $data);
+
+            return redirect()->to(route('events.show', $event->id) . '#votre-avis')->with('success', 'Merci pour votre avis !');
+        }, withInput: true);
+    }
+
+    // ─── Modération (modérateurs et administrateurs) ─────────────────────────
+
+    /** File : signalés (défaut), non confirmés (?filtre=non-confirmes), masqués (?filtre=masques). */
+    public function moderation(Request $request): View
+    {
+        $filter = match ($request->query('filtre')) {
+            'masques'       => 'hidden',
+            'non-confirmes' => 'unconfirmed',
+            default         => 'reported',
+        };
+        $items = app(EventModeration::class)->queue($filter)->paginate(20)->withQueryString();
+
+        return view('events.moderation', [
+            'filter'      => $filter,
+            'items'       => $items,
+            'reasons'     => Event::REPORT_REASONS,
+            'reliability' => $items->getCollection()->pluck('organizer_id')->unique()
+                ->mapWithKeys(fn ($id) => [$id => Event::reliabilityOf($id)]),
+        ]);
+    }
+
+    public function hide(Request $request, string $id): RedirectResponse
+    {
+        $event = $this->find($id);
+        $data  = $request->validate(['reason' => 'nullable|string|max:300']);
+
+        return $this->attempt(function () use ($request, $event, $data) {
+            app(EventModeration::class)->hide($event, $request->user(), $data['reason'] ?? null);
+
+            return back()->with('success', 'Événement masqué.');
+        });
+    }
+
+    public function restore(Request $request, string $id): RedirectResponse
+    {
+        $event = $this->find($id);
+
+        return $this->attempt(function () use ($request, $event) {
+            app(EventModeration::class)->restore($event, $request->user());
+
+            return back()->with('success', 'Événement rétabli.');
+        });
+    }
+
+    public function dismiss(Request $request, string $id): RedirectResponse
+    {
+        $event = $this->find($id);
+
+        return $this->attempt(function () use ($request, $event) {
+            app(EventModeration::class)->dismiss($event, $request->user());
+
+            return back()->with('success', 'Signalements classés : l’événement reste en ligne.');
+        });
+    }
+
     // ─── Outils (aussi utilisés par les vues) ────────────────────────────────
 
     /** « sam. 12 oct. 2026 · 18:00 – 22:00 », ou deux dates complètes si l'événement dure plusieurs jours. */
-    public static function dateRange(Event $event): string
+    public static function dateRange(Event $event, bool $original = false): string
     {
-        $start = $event->starts_at;
-        $end   = $event->ends_at;
+        if (!$original && $event->isDateTbd()) return 'Date à confirmer';
+        $start = $original ? $event->original_starts_at : $event->starts_at;
+        $end   = $original ? $event->original_ends_at : $event->ends_at;
         if (!$start) return '';
         $text = $start->translatedFormat('D j M Y · H:i');
         if (!$end || $end->equalTo($start)) return $text;
@@ -388,7 +538,7 @@ class EventController extends Controller
 
         $statuses   = $creating
             ? [EventStatus::Draft->value, EventStatus::Published->value]
-            : [EventStatus::Draft->value, EventStatus::Published->value, EventStatus::Cancelled->value];
+            : [EventStatus::Draft->value, EventStatus::Published->value, EventStatus::Postponed->value, EventStatus::Cancelled->value];
         $freeImages = max(Event::MAX_IMAGES - $existingImages, 0);
 
         $imageMessages = collect(EventService::IMAGE_MESSAGES)

@@ -23,6 +23,15 @@ class EventResource extends JsonResource
         if ($live && $live->status === LiveStatus::Preparing && !$this->canBeManagedBy($user)) {
             $live = null;
         }
+        // Détail (routes events/{id}…) : sondage personnel, signalement, fiabilité, modération.
+        // Les listes s'en passent pour éviter des requêtes par événement.
+        $detail    = filled($request->route('id'));
+        $manager   = $this->canBeManagedBy($user);
+        $moderator = (bool) $user?->canModerate();
+        $moderation = app(\App\Services\EventModeration::class);
+        $myReview  = $detail ? $moderation->reviewOf($this->resource, $user) : null;
+        $reliability = $detail ? \App\Models\Event::reliabilityOf($this->organizer_id) : null;
+        $reported  = $detail && $moderation->hasReported($this->resource, $user);
 
         return [
             'id'              => $this->id,
@@ -36,6 +45,38 @@ class EventResource extends JsonResource
             'phaseLabel'      => $this->phaseLabel(),
             'startsAt'        => $this->starts_at?->toIso8601String(),
             'endsAt'          => $this->ends_at?->toIso8601String(),
+            // Report / annulation : ancienne date (affichée barrée), « date à confirmer », motif.
+            'isPostponed'      => $this->isPostponed(),
+            'dateTbd'          => $this->isDateTbd(),
+            'originalStartsAt' => $this->isPostponed() ? $this->original_starts_at?->toIso8601String() : null,
+            'originalEndsAt'   => $this->isPostponed() ? $this->original_ends_at?->toIso8601String() : null,
+            'statusReason'     => $this->status_reason,
+            'statusChangedAt'  => $this->status_changed_at?->toIso8601String(),
+            // Modération : masqué (visible des seuls gestionnaires et modérateurs), non confirmé.
+            'isHidden'         => $this->isHidden(),
+            'hiddenReason'     => ($manager || $moderator) ? $this->hidden_reason : null,
+            'isUnconfirmed'    => $this->isUnconfirmed(),
+            'canReport'        => $user !== null && !$manager && $this->status->value !== 'draft' && !$reported,
+            'hasReported'      => $reported,
+            // Sondage d'après l'événement (« A-t-il vraiment eu lieu ? »).
+            'survey' => [
+                'open'             => $this->acceptsReviews(),
+                'canAnswer'        => $detail && $moderation->canReview($this->resource, $user, $myReview),
+                'yes'              => $this->survey_yes_count,
+                'no'               => $this->survey_no_count,
+                'absent'           => $this->survey_absent_count,
+                'total'            => $this->surveyTotal(),
+                'confirmedPercent' => $this->confirmedPercent(),
+                'ratingAverage'    => $this->ratingAverage(),
+                'ratingCount'      => $this->rating_count,
+                'mine'             => $myReview ? [
+                    'attended'      => $myReview->attended,
+                    'rating'        => $myReview->rating,
+                    'body'          => $myReview->body,
+                    'editableUntil' => $myReview->editableUntil()->toIso8601String(),
+                    'canEdit'       => $myReview->isEditable() && $this->acceptsReviews(),
+                ] : null,
+            ],
             'location'        => $this->location,
             'city'            => $this->city,
             'country'         => $this->country,
@@ -54,7 +95,15 @@ class EventResource extends JsonResource
                 'avatarUrl'        => $this->organizer?->avatar_url,
                 'isOrganization'   => (bool) $this->organizer?->isOrganization(),
                 'isVerified'       => (bool) $this->organizer?->isVerified(),
+                // ≥ 3 événements confirmés par le sondage et aucun non confirmé (détail seulement).
+                'isReliable'       => (bool) ($reliability['reliable'] ?? false),
             ],
+            // Modérateurs (détail) : signalements et fiabilité de l'organisateur.
+            'moderation' => $detail && $moderator ? [
+                'reportCount'    => $this->report_count,
+                'pendingReports' => $this->reports()->whereNull('reviewed_at')->count(),
+                'reliability'    => $reliability,
+            ] : null,
             'stats' => [
                 'going'       => $this->going_count,
                 'notGoing'    => $this->not_going_count,
@@ -63,7 +112,7 @@ class EventResource extends JsonResource
             ],
             'myParticipation'     => $this->participationOf($user), // going | not_going | null
             'acceptsParticipation' => $this->acceptsParticipation(),
-            'canManage'       => $this->canBeManagedBy($user),
+            'canManage'       => $manager,
             // Responsable : supprimer, désigner les co-gestionnaires (organisateur, ses gestionnaires, admin).
             'canAdministrate' => $this->canBeAdministeredBy($user),
             // Co-gestionnaires (2 au plus) : visibles des seuls gestionnaires.
