@@ -5,7 +5,8 @@
     variant : « tile » (par défaut, carte encadrée videos/partials/tile) ou « card ».
     encourage : true pour insérer un message « Témoigner » tous les config('encouragements.feed_every') témoignages
     (components/encouragement). reasons : [id => 'following'|'suggested'] (Mon fil, étiquette « Suggestion »).
-    inserts : événements / requêtes de prière insérés entre les témoignages (voir videos/partials/cards).
+    reposts : [id => TestimonyRepost] (Mon fil, en-tête « X a partagé »).
+    inserts : événements, sessions et requêtes de prière, paroles prophétiques insérés entre les témoignages (voir videos/partials/cards).
 --}}
 @php
     $compact   = \App\Support\FeedLayout::isCompact();
@@ -14,5 +15,5 @@
 @endphp
 <div @if(!empty($listId)) id="{{ $listId }}" @endif
      class="{{ $compact ? 'card divide-y divide-slate-100' : $gridClass }}" data-layout="{{ $compact ? 'compact' : 'cards' }}">
-    @include('videos.partials.cards', ['items' => $items, 'routeName' => $routeName ?? 'testimonies.show', 'tab' => $tab ?? null, 'variant' => $variant ?? null, 'encourage' => $encourage ?? false, 'reasons' => $reasons ?? [], 'inserts' => $inserts ?? []])
+    @include('videos.partials.cards', ['items' => $items, 'routeName' => $routeName ?? 'testimonies.show', 'tab' => $tab ?? null, 'variant' => $variant ?? null, 'encourage' => $encourage ?? false, 'reasons' => $reasons ?? [], 'reposts' => $reposts ?? [], 'suggestedAt' => $suggestedAt ?? null, 'inserts' => $inserts ?? []])
 </div>

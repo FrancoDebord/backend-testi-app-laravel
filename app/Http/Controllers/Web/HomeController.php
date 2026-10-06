@@ -58,14 +58,18 @@ class HomeController extends Controller
 
         if (!$showShelves) {
             return view('home.index', $data + [
-                'featured' => collect(), 'lives' => collect(), 'shorts' => collect(), 'verse' => null,
+                'featured' => collect(), 'lives' => collect(), 'shorts' => collect(), 'verse' => null, 'prayerSessions' => collect(),
             ]);
         }
 
         $data += [
             'featured' => Testimony::with(['user', 'category'])->featured()->latestPublished()->limit(5)->get(),
             'verse'    => DailyVerse::today(),
-            'lives'    => LiveSession::with('host')->onAir()->latest('started_at')->limit(4)->get(),
+            // Directs à l'antenne visibles de la personne (comme « Mon fil » et l'application).
+            'lives'    => LiveSession::with('host')->onAir()->latest('started_at')->limit(8)->get()
+                ->filter(fn ($l) => $l->isVisibleTo($viewer))->take(4)->values(),
+            // Sessions de prière programmées (bandeau masqué s'il n'y en a pas) : docs/fonctionnalites/sessions-de-priere.md
+            'prayerSessions' => app(\App\Services\PrayerSessions::class)->list($viewer, 'upcoming')->limit(6)->get(),
             'shorts'   => Testimony::with('user')->published()->shorts()->latestPublished()->limit(12)->get(),
             // Chiffres publics, relus au plus toutes les 5 minutes.
             'stats'    => Cache::remember('home.stats', 300, fn () => [

@@ -74,6 +74,14 @@
     @elseif($isOwner)
     <p class="mt-4 px-2 text-sm text-slate-500 sm:px-6">Ajoutez une présentation pour que l'on vous connaisse mieux.</p>
     @endif
+
+    {{-- Fiabilité de l'organisateur d'événements (modération) — docs/fonctionnalites/evenements.md --}}
+    @if(auth()->user()?->canModerate() && ($eventReliability = \App\Models\Event::reliabilityOf($profile->id))['total'] > 0)
+    <div class="mt-4 max-w-md px-2 sm:px-6">
+        <p class="text-xs font-semibold text-slate-500 uppercase">Événements organisés (modération)</p>
+        @include('events.partials.reliability', ['reliability' => $eventReliability])
+    </div>
+    @endif
 </section>
 
 <div class="mb-6 flex items-center justify-between gap-3 border-b border-slate-200">
@@ -93,5 +101,20 @@
         @include('components.testimony-list', ['items' => $testimonies, 'routeName' => 'testimonies.show'])
     </div>
     {{ $testimonies->links() }}
+@endif
+
+{{-- Partages internes (« X a partagé ») : la carte garde l'auteur d'origine. docs/fonctionnalites/partage-interne.md --}}
+@if(($reposts ?? collect())->isNotEmpty())
+<div class="mt-10 mb-6 flex items-center gap-3 border-b border-slate-200">
+    <h2 class="tab-active"><i class="fa-solid fa-retweet mr-1" aria-hidden="true"></i>Partages</h2>
+</div>
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
+    @foreach($reposts as $repost)
+    <div class="flex min-w-0 flex-col gap-1.5">
+        @include('feed.partials.repost-header', ['repost' => $repost])
+        @include('videos.partials.tile', ['testimony' => $repost->testimony, 'url' => route('testimonies.show', $repost->testimony_id)])
+    </div>
+    @endforeach
+</div>
 @endif
 @endsection

@@ -77,17 +77,18 @@ class FeedInsertsTest extends TestCase
         $this->actingAs($by)->postJson('/api/v1/prayer/requests', ['body' => $body] + $extra)->assertCreated();
     }
 
-    public function test_web_personal_feed_shows_prayer_requests_of_followed_accounts_except_anonymous(): void
+    public function test_web_personal_feed_shows_prayer_requests_of_followed_accounts_first(): void
     {
-        $this->pray($this->followed, 'Priez pour notre croisade de décembre.');
-        $this->pray($this->followed, 'Requête anonyme de cette église.', ['is_anonymous' => true]);
+        // Comptes suivis d'abord (sans les anonymes), puis les requêtes publiques des autres comptes
+        // (docs/fonctionnalites/recommandations.md) ; jamais celles réservées aux abonnés d'un compte non suivi.
         $this->pray($this->other, 'Requête d’une église inconnue.');
+        $this->pray($this->other, 'Requête réservée à ses abonnés.', ['visibility' => 'followers']);
+        $this->pray($this->followed, 'Priez pour notre croisade de décembre.');
 
         $this->actingAs($this->user)->get(route('feed.personal'))
             ->assertOk()
-            ->assertSee('Priez pour notre croisade de décembre.')
-            ->assertDontSee('Requête anonyme de cette église.')
-            ->assertDontSee('Requête d’une église inconnue.');
+            ->assertSeeInOrder(['Priez pour notre croisade de décembre.', 'Requête d’une église inconnue.'])
+            ->assertDontSee('Requête réservée à ses abonnés.');
     }
 
     public function test_home_inserts_public_prayer_requests_only(): void
@@ -109,8 +110,8 @@ class FeedInsertsTest extends TestCase
 
         $this->actingAs($this->user)->get(route('feed.personal'))
             ->assertOk()
-            ->assertSee('Croisade suivie')
             ->assertSee('Événement · ', false)
-            ->assertDontSee('Croisade inconnue');
+            // Comptes suivis d'abord, puis les autres comptes.
+            ->assertSeeInOrder(['Croisade suivie', 'Croisade inconnue']);
     }
 }

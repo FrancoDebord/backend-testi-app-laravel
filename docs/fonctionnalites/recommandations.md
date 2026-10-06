@@ -38,19 +38,47 @@ La liste classée compte 200 témoignages au plus ; au-delà, les autres suivent
 
 ### Mon fil (`GET /api/v1/feed?page=&limit=`, connecté ; site `/mon-fil`)
 
-Page personnelle (menu latéral « Mon fil », site et application) : les témoignages des **comptes suivis**, du plus récent au plus ancien, avec **une suggestion tous les trois** — témoignages de comptes **non suivis** proches de ses centres d'intérêt (catégories, popularité, fraîcheur ; déjà vus repoussés ; jamais les siens). Sans abonnement : suggestions seulement, avec une invitation à suivre des comptes. Chaque élément porte `feedReason` = `following` | `suggested` (libellé « Suggestion pour vous ») ; `meta.followingCount`. Liste calculée par `Recommendations::personalFeed` (cache 10 minutes, `reco:personal:{id}`, vidé à chaque abonnement / désabonnement). Des messages pour inciter à témoigner y sont insérés ([encouragements.md](encouragements.md)).
+Page personnelle (menu latéral « Mon fil », site et application), **comme l'accueil mais personnalisée** : **tous les témoignages publiés** (sauf les siens), sans doublon, dans cet ordre :
+
+1. **Comptes suivis d'abord** : leurs témoignages publiés et leurs **partages** (« X a partagé », [partage-interne.md](partage-interne.md)) des **30 derniers jours**, du plus récent au plus ancien (100 au plus) ; un témoignage partagé n'apparaît qu'une fois, au moment le plus récent ;
+2. puis le **classement « Pour vous »** (le même que `sort=for_you`, 200 au plus), sans ce qui précède ;
+3. puis **tout le reste**, du plus récent au plus ancien.
+
+Chaque élément porte `feedReason` = `following` (compte suivi) | `suggested` (compte non suivi, libellé « Suggestion pour vous ») | `repost` (+ `repostId`, `repostedBy` (UserResource), `repostComment`, `repostedAt` ; `user` reste l'**auteur d'origine**) ; `meta.followingCount`, `meta.total`. Les étapes 1-2 sont calculées par `Recommendations::personalFeed` et gardées 10 minutes (`reco:personal:v2:{id}`, vidé à chaque abonnement / désabonnement et, pour ses abonnés, à chaque partage) : pagination stable ; l'étape 3 est paginée par décalage. Un témoignage retiré du public ou supprimé, ou un partage annulé, disparaît à l'affichage suivant. Sans abonnement : « Comptes à suivre » en tête puis le classement « Pour vous ». **Rétrocompatible** : l'application déjà publiée affiche un `repost` comme un témoignage suivi (sans l'en-tête « X a partagé »).
+
+Des messages pour inciter à témoigner y sont insérés ([encouragements.md](encouragements.md)), ainsi que le bandeau **« Comptes à suivre »** ([abonnements.md](abonnements.md)) après les 6 premiers éléments (en tête si l'on ne suit personne).
 
 ### Directs, événements et requêtes de prière dans les fils
 
 | Fil | En tête | Insérés entre les témoignages |
 |---|---|---|
-| « Pour vous » (accueil de l'application ; « Témoignages récents » du site, sans filtre) | directs à l'antenne (application : bandeau « En direct » ; site : bloc « En direct · Maintenant ») | requêtes de prière **publiques** récentes (`GET /prayer/requests?scope=feed`, 10) |
-| Mon fil | directs à l'antenne visibles de la personne | en alternance : **événements à venir** des comptes suivis (`GET /events?scope=following`, 10) et leurs **requêtes de prière** publiques ou réservées aux abonnés, **sans les anonymes** (`scope=following`, 10) |
+| « Pour vous » (accueil de l'application ; « Témoignages récents » du site, sans filtre) | directs à l'antenne visibles de la personne (application : bandeau « En direct » ; site : bloc « En direct · Maintenant ») ; bandeaux **« Événements à venir »** (application) et **« Sessions de prière à venir »** (application et site, `GET /prayer/sessions?scope=upcoming`, masqué si vide) ; « Comptes à suivre » | requêtes de prière **publiques** récentes (`GET /prayer/requests?scope=feed`, 10) |
+| Mon fil | directs à l'antenne visibles de la personne | `GET /feed/inserts` : **événements à venir**, **sessions de prière programmées**, **requêtes de prière**, **paroles prophétiques publiques** — celles des **comptes suivis d'abord**, puis celles des **autres comptes** |
 | Page d'un événement | — | bloc « Prière » ([requetes-de-priere.md](requetes-de-priere.md)) |
 
-Règle de placement (identique site / application) : un élément inséré après le 3e témoignage, puis tous les 6 ; les messages « Témoigner » restent tous les 8. Numérotation selon la position dans le fil entier (pages suivantes comprises) ; les éléments en trop attendent la suite du fil ; avec moins de 3 témoignages (ou aucun), ils suivent la liste. Pas d'insertion dans les shorts ni quand un filtre (type, catégorie) est actif sur l'accueil.
+**`GET /api/v1/feed/inserts`** (connecté ; `App\Services\FeedInserts`, partagé avec le site) : un seul appel plutôt que de nouveaux `scope` sur quatre listes, pour que le site et l'application appliquent exactement la même règle.
 
-Fichiers : application `lib/shared/content/feed_mix.dart` (`mixFeed`, `interleave`), `lib/features/feed/feed_insert_card.dart`, `lib/features/live/widgets/live_now_strip.dart` ; site `videos/partials/cards.blade.php` (variable `inserts`), `feed/partials/insert.blade.php`, `lives/partials/now.blade.php`, `Web\FeedController::followedInserts()`. Tests : `tests/Feature/FeedInsertsTest.php`, application `test/feed_mix_test.dart` et `test/home_layout_test.dart` (débordements à 320 px).
+```json
+{ "success": true, "data": {
+  "following": { "events": [EventResource], "prayerSessions": [PrayerSessionResource],
+                 "prayerRequests": [PrayerRequestResource], "prophecies": [PublicProphecyResource] },
+  "others":    { "events": [], "prayerSessions": [], "prayerRequests": [], "prophecies": [] } } }
+```
+
+| Source | Comptes suivis (`following`) | Autres comptes (`others`, jamais les siens) |
+|---|---|---|
+| Événements | publiés, à venir, organisés par un compte suivi | publiés, à venir, des autres organisateurs |
+| Sessions de prière | à venir ou en cours, animées par un compte suivi (publiques ou réservées aux abonnés) | à venir ou en cours, publiques |
+| Requêtes de prière | publiques ou réservées aux abonnés, **sans les anonymes** (`scope=following`) | publiques (`scope=feed`, les anonymes restent anonymes), sans celles déjà listées |
+| Paroles prophétiques | rendues publiques avec un témoignage d'accomplissement **publié et public**, par un compte suivi | idem, des autres comptes |
+
+5 éléments au plus par source et par groupe. `PublicProphecyResource` : `type: prophecy`, `id`, `title`, `receivedOn`, `givenBy`, `bodyText`, `audioUrl`, `audioDuration`, `dueOn`, `fulfilledOn`, `user`, `testimony { id, title, type, coverUrl, publishedAt }` (jamais les rappels ni le journal de prière ; une parole privée n'apparaît jamais).
+
+**Ordre d'insertion** (identique site / application : `FeedInserts::mixed()`, `mixInserts()`) : les éléments des comptes suivis, les sources en alternance (événement, session, requête, parole, événement…), puis ceux des autres comptes, dans le même ordre. **Placement** : un élément inséré après le 3e témoignage, puis tous les 6 ; les messages « Témoigner » restent tous les 8. Numérotation selon la position dans le fil entier (pages suivantes comprises) ; les éléments en trop attendent la suite du fil ; avec moins de 3 témoignages (ou aucun), ils suivent la liste. Pas d'insertion dans les shorts ni quand un filtre (type, catégorie) est actif sur l'accueil.
+
+**« À la une »** (accueil) : du plus récemment publié au plus ancien. Application : liste de `GET /testimonies/featured` (`latestPublished`, 10), repli sur les témoignages « à la une » du fil chargé triés par date ; site : `featured()->latestPublished()`.
+
+Fichiers : application `lib/shared/content/feed_mix.dart` (`mixFeed`, `interleave`, `mixInserts`), `lib/features/feed/feed_inserts.dart` (`feedInsertsProvider`), `lib/features/feed/feed_insert_card.dart`, `lib/features/feed/personal_feed_screen.dart`, `lib/features/prayer/widgets/upcoming_prayer_sessions_strip.dart`, `lib/features/prophecies/widgets/public_prophecy_feed_card.dart`, `lib/features/live/widgets/live_now_strip.dart`, `featuredFromApiProvider` ; site `App\Services\FeedInserts`, `Api\FeedController`, `Web\FeedController`, `videos/partials/cards.blade.php` (variables `inserts`, `reposts`, `suggestedAt`), `feed/partials/insert.blade.php`, `prayer/partials/upcoming-strip.blade.php`, `lives/partials/now.blade.php`. Tests : `tests/Feature/PersonalFeedAndRepostTest.php`, `FeedInsertsTest.php`, application `test/personal_feed_test.dart`, `test/feed_mix_test.dart` et `test/home_layout_test.dart` (débordements à 320 et 390 px, police ×1,3).
 
 ### Recommandations d'un témoignage (`GET /api/v1/testimonies/{id}/recommendations?limit=10`, 30 au plus)
 
@@ -60,15 +88,15 @@ Candidats : même catégorie, même auteur, comptes suivis, catégories préfér
 
 | Élément | Fichier |
 |---|---|
-| Moteur | `app/Services/Recommendations.php` (`interests`, `followedIds`, `seenIds`, `isNewcomer`, `recordView`, `forTestimony`, `feed`) |
+| Moteur | `app/Services/Recommendations.php` (`interests`, `followedIds`, `seenIds`, `isNewcomer`, `recordView`, `forTestimony`, `feed`, `personalFeed`) ; éléments insérés de Mon fil : `app/Services/FeedInserts.php` |
 | Historique de lecture | Table `testimony_views` (migration `2026_09_30_100003_create_testimony_views_table`) ; `ViewCounter::record()` et `Api\TestimonyController::show()` |
 | Page d'un témoignage (site) | `WatchPage::recommendations()` |
-| API | `Api\TestimonyController::index()` (`sort=for_you`), `::recommendations()` |
-| Cache | `reco:interests:{id}`, `reco:follows:{id}`, `reco:feed:{id|newcomer}:{type}:{catégorie}` (10 min) |
+| API | `Api\TestimonyController::index()` (`sort=for_you`), `::recommendations()`, `::personalFeed()` (`GET /feed`) ; `Api\FeedController::inserts()` (`GET /feed/inserts`) |
+| Cache | `reco:interests:{id}`, `reco:follows:{id}`, `reco:feed:{id|newcomer}:{type}:{catégorie}`, `reco:personal:v2:{id}` (10 min) |
 
 ## Tests
 
-`tests/Feature/RecommendationsTest.php` : nouveau venu (récent puis très vu, pagination sans doublon), intérêts et comptes suivis, recommandations (même catégorie d'abord, déjà vu repoussé, témoignage en cours exclu, API, page du site), historique de lecture et centres d'intérêt.
+`tests/Feature/PersonalFeedAndRepostTest.php` : Mon fil (comptes suivis d'abord puis tous les autres, pagination sans doublon), éléments insérés (sessions, paroles prophétiques ; suivis d'abord), partage interne. `tests/Feature/RecommendationsTest.php` : nouveau venu (récent puis très vu, pagination sans doublon), intérêts et comptes suivis, recommandations (même catégorie d'abord, déjà vu repoussé, témoignage en cours exclu, API, page du site), historique de lecture et centres d'intérêt.
 
 ## Limites connues
 

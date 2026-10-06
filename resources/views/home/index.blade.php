@@ -146,6 +146,12 @@
         {{-- En direct --}}
         @include('lives.partials.now', ['lives' => $lives])
 
+        {{-- Sessions de prière à venir (masqué s'il n'y en a pas) --}}
+        @include('prayer.partials.upcoming-strip', ['sessions' => $prayerSessions ?? collect()])
+
+        {{-- Comptes à suivre (masqué s'il n'y en a pas) : docs/fonctionnalites/abonnements.md --}}
+        @include('community.partials.suggested', ['suggestedLimit' => 8])
+
         @include('home.partials.recent', ['title' => 'Témoignages récents'])
 
         {{-- Catégories populaires + statistiques globales --}}
@@ -333,11 +339,13 @@
 
         {{-- Verset du jour : encadré « inspiration » --}}
         @if($verse)
-        <section class="card-insight p-5" aria-labelledby="home-verse-title">
+        {{-- Clic : page plein écran (versions, prière, commentaires, témoignages) — docs/fonctionnalites/verset-du-jour.md --}}
+        <a href="{{ route('daily-verse.show') }}" class="card-insight block p-5 transition-shadow hover:shadow-card" aria-labelledby="home-verse-title" data-testid="home-daily-verse">
             <h2 id="home-verse-title" class="mb-2 flex items-center gap-2 text-sm font-bold text-sun-700"><i class="fa-solid fa-sun text-sun-500" aria-hidden="true"></i>Verset du jour</h2>
             <blockquote class="text-[15px] leading-relaxed text-slate-900 italic">« {{ $verse->verse_text }} »</blockquote>
             <p class="mt-2 text-sm font-semibold text-primary-700">{{ $verse->reference }}</p>
-        </section>
+            <p class="mt-3 text-xs font-semibold text-primary-600">Méditer, prier, commenter <i class="fa-solid fa-arrow-right ml-1" aria-hidden="true"></i></p>
+        </a>
         @endif
 
         {{-- Pourquoi témoigner ? (docs/fonctionnalites/pourquoi-temoigner.md) --}}

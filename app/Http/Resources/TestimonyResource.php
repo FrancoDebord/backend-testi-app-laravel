@@ -48,7 +48,10 @@ class TestimonyResource extends JsonResource
                 'commentsCount'  => $this->comment_count,
                 'sharesCount'    => $this->share_count,
                 'bookmarksCount' => $this->bookmark_count,
+                // Partages internes sur TestiApp (docs/fonctionnalites/partage-interne.md).
+                'repostsCount'   => (int) ($this->repost_count ?? 0),
             ],
+            'isRepostedByMe'  => $userId ? $this->reposts()->where('user_id', $userId)->exists() : false,
             'isLikedByMe'     => $userId ? $this->isLikedBy($userId) : false,
             'isPrayedByMe'    => $userId ? $this->isPrayedBy($userId) : false,
             'isBookmarkedByMe' => $userId ? $this->isSavedBy($userId) : false,

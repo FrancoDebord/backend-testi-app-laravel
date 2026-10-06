@@ -181,66 +181,115 @@ class Recommendations
         return new LengthAwarePaginator($items, $total, $perPage, $page);
     }
 
-    // ─── Mon fil : comptes suivis, complétés de suggestions ─────────────────
+    // ─── Mon fil : comme l'accueil, les comptes suivis d'abord ──────────────
+
+    /** Fenêtre et taille de la tête de « Mon fil » (témoignages et partages récents des comptes suivis). */
+    public const PERSONAL_RECENT_DAYS = 30;
+    public const PERSONAL_RECENT_MAX  = 100;
+
+    public static function personalCacheKey(string $userId): string
+    {
+        return "reco:personal:v2:{$userId}";
+    }
 
     /**
-     * Fil personnel : les témoignages des comptes suivis (du plus récent au plus ancien),
-     * avec une suggestion tous les trois — témoignages proches de ses centres d'intérêt
-     * venant de comptes qu'elle ne suit pas. Sans abonnement : suggestions seulement.
+     * Fil personnel : TOUS les témoignages publiés (sauf les siens), dans cet ordre, sans doublon :
+     *   1. tête : témoignages publiés et partages internes (« X a partagé ») des comptes suivis
+     *      sur les PERSONAL_RECENT_DAYS derniers jours, du plus récent au plus ancien
+     *      (un témoignage partagé n'apparaît qu'une fois, au moment le plus récent) ;
+     *   2. puis le classement « Pour vous » (rankedIds) sans ce qui précède ;
+     *   3. puis tout le reste, du plus récent au plus ancien.
+     * Les étapes 1-2 sont mises en cache 10 minutes (pagination stable) ; l'étape 3 est paginée
+     * par décalage, comme feed().
      *
-     * @return array{0: LengthAwarePaginator, 1: array<string, string>} page et raison par
-     *         identifiant (`following` | `suggested`)
+     * @return array{0: LengthAwarePaginator, 1: array<string, string>, 2: array<string, \App\Models\TestimonyRepost>}
+     *         page, raison par identifiant (`following` | `suggested` | `repost`) et partage par identifiant
      */
     public function personalFeed(User $viewer, int $page = 1, int $perPage = 20): array
     {
         $page    = max(1, $page);
         $perPage = max(1, min(50, $perPage));
+        $offset  = ($page - 1) * $perPage;
 
-        $list = Cache::remember("reco:personal:{$viewer->id}", self::CACHE_SECONDS, function () use ($viewer) {
-            $followed = $this->followedIds($viewer);
-            $fromFollowed = $followed
-                ? Testimony::query()->published()->whereIn('user_id', $followed)
-                    ->latestPublished()->limit(300)->pluck('id')->all()
-                : [];
+        // [[testimony_id, raison, repost_id|null], …]
+        $head    = Cache::remember(self::personalCacheKey($viewer->id), self::CACHE_SECONDS, fn () => $this->personalHead($viewer));
+        $headIds = array_column($head, 0);
+        $followed = array_flip($this->followedIds($viewer));
+        $others  = fn () => Testimony::query()->published()->where('user_id', '!=', $viewer->id)->whereNotIn('id', $headIds);
+        $total   = count($head) + $others()->count();
 
-            $interests = $this->interests($viewer);
-            $seen      = array_flip($this->seenIds($viewer));
-            $exclude   = [...$followed, $viewer->id];
-            $columns   = ['id', 'user_id', 'category_slug', 'views_count', 'approved_at', 'created_at'];
-            $suggested = collect()
-                ->concat(Testimony::query()->published()->whereNotIn('user_id', $exclude)->latestPublished()->limit(300)->get($columns))
-                ->concat(Testimony::query()->published()->whereNotIn('user_id', $exclude)->orderByDesc('views_count')->limit(60)->get($columns))
-                ->unique('id')
-                ->map(fn ($t) => [
-                    'id' => $t->id,
-                    'score' => 3 * ($interests[$t->category_slug] ?? 0) + $this->popularity($t)
-                        + 1.5 * $this->freshness($t) - (isset($seen[$t->id]) ? 3 : 0),
-                ])
-                ->sortByDesc('score')->take(150)->pluck('id')->all();
-
-            // 3 témoignages suivis, 1 suggestion, et ainsi de suite.
-            $out = [];
-            $f = 0;
-            $s = 0;
-            while ($f < count($fromFollowed) || $s < count($suggested)) {
-                for ($k = 0; $k < 3 && $f < count($fromFollowed); $k++) {
-                    $out[] = [$fromFollowed[$f++], 'following'];
-                }
-                if ($s < count($suggested)) {
-                    $out[] = [$suggested[$s++], 'suggested'];
-                }
-            }
-
-            return $out;
-        });
-
-        $slice   = array_slice($list, ($page - 1) * $perPage, $perPage);
-        $ids     = array_column($slice, 0);
-        $reasons = array_column($slice, 1, 0);
-        $items   = Testimony::with(['user', 'category'])->whereIn('id', $ids)->get()
+        $slice    = array_slice($head, $offset, $perPage);
+        $ids      = array_column($slice, 0);
+        $reasons  = array_column($slice, 1, 0);
+        $repostIds = array_filter(array_column($slice, 2, 0));
+        $reposts  = $repostIds
+            ? \App\Models\TestimonyRepost::with('user')->whereIn('id', array_values($repostIds))->get()->keyBy('testimony_id')
+            : collect();
+        // Témoignage retiré du public, supprimé ou partage annulé depuis la mise en cache : il disparaît.
+        $items = Testimony::with(['user', 'category'])->published()->whereIn('id', $ids)->get()
+            ->filter(fn ($t) => !isset($repostIds[$t->id]) || $reposts->has($t->id))
             ->sortBy(fn ($t) => array_search($t->id, $ids, true))->values();
 
-        return [new LengthAwarePaginator($items, count($list), $perPage, $page), $reasons];
+        if (count($slice) < $perPage) {
+            $rest = $others()->with(['user', 'category'])->latestPublished()
+                ->skip(max(0, $offset - count($head)))->take($perPage - count($slice))->get();
+            foreach ($rest as $t) {
+                $reasons[$t->id] = isset($followed[$t->user_id]) ? 'following' : 'suggested';
+            }
+            $items = $items->concat($rest)->values();
+        }
+
+        return [new LengthAwarePaginator($items, $total, $perPage, $page), $reasons, $reposts->all()];
+    }
+
+    /** Étapes 1 et 2 de personalFeed() : liste d'entrées [testimony_id, raison, repost_id|null]. */
+    private function personalHead(User $viewer): array
+    {
+        $followed = $this->followedIds($viewer);
+        $since    = now()->subDays(self::PERSONAL_RECENT_DAYS);
+        $timeline = [];
+
+        if ($followed) {
+            Testimony::query()->published()->whereIn('user_id', $followed)
+                ->whereRaw('COALESCE(approved_at, created_at) >= ?', [$since])
+                ->latestPublished()->limit(self::PERSONAL_RECENT_MAX)
+                ->get(['id', 'approved_at', 'created_at'])
+                ->each(function ($t) use (&$timeline) {
+                    $timeline[] = [$t->id, 'following', null, ($t->approved_at ?? $t->created_at)?->timestamp ?? 0];
+                });
+            \App\Models\TestimonyRepost::query()->whereIn('user_id', $followed)->where('created_at', '>=', $since)
+                ->whereHas('testimony', fn ($t) => $t->published()->where('user_id', '!=', $viewer->id))
+                ->latest()->limit(self::PERSONAL_RECENT_MAX)
+                ->get(['id', 'testimony_id', 'created_at'])
+                ->each(function ($r) use (&$timeline) {
+                    $timeline[] = [$r->testimony_id, 'repost', $r->id, $r->created_at?->timestamp ?? 0];
+                });
+        }
+
+        // Du plus récent au plus ancien ; à égalité, le partage d'abord. Un témoignage n'apparaît qu'une fois.
+        usort($timeline, fn ($a, $b) => [$b[3], $b[1] === 'repost'] <=> [$a[3], $a[1] === 'repost']);
+        $head = [];
+        $seen = [];
+        foreach (array_slice($timeline, 0, self::PERSONAL_RECENT_MAX) as [$id, $reason, $repostId]) {
+            if (isset($seen[$id])) continue;
+            $seen[$id] = true;
+            $head[] = [$id, $reason, $repostId];
+        }
+
+        // Puis le classement « Pour vous », sans ses propres témoignages ni ce qui précède.
+        $ranked = array_values(array_filter(
+            $this->rankedIds($viewer, fn ($q) => $q->published(), null, null),
+            fn ($id) => !isset($seen[$id])
+        ));
+        $authors = $ranked ? Testimony::whereIn('id', $ranked)->pluck('user_id', 'id')->all() : [];
+        $followedSet = array_flip($followed);
+        foreach ($ranked as $id) {
+            $author = $authors[$id] ?? null;
+            if ($author === null || $author === $viewer->id) continue;
+            $head[] = [$id, isset($followedSet[$author]) ? 'following' : 'suggested', null];
+        }
+
+        return $head;
     }
 
     /** Liste classée des identifiants (mise en cache 10 minutes par personne et par filtre). */

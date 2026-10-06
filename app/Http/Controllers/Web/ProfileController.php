@@ -39,7 +39,10 @@ class ProfileController extends Controller
 
         $testimonies = $testimoniesQuery->paginate(12);
 
-        return view('profile.show', compact('profile', 'isOwner', 'isFollowing', 'testimonies'));
+        // Partages internes récents (docs/fonctionnalites/partage-interne.md).
+        $reposts = app(\App\Services\Reposts::class)->ofUser($profile)->limit(12)->get();
+
+        return view('profile.show', compact('profile', 'isOwner', 'isFollowing', 'testimonies', 'reposts'));
     }
 
     public function edit(): View

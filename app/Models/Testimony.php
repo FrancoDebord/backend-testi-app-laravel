@@ -47,6 +47,7 @@ class Testimony extends Model
             'prayer_count'    => 'integer',
             'comment_count'   => 'integer',
             'share_count'     => 'integer',
+            'repost_count'    => 'integer', // partages internes (docs/fonctionnalites/partage-interne.md)
             'bookmark_count'  => 'integer',
         ];
     }
@@ -166,6 +167,12 @@ class Testimony extends Model
     public function liveSession(): HasOne
     {
         return $this->hasOne(LiveSession::class);
+    }
+
+    /** Partages internes (« X a partagé ») : docs/fonctionnalites/partage-interne.md */
+    public function reposts(): HasMany
+    {
+        return $this->hasMany(TestimonyRepost::class);
     }
 
     public function savedByUsers(): BelongsToMany

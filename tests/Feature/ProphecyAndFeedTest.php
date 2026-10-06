@@ -176,7 +176,8 @@ class ProphecyAndFeedTest extends TestCase
             ->assertJsonPath('meta.followingCount', 1)
             ->assertJsonCount(5, 'data');
         $reasons = collect($res->json('data'))->pluck('feedReason')->all();
-        $this->assertSame(['following', 'following', 'following', 'suggested', 'following'], $reasons);
+        // Comptes suivis d'abord, puis les autres (« Suggestion ») : docs/fonctionnalites/recommandations.md
+        $this->assertSame(['following', 'following', 'following', 'following', 'suggested'], $reasons);
         $this->assertNotContains('Le mien', collect($res->json('data'))->pluck('title'));
 
         $this->guest()->getJson('/api/v1/feed')->assertUnauthorized();

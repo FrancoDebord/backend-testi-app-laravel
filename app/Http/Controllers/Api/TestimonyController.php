@@ -138,21 +138,25 @@ class TestimonyController extends Controller
     }
 
     /**
-     * Mon fil (GET /feed) : comptes suivis, avec des suggestions de comptes inconnus.
-     * Chaque témoignage porte `feedReason` = following | suggested. Voir docs/fonctionnalites/recommandations.md
+     * Mon fil (GET /feed) : tous les témoignages publiés, les comptes suivis d'abord (leurs témoignages
+     * et partages récents), puis le classement « Pour vous ». Chaque témoignage porte `feedReason` =
+     * following | suggested | repost (+ repostId, repostedBy, repostComment, repostedAt).
+     * Éléments insérés : GET /feed/inserts. Voir docs/fonctionnalites/recommandations.md et partage-interne.md
      */
     public function personalFeed(Request $request): JsonResponse
     {
         $viewer = $request->user();
         $limit  = min((int) $request->query('limit', 20), 50);
-        [$page, $reasons] = app(\App\Services\Recommendations::class)
+        [$page, $reasons, $reposts] = app(\App\Services\Recommendations::class)
             ->personalFeed($viewer, (int) $request->query('page', 1), $limit);
 
         return $this->paginated(
-            collect($page->items())->map(fn ($t) => [
-                ...(new TestimonyResource($t))->toArray($request),
-                'feedReason' => $reasons[$t->id] ?? 'suggested',
-            ])->values(),
+            collect($page->items())->map(fn ($t) => isset($reposts[$t->id])
+                ? RepostController::feedItem($request, $t, $reposts[$t->id])
+                : [
+                    ...(new TestimonyResource($t))->toArray($request),
+                    'feedReason' => $reasons[$t->id] ?? 'suggested',
+                ])->values(),
             [
                 'currentPage' => $page->currentPage(),
                 'lastPage'    => $page->lastPage(),

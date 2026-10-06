@@ -22,6 +22,11 @@
         : [route('home'), 'Accueil'];
     $canReport = Auth::check() && Auth::id() !== $testimony->user_id;
     $inJournal = $testimony->isInJournal();
+    // Partage interne « X a partagé » (docs/fonctionnalites/partage-interne.md) : témoignage publié et public, pas le sien.
+    $canRepost = $canReport && !$inJournal
+        && $testimony->status === \App\Enums\TestimonyStatus::Approved
+        && $testimony->visibility === \App\Enums\TestimonyVisibility::Public;
+    $myRepost  = $canRepost ? $testimony->reposts()->where('user_id', Auth::id())->first() : null;
     // Lecture (docs/fonctionnalites/affichage-et-lecture.md) : qualités, en boucle, lecture automatique du suivant.
     $hasPlayer  = in_array($type, ['video', 'audio'], true) && $testimony->media_url;
     $renditions = $hasPlayer ? $testimony->playableRenditions() : [];
@@ -276,6 +281,12 @@
                         <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>Partager
                     </button>
                     @endunless
+                    @if($canRepost)
+                    <button type="button" class="{{ $myRepost ? 'chip-active' : 'chip' }}" data-modal-open="repost-modal" aria-pressed="{{ $myRepost ? 'true' : 'false' }}">
+                        <i class="fa-solid fa-retweet" aria-hidden="true"></i>{{ $myRepost ? 'Partagé sur TestiApp' : 'Partager sur TestiApp' }}
+                        @if($testimony->repost_count > 0)<span class="tabular-nums">{{ number_format($testimony->repost_count, 0, ',', ' ') }}</span>@endif
+                    </button>
+                    @endif
                     @auth
                     <button type="button" class="{{ $isSaved ? 'chip-active' : 'chip' }}" data-save="{{ route('testimonies.save', $testimony->id) }}" aria-pressed="{{ $isSaved ? 'true' : 'false' }}">
                         <i class="{{ $isSaved ? 'fa-solid' : 'fa-regular' }} fa-bookmark" aria-hidden="true" data-save-icon></i><span data-save-label>{{ $isSaved ? 'Sauvegardé' : 'Sauvegarder' }}</span>
@@ -427,7 +438,8 @@
                     <div class="min-w-0 flex-1">
                         <label for="comment-body" class="sr-only">Ajouter un commentaire</label>
                         <textarea id="comment-body" name="body" rows="2" required maxlength="{{ \App\Http\Requests\CommentRequest::MAX_LENGTH }}"
-                                  class="form-input" placeholder="Ajouter un commentaire…">{{ old('parent_id') ? '' : old('body') }}</textarea>
+                                  class="form-input" placeholder="Ajouter un commentaire… (@ pour mentionner)" data-mention-input data-mention-testimony="{{ $testimony->id }}">{{ old('parent_id') ? '' : old('body') }}</textarea>
+                        @include('components.mention-input')
                         @error('body')<p class="form-error">{{ $message }}</p>@enderror
                         <div class="mt-2 flex justify-end">
                             <button type="submit" class="btn-primary btn-sm">Publier</button>
@@ -473,6 +485,40 @@
         </aside>
     </div>
 </div>
+
+{{-- ── Modale « Partager sur TestiApp » (docs/fonctionnalites/partage-interne.md) ── --}}
+@if($canRepost)
+<div id="repost-modal" data-modal class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+     role="dialog" aria-modal="true" aria-labelledby="repost-modal-title" hidden>
+    <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
+    <div class="card relative w-full max-w-lg shadow-xl">
+        <form method="POST" action="{{ route('testimonies.repost', $testimony->id) }}" data-loading-label="Partage…">
+            @csrf
+            <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <h2 id="repost-modal-title" class="text-base font-semibold text-primary-600">Partager sur TestiApp</h2>
+                <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 px-5 py-4">
+                <p class="text-sm text-slate-600">Le témoignage de <strong class="font-semibold text-slate-900">{{ $testimony->user->display_name }}</strong> apparaîtra dans le fil de vos abonnés, avec son auteur. Il sera prévenu.</p>
+                <div>
+                    <label for="repost-comment" class="form-label">Votre commentaire (facultatif)</label>
+                    <textarea id="repost-comment" name="comment" rows="3" maxlength="500" class="form-input" placeholder="Pourquoi ce témoignage vous a touché…">{{ old('comment', $myRepost?->comment) }}</textarea>
+                </div>
+            </div>
+            <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4">
+                <button type="button" class="btn-secondary" data-modal-close>Fermer</button>
+                @if($myRepost)
+                <button type="submit" form="repost-delete-form" class="btn-secondary"><i class="fa-solid fa-xmark" aria-hidden="true"></i>Annuler le partage</button>
+                @endif
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-retweet" aria-hidden="true"></i>{{ $myRepost ? 'Mettre à jour' : 'Partager' }}</button>
+            </div>
+        </form>
+        @if($myRepost)
+        <form id="repost-delete-form" method="POST" action="{{ route('testimonies.unrepost', $testimony->id) }}" hidden>@csrf @method('DELETE')</form>
+        @endif
+    </div>
+</div>
+@endif
 
 {{-- ── Modale de signalement ─────────────────────────────────────────── --}}
 @if($canReport)
