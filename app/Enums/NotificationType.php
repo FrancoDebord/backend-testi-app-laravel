@@ -23,6 +23,10 @@ enum NotificationType: string
     case PrayerEncouragement   = 'prayer_encouragement';
     case PrayerSessionStarted  = 'prayer_session_started';
     case PrayerSessionReminder = 'prayer_session_reminder';
+    // Événements : report, annulation, sondage d'après l'événement (docs/fonctionnalites/evenements.md)
+    case EventPostponed        = 'event_postponed';
+    case EventCancelled        = 'event_cancelled';
+    case EventSurvey           = 'event_survey';
 
     public function isSystem(): bool
     {

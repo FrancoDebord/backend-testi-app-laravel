@@ -89,6 +89,16 @@ Route::get('/.well-known/apple-app-site-association', function () {
 Route::get('/',                     [HomeController::class, 'index'])->name('home');
 Route::get('/explore',              [ExploreController::class, 'index'])->name('explore');
 Route::get('/bible',                [BibleController::class, 'reader'])->name('bible.reader');
+// Verset du jour en plein écran : versions, prière, commentaires, témoignages (docs/fonctionnalites/verset-du-jour.md)
+Route::get('/verset-du-jour/{date?}', [\App\Http\Controllers\Web\DailyVerseController::class, 'show'])
+    ->where('date', '\d{4}-\d{2}-\d{2}')->name('daily-verse.show');
+Route::middleware('auth')->whereNumber('id')->whereUuid('comment')->group(function () {
+    Route::post('/verset-du-jour/{id}/reagir',                          [\App\Http\Controllers\Web\DailyVerseController::class, 'react'])->middleware('throttle:60,1')->name('daily-verse.react');
+    Route::post('/verset-du-jour/{id}/prieres',                         [\App\Http\Controllers\Web\DailyVerseController::class, 'storePrayer'])->middleware('throttle:20,1')->name('daily-verse.prayers.store');
+    Route::post('/verset-du-jour/{id}/commentaires',                    [\App\Http\Controllers\Web\DailyVerseController::class, 'storeComment'])->middleware('throttle:20,1')->name('daily-verse.comments.store');
+    Route::delete('/verset-du-jour/{id}/commentaires/{comment}',        [\App\Http\Controllers\Web\DailyVerseController::class, 'destroyComment'])->name('daily-verse.comments.destroy');
+    Route::post('/verset-du-jour/{id}/commentaires/{comment}/signaler', [\App\Http\Controllers\Web\DailyVerseController::class, 'reportComment'])->middleware('throttle:20,1')->name('daily-verse.comments.report');
+});
 Route::get('/testimonies/{id}',     [TestimonyController::class, 'show'])->name('testimonies.show');
 // Preuves : auteur et équipe, ou public si l'auteur l'a accepté (docs/fonctionnalites/preuves.md)
 Route::get('/testimonies/{id}/proofs/{proofId}', [TestimonyController::class, 'proof'])->name('testimonies.proof');
@@ -161,9 +171,20 @@ Route::whereUuid('id')->group(function () {
 // ── Événements ─ docs/fonctionnalites/evenements.md ───────────────────────
 // Pages et actions : Web\EventController (règles métier : App\Services\EventService, partagé avec l'API).
 Route::get('/evenements', [EventController::class, 'index'])->name('events.index');
+// Cartes / liste compacte (cookie event_layout, aussi sans compte)
+Route::post('/evenements/affichage', [EventController::class, 'layout'])->middleware('throttle:30,1')->name('events.layout');
 Route::middleware('auth')->group(function () {
     Route::get('/evenements/creer', [EventController::class, 'create'])->name('events.create');
     Route::post('/evenements',      [EventController::class, 'store'])->middleware('throttle:20,1')->name('events.store');
+    // Modération des événements signalés / non confirmés / masqués
+    Route::middleware('role:moderateur,administrateur')->group(function () {
+        Route::get('/evenements/moderation', [EventController::class, 'moderation'])->name('events.moderation.index');
+        Route::whereUuid('id')->group(function () {
+            Route::post('/evenements/moderation/{id}/masquer',  [EventController::class, 'hide'])->name('events.moderation.hide');
+            Route::post('/evenements/moderation/{id}/retablir', [EventController::class, 'restore'])->name('events.moderation.restore');
+            Route::post('/evenements/moderation/{id}/classer',  [EventController::class, 'dismiss'])->name('events.moderation.dismiss');
+        });
+    });
 });
 Route::whereUuid(['id', 'comment', 'image', 'user'])->group(function () {
     Route::get('/evenements/{id}', [EventController::class, 'show'])->name('events.show');
@@ -187,6 +208,11 @@ Route::whereUuid(['id', 'comment', 'image', 'user'])->group(function () {
         // Co-gestionnaires (2 au plus) : ajout par un responsable ; retrait par un responsable ou soi-même
         Route::post('/evenements/{id}/co-gestionnaires',          [EventController::class, 'addManager'])->middleware('throttle:20,1')->name('events.managers.store');
         Route::delete('/evenements/{id}/co-gestionnaires/{user}', [EventController::class, 'removeManager'])->middleware('throttle:20,1')->name('events.managers.destroy');
+        // Report / annulation (gestionnaires), signalement, sondage d'après l'événement
+        Route::post('/evenements/{id}/reporter',  [EventController::class, 'postpone'])->middleware('throttle:20,1')->name('events.postpone');
+        Route::post('/evenements/{id}/annuler',   [EventController::class, 'cancel'])->middleware('throttle:20,1')->name('events.cancel');
+        Route::post('/evenements/{id}/signaler',  [EventController::class, 'report'])->middleware('throttle:20,1')->name('events.report');
+        Route::post('/evenements/{id}/avis',      [EventController::class, 'review'])->middleware('throttle:20,1')->name('events.review');
     });
 });
 
@@ -239,6 +265,8 @@ Route::middleware('auth')->group(function () {
 
     // Recherche de personnes pour désigner un gestionnaire (JSON, components/user-picker)
     Route::get('/personnes/recherche',   UserSearchController::class)->middleware('throttle:60,1')->name('users.search');
+    // Mentions « @ » des commentaires (JSON, components/mention-input) ─ docs/fonctionnalites/mentions.md
+    Route::get('/personnes/mentions',    \App\Http\Controllers\Web\MentionSearchController::class)->middleware('throttle:120,1')->name('users.mentions');
 
     // Testimonies
     Route::get('/publish',               [TestimonyController::class, 'create'])->name('publish');
@@ -248,6 +276,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/testimonies/{id}/reactions', [TestimonyController::class, 'storeReaction'])->name('testimonies.reactions.store');
     Route::put('/testimonies/{id}/save',       [TestimonyController::class, 'saveTestimony'])->name('testimonies.save');
     Route::post('/testimonies/{id}/comments',  [TestimonyController::class, 'storeComment'])->name('testimonies.comments.store');
+    // Partage interne « X a partagé » ─ docs/fonctionnalites/partage-interne.md
+    Route::post('/testimonies/{id}/repost',    [\App\Http\Controllers\Web\RepostController::class, 'store'])->middleware('throttle:30,1')->name('testimonies.repost');
+    Route::delete('/testimonies/{id}/repost',  [\App\Http\Controllers\Web\RepostController::class, 'destroy'])->name('testimonies.unrepost');
 
     // Carnet privé : visible de son seul auteur ─ docs/fonctionnalites/carnet-prive.md
     Route::get('/carnet',                       [JournalController::class, 'index'])->name('journal.index');

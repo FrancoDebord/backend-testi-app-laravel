@@ -43,6 +43,7 @@
             $notifType = $notif->type->value;
             $notifIcon = match (true) {
                 $notifType === 'live_started'        => 'fa-solid fa-tower-broadcast',
+                str_starts_with($notifType, 'event_') => 'fa-regular fa-calendar',
                 str_contains($notifType, 'like')     => 'fa-regular fa-thumbs-up',
                 str_contains($notifType, 'comment')  => 'fa-regular fa-comment',
                 str_contains($notifType, 'follow')   => 'fa-solid fa-user-plus',
@@ -63,6 +64,9 @@
                 </p>
                 @if($notif->testimony_title)
                 <p class="mt-0.5 truncate text-sm text-slate-500 italic">« {{ $notif->testimony_title }} »</p>
+                @endif
+                @if(is_array($notif->payload) && filled($notif->payload['event_id'] ?? null))
+                <a href="{{ route('events.show', $notif->payload['event_id']) . ($notifType === 'event_survey' ? '#votre-avis' : '') }}" class="mt-1 inline-block text-sm font-semibold text-primary-600 hover:underline">{{ $notifType === 'event_survey' ? 'Donner mon avis' : "Voir l'événement" }}</a>
                 @endif
                 <p class="mt-1 text-xs text-slate-400">{{ $notif->created_at->diffForHumans() }}</p>
             </div>

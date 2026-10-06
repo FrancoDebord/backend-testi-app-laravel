@@ -49,6 +49,9 @@ class PushNotifications
         'prayer_encouragement'   => 'Encouragement reçu',
         'prayer_session_started' => 'Session de prière',
         'prayer_session_reminder' => 'Session de prière bientôt',
+        'event_postponed'        => 'Événement reporté',
+        'event_cancelled'        => 'Événement annulé',
+        'event_survey'           => 'Votre avis sur l’événement',
     ];
 
     public const DEFAULT_TITLE = 'Témoignages';
@@ -126,6 +129,8 @@ class PushNotifications
             // Requêtes et sessions de prière (docs/fonctionnalites/sessions-de-priere.md)
             'prayer_request_id' => $payload['prayer_request_id'] ?? null,
             'prayer_session_id' => $payload['prayer_session_id'] ?? null,
+            // Événements (types event_*) : ouvre la page de l'événement.
+            'event_id'          => $payload['event_id'] ?? null,
         ]);
 
         return [

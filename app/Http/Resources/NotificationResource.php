@@ -23,6 +23,8 @@ class NotificationResource extends JsonResource
             // Requête / session de prière (types prayer_*) : ouvre l'écran correspondant.
             'prayerRequestId' => is_array($this->payload) ? ($this->payload['prayer_request_id'] ?? null) : null,
             'prayerSessionId' => is_array($this->payload) ? ($this->payload['prayer_session_id'] ?? null) : null,
+            // Événement (types event_*) : ouvre la page de l'événement.
+            'eventId'        => is_array($this->payload) ? ($this->payload['event_id'] ?? null) : null,
             'isRead'         => $this->is_read,
             'createdAt'      => $this->created_at?->toIso8601String(),
         ];

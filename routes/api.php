@@ -41,11 +41,26 @@ Route::prefix('v1')->group(function () {
     });
 
     // ── Verset du jour (public + authentifié) ────────────────────────────
-    Route::get('daily-verse', [DailyVerseController::class, 'today']);
+    Route::get('daily-verse', [DailyVerseController::class, 'today']); // ?date=AAAA-MM-JJ&translation=
+    // Versions, commentaires, requêtes de prière, témoignages liés — docs/fonctionnalites/verset-du-jour.md
+    Route::get('daily-verse/versions', [DailyVerseController::class, 'versions']); // ?date=&translation=
+    Route::whereNumber('id')->group(function () {
+        Route::get('daily-verse/{id}',                 [DailyVerseController::class, 'show']);
+        Route::get('daily-verse/{id}/versions',        [DailyVerseController::class, 'versions']);
+        Route::get('daily-verse/{id}/comments',        [DailyVerseController::class, 'comments']);
+        Route::get('daily-verse/{id}/prayer-requests', [DailyVerseController::class, 'prayerRequests']);
+        Route::get('daily-verse/{id}/testimonies',     [DailyVerseController::class, 'testimonies']);
+    });
     Route::middleware('auth:sanctum')->group(function () {
         Route::post  ('daily-verse/react',  [DailyVerseController::class, 'react']);
         Route::delete('daily-verse/react',  [DailyVerseController::class, 'unreact']);
         Route::post  ('daily-verse/share',  [DailyVerseController::class, 'share']);
+        Route::whereNumber('id')->whereUuid('commentId')->group(function () {
+            Route::post  ('daily-verse/{id}/react',                       [DailyVerseController::class, 'reactTo'])->middleware('throttle:60,1');
+            Route::post  ('daily-verse/{id}/comments',                    [DailyVerseController::class, 'storeComment'])->middleware('throttle:20,1');
+            Route::delete('daily-verse/{id}/comments/{commentId}',        [DailyVerseController::class, 'destroyComment']);
+            Route::post  ('daily-verse/{id}/comments/{commentId}/report', [DailyVerseController::class, 'reportComment'])->middleware('throttle:20,1');
+        });
     });
 
     // ── Bible (public) ──────────────────────────────────────────────────
@@ -87,10 +102,15 @@ Route::prefix('v1')->group(function () {
     Route::get('testimonies/{id}/recommendations', [TestimonyController::class, 'recommendations'])->middleware('throttle:60,1');
     Route::get('testimonies/{id}/comments',  [CommentController::class, 'index']);
     Route::get('testimonies/{id}/reactions', [ReactionController::class, 'index']);
+    // Avant users/{id} : comptes à suivre (invité accepté) et mentions « @ » (connecté)
+    // ─ docs/fonctionnalites/abonnements.md, docs/fonctionnalites/mentions.md
+    Route::get('users/suggestions',    [\App\Http\Controllers\Api\CommunityController::class, 'suggestions'])->middleware('throttle:60,1');
+    Route::get('users/mention-search', [\App\Http\Controllers\Api\CommunityController::class, 'mentionSearch'])->middleware(['auth:sanctum', 'throttle:120,1']);
     Route::get('users/{id}',           [UserController::class, 'show']);
     // Communauté : organisations et personnes à suivre (docs/fonctionnalites/abonnements.md)
     Route::get('community',            [\App\Http\Controllers\Api\CommunityController::class, 'index']);
     Route::get('users/{id}/testimonies', [UserController::class, 'testimonies']);
+    Route::get('users/{id}/reposts', [\App\Http\Controllers\Api\RepostController::class, 'ofUser']); // partages internes d'un compte (profil)
 
     // ── Témoignages en direct (lecture publique) ─ docs/fonctionnalites/lives.md
     Route::get('lives',                     [LiveController::class, 'index']);
@@ -130,9 +150,21 @@ Route::prefix('v1')->group(function () {
         Route::get('events/{id}',             [EventController::class, 'show']);
         Route::get('events/{id}/comments',    [EventController::class, 'comments']);
         Route::get('events/{id}/testimonies', [EventController::class, 'testimonies']);
+        Route::get('events/{id}/reviews',     [EventController::class, 'reviews']); // avis du sondage d'après l'événement
     });
     Route::middleware('auth:sanctum')->whereUuid(['id', 'imageId', 'commentId'])->group(function () {
         Route::post('events',                                   [EventController::class, 'store'])->middleware('throttle:20,1');
+        // Report / annulation (gestionnaires), signalement, sondage — docs/fonctionnalites/evenements.md
+        Route::post('events/{id}/postpone',                     [EventController::class, 'postpone'])->middleware('throttle:20,1');
+        Route::post('events/{id}/cancel',                       [EventController::class, 'cancel'])->middleware('throttle:20,1');
+        Route::post('events/{id}/report',                       [EventController::class, 'report'])->middleware('throttle:20,1');
+        Route::post('events/{id}/review',                       [EventController::class, 'review'])->middleware('throttle:20,1');
+        Route::middleware('role:moderateur,administrateur')->group(function () {
+            Route::get('events/moderation',                     [EventController::class, 'moderation']); // ?filter=reported|unconfirmed|hidden
+            Route::post('events/{id}/hide',                     [EventController::class, 'hide']);
+            Route::post('events/{id}/restore',                  [EventController::class, 'restore']);
+            Route::post('events/{id}/dismiss',                  [EventController::class, 'dismiss']);
+        });
         Route::put('events/{id}',                               [EventController::class, 'update']);
         Route::delete('events/{id}',                            [EventController::class, 'destroy']);
         Route::post('events/{id}/images',                       [EventController::class, 'storeImage'])->middleware('throttle:30,1');
@@ -157,7 +189,7 @@ Route::prefix('v1')->group(function () {
 
     // ── Requêtes et sessions de prière ─ docs/fonctionnalites/requetes-de-priere.md, sessions-de-priere.md
     // Lecture publique (selon la visibilité) ; la salle d'une session est un direct : routes lives/{id}/….
-    Route::get('prayer/requests',                 [\App\Http\Controllers\Api\PrayerRequestController::class, 'index']); // ?scope=all|feed|following|mine|event&event_id=&status=
+    Route::get('prayer/requests',                 [\App\Http\Controllers\Api\PrayerRequestController::class, 'index']); // ?scope=all|feed|following|mine|event|verse&event_id=&daily_verse_id=&status=
     Route::get('prayer/sessions',                 [\App\Http\Controllers\Api\PrayerSessionController::class, 'index']); // ?scope=upcoming|past|mine|joined|event&event_id=
     Route::whereUuid('id')->group(function () {
         Route::get('prayer/requests/{id}',          [\App\Http\Controllers\Api\PrayerRequestController::class, 'show']);
@@ -226,6 +258,10 @@ Route::prefix('v1')->group(function () {
         });
         // Mon fil : comptes suivis, complétés de suggestions ─ docs/fonctionnalites/recommandations.md
         Route::get('feed', [TestimonyController::class, 'personalFeed']);
+        Route::get('feed/inserts', [\App\Http\Controllers\Api\FeedController::class, 'inserts']); // événements, sessions, requêtes, paroles publiques (suivis d'abord)
+        // Partage interne « X a partagé » ─ docs/fonctionnalites/partage-interne.md
+        Route::post('testimonies/{id}/repost',   [\App\Http\Controllers\Api\RepostController::class, 'store'])->middleware('throttle:30,1'); // { comment? }
+        Route::delete('testimonies/{id}/repost', [\App\Http\Controllers\Api\RepostController::class, 'destroy']);
 
         // Carnet privé ─ docs/fonctionnalites/carnet-prive.md
         Route::get('journal',                       [TestimonyController::class, 'journal']);
