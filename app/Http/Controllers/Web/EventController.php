@@ -149,7 +149,7 @@ class EventController extends Controller
     public static function organizerChoices(\App\Models\User $user): array
     {
         $choices = [];
-        if ($user->isAdmin() || $user->isVerified()) {
+        if ($user->isAdmin() || $user->isVerifiedOrganization()) {
             $choices[$user->id] = $user->display_name;
         }
         foreach ($user->verifiedOrganizationsManaged()->orderBy('display_name')->get() as $org) {

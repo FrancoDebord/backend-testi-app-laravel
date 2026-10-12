@@ -19,7 +19,7 @@
         <label for="content-q" class="sr-only">Rechercher</label>
         <div class="relative min-w-0 flex-1 basis-60">
             <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400"></i>
-            <input id="content-q" type="search" name="q" value="{{ request('q') }}" class="form-input pl-9" placeholder="Titre, contenu…">
+            <input id="content-q" type="search" name="q" value="{{ request('q') }}" data-search-autocomplete="testimonies" data-search-recent-key="admin-content" autocomplete="off" class="form-input pl-9" placeholder="Titre, contenu…">
         </div>
         <button type="button" class="btn-secondary md:hidden" data-toggle="content-filters" aria-controls="content-filters" aria-expanded="false">
             <i class="fa-solid fa-sliders"></i>Filtres

@@ -45,7 +45,11 @@ class PrayerRequests
         $req = $partial ? 'sometimes' : 'required';
 
         return [
-            'body'         => [$req, 'string', 'min:10', 'max:2000'],
+            // Longueur mesurée sur le texte affiché : un jeton de mention compte comme « @Nom ».
+            'body'         => [$req, 'string', 'min:10', new \App\Rules\VisibleLength(2000, '2 000 caractères au plus.')],
+            // Mentions « @ » choisies dans l'autocomplétion, si le texte est envoyé lisible (docs/fonctionnalites/mentions.md).
+            'mention_ids'  => ['sometimes', 'array', 'max:20'],
+            'mention_ids.*' => ['string'],
             'visibility'   => ['sometimes', Rule::in(PrayerRequest::VISIBILITIES)],
             'is_anonymous' => ['sometimes', 'boolean'],
             'event_id'     => ['sometimes', 'nullable', 'uuid'],
@@ -120,14 +124,21 @@ class PrayerRequests
     {
         $this->ensureActive($user);
 
-        return PrayerRequest::create([
+        // Mentions « @ » : jetons validés, puis personnes prévenues si elles peuvent voir la requête.
+        $mentions = Mentions::prepare(trim($data['body']), (array) ($data['mention_ids'] ?? []));
+
+        $request = PrayerRequest::create([
             'user_id'      => $user->id,
-            'body'         => trim($data['body']),
+            'body'         => $mentions['text'],
             'visibility'   => $data['visibility'] ?? PrayerRequest::PUBLIC,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
             'event_id'     => $this->eventFor($user, $data['event_id'] ?? null)?->id,
             'daily_verse_id' => filled($data['daily_verse_id'] ?? null) ? (int) $data['daily_verse_id'] : null,
         ])->load(['user', 'event']);
+
+        Mentions::notifyPrayerRequest($request);
+
+        return $request;
     }
 
     /** Modification par l'auteur : texte, visibilité, anonymat, événement, témoignage de l'exaucement. */
@@ -136,7 +147,10 @@ class PrayerRequests
         $this->ensureAuthor($request, $user);
 
         $changes = [];
-        if (array_key_exists('body', $data))         $changes['body'] = trim($data['body']);
+        if (array_key_exists('body', $data)) {
+            // Les mentions déjà présentes restent reconnues (« @Nom » renvoyé lisible).
+            $changes['body'] = Mentions::prepare(trim($data['body']), (array) ($data['mention_ids'] ?? []), $request->body)['text'];
+        }
         if (array_key_exists('visibility', $data))   $changes['visibility'] = $data['visibility'];
         if (array_key_exists('is_anonymous', $data)) $changes['is_anonymous'] = (bool) $data['is_anonymous'];
         if (array_key_exists('event_id', $data))     $changes['event_id'] = $this->eventFor($user, $data['event_id'])?->id;
@@ -154,8 +168,12 @@ class PrayerRequests
         }
 
         $request->update($changes);
+        $request->refresh()->load(['user', 'event']);
 
-        return $request->refresh()->load(['user', 'event']);
+        // Nouvelles mentions, ou requête devenue visible de personnes déjà mentionnées : une notification par personne.
+        Mentions::notifyPrayerRequest($request);
+
+        return $request;
     }
 
     public function delete(PrayerRequest $request, User $user): void
@@ -174,13 +192,15 @@ class PrayerRequests
             throw new PrayerActionException('Cette requête a été retirée par la modération.', 409);
         }
 
-        return DB::transaction(function () use ($request, $user, $prayed) {
+        $added  = false;
+        $target = DB::transaction(function () use ($request, $user, $prayed, &$added) {
             $existing = PrayerRequestPrayer::where('prayer_request_id', $request->id)->where('user_id', $user->id)->lockForUpdate()->first();
             $target   = $prayed ?? !$existing; // sans précision : bascule
 
             if ($target && !$existing) {
                 PrayerRequestPrayer::create(['prayer_request_id' => $request->id, 'user_id' => $user->id]);
                 $request->increment('prayer_count');
+                $added = true;
             } elseif (!$target && $existing) {
                 $existing->delete();
                 PrayerRequest::whereKey($request->id)->where('prayer_count', '>', 0)->decrement('prayer_count');
@@ -189,6 +209,46 @@ class PrayerRequests
 
             return $target;
         });
+
+        if ($added) {
+            $this->notifyPrayed($request, $user);
+        }
+
+        return $target;
+    }
+
+    /**
+     * Prévient l'auteur que quelqu'un prie pour sa requête (notification + push, préférence push_prayers).
+     * Une seule fois par personne et par requête : retirer puis remettre « Je prie » ne renvoie rien.
+     */
+    private function notifyPrayed(PrayerRequest $request, User $actor): void
+    {
+        if ($request->isAuthor($actor)) {
+            return;
+        }
+
+        try {
+            $already = AppNotification::where('recipient_id', $request->user_id)
+                ->where('actor_id', $actor->id)
+                ->where('type', NotificationType::PrayerRequestPrayed->value)
+                ->where('payload->prayer_request_id', $request->id)
+                ->exists();
+
+            if (!$already) {
+                AppNotification::create([
+                    'recipient_id' => $request->user_id,
+                    'actor_id'     => $actor->id,
+                    'actor_name'   => $actor->display_name,
+                    'actor_avatar' => $actor->avatar_url,
+                    'type'         => NotificationType::PrayerRequestPrayed->value,
+                    'message'      => $actor->display_name . ' prie pour votre requête de prière',
+                    'payload'      => ['prayer_request_id' => $request->id],
+                    'created_at'   => now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /** Exaucée (note facultative) ou de nouveau en attente. */

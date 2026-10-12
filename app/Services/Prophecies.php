@@ -25,6 +25,7 @@ class Prophecies
         'body_text.required_without'   => 'Écrivez la parole ou enregistrez-la en audio.',
         'reminder_time.required_with'  => "Choisissez l'heure du rappel.",
         'reminder_time.regex'          => 'Heure du rappel au format HH:MM.',
+        'received_time.regex'          => 'Heure de la parole au format HH:MM.',
         'reminder_weekday.required_if' => 'Choisissez le jour du rappel.',
         'due_on.after_or_equal'        => "L'échéance ne peut pas précéder la date de la parole.",
     ];
@@ -61,6 +62,8 @@ class Prophecies
         return [
             'title'              => ['nullable', 'string', 'max:150'],
             'received_on'        => ['nullable', 'date'],
+            // Heure à laquelle la parole a été reçue (facultative).
+            'received_time'      => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
             'body_text'          => [$partial ? 'nullable' : 'required_without:audio_url', 'nullable', 'string', 'max:20000'],
             'audio_url'          => ['nullable', 'string', 'max:500'],
             'audio_duration'     => ['nullable', 'integer', 'min:0'],
@@ -83,6 +86,10 @@ class Prophecies
 
     public function create(User $user, array $data): Prophecy
     {
+        // Ni date ni heure : la parole vient d'être reçue.
+        if (empty($data['received_on']) && !array_key_exists('received_time', $data)) {
+            $data['received_time'] = now()->format('H:i');
+        }
         $data['received_on'] ??= now()->toDateString();
 
         $prophecy = $user->prophecies()->create($this->normalize($data))->refresh();

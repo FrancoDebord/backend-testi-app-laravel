@@ -153,6 +153,28 @@ class ProphecyAndFeedTest extends TestCase
 
     // ─── Mon fil ─────────────────────────────────────────────────────────────
 
+    public function test_received_time_is_stored_and_shown(): void
+    {
+        $id = $this->actingAs($this->user)->postJson('/api/v1/prophecies', [
+            'body_text' => 'Je ferai une chose nouvelle', 'received_on' => '2026-10-05', 'received_time' => '14:30',
+        ])->assertCreated()->assertJsonPath('data.receivedTime', '14:30')->json('data.id');
+
+        $this->actingAs($this->user)->putJson("/api/v1/prophecies/{$id}", ['received_time' => '25:00'])
+            ->assertStatus(422)->assertJsonValidationErrors('received_time');
+        $this->actingAs($this->user)->putJson("/api/v1/prophecies/{$id}", ['received_time' => null])
+            ->assertOk()->assertJsonPath('data.receivedTime', null);
+
+        // Sans date ni heure : la parole vient d'être reçue, l'heure actuelle est notée.
+        $this->actingAs($this->user)->postJson('/api/v1/prophecies', ['body_text' => 'Maintenant'])
+            ->assertCreated()->assertJsonPath('data.receivedTime', now()->format('H:i'));
+
+        // Site : formulaire et page de la parole.
+        $this->actingAs($this->user)->put("/carnet/paroles/{$id}", [
+            'body_text' => 'Je ferai une chose nouvelle', 'received_on' => '2026-10-05', 'received_time' => '06:15',
+        ])->assertRedirect();
+        $this->actingAs($this->user)->get("/carnet/paroles/{$id}")->assertOk()->assertSee('à 06:15');
+    }
+
     private function published(User $author, string $title): Testimony
     {
         return Testimony::create([
@@ -168,17 +190,18 @@ class ProphecyAndFeedTest extends TestCase
             $this->published($this->other, "Suivi {$i}");
         }
         $this->published($stranger, 'Suggestion');
-        $this->published($this->user, 'Le mien'); // jamais dans son propre fil
+        $this->published($this->user, 'Le mien'); // ses propres témoignages figurent aussi dans son fil
 
         $this->actingAs($this->user)->postJson("/api/v1/users/{$this->other->id}/follow")->assertSuccessful();
 
         $res = $this->actingAs($this->user)->getJson('/api/v1/feed')->assertOk()
             ->assertJsonPath('meta.followingCount', 1)
-            ->assertJsonCount(5, 'data');
-        $reasons = collect($res->json('data'))->pluck('feedReason')->all();
-        // Comptes suivis d'abord, puis les autres (« Suggestion ») : docs/fonctionnalites/recommandations.md
-        $this->assertSame(['following', 'following', 'following', 'following', 'suggested'], $reasons);
-        $this->assertNotContains('Le mien', collect($res->json('data'))->pluck('title'));
+            ->assertJsonCount(6, 'data');
+        $reasons = collect($res->json('data'))->pluck('feedReason', 'title')->all();
+        // Comptes suivis et soi-même d'abord, puis les autres (« Suggestion ») : docs/fonctionnalites/recommandations.md
+        $this->assertSame('mine', $reasons['Le mien']);
+        $this->assertSame('suggested', $reasons['Suggestion']);
+        $this->assertSame('suggested', collect($res->json('data'))->last()['feedReason']);
 
         $this->guest()->getJson('/api/v1/feed')->assertUnauthorized();
     }

@@ -31,6 +31,7 @@ class AdminController extends Controller
             'commentsThisMonth'   => Comment::whereMonth('created_at', now()->month)->count(),
             'approvalRate'        => $this->approvalRate(),
             'pendingOrganizations' => User::pendingVerification()->count(),
+            'pendingAccountVerifications' => \App\Models\VerificationRequest::pending()->count(),
             'totalViews'          => (int) Testimony::withoutJournal()->sum('views_count'),
         ];
 

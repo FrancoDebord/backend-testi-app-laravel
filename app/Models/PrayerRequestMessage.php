@@ -24,10 +24,10 @@ class PrayerRequestMessage extends Model
         return $this->belongsTo(User::class);
     }
 
-    /** Son auteur, l'auteur de la requête et la modération. */
+    /** Son auteur, l'auteur de la requête et les administrateurs (pas les modérateurs). */
     public function canBeDeletedBy(?User $user, PrayerRequest $request): bool
     {
-        return $user !== null && ($user->id === $this->user_id || $request->isAuthor($user) || $user->canModerate());
+        return $user !== null && ($user->id === $this->user_id || $request->isAuthor($user) || $user->isAdmin());
     }
 
     /** Format JSON (API et site). */
@@ -45,6 +45,7 @@ class PrayerRequestMessage extends Model
                 'initials'    => $this->user?->initials,
                 'avatarUrl'   => $this->user?->avatar_url,
                 'isVerified'  => (bool) $this->user?->isVerified(),
+                'isOrganization' => (bool) $this->user?->isOrganization(),
             ],
             'isMine'    => $viewer !== null && $viewer->id === $this->user_id,
             'canDelete' => $this->canBeDeletedBy($viewer, $request),

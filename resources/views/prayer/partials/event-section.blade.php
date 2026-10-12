@@ -36,7 +36,7 @@
     @foreach($eventRequests as $eventRequest)
     <a href="{{ route('prayer.requests.show', $eventRequest->id) }}" class="mt-2 block rounded-lg bg-slate-50 p-3 text-sm break-words text-slate-700 hover:bg-slate-100">
         <span class="block text-xs font-semibold text-slate-500">{{ $eventRequest->revealsAuthorTo($prayerViewer) ? $eventRequest->user?->display_name : 'Anonyme' }} · {{ $eventRequest->prayer_count }} <i class="fa-solid fa-hands-praying" aria-hidden="true"></i></span>
-        {{ Str::limit($eventRequest->body, 120) }}
+        {{ Str::limit(\App\Services\Mentions::plain($eventRequest->body), 120) }}
     </a>
     @endforeach
 

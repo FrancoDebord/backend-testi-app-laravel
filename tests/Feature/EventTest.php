@@ -334,7 +334,8 @@ class EventTest extends TestCase
     {
         [$a, $b, $c] = [$this->makeUser('a'), $this->makeUser('b'), $this->makeUser('c')];
 
-        $this->actingAs($this->user)->getJson('/api/v1/users/me/managers')->assertUnprocessable();
+        // Tout compte a des administrateurs (docs/fonctionnalites/administrateurs-de-compte.md).
+        $this->actingAs($this->user)->getJson('/api/v1/users/me/managers')->assertOk()->assertJsonPath('data.managers', []);
         $this->actingAs($this->org)->postJson('/api/v1/users/me/managers', ['user_id' => $a->id])
             ->assertOk()->assertJsonPath('data.managers.0.id', $a->id);
         $this->actingAs($this->org)->postJson('/api/v1/users/me/managers', ['user_id' => $b->id])->assertOk();

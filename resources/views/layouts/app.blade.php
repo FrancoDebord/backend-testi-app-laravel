@@ -50,6 +50,7 @@
             'items' => [
                 ['label' => 'Tableau de bord', 'icon' => 'fa-chart-simple', 'url' => route('admin.dashboard'),        'active' => request()->routeIs('admin.dashboard')],
                 ['label' => 'Utilisateurs',    'icon' => 'fa-users',        'url' => route('admin.users.index'),      'active' => request()->routeIs('admin.users.*')],
+                ['label' => 'Vérification des comptes', 'icon' => 'fa-user-check', 'url' => route('admin.verifications.index'), 'active' => request()->routeIs('admin.verifications.*')],
                 ['label' => 'Contenu',         'icon' => 'fa-file-lines',   'url' => route('admin.content.index'),    'active' => request()->routeIs('admin.content.*')],
                 ['label' => 'Catégories',      'icon' => 'fa-tags',         'url' => route('admin.categories.index'), 'active' => request()->routeIs('admin.categories.*')],
                 ['label' => 'Paramètres',      'icon' => 'fa-sliders',      'url' => route('admin.settings'),         'active' => request()->routeIs('admin.settings')],
@@ -57,6 +58,20 @@
             ],
         ],
     ];
+
+    // Administrateurs de compte (docs/fonctionnalites/administrateurs-de-compte.md) :
+    // la personne réellement connectée, ses comptes (le sien puis ceux qu'on lui a confiés)
+    // et le compte au nom duquel elle agit. Sur les pages réservées au titulaire
+    // (paramètres…), Auth::user() reste la personne réelle même si un compte est choisi.
+    $realUser      = $authUser ? \App\Services\AccountDelegation::actor(request()) : null;
+    $actingActor   = request()->attributes->get(\App\Services\AccountDelegation::ACTOR_ATTRIBUTE);
+    $myAccounts    = $realUser ? \App\Services\AccountDelegation::accounts($realUser) : collect();
+    $hasAccountSwitcher = $myAccounts->count() > 1;
+    $chosenAccountId    = session(\App\Services\AccountDelegation::SESSION_KEY);
+    $activeAccountId    = $actingActor
+        ? $authUser->id
+        : ($chosenAccountId && $myAccounts->contains('id', $chosenAccountId) ? $chosenAccountId : $realUser?->id);
+    $actingAccount = $activeAccountId && $activeAccountId !== $realUser?->id ? $myAccounts->firstWhere('id', $activeAccountId) : null;
 
     $header      = $header ?? null;
     $subheader   = $subheader ?? null;
@@ -117,6 +132,13 @@
                 </ul>
             </div>
         @endforeach
+
+        {{-- Mes comptes (menu mobile ; sur grand écran, dans le menu de l'en-tête) --}}
+        @if($hasAccountSwitcher)
+        <div class="lg:hidden">
+            @include('layouts.partials.account-switcher', ['accounts' => $myAccounts, 'activeId' => $activeAccountId])
+        </div>
+        @endif
     </nav>
 
     <div class="shrink-0 border-t border-slate-200 p-4">
@@ -125,7 +147,11 @@
             @include('components.avatar', ['user' => $authUser, 'size' => 'md'])
             <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-semibold text-slate-900">{{ $authUser->display_name }}</p>
+                @if($actingActor)
+                <p class="truncate text-xs text-slate-500">Par {{ $realUser->display_name }}</p>
+                @else
                 <p class="truncate text-xs text-slate-500">{{ $authUser->role->label() }}</p>
+                @endif
             </div>
             <form method="POST" action="{{ route('logout') }}" data-loading-label="Déconnexion…">
                 @csrf
@@ -180,8 +206,11 @@
             <div class="relative min-w-0 flex-1">
                 <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
                 <input id="global-search" type="search" name="q" value="{{ request()->routeIs('explore') ? request('q') : '' }}"
-                       class="form-input min-h-10 rounded-full bg-slate-50 pl-9" placeholder="Rechercher un témoignage, un auteur…">
+                       class="form-input min-h-10 rounded-full bg-slate-50 pl-9" placeholder="Rechercher un témoignage, un auteur…"
+                       data-search-autocomplete="all" data-search-recent-key="explore">
             </div>
+            {{-- Autocomplétion de toutes les barres [data-search-autocomplete] ─ docs/fonctionnalites/recherche.md --}}
+            @include('components.search-autocomplete')
         </form>
 
         <div class="ml-auto flex items-center gap-2 md:ml-0">
@@ -192,16 +221,55 @@
             <a href="{{ route('notifications.index') }}" class="btn-ghost btn-sm" title="Notifications" aria-label="Notifications">
                 <i class="fa-regular fa-bell text-base"></i>
             </a>
+            @if($hasAccountSwitcher)
+            {{-- Menu utilisateur avec « Mes comptes » (administrateurs de compte) --}}
+            <details class="relative" data-account-menu>
+                <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
+                         aria-label="Menu du compte">
+                    @include('components.avatar', ['user' => $authUser, 'size' => 'sm'])
+                    <span class="hidden max-w-40 truncate text-sm font-medium text-slate-700 sm:inline">{{ $authUser->display_name }}</span>
+                    <i class="fa-solid fa-chevron-down text-xs text-slate-500" aria-hidden="true"></i>
+                </summary>
+                <div class="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-2 shadow-card">
+                    <a href="{{ route('profiles.show', $authUser->id) }}" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-primary-50 hover:text-primary-600">
+                        <i class="fa-solid fa-user w-4 text-center text-primary-600" aria-hidden="true"></i>Voir le profil
+                    </a>
+                    <div class="mt-2 border-t border-slate-100 pt-2">
+                        @include('layouts.partials.account-switcher', ['accounts' => $myAccounts, 'activeId' => $activeAccountId])
+                    </div>
+                </div>
+            </details>
+            @else
             <a href="{{ route('profiles.show', $authUser->id) }}" class="hidden items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-50 sm:flex">
                 @include('components.avatar', ['user' => $authUser, 'size' => 'sm'])
                 <span class="max-w-40 truncate text-sm font-medium text-slate-700">{{ $authUser->display_name }}</span>
             </a>
+            @endif
             @else
             <a href="{{ route('login') }}" class="btn-ghost btn-sm">Connexion</a>
             <a href="{{ route('register') }}" class="btn-cta btn-sm">S'inscrire</a>
             @endauth
         </div>
     </header>
+
+    {{-- Bandeau : la personne agit au nom d'un compte qu'elle administre --}}
+    @if($actingAccount)
+    <div class="bg-primary-600 px-4 py-3 text-white sm:px-6 lg:px-8" role="status">
+        <div class="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-x-4 gap-y-2">
+            <i class="fa-solid fa-user-shield text-sun-400" aria-hidden="true"></i>
+            <p class="min-w-0 flex-1 text-sm">
+                Vous agissez au nom de <strong class="font-bold">{{ $actingAccount['displayName'] }}</strong> — vos publications, commentaires et réactions apparaissent sous ce nom.
+                @unless($actingActor)
+                <span class="block">Cette page concerne votre propre compte ({{ $realUser->display_name }}).</span>
+                @endunless
+            </p>
+            <form method="POST" action="{{ route('accounts.switch', $realUser->id) }}" data-loading-label="Retour à votre compte…">
+                @csrf
+                <button type="submit" class="btn-accent btn-sm"><i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>Revenir à mon compte</button>
+            </form>
+        </div>
+    </div>
+    @endif
 
     <main class="{{ $fullBleed ? '' : 'px-4 py-6 sm:px-6 lg:px-8' }} min-w-0 flex-1">
     <div class="{{ $fullBleed ? '' : 'mx-auto w-full max-w-[1280px]' }}">
@@ -272,6 +340,20 @@
 </div>
 
 @include('layouts.partials.global-ui')
+
+@if($hasAccountSwitcher)
+<script>
+    // Menu du compte (<details data-account-menu>) : se ferme au clic en dehors ou avec Échap.
+    (() => {
+        const menu = document.querySelector('[data-account-menu]');
+        if (!menu) return;
+        document.addEventListener('click', (e) => { if (menu.open && !menu.contains(e.target)) menu.open = false; });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && menu.open) { menu.open = false; menu.querySelector('summary')?.focus(); }
+        });
+    })();
+</script>
+@endif
 
 @stack('scripts')
 </body>

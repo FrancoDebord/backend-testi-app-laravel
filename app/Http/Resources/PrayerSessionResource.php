@@ -46,6 +46,7 @@ class PrayerSessionResource extends JsonResource
                 'initials'    => $this->host?->initials,
                 'avatarUrl'   => $this->host?->avatar_url,
                 'isVerified'  => (bool) $this->host?->isVerified(),
+                'isOrganization' => (bool) $this->host?->isOrganization(),
             ],
             'event'            => $this->event_id && $this->event ? ['id' => $this->event_id, 'title' => $this->event->title] : null,
             'participantCount' => $this->participant_count,
@@ -59,6 +60,8 @@ class PrayerSessionResource extends JsonResource
             // Salle active (direct) : la rejoindre avec /lives/{id} (ou son studio pour l'hôte).
             'live'             => $live ? ['id' => $live->id, 'status' => $live->status->value] : null,
             'webUrl'           => route('prayer.sessions.show', $this->id),
+            // Réactions (j'aime, je prie…) et partage interne « X a partagé » (docs/fonctionnalites/reactions.md).
+            ...app(\App\Services\ContentInteractions::class)->payload($this->resource, $viewer, $request),
             'createdAt'        => $this->created_at?->toIso8601String(),
         ];
     }

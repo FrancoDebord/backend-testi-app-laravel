@@ -24,7 +24,7 @@ class ModerationItemResource extends JsonResource
             'type'            => $this->type->value,
             'status'          => $this->status->value,
             'submittedAt'     => $this->created_at?->toIso8601String(),
-            'contentPreview'  => $this->body_text ? substr($this->body_text, 0, 200) : null,
+            'contentPreview'  => $this->body_text ? mb_substr(\App\Services\Mentions::plain($this->body_text), 0, 200) : null,
             'rejectionReason' => $lastLog?->rejection_reason?->value,
             'moderatorNote'   => $lastLog?->moderator_note,
             'mediaUrl'        => $this->media_url,

@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Models\DeviceToken;
+use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 /**
  * Envoi des notifications push par Firebase Cloud Messaging, API HTTP v1
@@ -31,6 +33,9 @@ class FcmClient
     public const DISABLED = 'disabled';           // FCM non configuré
 
     private ?array $credentials = null;
+
+    /** Dernière erreur FCM par jeton (« HTTP 403 SenderId mismatch »…), pour push:test. */
+    private array $lastErrors = [];
     private bool $credentialsLoaded = false;
 
     public function __construct(
@@ -66,6 +71,34 @@ class FcmClient
         return $this->enabled !== false
             && $this->credentials() !== null
             && $this->projectId() !== null;
+    }
+
+    public function lastError(string $token): ?string
+    {
+        return $this->lastErrors[$token] ?? null;
+    }
+
+    /** Raison pour laquelle FCM n'est pas configuré (null s'il l'est), pour push:test. */
+    public function configurationProblem(): ?string
+    {
+        if ($this->enabled === false) {
+            return 'FCM_ENABLED=false : push coupés.';
+        }
+        if (!$this->credentialsPath) {
+            return 'FIREBASE_CREDENTIALS est vide.';
+        }
+        if ($this->resolvePath() === null) {
+            return "Fichier de compte de service introuvable ou illisible : {$this->credentialsPath} (cherché aussi dans "
+                . base_path($this->credentialsPath) . ').';
+        }
+        if ($this->credentials() === null) {
+            return 'Fichier de compte de service invalide (client_email ou private_key manquant).';
+        }
+        if ($this->projectId() === null) {
+            return 'project_id absent du fichier de compte de service et FIREBASE_PROJECT_ID vide.';
+        }
+
+        return null;
     }
 
     public function projectId(): ?string
@@ -119,6 +152,68 @@ class FcmClient
         ]];
     }
 
+    /**
+     * Envoie la même notification à plusieurs appareils, requêtes en parallèle (Http::pool) :
+     * l'API v1 n'a pas d'envoi groupé, une requête par jeton. Renvoie [jeton => résultat] avec les
+     * constantes de send(). Lève une RuntimeException si le jeton OAuth2 ne peut être obtenu.
+     *
+     * @param list<string> $tokens
+     * @param array<string, mixed> $data converti en chaînes (exigence de FCM)
+     * @return array<string, string>
+     */
+    public function sendMulticast(array $tokens, string $title, string $body, array $data = []): array
+    {
+        $tokens = array_values(array_unique(array_filter($tokens, fn ($t) => is_string($t) && $t !== '')));
+
+        if (!$this->isConfigured()) {
+            Log::debug('FCM non configuré : notification push ignorée.', ['title' => $title]);
+            return array_fill_keys($tokens, self::DISABLED);
+        }
+
+        if (count($tokens) <= 1) {
+            return $tokens === [] ? [] : [$tokens[0] => $this->send($tokens[0], $title, $body, $data)];
+        }
+
+        $accessToken = $this->accessToken();
+        $url = sprintf(self::SEND_URL, $this->projectId());
+        $responses = Http::pool(fn (Pool $pool) => array_map(
+            fn (int $i) => $pool->as("t{$i}")
+                ->withToken($accessToken)
+                ->acceptJson()
+                ->timeout($this->timeout)->connectTimeout($this->timeout)
+                ->post($url, $this->buildMessage($tokens[$i], $title, $body, $data)),
+            array_keys($tokens),
+        ));
+
+        $results = [];
+        $tokenRenewed = false;
+        foreach ($tokens as $i => $token) {
+            $response = $responses["t{$i}"] ?? null;
+
+            if (!$response instanceof Response) {
+                Log::warning('FCM : erreur réseau.', [
+                    'token' => mb_substr($token, 0, 12) . '…',
+                    'error' => $response instanceof Throwable ? $response->getMessage() : null,
+                ]);
+                $results[$token] = self::RETRY;
+                continue;
+            }
+
+            if ($response->status() === 401) {
+                // Jeton OAuth2 révoqué : un seul renouvellement, puis nouvel essai pour cet appareil.
+                if (!$tokenRenewed) {
+                    Cache::forget($this->cacheKey());
+                    $tokenRenewed = true;
+                }
+                $response = $this->post($this->buildMessage($token, $title, $body, $data));
+            }
+
+            $results[$token] = $this->classify($token, $response);
+        }
+
+        return $results;
+    }
+
     private function deliver(string $token, array $payload): string
     {
         $response = $this->post($payload);
@@ -128,6 +223,12 @@ class FcmClient
             $response = $this->post($payload);
         }
 
+        return $this->classify($token, $response);
+    }
+
+    /** Résultat d'une réponse de messages:send ; supprime le jeton s'il est périmé ou mal formé. */
+    private function classify(string $token, Response $response): string
+    {
         if ($response->successful()) {
             return self::SENT;
         }
@@ -137,6 +238,7 @@ class FcmClient
             'error'  => $response->json('error.message'),
             'token'  => mb_substr($token, 0, 12) . '…',
         ];
+        $this->lastErrors[$token] = trim("HTTP {$response->status()} " . ($response->json('error.message') ?? ''));
 
         if ($this->isInvalidTokenError($response)) {
             DeviceToken::where('token', $token)->delete();
@@ -212,7 +314,7 @@ class FcmClient
         }
 
         $tokenUri = $credentials['token_uri'] ?? self::DEFAULT_TOKEN_URI;
-        $response = Http::asForm()->timeout($this->timeout)->post($tokenUri, [
+        $response = Http::asForm()->timeout($this->timeout)->connectTimeout($this->timeout)->post($tokenUri, [
             'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             'assertion'  => $this->signedJwt($credentials, $tokenUri),
         ]);
@@ -235,7 +337,7 @@ class FcmClient
     {
         return Http::withToken($this->accessToken())
             ->acceptJson()
-            ->timeout($this->timeout)
+            ->timeout($this->timeout)->connectTimeout($this->timeout)
             ->post(sprintf(self::SEND_URL, $this->projectId()), $payload);
     }
 

@@ -115,6 +115,8 @@ class EventResource extends JsonResource
             'canManage'       => $manager,
             // Responsable : supprimer, désigner les co-gestionnaires (organisateur, ses gestionnaires, admin).
             'canAdministrate' => $this->canBeAdministeredBy($user),
+            // Supprimer : responsable ou administrateur (jamais un modérateur).
+            'canDelete'       => $this->canBeDeletedBy($user),
             // Co-gestionnaires (2 au plus) : visibles des seuls gestionnaires.
             'managers'        => $this->canBeManagedBy($user)
                 ? $this->managers->map(fn ($m) => [
@@ -124,6 +126,8 @@ class EventResource extends JsonResource
                 : [],
             'live'            => $live ? ['id' => $live->id, 'status' => $live->status->value, 'title' => $live->title] : null,
             'webUrl'          => route('events.show', $this->id),
+            // Réactions (j'aime, je prie…) et partage interne « X a partagé » (docs/fonctionnalites/reactions.md).
+            ...app(\App\Services\ContentInteractions::class)->payload($this->resource, $user, $request),
             'createdAt'       => $this->created_at?->toIso8601String(),
         ];
     }

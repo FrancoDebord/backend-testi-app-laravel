@@ -159,10 +159,19 @@ class LiveSession extends Model
         return $user !== null && $user->id === $this->host_id;
     }
 
-    /** Peut couper le direct, masquer des commentaires, bannir : le diffuseur, les modérateurs et administrateurs. */
+    /** Peut masquer des commentaires, épingler, bannir, gérer les intervenants : le diffuseur, les modérateurs et administrateurs. */
     public function canBeModeratedBy(?User $user): bool
     {
         return $user !== null && ($this->isHost($user) || $user->canModerate());
+    }
+
+    /**
+     * Peut couper (terminer) le direct : son diffuseur ou un administrateur. Jamais un modérateur
+     * pour le direct de quelqu'un d'autre.
+     */
+    public function canBeEndedBy(?User $user): bool
+    {
+        return $user !== null && ($this->isHost($user) || $user->isAdmin());
     }
 
     /** Un spectateur peut voir le direct en préparation seulement s'il en est modérateur. */

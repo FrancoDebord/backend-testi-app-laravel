@@ -138,10 +138,10 @@ class PrayerSession extends Model
         return $this->isHost($user) && $this->status !== self::CANCELLED && $this->phase() !== 'ended';
     }
 
-    /** Hôte et modération (la modération peut aussi couper la salle : POST /lives/{id}/end). */
+    /** L'hôte ou un administrateur ; jamais un modérateur (il peut couper la salle : POST /lives/{id}/end). */
     public function canBeDeletedBy(?User $user): bool
     {
-        return $this->isHost($user) || (bool) $user?->canModerate();
+        return $this->isHost($user) || (bool) $user?->isAdmin();
     }
 
     /** Fenêtre d'ouverture de la salle : 30 min avant l'heure annoncée jusqu'à la fin prévue. */

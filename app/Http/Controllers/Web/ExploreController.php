@@ -20,6 +20,10 @@ class ExploreController extends Controller
         $query = Testimony::with(['user', 'category'])->published();
 
         if ($q) {
+            // Recherches populaires de l'autocomplétion (anonyme) ─ docs/fonctionnalites/recherche.md
+            if (is_string($q) && (int) $request->query('page', 1) <= 1) {
+                \App\Services\SearchSuggestions::record($q, $request->ip());
+            }
             $query->where(fn($q2) => $q2->where('title', 'like', "%{$q}%")
                                          ->orWhere('body_text', 'like', "%{$q}%"));
         }

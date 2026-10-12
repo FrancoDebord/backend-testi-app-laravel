@@ -137,7 +137,11 @@ class DailyVerseTest extends TestCase
             ->assertJsonPath('data.0.canDelete', false)->assertJsonPath('data.0.canReport', false);
 
         $this->actingAs($this->other)->deleteJson("{$url}/{$id}")->assertForbidden();
-        $this->actingAs($this->moderator)->deleteJson("{$url}/{$id}")->assertOk();
+        // Un modérateur ne supprime jamais ce qu'un autre a écrit ; un administrateur, oui.
+        $this->actingAs($this->moderator)->deleteJson("{$url}/{$id}")->assertForbidden();
+        $this->moderator->update(['role' => 'administrateur']);
+        $this->actingAs($this->moderator->fresh())->deleteJson("{$url}/{$id}")->assertOk();
+        $this->moderator->update(['role' => 'moderateur']);
         $this->assertSoftDeleted('daily_verse_comments', ['id' => $id]);
     }
 
@@ -251,5 +255,25 @@ class DailyVerseTest extends TestCase
 
         $this->actingAs($this->member)->get('/verset-du-jour?onglet=commentaires')->assertSee('Merci Seigneur');
         $this->guest()->post("/verset-du-jour/{$this->verse->id}/commentaires", ['body' => 'x'])->assertRedirect(route('login'));
+    }
+
+    public function test_legacy_react_is_idempotent(): void
+    {
+        // État local de l'application périmé : réagir deux fois ne renvoie plus 409.
+        $this->actingAs($this->member)->postJson('/api/v1/daily-verse/react', ['type' => 'like'])->assertOk();
+        $this->actingAs($this->member)->postJson('/api/v1/daily-verse/react', ['type' => 'like'])->assertOk();
+        $this->actingAs($this->member)->getJson('/api/v1/daily-verse')->assertJsonPath('data.counts.likes', 1);
+        $this->actingAs($this->member)->deleteJson('/api/v1/daily-verse/react', ['type' => 'like'])->assertOk();
+        $this->actingAs($this->member)->getJson('/api/v1/daily-verse')->assertJsonPath('data.counts.likes', 0);
+    }
+
+    public function test_mention_notification_points_to_the_verse(): void
+    {
+        $body = "Merci @[{$this->other->display_name}](user:{$this->other->id})";
+        $this->actingAs($this->member)->postJson("/api/v1/daily-verse/{$this->verse->id}/comments", ['body' => $body])->assertCreated();
+
+        $this->actingAs($this->other)->getJson('/api/v1/notifications')->assertOk()
+            ->assertJsonPath('data.0.type', 'mention')
+            ->assertJsonPath('data.0.dailyVerseId', $this->verse->id);
     }
 }

@@ -31,7 +31,7 @@
     </div>
 
     <dl class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-        <div><dt class="sr-only">Reçue le</dt><dd><i class="fa-regular fa-calendar mr-1" aria-hidden="true"></i>{{ $prophecy->received_on?->translatedFormat('j M Y') }}</dd></div>
+        <div><dt class="sr-only">Reçue le</dt><dd><i class="fa-regular fa-calendar mr-1" aria-hidden="true"></i>{{ $prophecy->receivedLabel('j M Y') }}</dd></div>
         @if(filled($prophecy->given_by))
         <div class="min-w-0"><dt class="sr-only">Donnée par</dt><dd class="truncate"><i class="fa-regular fa-user mr-1" aria-hidden="true"></i>{{ $prophecy->given_by }}</dd></div>
         @endif

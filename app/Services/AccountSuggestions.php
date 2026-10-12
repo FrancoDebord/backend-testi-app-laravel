@@ -212,7 +212,7 @@ class AccountSuggestions
         $rows = [];
         foreach ($users as $id => $u) {
             $s = $stats[$id] ?? null;
-            $verified = $u->account_type === AccountType::Organization && $u->verification_status === VerificationStatus::Verified;
+            $verified = $u->verification_status === VerificationStatus::Verified; // organisation ou personne vérifiée
             $common = (int) ($viaFollowing[$id] ?? 0);
             $interest = 0.0;
             foreach ($categories[$id] ?? [] as $slug => $count) {
@@ -248,7 +248,7 @@ class AccountSuggestions
             return 'Suivi par ' . $followedBy[0] . ($others > 0 ? ' et ' . $others . ' autre' . ($others > 1 ? 's' : '') : '') . ' que vous suivez';
         }
         if ($followsMe) return 'Vous suit';
-        if ($verified) return 'Organisation vérifiée';
+        if ($verified) return $u->account_type === AccountType::Organization ? 'Organisation vérifiée' : 'Compte vérifié';
         if ($recent >= 3 || $total >= 5) return 'Publie souvent des témoignages';
         if ($interest > 0) return 'Témoigne sur des sujets qui vous intéressent';
         if ($u->account_type === AccountType::Organization) return 'Organisation de la communauté';

@@ -16,6 +16,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Rules\VisibleLength;
 
 /**
  * Verset du jour : verset, versions de la Bible, réactions, commentaires, requêtes de prière et
@@ -67,11 +68,7 @@ class DailyVerseController extends Controller
         $verse = DailyVerse::today();
         if (!$verse) return $this->notFound();
 
-        $already = $verse->reactions()->where('user_id', $request->user()->id)->where('type', $request->type)->exists();
-        if ($already) {
-            return $this->error('Réaction déjà enregistrée.', 409);
-        }
-
+        // Idempotent : une réaction déjà présente (état local de l'application périmé) n'est pas une erreur.
         return $this->attempt(function () use ($verse, $request) {
             $this->verses->setReaction($verse, $request->user(), $request->type, true);
 
@@ -138,10 +135,12 @@ class DailyVerseController extends Controller
     // POST /daily-verse/{id}/comments  { body, mention_ids? }  (mentions : jetons @[Nom](user:id))
     public function storeComment(Request $request, int $id): JsonResponse
     {
-        $data = $request->validate(['body' => 'required|string|min:2|max:2000', 'mention_ids' => 'sometimes|array|max:10', 'mention_ids.*' => 'string'], [
+        $data = $request->validate([
+            'body' => ['required', 'string', 'min:2', new VisibleLength(2000, '2 000 caractères au plus.')],
+            'mention_ids' => 'sometimes|array|max:10', 'mention_ids.*' => 'string',
+        ], [
             'body.required' => 'Écrivez votre commentaire.',
             'body.min'      => 'Votre commentaire est trop court.',
-            'body.max'      => '1 000 caractères au plus.',
         ]);
         $verse = $this->find($id);
 

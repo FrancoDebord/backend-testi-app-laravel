@@ -17,11 +17,13 @@ class MentionsTest extends TestCase
 {
     use RefreshDatabase;
 
+    private static int $phoneSeq = 0;
+
     private function user(string $name, array $attrs = []): User
     {
         return User::create(array_merge([
             'display_name' => $name, 'email' => str()->slug($name) . '@example.com', 'password' => 'secret123',
-            'role' => 'utilisateur', 'status' => 'active', 'phone' => '+22990000' . random_int(100, 999),
+            'role' => 'utilisateur', 'status' => 'active', 'phone' => '+2299' . str_pad((string) ++self::$phoneSeq, 7, '0', STR_PAD_LEFT),
         ], $attrs));
     }
 
@@ -196,5 +198,32 @@ class MentionsTest extends TestCase
         $this->assertSame('Salut @Jean et @Jean', Mentions::plain($text));
         $this->assertSame([['id' => $id, 'displayName' => 'Jean']], Mentions::of($text));
         $this->assertSame([], Mentions::of('Sans mention @Jean'));
+    }
+
+    public function test_length_limit_counts_the_visible_text_not_the_mention_tokens(): void
+    {
+        $me = $this->user('Awa');
+        $paul = $this->user('Paul');
+        $t = $this->testimony($this->user('Auteur'));
+        $url = "/api/v1/testimonies/{$t->id}/comments";
+
+        // 1 994 + « @Paul » = 1 999 caractères affichés ; le texte brut (jeton) dépasse 2 000.
+        $text = str_repeat('a', 1994) . self::token($paul);
+        $this->assertGreaterThan(2000, mb_strlen($text));
+        $this->actingAs($me)->postJson($url, ['text' => $text])->assertCreated();
+
+        $this->actingAs($me)->postJson($url, ['text' => str_repeat('a', 2001)])->assertUnprocessable();
+    }
+
+    public function test_praying_on_a_testimony_sends_a_prayer_notification(): void
+    {
+        $me = $this->user('Awa');
+        $author = $this->user('Auteur');
+        $t = $this->testimony($author);
+
+        $this->actingAs($me)->postJson("/api/v1/testimonies/{$t->id}/reactions", ['type' => 'pray'])->assertCreated();
+        $this->actingAs($author)->getJson('/api/v1/notifications')->assertOk()
+            ->assertJsonPath('data.0.type', 'prayer')
+            ->assertJsonPath('data.0.message', 'Awa prie pour votre témoignage');
     }
 }

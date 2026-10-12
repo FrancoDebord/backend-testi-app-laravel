@@ -47,7 +47,7 @@
     @endif
 
     <a href="{{ route('prayer.requests.show', $prayerItem->id) }}" class="block min-w-0 flex-1">
-        <p class="text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ $compact ? Str::limit($prayerItem->body, 160) : Str::limit($prayerItem->body, 400) }}</p>
+        <p class="text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ $compact ? Str::limit(\App\Services\Mentions::plain($prayerItem->body), 160) : Str::limit(\App\Services\Mentions::plain($prayerItem->body), 400) }}</p>
     </a>
 
     @if($prayerItem->event_id && $prayerItem->event && !($hideEvent ?? false))

@@ -21,7 +21,7 @@ class Prophecy extends Model
     public const FULFILLED = 'fulfilled';
 
     protected $fillable = [
-        'user_id', 'title', 'received_on', 'body_text', 'audio_url', 'audio_duration', 'given_by',
+        'user_id', 'title', 'received_on', 'received_time', 'body_text', 'audio_url', 'audio_duration', 'given_by',
         'due_on', 'status', 'fulfilled_on', 'testimony_id', 'is_public',
         'reminder_frequency', 'reminder_time', 'reminder_weekday', 'prayer_count', 'last_prayed_at',
     ];
@@ -60,12 +60,21 @@ class Prophecy extends Model
         return $this->status === self::FULFILLED;
     }
 
+    /** « 5 octobre 2026 à 14:30 » (ou sans l'heure si elle n'a pas été notée). */
+    public function receivedLabel(string $dateFormat = 'j F Y'): string
+    {
+        $date = $this->received_on?->translatedFormat($dateFormat) ?? '';
+
+        return filled($this->received_time) ? trim("{$date} à {$this->received_time}") : $date;
+    }
+
     /** Version publique, montrée avec le témoignage d'accomplissement. */
     public function publicPayload(): array
     {
         return [
             'title'        => $this->title,
             'receivedOn'   => $this->received_on?->toDateString(),
+            'receivedTime' => $this->received_time,
             'givenBy'      => $this->given_by,
             'bodyText'     => $this->body_text,
             'audioUrl'     => $this->audio_url,

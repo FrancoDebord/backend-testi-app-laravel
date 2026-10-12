@@ -23,3 +23,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /*.zip
+
+# Clé du compte de service Firebase (notifications push) : jamais versionnée
+/storage/app/firebase-credentials.json
+*firebase*credentials*.json
+# Nom par défaut des clés téléchargées depuis la console Firebase
+*firebase-adminsdk*.json

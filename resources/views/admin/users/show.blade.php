@@ -106,6 +106,27 @@
                 @endif
             </div>
         </section>
+        @else
+        {{-- Compte personnel vérifié : docs/fonctionnalites/verification-des-comptes.md --}}
+        @php($lastVerification = $user->verificationRequests()->first())
+        @if($lastVerification || $user->isVerified())
+        <section class="card p-5 sm:p-6">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h2 class="card-title">Vérification du compte</h2>
+                @if($user->isVerified())
+                <span class="badge-validated">Compte vérifié</span>
+                @elseif($lastVerification)
+                <span class="{{ $lastVerification->statusBadgeClass() }}">{{ $lastVerification->statusLabel() }}</span>
+                @endif
+            </div>
+            @if($lastVerification)
+            <p class="mb-4 text-sm text-slate-600">Dernière demande du {{ $lastVerification->created_at->format('d/m/Y') }} ({{ $lastVerification->roleLabel() }}). <a href="{{ route('admin.verifications.show', $lastVerification->id) }}" class="font-semibold text-primary-600 hover:underline">Voir la demande et les pièces</a></p>
+            @endif
+            @if($user->isVerified())
+            @include('admin.verifications.partials.revoke-form', ['account' => $user])
+            @endif
+        </section>
+        @endif
         @endif
 
         <section class="card p-5 sm:p-6">

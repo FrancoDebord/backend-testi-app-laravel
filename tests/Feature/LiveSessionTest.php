@@ -81,6 +81,28 @@ class LiveSessionTest extends TestCase
 
     // ─── Qui peut diffuser ─────────────────────────────────────────────────
 
+    public function test_only_the_host_or_an_admin_can_end_a_live(): void
+    {
+        // Direct d'un modérateur ; un autre modérateur le regarde.
+        $live = $this->onAir($this->moderator);
+        $otherModerator = $this->makeUser('moderateur', '2');
+
+        $this->actingAs($otherModerator)->getJson("/api/v1/lives/{$live->id}")->assertOk()
+            ->assertJsonPath('data.canModerate', true)->assertJsonPath('data.canEnd', false);
+        $this->actingAs($otherModerator)->postJson("/api/v1/lives/{$live->id}/end")->assertForbidden();
+        $this->actingAs($otherModerator)->get("/lives/{$live->id}")->assertOk()->assertDontSee('live-end-form', false);
+        $this->assertNotSame('ended', $live->fresh()->status->value);
+
+        // L'administrateur peut le couper.
+        $this->actingAs($this->admin)->getJson("/api/v1/lives/{$live->id}")->assertJsonPath('data.canEnd', true);
+        $this->actingAs($this->admin)->postJson("/api/v1/lives/{$live->id}/end")->assertOk();
+        $this->assertSame('ended', $live->fresh()->status->value);
+
+        // Le diffuseur coupe son propre direct.
+        $own = $this->onAir($otherModerator);
+        $this->actingAs($otherModerator)->postJson("/api/v1/lives/{$own->id}/end")->assertOk();
+    }
+
     public function test_only_moderators_and_administrators_can_start_a_live(): void
     {
         $this->actingAs($this->user)->postJson('/api/v1/lives', ['title' => 'x'])->assertForbidden();

@@ -6,9 +6,9 @@ use App\Enums\ReactionType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreReactionRequest;
 use App\Http\Resources\ReactionResource;
-use App\Models\AppNotification;
 use App\Models\Reaction;
 use App\Models\Testimony;
+use App\Services\TestimonyReactions;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,63 +27,51 @@ class ReactionController extends Controller
         return $this->success(ReactionResource::collection($reactions));
     }
 
-    public function store(StoreReactionRequest $request, string $testimonyId): JsonResponse
+    /**
+     * POST testimonies/{id}/reactions {type} : pose la réaction (idempotent). Une autre réaction
+     * du même groupe (j'aime / je prie) est remplacée : rien n'est jamais compté deux fois.
+     * Réponse : la réaction + l'état de la personne et les compteurs à jour.
+     */
+    public function store(StoreReactionRequest $request, string $testimonyId, TestimonyReactions $reactions): JsonResponse
     {
         $testimony = Testimony::find($testimonyId);
         if (!$testimony) return $this->notFound();
 
-        $existing = Reaction::where([
-            'user_id'      => $request->user()->id,
-            'testimony_id' => $testimonyId,
-            'type'         => $request->type,
-        ])->first();
+        [$reaction, $created] = $reactions->set($request->user(), $testimony, ReactionType::from($request->type));
 
-        if ($existing) {
-            return $this->success(new ReactionResource($existing), 'Réaction déjà enregistrée');
-        }
+        $payload = [...(new ReactionResource($reaction))->toArray($request), ...$reactions->state($request->user(), $testimony)];
 
-        $reaction = Reaction::create([
-            'user_id'      => $request->user()->id,
-            'testimony_id' => $testimonyId,
-            'type'         => $request->type,
-        ]);
-
-        // Update counts on testimony
-        $field = ReactionType::from($request->type)->counterField();
-        $testimony->increment($field);
-
-        // Notify author
-        if ($testimony->user_id !== $request->user()->id) {
-            AppNotification::create([
-                'recipient_id'    => $testimony->user_id,
-                'actor_id'        => $request->user()->id,
-                'actor_name'      => $request->user()->display_name,
-                'actor_avatar'    => $request->user()->avatar_url,
-                'type'            => 'like',
-                'testimony_id'    => $testimonyId,
-                'testimony_title' => $testimony->title,
-                'message'         => $request->user()->display_name . ' a réagi à votre témoignage',
-                'created_at'      => now(),
-            ]);
-        }
-
-        return $this->created(new ReactionResource($reaction), 'Réaction ajoutée');
+        return $created
+            ? $this->created($payload, 'Réaction ajoutée')
+            : $this->success($payload, 'Réaction enregistrée');
     }
 
-    public function destroy(Request $request, string $testimonyId, string $reactionId): JsonResponse
+    /**
+     * DELETE testimonies/{id}/reactions/{reactionId} : retire la réaction (et toute autre du même groupe).
+     * DELETE testimonies/{id}/reactions?group=appreciation|prayer (ou ?type=like…) : sans identifiant,
+     * retire les réactions de la personne de ce groupe (toutes sans paramètre).
+     */
+    public function destroy(Request $request, TestimonyReactions $reactions, string $testimonyId, ?string $reactionId = null): JsonResponse
     {
-        $reaction = Reaction::where('id', $reactionId)
-                            ->where('user_id', $request->user()->id)
-                            ->first();
-
-        if (!$reaction) return $this->notFound();
-
         $testimony = Testimony::find($testimonyId);
-        $field = $reaction->type->counterField();
-        $testimony?->decrement($field);
+        if (!$testimony) return $this->notFound();
 
-        $reaction->delete();
+        $request->validate([
+            'group' => 'nullable|in:appreciation,prayer',
+            'type'  => ['nullable', \Illuminate\Validation\Rule::enum(ReactionType::class)],
+        ]);
 
-        return $this->success(null, 'Réaction retirée');
+        if ($reactionId !== null) {
+            $reaction = Reaction::where('id', $reactionId)->where('user_id', $request->user()->id)
+                ->where('testimony_id', $testimony->id)->first();
+            if (!$reaction) return $this->notFound();
+            $group = $reaction->type->group();
+        } else {
+            $group = $request->query('group') ?? ($request->query('type') ? ReactionType::from($request->query('type'))->group() : null);
+        }
+
+        $reactions->remove($request->user(), $testimony, $group);
+
+        return $this->success($reactions->state($request->user(), $testimony), 'Réaction retirée');
     }
 }

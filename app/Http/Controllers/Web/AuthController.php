@@ -9,6 +9,8 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserSetting;
+use App\Services\GoogleSignIn;
+use App\Services\GoogleSignInException;
 use App\Services\OrganizationAccounts;
 use App\Support\Countries;
 use App\Support\PhoneNumber;
@@ -24,7 +26,7 @@ class AuthController extends Controller
     public function showLogin(): View|RedirectResponse
     {
         if (Auth::check()) return redirect()->route('home');
-        return view('auth.login');
+        return view('auth.login', ['googleClientId' => GoogleSignIn::webClientId()]);
     }
 
     public function login(Request $request): RedirectResponse
@@ -47,6 +49,30 @@ class AuthController extends Controller
         }
 
         return back()->withErrors(['email' => 'Identifiants incorrects.'])->onlyInput('email');
+    }
+
+    /**
+     * Bouton « Se connecter avec Google » : `credential` est le jeton d'identité renvoyé par Google Identity Services.
+     * Mêmes règles que l'API (App\Services\GoogleSignIn) ; compte créé ou lié au besoin.
+     */
+    public function google(Request $request, GoogleSignIn $google): RedirectResponse
+    {
+        $request->validate(['credential' => 'required|string|max:4096'], ['credential.required' => 'Connexion Google interrompue. Réessayez.']);
+
+        try {
+            [$user] = $google->authenticate((string) $request->input('credential'));
+        } catch (GoogleSignInException $e) {
+            return redirect()->route('login')->withErrors(['email' => $e->getMessage()]);
+        }
+
+        if ($user->status->value === 'banned') {
+            return redirect()->route('login')->withErrors(['email' => 'Votre compte a été banni.']);
+        }
+
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('home'));
     }
 
     public function showRegister(): View|RedirectResponse

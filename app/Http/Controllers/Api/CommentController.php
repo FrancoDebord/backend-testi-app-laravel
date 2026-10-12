@@ -12,6 +12,7 @@ use App\Services\Mentions;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Rules\VisibleLength;
 
 class CommentController extends Controller
 {
@@ -38,6 +39,9 @@ class CommentController extends Controller
     {
         $testimony = Testimony::find($testimonyId);
         if (!$testimony) return $this->notFound();
+        if (!$testimony->acceptsCommentsFrom($request->user())) {
+            return $this->error(Testimony::COMMENTS_CLOSED_MESSAGE, 403);
+        }
 
         // Mentions « @ » validées (docs/fonctionnalites/mentions.md)
         $mentions = Mentions::prepare((string) $request->text, (array) $request->input('mention_ids', []));
@@ -87,7 +91,7 @@ class CommentController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $request->validate([
-            'text'          => 'required|string|max:2000',
+            'text'          => ['required', 'string', new VisibleLength(2000, 'Le commentaire ne doit pas dépasser 2 000 caractères.')],
             'mention_ids'   => 'nullable|array|max:20',
             'mention_ids.*' => 'string|uuid',
         ]);
@@ -117,7 +121,8 @@ class CommentController extends Controller
         $comment = Comment::find($id);
         if (!$comment) return $this->notFound();
 
-        if ($comment->user_id !== $request->user()->id && !$request->user()->canModerate()) {
+        // Auteur ou administrateur ; un modérateur ne supprime pas ce qu'un autre a écrit.
+        if ($comment->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
             return $this->forbidden();
         }
 

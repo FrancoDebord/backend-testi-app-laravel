@@ -523,7 +523,7 @@ function initInteractions() {
         });
         const summary = $('[data-live-reaction-summary]');
         if (summary) {
-            const labels = { like: "J'aime", pray: 'Prière', amen: 'Amen', worship: 'Adorer', fire: 'Feu' };
+            const labels = { like: "J'aime", pray: 'Prière', amen: 'Amen', worship: 'Adorer Dieu', fire: 'Feu' };
             summary.textContent = Object.entries(counts).map(([t, n]) => `${labels[t]} ${n}`).join(' · ');
         }
     };

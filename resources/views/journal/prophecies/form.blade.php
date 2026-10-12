@@ -35,10 +35,18 @@
             <h2 class="card-title">La parole</h2>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                    <label for="received_on" class="form-label">Reçue le *</label>
-                    <input id="received_on" type="date" name="received_on" value="{{ old('received_on', $prophecy->received_on?->toDateString()) }}" required class="form-input" @error('received_on') aria-invalid="true" @enderror>
-                    @error('received_on')<p class="form-error">{{ $message }}</p>@enderror
+                <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <div class="min-w-0">
+                        <label for="received_on" class="form-label">Reçue le *</label>
+                        <input id="received_on" type="date" name="received_on" value="{{ old('received_on', $prophecy->received_on?->toDateString()) }}" required class="form-input" @error('received_on') aria-invalid="true" @enderror>
+                    </div>
+                    <div>
+                        <label for="received_time" class="form-label">À</label>
+                        {{-- Heure de réception (facultative) ; l'heure actuelle pour une nouvelle parole. --}}
+                        <input id="received_time" type="time" name="received_time" value="{{ old('received_time', $prophecy->exists ? $prophecy->received_time : now()->format('H:i')) }}" class="form-input" @error('received_time') aria-invalid="true" @enderror>
+                    </div>
+                    @error('received_on')<p class="form-error col-span-2">{{ $message }}</p>@enderror
+                    @error('received_time')<p class="form-error col-span-2">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="given_by" class="form-label">Donnée par</label>

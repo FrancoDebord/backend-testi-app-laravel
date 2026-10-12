@@ -26,7 +26,8 @@ class TestimonyController extends Controller
             $viewer = $request->user() ?? $request->user('sanctum');
             $limit  = min((int) $request->query('limit', 20), 50);
             $page   = max(1, (int) $request->query('page', 1));
-            $feed   = app(\App\Services\Recommendations::class)->feed($viewer, $page, $limit, $request->query('type'), $request->query('category'));
+            $reco   = app(\App\Services\Recommendations::class);
+            $feed   = $reco->feed($viewer, $page, $limit, $request->query('type'), $request->query('category'));
 
             return $this->paginated(TestimonyResource::collection($feed->items()), [
                 'currentPage' => $feed->currentPage(),
@@ -34,6 +35,9 @@ class TestimonyController extends Controller
                 'total'       => $feed->total(),
                 'perPage'     => $feed->perPage(),
                 'nextCursor'  => null,
+                // Zone utilisée (« Près de chez vous · Cotonou ») et étiquettes des cartes proches : localisation.md
+                'place'       => $reco->placeMeta($viewer),
+                'nearby'      => (object) $reco->nearbyLabels($viewer, $feed->items()),
             ]);
         }
 
@@ -163,89 +167,23 @@ class TestimonyController extends Controller
                 'total'       => $page->total(),
                 'perPage'     => $page->perPage(),
                 'followingCount' => count(app(\App\Services\Recommendations::class)->followedIds($viewer)),
+                'place'          => app(\App\Services\Recommendations::class)->placeMeta($viewer),
+                'nearby'         => (object) app(\App\Services\Recommendations::class)->nearbyLabels($viewer, $page->items()),
             ]
         );
     }
 
     public function store(StoreTestimonyRequest $request): JsonResponse
     {
-        if (!$request->user()->canPublish()) {
-            return $this->forbidden('Vous n\'avez pas la permission de publier');
-        }
-
-        // Vidéo YouTube (docs/fonctionnalites/videos-youtube.md) : administrateurs seulement.
-        $youtubeId = null;
-        if (filled($request->youtube_url)) {
-            if (!$request->user()->isAdmin()) {
-                return $this->forbidden('Seuls les administrateurs peuvent publier une vidéo YouTube.');
-            }
-            $youtubeId = \App\Support\YouTube::parseId($request->youtube_url);
-            if (!$youtubeId) {
-                return $this->error("Ce lien YouTube n'est pas reconnu.", 422, ['youtube_url' => ["Ce lien YouTube n'est pas reconnu."]]);
-            }
-        }
-
-        // Rattachement à un événement : seuls ses gestionnaires (docs/fonctionnalites/evenements.md).
         try {
-            $event = app(\App\Services\EventService::class)->ensureCanAttach($request->event_id, $request->user());
-        } catch (\App\Services\EventActionException $e) {
-            return $this->error($e->getMessage(), $e->status());
+            $testimony = app(\App\Services\TestimonyCreator::class)->create($request);
+        } catch (\App\Services\ContentActionException $e) {
+            return $this->error($e->getMessage(), $e->status(), $e->errors());
         }
 
-        // Parole prophétique accomplie : elle doit appartenir à l'auteur (docs/fonctionnalites/paroles-prophetiques.md).
-        $prophecy = null;
-        if (filled($request->prophecy_id)) {
-            $prophecy = $request->user()->prophecies()->find($request->prophecy_id);
-            if (!$prophecy) {
-                return $this->notFound('Parole prophétique introuvable.');
-            }
-        }
-
-        $isJournal    = $request->visibility === TestimonyVisibility::Private->value;
-        $categorySlug = $request->category ?: 'autre';
-        $category     = Category::where('slug', $categorySlug)->first();
-
-        // Versions déjà produites pour ce fichier (docs/fonctionnalites/qualites-media.md).
-        $media = $this->processedMediaFor($request->media_url);
-
-        $testimony = Testimony::create([
-            'user_id'      => $request->user()->id,
-            'category_id'  => $category?->id,
-            'event_id'     => $event?->id,
-            'title'        => $request->title,
-            'type'         => $youtubeId ? 'video' : $request->type,
-            'category_slug' => $categorySlug,
-            'body_text'    => $request->body_text,
-            'media_url'    => $youtubeId ? null : $request->media_url,
-            'youtube_id'   => $youtubeId,
-            'proofs_public' => $request->boolean('proofs_public'),
-            'renditions'   => $youtubeId ? null : $media?->renditions,
-            'cover_url'    => $request->cover_url ?: ($youtubeId ? \App\Support\YouTube::thumbnailUrl($youtubeId) : null),
-            'duration_sec' => ($request->duration ?: $media?->duration_sec) ?? 0,
-            'bible_verse'  => $request->bible_verse,
-            'bible_ref'    => $request->verse_ref,
-            'tags'         => $request->tags ?? [],
-            'visibility'   => $request->visibility ?? 'public',
-            // Carnet privé : brouillon, jamais soumis à la modération.
-            'status'       => ($isJournal ? TestimonyStatus::Draft : TestimonyStatus::Pending)->value,
-        ]);
-
-        $testimony->load('user');
-
-        if ($prophecy) {
-            // Montrée avec le témoignage (une fois publié), si l'auteur le souhaite.
-            app(\App\Services\Prophecies::class)->attachTestimony($prophecy, $testimony->id, !$isJournal && $request->boolean('prophecy_public'));
-            $testimony->setRelation('prophecy', $prophecy);
-        }
-
-        if ($isJournal) {
-            return $this->created(new TestimonyResource($testimony), 'Témoignage enregistré dans votre carnet privé');
-        }
-
-        // Update category count
-        $category?->increment('testimony_count');
-
-        return $this->created(new TestimonyResource($testimony), 'Témoignage soumis pour modération');
+        return $this->created(new TestimonyResource($testimony), $testimony->isInJournal()
+            ? 'Témoignage enregistré dans votre carnet privé'
+            : 'Témoignage soumis pour modération');
     }
 
     public function myTestimonies(Request $request): JsonResponse
@@ -292,7 +230,7 @@ class TestimonyController extends Controller
 
         // Nouveau fichier média : versions et durée reprises de ce fichier s'il est déjà converti.
         if ($request->filled('media_url') && $request->media_url !== $testimony->media_url) {
-            $media = $this->processedMediaFor($request->media_url);
+            $media = \App\Services\TestimonyCreator::processedMediaFor($request->media_url);
             $testimony->renditions = $media?->renditions;
             if ($media?->duration_sec) {
                 $testimony->duration_sec = $media->duration_sec;
@@ -301,7 +239,8 @@ class TestimonyController extends Controller
 
         $testimony->update([
             'title'        => $request->title ?? $testimony->title,
-            'body_text'    => $request->body_text ?? $testimony->body_text,
+            // Mentions déjà présentes reconnues ; les nouvelles seront prévenues à la prochaine approbation.
+            'body_text'    => \App\Services\TestimonyCreator::bodyWithMentions($request, $testimony->body_text) ?? $testimony->body_text,
             'media_url'    => $request->media_url ?? $testimony->media_url,
             'cover_url'    => $request->cover_url ?? $testimony->cover_url,
             'bible_verse'  => $request->bible_verse ?? $testimony->bible_verse,
@@ -315,14 +254,6 @@ class TestimonyController extends Controller
             ? TestimonyStatus::Draft : TestimonyStatus::Pending)->value]);
 
         return $this->success(new TestimonyResource($testimony->fresh(['user'])));
-    }
-
-    /** Fichier média déjà converti correspondant à media_url (sinon null : la tâche mettra le témoignage à jour). */
-    private function processedMediaFor(?string $mediaUrl): ?MediaFile
-    {
-        $media = MediaFile::findForUrl($mediaUrl);
-
-        return $media?->isProcessed() ? $media : null;
     }
 
     // ─── Carnet privé ─ docs/fonctionnalites/carnet-prive.md ───────────────
@@ -416,7 +347,8 @@ class TestimonyController extends Controller
 
         if (!$testimony) return $this->notFound();
 
-        if ($testimony->user_id !== $request->user()->id && !$request->user()->canModerate()) {
+        // Auteur ou administrateur ; un modérateur ne supprime pas ce qu'un autre a soumis.
+        if (!$testimony->canBeDeletedBy($request->user())) {
             return $this->forbidden();
         }
 
@@ -428,7 +360,11 @@ class TestimonyController extends Controller
     public function recordShare(Request $request, string $id): JsonResponse
     {
         $testimony = Testimony::find($id);
-        if (!$testimony) return $this->notFound();
+        // Invités compris : seul un témoignage publié et public se partage.
+        if (!$testimony || $testimony->status !== \App\Enums\TestimonyStatus::Approved
+            || $testimony->visibility === \App\Enums\TestimonyVisibility::Private) {
+            return $this->notFound();
+        }
 
         $testimony->increment('share_count');
 

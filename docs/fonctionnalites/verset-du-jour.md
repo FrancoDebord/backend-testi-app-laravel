@@ -110,6 +110,7 @@ Commentaire :
 ## Limites connues
 
 - Les témoignages liés sont retrouvés par analyse du texte (pas d'index) : 300 témoignages candidats au plus, ceux qui contiennent le numéro du chapitre.
-- Mentions : pas d'autocomplétion « @ » dans le formulaire du site (le texte « @Nom » reste simple) ; la notification de mention n'ouvre pas encore le verset dans l'application (pas de `testimony_id`).
-- La réaction « J'aime / Je prie » de l'application passe par `POST/DELETE /daily-verse/react` (verset du jour) : l'écran n'ouvre que le verset du jour.
+- Mentions : pas d'autocomplétion « @ » dans le formulaire du site (le texte « @Nom » reste simple). La notification de mention porte `dailyVerseId` (push : `daily_verse_id`) ; l'application ne s'en sert pas encore pour ouvrir le verset.
+- La réaction « J'aime / Je prie » de l'accueil de l'application passe par `POST/DELETE /daily-verse/react` (verset du jour). Depuis le 2026-10-06, ces routes sont **idempotentes** : réagir deux fois ne renvoie plus 409. `POST /daily-verse/{id}/react { type, active }` reste préférable.
+- `POST /daily-verse/share` et `POST /testimonies/{id}/share` (compteurs de partage) acceptent les **invités** (30 par minute) ; un témoignage non publié ou privé renvoie 404.
 - Pas de file de modération dédiée aux commentaires signalés : retrait automatique au 3e signalement, suppression par la modération depuis la page.

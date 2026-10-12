@@ -18,7 +18,7 @@ Disponible sur le **site** (`/priere/requetes`, menu latéral « Requêtes de pr
 | **Texte** | 10 à 2 000 caractères. |
 | **Visibilité** | `public` (tout le monde, même sans compte) · `followers` (l'auteur, ses abonnés, la modération) · `private` (l'auteur **seul**, modération comprise : un carnet de prière personnel). Toute autre personne reçoit **404**. |
 | **Anonyme** | `is_anonymous` : le nom et la photo sont **masqués pour les autres** (`author: null`, « Anonyme »). Ils restent visibles de l'**auteur** et de la **modération**. Le fil `following` n'affiche jamais de requête anonyme (la lister « parmi les comptes que je suis » trahirait l'anonymat). |
-| **Je prie** | Une fois par personne (`prayer_request_prayers`), bascule ; compteur `prayer_count`. Pas de notification (évite le bruit). |
+| **Je prie** | Une fois par personne (`prayer_request_prayers`), bascule ; compteur `prayer_count`. L'auteur est **prévenu une seule fois par personne** (notification `prayer_request_prayed`, « {Nom} prie pour votre requête de prière », push selon la préférence « prières ») : retirer puis remettre « Je prie » ne renvoie rien, et prier pour sa propre requête ne notifie pas. |
 | **Encouragements** | Messages de 2 à 1 000 caractères + référence biblique facultative. Possibles si la requête est visible, non retirée, et pas privée (sauf pour l'auteur). L'auteur de la requête est **prévenu** (notification `prayer_encouragement`, push selon la préférence « prières »). Suppression : l'auteur du message, l'auteur de la requête, la modération. |
 | **Exaucée** | L'auteur seul : `status = answered`, `answered_at`, note facultative (`answer_note`). Remise « en attente » possible tant qu'aucun témoignage n'est rattaché. **Témoigner** ouvre Publier ; le témoignage peut ensuite être rattaché par `PUT /prayer/requests/{id}` `{ testimony_id }` (témoignage de l'auteur ; la requête passe exaucée). |
 | **Événement** | `event_id` : événement **publié** et visible (ou géré par l'auteur). |
@@ -92,7 +92,7 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 - Menu latéral **Requêtes de prière** ; routes `/prayer-requests` (onglets Toutes / Mes requêtes, filtre Exaucées), `/prayer-requests/new?event=`, `/prayer-requests/:id`. Lecture libre en mode invité ; confier, prier, encourager et signaler demandent un compte.
 - Carte réutilisable **`PrayerRequestFeedCard(request: …, onChanged: …)`** (`lib/features/prayer/widgets/prayer_widgets.dart`) : « Je prie » directement depuis la carte. Une page d'un scope : **`prayerRequestsPageProvider((PrayerRequestScope.feed, null))`** (`lib/features/prayer/providers/prayer_providers.dart`).
 - Page d'un événement : bloc **Prière** (`EventPrayerSection`).
-- Notifications `prayer_encouragement` : ouvrent la requête.
+- Notifications `prayer_encouragement` : ouvrent la requête. `prayer_request_prayed` (porte `prayerRequestId`) : ouvre aussi la requête dans l'application.
 
 ## Fichiers
 

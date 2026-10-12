@@ -14,6 +14,7 @@ class ProphecyResource extends JsonResource
             'id'            => $this->id,
             'title'         => $this->title,
             'receivedOn'    => $this->received_on?->toDateString(),
+            'receivedTime'  => $this->received_time,          // HH:MM ou null (heure non notée)
             'bodyText'      => $this->body_text,
             'audioUrl'      => $this->audio_url,
             'audioDuration' => $this->audio_duration,

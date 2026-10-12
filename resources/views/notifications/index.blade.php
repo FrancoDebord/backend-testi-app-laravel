@@ -43,6 +43,7 @@
             $notifType = $notif->type->value;
             $notifIcon = match (true) {
                 $notifType === 'live_started'        => 'fa-solid fa-tower-broadcast',
+                $notifType === 'account_verified'    => 'fa-solid fa-circle-check',
                 str_starts_with($notifType, 'event_') => 'fa-regular fa-calendar',
                 str_contains($notifType, 'like')     => 'fa-regular fa-thumbs-up',
                 str_contains($notifType, 'comment')  => 'fa-regular fa-comment',

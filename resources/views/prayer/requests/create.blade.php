@@ -36,8 +36,9 @@
             <div>
                 <label for="body" class="form-label">Votre requête *</label>
                 <textarea id="body" name="body" rows="7" minlength="10" maxlength="2000" required class="form-input"
-                          placeholder="Pour quoi souhaitez-vous que l'on prie ?" @error('body') aria-invalid="true" @enderror>{{ old('body') }}</textarea>
-                <p class="form-hint">10 à 2 000 caractères. N'indiquez pas d'informations trop personnelles (adresse, téléphone…).</p>
+                          placeholder="Pour quoi souhaitez-vous que l'on prie ? (@ pour mentionner quelqu'un)" data-mention-input @error('body') aria-invalid="true" @enderror>{{ \App\Services\Mentions::plain(old('body')) }}</textarea>
+                @include('components.mention-input')
+                <p class="form-hint">10 à 2 000 caractères. N'indiquez pas d'informations trop personnelles (adresse, téléphone…). Les personnes mentionnées avec « @ » sont prévenues si elles peuvent voir la requête (jamais pour « Moi seul » ; requête anonyme : votre nom n'apparaît pas).</p>
                 @error('body')<p class="form-error">{{ $message }}</p>@enderror
             </div>
         </section>

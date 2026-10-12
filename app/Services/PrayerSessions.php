@@ -53,7 +53,9 @@ class PrayerSessions
             'description'      => ['sometimes', 'nullable', 'string', 'max:3000'],
             'topics'           => ['sometimes', 'nullable', 'array', 'max:' . PrayerSession::MAX_TOPICS],
             'topics.*'         => ['nullable', 'string', 'max:150'],
-            'starts_at'        => [$req, 'date', 'after:now'],
+            // Modification : l'horaire déjà fixé peut être renvoyé tel quel (session commencée) ;
+            // un nouvel horaire doit être dans le futur (contrôle dans update()).
+            'starts_at'        => $partial ? ['sometimes', 'date'] : ['required', 'date', 'after:now'],
             'duration_minutes' => ['sometimes', 'integer', 'min:' . self::MIN_DURATION, 'max:' . self::MAX_DURATION],
             'visibility'       => ['sometimes', Rule::in(PrayerSession::VISIBILITIES)],
             'event_id'         => ['sometimes', 'nullable', 'uuid'],
@@ -135,8 +137,15 @@ class PrayerSessions
         if (array_key_exists('topics', $data))   $changes['topics'] = $this->cleanTopics($data['topics'] ?? []);
         if (array_key_exists('event_id', $data)) $changes['event_id'] = $this->eventFor($user, $data['event_id'])?->id;
         if (array_key_exists('starts_at', $data)) {
-            $changes['starts_at'] = Carbon::parse($data['starts_at']);
-            $changes['reminder_sent_at'] = null; // nouvel horaire : nouveau rappel
+            $startsAt = Carbon::parse($data['starts_at']);
+            // Même horaire (à la seconde près, l'application renvoie tout le formulaire) : rien ne change.
+            if ($startsAt->getTimestamp() !== $session->starts_at->getTimestamp()) {
+                if ($startsAt->isPast()) {
+                    throw new PrayerActionException('La session doit être programmée dans le futur.', 422);
+                }
+                $changes['starts_at'] = $startsAt;
+                $changes['reminder_sent_at'] = null; // nouvel horaire : nouveau rappel
+            }
         }
         $session->fill($changes);
         $session->ends_at = $session->starts_at->copy()->addMinutes($session->duration_minutes);

@@ -14,9 +14,9 @@ class CommentPolicy
         return $comment->user_id === $user->id;
     }
 
-    /** L'auteur supprime son commentaire ; la modération peut aussi le retirer (comme dans l'API). */
+    /** L'auteur supprime son commentaire ; un administrateur aussi (jamais un modérateur, comme dans l'API). */
     public function delete(User $user, Comment $comment): bool
     {
-        return $comment->user_id === $user->id || $user->canModerate();
+        return $comment->user_id === $user->id || $user->isAdmin();
     }
 }

@@ -150,6 +150,28 @@ final class Countries
         return $name === false ? null : $name;
     }
 
+    /** Pays sans article (« À Madagascar ») et au pluriel (« Aux Pays-Bas »). */
+    private const PHRASE_A = ['mg', 'mu', 'cu', 'ht', 'cy', 'mt', 'sg', 'mc', 'bh', 'lk', 'tw', 'st', 'sc', 'km', 'cv', 'bb', 'ag', 'dm', 'gd', 'kn', 'lc', 'vc', 'tt', 'jm', 'bn', 'sm', 'va', 'xk', 'il'];
+    private const PHRASE_AUX = ['nl', 'us', 'ae', 'ph', 'mv', 'bs', 'fj', 'mh', 'sb'];
+    /** Pays masculins qui se terminent par « e » (« Au Mexique »). */
+    private const MASCULINE_E = ['mx', 'kh', 'mz', 'zw', 'bz', 'sr', 'mm'];
+
+    /** « Au Bénin », « En Côte d'Ivoire », « Aux Pays-Bas », « À Madagascar » ; null pour un code inconnu. */
+    public static function inPhrase(?string $code): ?string
+    {
+        $code = strtolower(trim((string) $code));
+        $name = self::nameOf($code);
+        if ($name === null) return null;
+        if (in_array($code, self::PHRASE_A, true)) return "À {$name}";
+        if (in_array($code, self::PHRASE_AUX, true)) return "Aux {$name}";
+        $ascii = self::key($name);
+        $firstWord = preg_split('/[\s(]/', $ascii)[0] ?? $ascii;
+        $startsWithVowel = in_array($ascii[0] ?? '', ['a', 'e', 'i', 'o', 'u'], true);
+        $feminine = str_ends_with($firstWord, 'e') && !in_array($code, self::MASCULINE_E, true);
+
+        return ($startsWithVowel || $feminine) ? "En {$name}" : "Au {$name}";
+    }
+
     /** @return list<string> codes utilisés (pour vérifier que chaque drapeau existe) */
     public static function codes(): array
     {

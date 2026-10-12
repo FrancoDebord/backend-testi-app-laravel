@@ -28,6 +28,8 @@ class EventCommentResource extends JsonResource
             // Enregistré comme témoignage officiel de l'événement.
             'testimonyId' => $this->testimony_id,
             'isMine'      => $user?->id === $this->user_id,
+            // Auteur ou administrateur ; les gestionnaires de l'événement le peuvent aussi (`canManage`).
+            'canDelete'   => $user !== null && ($user->id === $this->user_id || $user->isAdmin()),
             'createdAt'   => $this->created_at?->toIso8601String(),
         ];
     }

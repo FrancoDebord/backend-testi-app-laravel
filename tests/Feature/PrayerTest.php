@@ -125,6 +125,38 @@ class PrayerTest extends TestCase
             ->assertJsonPath('data.hasPrayed', false)->assertJsonPath('data.prayerCount', 0);
     }
 
+    public function test_je_prie_previent_l_auteur_une_seule_fois(): void
+    {
+        $prayer = $this->postRequest();
+        $notifications = fn () => AppNotification::where('recipient_id', $this->author->id)->where('type', 'prayer_request_prayed');
+
+        // L'auteur qui prie pour sa propre requête n'est pas prévenu.
+        $this->actingAs($this->author)->postJson("/api/v1/prayer/requests/{$prayer->id}/pray")->assertOk();
+        $this->assertSame(0, $notifications()->count());
+
+        $this->actingAs($this->friend)->postJson("/api/v1/prayer/requests/{$prayer->id}/pray")->assertOk();
+        $notification = $notifications()->sole();
+        $this->assertSame($this->friend->id, $notification->actor_id);
+        $this->assertSame($prayer->id, $notification->payload['prayer_request_id']);
+        $this->assertSame('Ami prie pour votre requête de prière', $notification->message);
+
+        // Push : titre, données de navigation, préférence push_prayers.
+        $push = \App\Services\PushNotifications::message($notification);
+        $this->assertSame('Nouvelle prière', $push['title']);
+        $this->assertSame('prayer_request_prayed', $push['data']['type']);
+        $this->assertSame($prayer->id, $push['data']['prayer_request_id']);
+        \App\Models\UserSetting::updateOrCreate(['user_id' => $this->author->id], ['push_prayers' => false]);
+        $this->assertFalse(\App\Services\PushNotifications::allows($this->author->id, 'prayer_request_prayed'));
+
+        // Retirer puis remettre « Je prie » : pas de seconde notification.
+        $this->actingAs($this->friend)->postJson("/api/v1/prayer/requests/{$prayer->id}/pray")->assertJsonPath('data.hasPrayed', false);
+        $this->actingAs($this->friend)->postJson("/api/v1/prayer/requests/{$prayer->id}/pray")->assertJsonPath('data.hasPrayed', true);
+        $this->assertSame(1, $notifications()->count());
+
+        $this->actingAs($this->author)->getJson('/api/v1/notifications')->assertOk()
+            ->assertJsonPath('data.0.prayerRequestId', $prayer->id);
+    }
+
     public function test_encouragement_previent_l_auteur_et_peut_etre_supprime(): void
     {
         $prayer = $this->postRequest();
@@ -172,11 +204,14 @@ class PrayerTest extends TestCase
         $this->actingAs($this->moderator)->getJson('/api/v1/prayer/moderation')->assertJsonCount(0, 'data');
     }
 
-    public function test_suppression_par_l_auteur_ou_la_moderation(): void
+    public function test_suppression_par_l_auteur_ou_un_administrateur(): void
     {
         $prayer = $this->postRequest();
         $this->actingAs($this->friend)->deleteJson("/api/v1/prayer/requests/{$prayer->id}")->assertForbidden();
-        $this->actingAs($this->moderator)->deleteJson("/api/v1/prayer/requests/{$prayer->id}")->assertOk();
+        // Un modérateur ne supprime jamais ce qu'un autre a écrit ; un administrateur, oui.
+        $this->actingAs($this->moderator)->deleteJson("/api/v1/prayer/requests/{$prayer->id}")->assertForbidden();
+        $this->moderator->update(['role' => 'administrateur']);
+        $this->actingAs($this->moderator->fresh())->deleteJson("/api/v1/prayer/requests/{$prayer->id}")->assertOk();
         $this->assertSoftDeleted($prayer);
     }
 
@@ -264,13 +299,16 @@ class PrayerTest extends TestCase
         $this->actingAs($this->author)->postJson('/api/v1/lives', ['title' => 'Mon direct', 'prayer_session_id' => $session->id])->assertForbidden();
     }
 
-    public function test_suppression_par_la_moderation_ferme_la_salle(): void
+    public function test_suppression_par_un_administrateur_ferme_la_salle(): void
     {
         $session = $this->createSession();
         $liveId = $this->actingAs($this->author)->postJson("/api/v1/prayer/sessions/{$session->id}/start")->json('data.live.id');
 
         $this->actingAs($this->friend)->deleteJson("/api/v1/prayer/sessions/{$session->id}")->assertForbidden();
-        $this->actingAs($this->moderator)->deleteJson("/api/v1/prayer/sessions/{$session->id}")->assertOk();
+        // Un modérateur ne supprime jamais ce qu'un autre a écrit ; un administrateur, oui.
+        $this->actingAs($this->moderator)->deleteJson("/api/v1/prayer/sessions/{$session->id}")->assertForbidden();
+        $this->moderator->update(['role' => 'administrateur']);
+        $this->actingAs($this->moderator->fresh())->deleteJson("/api/v1/prayer/sessions/{$session->id}")->assertOk();
         $this->assertSame('ended', LiveSession::find($liveId)->status->value);
     }
 
@@ -317,5 +355,24 @@ class PrayerTest extends TestCase
 
         $this->actingAs($this->friend)->get(route('prayer.moderation.index'))->assertForbidden();
         $this->actingAs($this->moderator)->get(route('prayer.moderation.index'))->assertOk();
+    }
+
+    public function test_l_hote_modifie_une_session_commencee_sans_changer_l_horaire(): void
+    {
+        $session = $this->createSession();
+        $startsAt = $session->starts_at->toIso8601String();
+        $this->travel(20)->minutes();
+        $url = "/api/v1/prayer/sessions/{$session->id}";
+
+        // L'application renvoie tout le formulaire, horaire passé compris : accepté s'il est inchangé.
+        $this->actingAs($this->author)->putJson($url, ['title' => 'Veillée prolongée', 'starts_at' => $startsAt, 'duration_minutes' => 90])
+            ->assertOk()->assertJsonPath('data.title', 'Veillée prolongée');
+        // Un nouvel horaire doit rester dans le futur.
+        $this->actingAs($this->author)->putJson($url, ['starts_at' => now()->subMinutes(5)->toIso8601String()])->assertUnprocessable();
+        $this->actingAs($this->author)->putJson($url, ['starts_at' => now()->addDay()->toIso8601String()])->assertOk();
+        // À la création, l'horaire passé reste refusé.
+        $this->actingAs($this->author)->postJson('/api/v1/prayer/sessions', [
+            'title' => 'Trop tard', 'starts_at' => now()->subMinute()->toIso8601String(),
+        ])->assertUnprocessable();
     }
 }

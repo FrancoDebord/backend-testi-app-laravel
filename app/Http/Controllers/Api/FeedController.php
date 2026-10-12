@@ -13,7 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Éléments insérés dans « Mon fil » (GET /feed/inserts) : événements à venir, sessions de prière
+ * Éléments insérés dans « Mon fil » (GET /feed/inserts) : événements à venir, en cours et passés, sessions de prière
  * programmées, requêtes de prière, paroles prophétiques publiques — comptes suivis d'abord.
  * Les témoignages restent servis par GET /feed. Voir docs/fonctionnalites/recommandations.md
  */
@@ -31,6 +31,8 @@ class FeedController extends Controller
             'prayerSessions' => PrayerSessionResource::collection($group['prayerSessions'])->resolve($request),
             'prayerRequests' => PrayerRequestResource::collection($group['prayerRequests'])->resolve($request),
             'prophecies'     => PublicProphecyResource::collection($group['prophecies'])->resolve($request),
+            // Événements terminés récemment (à revivre).
+            'pastEvents'     => EventResource::collection($group['pastEvents'])->resolve($request),
         ];
 
         return $this->success([

@@ -32,6 +32,9 @@ class UserResource extends JsonResource
             'phone'            => $private ? $this->phone : null,
             'phone_country'    => $private ? $this->phone_country : null,
             'is_phone_verified'=> $private && $this->hasVerifiedPhone(),
+            // Compte avec mot de passe (e-mail) : faux pour un compte téléphone / Google / Facebook.
+            // L'application choisit ainsi mot de passe ou confirmation (suppression, changement).
+            'has_password'     => $private ? !empty($this->password) : null,
             'avatar_url'       => $this->avatar_url,
             'cover_url'        => $this->cover_url, // photo de couverture (docs/fonctionnalites/photo-de-couverture.md)
             'country'          => $this->country,
@@ -56,7 +59,8 @@ class UserResource extends JsonResource
             'is_verified'          => $this->isVerified(),
             // Abonnement de la personne connectée (profil, page Communauté) : présent seulement s'il a été chargé.
             'is_following'         => $this->when(array_key_exists('is_followed', $this->resource->getAttributes()), fn () => (bool) $this->is_followed),
-            'verification_status'  => $this->verification_status?->value,
+            // Personne : une demande en cours ou refusée reste privée (docs/fonctionnalites/verification-des-comptes.md).
+            'verification_status'  => ($this->isOrganization() || $private || $this->isVerified()) ? $this->verification_status?->value : null,
             'created_at'       => $this->created_at?->toIso8601String(),
             'updated_at'       => $this->updated_at?->toIso8601String(),
         ];

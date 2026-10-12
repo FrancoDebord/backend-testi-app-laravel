@@ -50,7 +50,7 @@
             </div>
 
             <dl class="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-                <div class="min-w-0"><dt class="text-xs text-slate-500">Reçue le</dt><dd class="font-medium text-slate-900">{{ $fmtDate($prophecy->received_on) }}</dd></div>
+                <div class="min-w-0"><dt class="text-xs text-slate-500">Reçue le</dt><dd class="font-medium text-slate-900">{{ $prophecy->receivedLabel() }}</dd></div>
                 @if(filled($prophecy->given_by))
                 <div class="min-w-0"><dt class="text-xs text-slate-500">Donnée par</dt><dd class="font-medium break-words text-slate-900">{{ $prophecy->given_by }}</dd></div>
                 @endif
@@ -212,7 +212,7 @@
                 <audio controls preload="none" src="{{ $prophecy->audio_url }}" class="mt-6 w-full" aria-label="Écouter la parole prophétique"></audio>
                 @endif
                 <p class="mt-6 text-sm text-slate-500">
-                    Reçue le {{ $fmtDate($prophecy->received_on) }}@if(filled($prophecy->given_by)) · {{ $prophecy->given_by }}@endif
+                    Reçue le {{ $prophecy->receivedLabel() }}@if(filled($prophecy->given_by)) · {{ $prophecy->given_by }}@endif
                 </p>
                 @if($verse)
                 <div class="card-insight mt-8 p-5">

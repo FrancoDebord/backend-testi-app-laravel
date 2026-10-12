@@ -25,7 +25,7 @@ class CommunityController extends Controller
 
     public function index(Request $request): View
     {
-        $tab = array_key_exists((string) $request->query('tab'), CommunityDirectory::TABS) ? $request->query('tab') : 'organizations';
+        $tab = array_key_exists((string) $request->query('tab'), CommunityDirectory::TABS) ? $request->query('tab') : 'all';
         $q   = mb_substr(trim((string) $request->query('q', '')), 0, 100);
 
         return view('community.index', [

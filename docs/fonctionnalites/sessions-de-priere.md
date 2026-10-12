@@ -27,7 +27,7 @@ Différences avec un direct classique :
 | **Inscription** | « Je serai là » / retrait, tant que la session n'est ni terminée ni annulée ; compteur `participant_count`. |
 | **Ouvrir la salle** | L'hôte, de **30 minutes avant** l'heure prévue jusqu'à la **fin prévue** ; s'il en a déjà ouvert une, il la **reprend** (même direct). Un hôte ne peut avoir qu'un direct actif à la fois (règle des directs). La salle passe « à l'antenne » quand l'hôte publie sa caméra / son micro dans le studio. |
 | **Prévenir les inscrits** | À la **première ouverture** : notification `prayer_session_started` (+ push, avec `live_id`). **Rappel 15 minutes avant** : commande `prayer-sessions:remind` (toutes les 5 minutes, planificateur Laravel) → `prayer_session_reminder` aux inscrits **et** à l'hôte, une seule fois (`reminder_sent_at`, remis à zéro si l'horaire change). |
-| **Modifier** | L'hôte, tant que la session n'est pas terminée ni annulée. |
+| **Modifier** | L'hôte, tant que la session n'est pas terminée ni annulée. Un horaire renvoyé **inchangé** est accepté même s'il est passé (session commencée : l'application renvoie tout le formulaire). Un **nouvel** horaire doit être dans le futur (422 sinon). |
 | **Annuler / supprimer** | L'hôte ou la **modération** ; la salle ouverte est fermée. La modération peut aussi **couper la salle** depuis la page du direct. |
 | **Voir les inscrits** | L'hôte et la modération. |
 

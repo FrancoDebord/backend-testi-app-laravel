@@ -9,12 +9,15 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Lien de partage](fonctionnalites/lien-de-partage.md) | Colonne `share_url`, API `shareUrl`, commande de recalcul |
 | [Page Vidéos](fonctionnalites/videos.md) | Page publique `/videos` (vidéos, shorts, directs, audios, textes), lecture, vues uniques, J'aime, commentaires et réponses |
 | [Témoignages en direct](fonctionnalites/lives.md) | Diffusion vidéo depuis un téléphone (modérateurs/admins), commentaires et réactions en temps réel, modération, API mobile |
+| [Connexion avec Google](fonctionnalites/connexion-google.md) | Bouton « Continuer avec Google » sur `/login` (site) ; `POST /auth/google { id_token }` (et `/auth/social`) : vérification du jeton (audience, émetteur, e-mail vérifié), création ou liaison du compte par `google_id` / e-mail, même réponse que la connexion e-mail |
+| [Administrateurs de compte](fonctionnalites/administrateurs-de-compte.md) | Chaque titulaire nomme 2 personnes qui publient, commentent et agissent au nom de son compte ; sélecteur « Mes comptes », bandeau, actions réservées au titulaire, journal (site et application) |
 | [Événements chrétiens](fonctionnalites/evenements.md) | Croisades, conférences, camps… créés par les organisations vérifiées et les administrateurs : carrousel d'images, invités, « Je participe », commentaires des participants, témoignages officiels, direct de l'événement (site et application) |
 | [Requêtes de prière](fonctionnalites/requetes-de-priere.md) | Publication directe, visibilité publique / abonnés / privée, anonymat, « Je prie », encouragements, exaucée, signalement et retrait par la modération, rattachement à un événement (site et application) |
 | [Verset du jour en plein écran](fonctionnalites/verset-du-jour.md) | Page immersive du verset du jour (site et application) : versions de la Bible (choix mémorisé, « Comparer », hors connexion), J'aime / Je prie, partage, écoute, mode lecture ; sujets de prière rattachés, commentaires (mentions, signalement), témoignages qui citent le verset |
 | [Sessions de prière](fonctionnalites/sessions-de-priere.md) | Sessions programmées par tout compte, inscriptions « Je serai là », rappel 15 min avant ; la salle est un direct LiveKit ouvert par l'hôte (commentaires, intervenants) |
 | [Paroles prophétiques](fonctionnalites/paroles-prophetiques.md) | Carnet privé (application) : garder les paroles reçues (texte ou audio), journal de prière, rappels, proclamation, témoignage de l'accomplissement et parole rendue publique avec lui |
 | [Messages pour inciter à témoigner](fonctionnalites/encouragements.md) | Versets (Psaume 78:4, Apocalypse 12:11…) et invitations sur les pages et dans les fils, bouton Témoigner |
+| [Réglages, compte et Mes témoignages](fonctionnalites/reglages-et-compte.md) | API de l'application : lire et modifier les réglages, « Qui peut commenter » appliqué, suppression d'un compte sans mot de passe, renommer un témoignage, motif de refus, verset long, partages par les invités |
 | [Pourquoi témoigner ?](fonctionnalites/pourquoi-temoigner.md) | Bloc en accordéon : 7 raisons bibliques de témoigner et leurs versets, sur l'accueil, Publier, Mes témoignages, la lecture d'un témoignage et l'inscription |
 | [Intervenants dans un direct](fonctionnalites/lives-intervenants.md) | File des demandes, invitation, passage à l'antenne (micro, caméra facultative) en médaillon, une personne à la fois |
 | [Ouverture des liens dans l'app](fonctionnalites/app-links.md) | App Links (Android) / Universal Links (iOS) : fichiers `/.well-known/…` |
@@ -23,17 +26,22 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Lecture à voix haute](fonctionnalites/lecture-vocale.md) | Écouter un témoignage écrit (synthèse vocale de l'appareil) en français ou en anglais : site et application, vitesse, voix, lecture automatique (application) |
 | [Qualités des médias](fonctionnalites/qualites-media.md) | Versions 240p–720p et 32k–128k produites par ffmpeg, champ `renditions` de l'API, commande `media:transcode` |
 | [Recommandations et fil « Pour vous »](fonctionnalites/recommandations.md) | Récents et plus vus pour un nouveau venu ; recommandations selon le témoignage en cours, les centres d'intérêt et les comptes suivis ; **Mon fil** (tous les témoignages, comptes suivis et leurs partages d'abord ; événements, sessions et requêtes de prière, paroles prophétiques publiques insérés) |
+| [Localisation et fils par zone](fonctionnalites/localisation.md) | « Pour vous » et Mon fil classés du plus proche (village, ville, région, pays, continent) au plus lointain, puis selon les goûts : position GPS avec consentement (arrondie à ≈ 1 km), ville et pays du profil, pays déduit ; jamais publique, effacement immédiat |
+| [Réactions (j'aime, je prie…)](fonctionnalites/reactions.md) | Une réaction « j'aime » et une « je prie » au plus par personne : témoignages, événements, requêtes et sessions de prière ; jamais comptées deux fois |
 | [Partage interne « X a partagé »](fonctionnalites/partage-interne.md) | Partager un témoignage sur TestiApp avec un commentaire facultatif (auteur d'origine toujours affiché) : Mon fil des abonnés, section « Partages » du profil, compteur, notification à l'auteur, annulation |
 | [Preuves d'un témoignage](fonctionnalites/preuves.md) | Deux images ou PDF par témoignage, privés (auteur et équipe de modération) |
+| [Vidéos sur Bunny Stream](fonctionnalites/videos-bunny-stream.md) | Envoi direct de l'application à Bunny (TUS, sans passer par le serveur), états `uploading` → `processing` → `ready`, webhook, objet `video` (HLS, MP4), envois abandonnés, reprise des anciennes vidéos |
 | [Vidéos YouTube](fonctionnalites/videos-youtube.md) | Publication d'un témoignage par lien YouTube (administrateurs), lecture avec le lecteur YouTube |
 | [Direct avec une caméra IP](fonctionnalites/lives-camera-ip.md) | Caméra IP, OBS ou encodeur (RTMP, ou adresse du flux) via LiveKit Ingress ; aperçu et lancement depuis le studio |
 | [Page d'accueil](fonctionnalites/accueil.md) | Maquette « Témoignages de Gloire » : bandeau et chiffres, actions rapides, récents, catégories, statistiques, modération et gestion des contenus selon le rôle |
 | [Photo de couverture](fonctionnalites/photo-de-couverture.md) | Bandeau du profil illustré par une photo (site et application) : ajout, remplacement, retrait |
 | [Suivre et Communauté](fonctionnalites/abonnements.md) | Bouton Suivre (site et application), page Communauté (organisations, personnes), **comptes à suivre** (suggestions), abonnés prévenus des témoignages et directs, menu latéral de l'application |
 | [Mentions « @ »](fonctionnalites/mentions.md) | Mentionner un compte dans un commentaire (témoignages, directs, messages de prière) : autocomplétion sur les vrais comptes, notification, mention cliquable (site et application) |
+| [Recherche et autocomplétion](fonctionnalites/recherche.md) | Suggestions pendant la saisie dans toutes les barres de recherche (site et application) : complétion de texte sans accents ni casse, résultats directs typés, recherches récentes sur l'appareil, recherches populaires anonymes, `GET /search/suggest` |
 | [Téléphone de contact](fonctionnalites/telephone.md) | Numéro avec indicatif (drapeau, suit le pays) à l'inscription et dans le profil, format international, numéro vérifié ou non, confidentialité de l'API |
 | [Comptes organisation](fonctionnalites/comptes-organisation.md) | Comptes église / ministère / association / ONG / média, vérification par un administrateur, coche « vérifiée » (API et site) |
-| [Notifications push](fonctionnalites/notifications-push.md) | Envoi FCM (API HTTP v1) de chaque notification de l'application, préférences push, suppression des jetons périmés, commande `push:test` |
+| [Vérification des comptes personnels](fonctionnalites/verification-des-comptes.md) | Badge « Compte vérifié » pour les personnes (pasteurs, chantres…) : demande avec pièces justificatives privées, examen par un administrateur (approuver, refuser avec motif, retirer), aucun droit supplémentaire (site, API, application) |
+| [Notifications push](fonctionnalites/notifications-push.md) | Envoi FCM (API HTTP v1) de chaque notification de l'application, préférences push, suppression des jetons périmés, file `push` et cron LWS, commande `push:test` |
 | [Documentation en ligne](fonctionnalites/documentation-en-ligne.md) | Lecture de cette documentation dans la plateforme (`/admin/documentation`) |
 | [Journal des modifications](journal-des-modifications.md) | Historique daté de chaque ajout, modification et correction |
 
@@ -127,7 +135,7 @@ Symptôme d'assets non à jour : la page s'affiche mais les nouveaux éléments 
 
 ### Tâche planifiée (recommandée)
 
-`routes/console.php` planifie `lives:cleanup` toutes les 5 minutes. Si l'hébergement le permet, ajouter la tâche cron Laravel :
+`routes/console.php` planifie `lives:cleanup` toutes les 5 minutes, et `videos:expire-uploads` chaque heure ([Bunny Stream](fonctionnalites/videos-bunny-stream.md)). Si l'hébergement le permet, ajouter la tâche cron Laravel :
 
 ```
 * * * * * cd /chemin/du/projet && php artisan schedule:run >> /dev/null 2>&1
@@ -143,6 +151,10 @@ Les versions allégées des médias ([qualites-media.md](fonctionnalites/qualite
 - une fois (rattrapage des médias existants) : `php artisan media:transcode --missing`.
 
 Carnet privé et paroles prophétiques sur le site (2026-10-05) : **aucune migration** ; **recompilation et copie de `public/build/`** et `php artisan view:cache`.
+
+Migration du 2026-10-06 (alignement sur l'application) : `2026_10_06_500001_widen_bible_verse_columns` (`testimonies.bible_verse` et `drafts.bible_verse` en `TEXT`, voir [réglages et compte](fonctionnalites/reglages-et-compte.md)). Lancer `php artisan migrate --force`, puis `php artisan route:cache` si les routes sont mises en cache (nouvelle route `GET users/me/settings`, partages ouverts aux invités). Aucun asset à recompiler.
+
+Migrations du 2026-10-09 : `2026_10_09_100001_dedupe_testimony_reactions` (doublons de réactions supprimés, compteurs corrigés) et `2026_10_09_100002_create_content_reactions_and_reposts_tables` ([réactions](fonctionnalites/reactions.md) et [partages](fonctionnalites/partage-interne.md) des événements, requêtes et sessions de prière). Lancer `php artisan migrate --force`, puis `npm run build` (boutons de réaction du site) et `route:cache` / `view:cache` si utilisés.
 
 Migration du 2026-10-06 : `2026_10_06_200001_create_testimony_reposts_table` ([partage interne](fonctionnalites/partage-interne.md) : table `testimony_reposts`, colonne `testimonies.repost_count`).
 
@@ -164,13 +176,41 @@ Le menu **Qualité**, la lecture en boucle / automatique et la liste compacte du
 
 ### Notifications push (FCM)
 
-Les push ([notifications-push.md](fonctionnalites/notifications-push.md)) partent par la même file d'attente :
+Les push ([notifications-push.md](fonctionnalites/notifications-push.md)) partent par la file d'attente `push` (`PUSH_QUEUE`), séparée de la file `default` des conversions vidéo :
 
-- console Firebase › Paramètres du projet › Comptes de service › « Générer une nouvelle clé privée » ; déposer le JSON **hors de `public/`** et de git (ex. `storage/app/private/firebase.json`) ;
-- `.env` : `FIREBASE_CREDENTIALS=/chemin/absolu/firebase.json`, puis `php artisan config:cache` et `php artisan queue:restart` ;
+- projet Firebase : **`as-krea`** (diminutif d'ARISE & SHINE Krea, nom à afficher). Console Firebase › `as-krea` › Paramètres du projet › Comptes de service › « Générer une nouvelle clé privée » ; déposer le JSON **hors de `public/`** et de git (actuellement `storage/app/as-krea-firebase-adminsdk-fbsvc-13c56c0cb4.json`). L'application mobile doit être configurée sur le même projet (`google-services.json`, `firebase_options.dart`) : sinon FCM refuse chaque envoi (`SenderId mismatch`) ;
+- `.env` : `FIREBASE_CREDENTIALS=storage/app/firebase-credentials.json`, `PUSH_DELIVERY=queue`, `PUSH_QUEUE=push`, puis `php artisan config:cache` ;
+- 2026-10-10 : migration `2026_10_10_000001_add_last_used_at_to_device_tokens_table` (`php artisan migrate --force`) ;
 - vérifier : `php artisan push:test adresse@exemple.com` (l'utilisateur doit s'être connecté une fois dans l'application sur son téléphone).
 
-Sans `FIREBASE_CREDENTIALS`, aucun push n'est envoyé (notifications dans l'application inchangées). Aucune migration.
+**Hébergement mutualisé LWS (aucun processus permanent)** : deux tâches cron dans le panneau LWS (« Tâches planifiées »), chaque minute, avec le chemin de PHP CLI indiqué par LWS :
+
+```
+* * * * * cd /chemin/du/projet && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /chemin/du/projet && php artisan queue:work --queue=push,default --stop-when-empty --max-time=50 --timeout=1900 >> /dev/null 2>&1
+```
+
+Le second vide la file puis s'arrête (au plus 50 s de prise de tâches, `--timeout=1900` pour ne pas couper une conversion vidéo) : un push part en moins d'une minute. Un worker occupé par une conversion longue n'empêche pas le suivant, lancé la minute d'après, de traiter les push. Après un déploiement, `php artisan queue:restart` reste utile si un worker tourne encore.
+
+**Solution de repli** (cron à la minute impossible) : `PUSH_DELIVERY=after_response`, puis `php artisan config:cache`. Le push est envoyé par le même processus PHP, juste après l'envoi de la réponse HTTP : pas de file ni de cron, mais pas de nouvel essai en cas d'erreur temporaire de FCM.
+
+Sans `FIREBASE_CREDENTIALS`, aucun push n'est envoyé (notifications dans l'application inchangées).
+
+Le fichier `storage/app/firebase-credentials.json` (chemin proposé par `.env.example`) est exclu de git (`.gitignore`). Après un déploiement qui modifie `.env` : `php artisan config:clear` (ou `config:cache`) puis `php artisan queue:restart`.
+
+### Vidéos sur Bunny Stream
+
+[videos-bunny-stream.md](fonctionnalites/videos-bunny-stream.md) — 2026-10-12 :
+
+1. `php artisan migrate --force` (`2026_10_12_100001_add_bunny_stream_to_testimonies_table`) ;
+2. `.env` : `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_CDN_HOST`, puis `php artisan config:clear` (ou `config:cache`) ;
+3. bibliothèque Bunny : webhook `https://temoignage.as-krea.com/api/v1/webhooks/bunny`, option **MP4 Fallback** activée ;
+4. tâche cron `schedule:run` nécessaire pour `videos:expire-uploads` (chaque heure), et `queue:work --queue=push,default` pour la notification « vidéo prête » ;
+5. reprise des anciennes vidéos : `php artisan videos:migrate-to-bunny --dry-run`, puis par lots (`--limit=10`).
+
+### Connexion avec Google
+
+[connexion-google.md](fonctionnalites/connexion-google.md) — 2026-10-09 : migration `2026_10_09_200001_add_google_id_to_users_table` (`php artisan migrate --force`), variable `GOOGLE_WEB_CLIENT_ID` (identifiant client **Web**, `566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com`) à ajouter au `.env` du serveur, puis `php artisan config:clear`. Sans elle (et sans `GOOGLE_CLIENT_ID`), toute connexion Google est refusée et le bouton du site est masqué. Pour le bouton « Continuer avec Google » de `/login` (2026-10-10) : ajouter `https://testi.airid-africa.com` aux **origines JavaScript autorisées** du client OAuth Web dans la console Google Cloud.
 
 ### Dépendances PHP
 
@@ -205,8 +245,14 @@ Puis recharger la page avec Ctrl+F5.
 | `MEDIA_TRANSCODE_TIMEOUT` | Durée maximale d'une conversion (défaut 1800 s). |
 | `DB_QUEUE_RETRY_AFTER` | Doit dépasser `MEDIA_TRANSCODE_TIMEOUT` (ex. 1900), sinon une conversion longue est relancée en parallèle. |
 | `FIREBASE_CREDENTIALS` | Chemin du JSON du compte de service Firebase pour les [notifications push](fonctionnalites/notifications-push.md). Vide = pas de push. Hors de `public/`, jamais versionné. |
+| `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_CDN_HOST` | Bibliothèque, clé API et nom d'hôte CDN Bunny Stream pour les [vidéos des témoignages](fonctionnalites/videos-bunny-stream.md). Sans elles, `POST /videos/upload-init` répond 503. |
+| `GOOGLE_WEB_CLIENT_ID` | Identifiant client Web Google (`serverClientId` de l'application) : audience exigée des jetons de la [connexion Google](fonctionnalites/connexion-google.md). |
+| `GOOGLE_CLIENT_ID` | Facultatif : audiences Google supplémentaires acceptées (anciennes versions), séparées par des virgules. |
 | `FIREBASE_PROJECT_ID` | Facultatif : sinon `project_id` du fichier JSON. |
 | `FCM_ENABLED` | Vide = push actifs dès que le fichier est lisible ; `false` pour les couper. |
+| `FCM_TIMEOUT` | Délai HTTP vers Google (connexion et réponse), en secondes ; 30 conseillé sur un réseau lent. |
+| `PUSH_DELIVERY` | `queue` (défaut : file d'attente, cron `queue:work` chaque minute sur LWS) ou `after_response` (envoi juste après la réponse HTTP, sans file ; repli). |
+| `PUSH_QUEUE` | Nom de la file des push (défaut `push`) : doit figurer dans `--queue=` du `queue:work`. |
 | `MEDIA_TEMP_DIR` | Dossier de travail des conversions de fichiers S3 (défaut `storage/app/transcode`) : prévoir l'espace d'un original et d'une version. |
 | `LIVEKIT_RECORDING_S3_VISIBILITY` | `public` pour un bucket AWS lu par ACL ; vide pour R2 / B2. |
 | `DB_CHARSET` / `DB_COLLATION` | `utf8mb4` / `utf8mb4_unicode_ci` (valeurs par défaut) pour stocker les émojis. |
@@ -228,6 +274,7 @@ php artisan test
 | `tests/Feature/ProfileCoverTest.php` | Photo de couverture : envoi, remplacement, retrait, validation, API, bandeau du profil |
 | `tests/Feature/TestimonyProofsAndYouTubeTest.php` | Preuves (formulaire, accès, API) et vidéos YouTube (liens, réservé aux administrateurs, lecteur) |
 | `tests/Feature/RecommendationsTest.php` | Fil « Pour vous » (nouveau venu, intérêts, suivis), recommandations, historique de lecture |
+| `tests/Feature/LocationFeedTest.php` | Fils classés par zone puis par goûts, réglage de localisation, vie privée et effacement, `locations:backfill` |
 | `tests/Feature/PersonalFeedAndRepostTest.php` | Mon fil (suivis d'abord puis tous les témoignages, pagination), éléments insérés (`GET /feed/inserts`), partage interne (API et site) |
 | `tests/Feature/LiveCameraTest.php` | Direct avec caméra IP : RTMP, adresse du flux, pas de démarrage automatique, suppression à la fin, échec |
 | `tests/Feature/HomePageTest.php` | Accueil : blocs selon le rôle (visiteur, membre, équipe), gestion des contenus par statut, filtres |

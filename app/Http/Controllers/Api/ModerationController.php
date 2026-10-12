@@ -104,6 +104,8 @@ class ModerationController extends Controller
 
         // Notify followers (insertion groupée + push : App\Services\FollowerNotifications)
         FollowerNotifications::newTestimony($testimony->fresh('user'));
+        // Personnes mentionnées dans le texte : une seule fois chacune (docs/fonctionnalites/mentions.md)
+        \App\Services\Mentions::notifyTestimony($testimony->fresh('user'));
 
         // Update user testimony count
         $testimony->user->increment('testimony_count');

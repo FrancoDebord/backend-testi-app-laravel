@@ -72,11 +72,11 @@ class PersonalFeedAndRepostTest extends TestCase
         $res = $this->feed();
         $titles = array_column($res['data'], 'title');
 
-        // Les témoignages récents des comptes suivis d'abord, du plus récent au plus ancien.
-        $this->assertSame(['Suivi 2', 'Suivi 1'], array_slice($titles, 0, 2));
+        // Les témoignages récents des comptes suivis et les siens d'abord, du plus récent au plus ancien.
+        $this->assertSame(['Le mien', 'Suivi 2', 'Suivi 1'], array_slice($titles, 0, 3));
         // Puis tous les autres, sans doublon : non suivis (« Suggestion ») et anciens des comptes suivis.
-        $this->assertEqualsCanonicalizing(['Suivi 2', 'Suivi 1', 'Inconnu récent', 'Suivi ancien', 'Inconnu ancien'], $titles);
-        $this->assertSame(5, $res['meta']['total']);
+        $this->assertEqualsCanonicalizing(['Le mien', 'Suivi 2', 'Suivi 1', 'Inconnu récent', 'Suivi ancien', 'Inconnu ancien'], $titles);
+        $this->assertSame(6, $res['meta']['total']);
         $reasons = array_column($res['data'], 'feedReason', 'title');
         $this->assertSame('suggested', $reasons['Inconnu récent']);
         $this->assertSame('following', $reasons['Suivi ancien']);
@@ -130,9 +130,10 @@ class PersonalFeedAndRepostTest extends TestCase
 
         $this->assertSame(['Veillée suivie'], array_column($data['following']['prayerSessions'], 'title'));
         $this->assertSame(['Veillée inconnue'], array_column($data['others']['prayerSessions'], 'title'));
-        $this->assertSame(['Parole suivie'], array_column($data['following']['prophecies'], 'bodyText'));
+        // Ses propres paroles publiques figurent aussi dans le groupe « suivis ».
+        $this->assertEqualsCanonicalizing(['Ma parole', 'Parole suivie'], array_column($data['following']['prophecies'], 'bodyText'));
         $this->assertSame(['Parole inconnue'], array_column($data['others']['prophecies'], 'bodyText'));
-        $this->assertSame('Paul', $data['following']['prophecies'][0]['user']['display_name']);
+        $this->assertSame('Paul', collect($data['following']['prophecies'])->firstWhere('bodyText', 'Parole suivie')['user']['display_name']);
         $this->assertArrayNotHasKey('reminder', $data['others']['prophecies'][0]);
         $this->assertArrayHasKey('events', $data['others']);
         $this->assertArrayHasKey('prayerRequests', $data['others']);

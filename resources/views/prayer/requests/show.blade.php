@@ -9,7 +9,7 @@
     $breadcrumbs = [
         ['label' => 'Accueil', 'url' => route('home')],
         ['label' => 'Requêtes de prière', 'url' => route('prayer.requests.index')],
-        ['label' => Str::limit($prayer->body, 40)],
+        ['label' => Str::limit(\App\Services\Mentions::plain($prayer->body), 40)],
     ];
 @endphp
 @section('title', $header)
@@ -60,7 +60,7 @@
             <p class="alert-warning mt-4 text-sm"><i class="fa-solid fa-eye-slash mt-0.5" aria-hidden="true"></i><span>{{ $prayer->hidden_reason ?: 'Retirée par la modération.' }} Elle n'est plus visible des autres.</span></p>
             @endif
 
-            <p class="mt-4 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ $prayer->body }}</p>
+            <p class="mt-4 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ \App\Services\Mentions::html($prayer->body) }}</p>
 
             @if($prayer->event)
             <a href="{{ route('events.show', $prayer->event_id) }}" class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline">

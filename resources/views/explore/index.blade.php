@@ -21,7 +21,7 @@
     <label for="explore-q" class="sr-only">Rechercher</label>
     <div class="relative min-w-0 flex-1">
         <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
-        <input id="explore-q" type="search" name="q" value="{{ $q }}" class="form-input pl-9" placeholder="Témoignage, auteur, mot-clé…">
+        <input id="explore-q" type="search" name="q" value="{{ $q }}" data-search-autocomplete="all" data-search-recent-key="explore" class="form-input pl-9" placeholder="Témoignage, auteur, mot-clé…">
     </div>
     <button type="submit" class="btn-primary"><i class="fa-solid fa-magnifying-glass sm:hidden" aria-hidden="true"></i><span class="max-sm:sr-only">Rechercher</span></button>
 </form>

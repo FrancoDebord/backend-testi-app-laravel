@@ -5,6 +5,7 @@
     @include('components.rich-editor', [
         'name' => 'body_text', 'id' => 'body_text', 'value' => old('body_text'),
         'labelId' => 'body_text_label', 'placeholder' => '…', 'requiredMessage' => '…',
+        'mentions' => true, // facultatif : autocomplétion « @ » (inclure aussi components.mention-input)
     ])
 --}}
 @php
@@ -35,7 +36,7 @@
     </div>
 
     <div class="rt-content" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"
-         aria-labelledby="{{ $labelId }}" data-rt-content data-placeholder="{{ $placeholder ?? '' }}"></div>
+         aria-labelledby="{{ $labelId }}" data-rt-content data-placeholder="{{ $placeholder ?? '' }}" @if(!empty($mentions)) data-mention-input @endif></div>
 
     <textarea name="{{ $name }}" id="{{ $id }}" data-rt-source hidden>{{ $value }}</textarea>
 </div>

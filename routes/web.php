@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/login',            [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login',           [AuthController::class, 'login']);
+    // Bouton « Se connecter avec Google » (docs/fonctionnalites/connexion-google.md)
+    Route::post('/login/google',    [AuthController::class, 'google'])->name('login.google')->middleware('throttle:20,1');
     Route::get('/register',         [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register',        [AuthController::class, 'register']);
     Route::get('/forgot-password',  [AuthController::class, 'showForgotPassword'])->name('password.request');
@@ -273,6 +275,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/testimonies',          [TestimonyController::class, 'store'])->name('testimonies.store');
     Route::get('/mes-temoignages',       [TestimonyController::class, 'myTestimonies'])->name('testimonies.mine');
     Route::post('/testimonies/{id}/report',    [TestimonyController::class, 'report'])->name('testimonies.report');
+    // Supprimer : l'auteur ou un administrateur (jamais un modérateur).
+    Route::delete('/testimonies/{id}',          [TestimonyController::class, 'destroy'])->name('testimonies.destroy');
     Route::post('/testimonies/{id}/reactions', [TestimonyController::class, 'storeReaction'])->name('testimonies.reactions.store');
     Route::put('/testimonies/{id}/save',       [TestimonyController::class, 'saveTestimony'])->name('testimonies.save');
     Route::post('/testimonies/{id}/comments',  [TestimonyController::class, 'storeComment'])->name('testimonies.comments.store');
@@ -305,6 +309,8 @@ Route::middleware('auth')->group(function () {
     });
 
     // Profile
+    // Administrateurs de compte : agir au nom d'un compte ─ docs/fonctionnalites/administrateurs-de-compte.md
+    Route::post('/comptes/{id}/agir', [\App\Http\Controllers\Web\AccountSwitchController::class, 'switch'])->whereUuid('id')->middleware('throttle:30,1')->name('accounts.switch');
     Route::get('/profile/edit',          [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile',               [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/profile/saved',         [ProfileController::class, 'savedTestimonies'])->name('profile.saved');
@@ -312,6 +318,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile/abonnes',       [CommunityController::class, 'followers'])->name('profile.followers'); // Mes abonnés
     Route::get('/profile/settings',      [ProfileController::class, 'settings'])->name('profile.settings');
     Route::put('/profile/settings',      [ProfileController::class, 'updateSettings'])->name('profile.settings.update');
+    // Localisation privée pour classer les fils par zone ─ docs/fonctionnalites/localisation.md
+    Route::put('/profile/localisation',    [\App\Http\Controllers\Web\LocationController::class, 'update'])->middleware('throttle:20,1')->name('profile.location.update');
+    Route::delete('/profile/localisation', [\App\Http\Controllers\Web\LocationController::class, 'destroy'])->name('profile.location.destroy');
+    // Vérification des comptes personnels ─ docs/fonctionnalites/verification-des-comptes.md
+    Route::get('/profile/verification',  [\App\Http\Controllers\Web\AccountVerificationController::class, 'show'])->name('profile.verification');
+    Route::post('/profile/verification', [\App\Http\Controllers\Web\AccountVerificationController::class, 'store'])->middleware('throttle:10,60')->name('profile.verification.store');
     // Gestionnaires d'une organisation (2 au plus) et organisations gérées ─ docs/fonctionnalites/evenements.md
     Route::middleware('throttle:20,1')->group(function () {
         Route::post('/profile/gestionnaires',                         [ProfileController::class, 'addOrganizationManager'])->name('profile.managers.store');
@@ -343,6 +355,13 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin
     // Comptes organisation ─ docs/fonctionnalites/comptes-organisation.md
     Route::post('/users/{id}/verify',        [AdminController::class, 'verifyOrganization'])->name('users.verify');
     Route::post('/users/{id}/reject-verification', [AdminController::class, 'rejectOrganization'])->name('users.reject-verification');
+    // Comptes personnels ─ docs/fonctionnalites/verification-des-comptes.md
+    Route::post('/users/{id}/revoke-verification', [\App\Http\Controllers\Web\AccountVerificationController::class, 'revoke'])->name('users.revoke-verification');
+    Route::get('/verifications',                   [\App\Http\Controllers\Web\AccountVerificationController::class, 'index'])->name('verifications.index');
+    Route::get('/verifications/{id}',              [\App\Http\Controllers\Web\AccountVerificationController::class, 'adminShow'])->whereUuid('id')->name('verifications.show');
+    Route::get('/verifications/{id}/pieces/{index}', [\App\Http\Controllers\Web\AccountVerificationController::class, 'document'])->whereUuid('id')->whereNumber('index')->name('verifications.document');
+    Route::post('/verifications/{id}/approve',     [\App\Http\Controllers\Web\AccountVerificationController::class, 'approve'])->whereUuid('id')->name('verifications.approve');
+    Route::post('/verifications/{id}/reject',      [\App\Http\Controllers\Web\AccountVerificationController::class, 'reject'])->whereUuid('id')->name('verifications.reject');
     Route::get('/content',                   [AdminController::class, 'content'])->name('content.index');
     Route::get('/categories',                [AdminController::class, 'categories'])->name('categories.index');
     Route::post('/categories',               [AdminController::class, 'storeCategory'])->name('categories.store');

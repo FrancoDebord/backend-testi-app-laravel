@@ -4,6 +4,207 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-12 — Vidéos des témoignages sur Bunny Stream
+
+- **Utilisateurs** : un témoignage vidéo est envoyé par l'application **directement à Bunny Stream**, sans passer par le serveur LWS. Il n'apparaît dans les listes publiques et dans la modération qu'une fois prêt. L'auteur le voit pendant l'envoi et l'encodage, puis reçoit une notification « Vidéo prête ». Un envoi abandonné depuis plus de 24 h passe en échec. [videos-bunny-stream.md](fonctionnalites/videos-bunny-stream.md)
+- **API** :
+  - `POST /videos/upload-init` : mêmes champs que `POST /testimonies`. Renvoie `video_id`, `testimony_id`, `library_id`, `bunny_video_id`, `signature`, `expiration` et `tus_endpoint` ;
+  - `POST /videos/{id}/upload-signature` : nouvelle autorisation pour la même vidéo. Propriétaire seulement, statut `uploading` seulement ;
+  - `POST /videos/{id}/upload-complete` : passage en `processing` ;
+  - webhook public `POST /webhooks/bunny` ;
+  - nouvel objet `video` dans la ressource témoignage : `status`, `hls_url`, `thumbnail_url`, `mp4_urls` (objet indexé par hauteur), `duration`. Il vaut `null` sans vidéo ;
+  - notification push `{ type: "video_ready", testimony_id }`.
+- **Développeurs** :
+  - nouveaux services `BunnyStream` (client HTTP) et `BunnyStreamVideos` (cycle de vie) ;
+  - `TestimonyCreator`, extrait de `Api\TestimonyController::store`, est partagé avec `upload-init`. `ContentActionException` accepte maintenant des erreurs par champ ;
+  - nouveau scope `Testimony::videoPlayable()`, appliqué dans `published()` et `pending()` ;
+  - la vidéo Bunny est supprimée quand le témoignage est supprimé (événement `deleted`, échec journalisé) ;
+  - nouvelles commandes `videos:expire-uploads` (planifiée chaque heure) et `videos:migrate-to-bunny {--dry-run} {--limit=10}` ;
+  - tests : `tests/Feature/BunnyStreamTest.php`.
+- **Déploiement** :
+  - `php artisan migrate --force` (`2026_10_12_100001_add_bunny_stream_to_testimonies_table`) ;
+  - `.env` : `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_CDN_HOST`, puis `php artisan config:clear` ;
+  - dans Bunny : webhook `https://temoignage.as-krea.com/api/v1/webhooks/bunny` et **MP4 Fallback** activé ;
+  - aucune recompilation des assets.
+
+---
+
+## 2026-10-10 — Notifications push : hébergement LWS, envoi parallèle, `device-tokens`
+
+- **Utilisateurs** : plus de push pour sa propre action (ex. modérateur qui approuve son propre témoignage). `push:test` envoie « Test ✅ », affiche le projet Firebase utilisé, l'erreur FCM de chaque appareil en échec (avec une explication pour `SenderId mismatch`) et, si FCM n'est pas configuré, la raison exacte (`FcmClient::configurationProblem()` : variable vide, fichier introuvable avec le chemin cherché, fichier invalide, `FCM_ENABLED=false`). [notifications-push.md](fonctionnalites/notifications-push.md)
+- **API** : alias `POST` / `DELETE /api/v1/device-tokens` (mêmes règles que `devices/token`, conservé pour l'application) ; `platform` devient facultative ; un jeton déjà connu sous un autre compte est réattribué à l'utilisateur connecté. Les push portent une clé `id` (objet principal à ouvrir) en plus des clés détaillées.
+- **Développeurs** : nouveau `App\Services\PushNotifier::sendToUser()` (envoi immédiat, résumé, aucune exception), utilisé par `SendPushNotificationJob` et `push:test` ; `FcmClient::sendMulticast()` envoie à plusieurs appareils en parallèle (`Http::pool`) ; colonne `device_tokens.last_used_at` mise à jour à l'enregistrement et à chaque envoi réussi. Tâche dans la file `push` (`PUSH_QUEUE`) ; `PUSH_DELIVERY=after_response` pour envoyer après la réponse HTTP sans file. Choix maintenu : client FCM HTTP v1 maison, sans `kreait/laravel-firebase` ; canal Android toujours réglable par `FCM_ANDROID_CHANNEL` (défaut `testi_notifications`).
+- **Déploiement** :
+  - `php artisan migrate --force` (`2026_10_10_000001_add_last_used_at_to_device_tokens_table`) ;
+  - `.env` : `FIREBASE_CREDENTIALS`, `PUSH_DELIVERY=queue`, `PUSH_QUEUE=push`, puis `php artisan config:cache` ;
+  - LWS : tâche cron chaque minute `php artisan queue:work --queue=push,default --stop-when-empty --max-time=50 --timeout=1900` (en plus de `schedule:run`), ou `PUSH_DELIVERY=after_response` ;
+  - projet Firebase de référence : **`as-krea`** (serveur et application). Clé de compte de service : `storage/app/as-krea-firebase-adminsdk-fbsvc-13c56c0cb4.json`. Essai du 2026-10-10 : authentification réussie, mais FCM répond `SenderId mismatch` (403), car l'application mobile était encore configurée sur l'ancien projet `testi-app-flutter`. Application passée sur `as-krea` le même jour (`android/app/google-services.json`, `lib/firebase_options.dart` : expéditeur `566166419345`) ; il faut la recompiler, la réinstaller et se reconnecter pour obtenir un jeton `as-krea`. Deux anciens jetons `NotRegistered` ont été supprimés ;
+  - `FCM_TIMEOUT=30` conseillé : il s'applique désormais aussi au délai de connexion (10 s fixes auparavant) ;
+  - aucune recompilation des assets.
+
+---
+
+## 2026-10-10 — Connexion avec Google sur le site
+
+- **Nouveau** : sur la page de connexion du site (`/login`), un bouton « Continuer avec Google » (bouton officiel Google Identity Services) s'ajoute sous le formulaire e-mail. Le compte est retrouvé, lié ou créé avec les mêmes règles que dans l'application, puis la session s'ouvre. [connexion-google.md](fonctionnalites/connexion-google.md)
+- **Développeurs** : logique Google déplacée dans `App\Services\GoogleSignIn`, utilisée par `Api\GoogleAuthController` et `Web\AuthController::google` (`POST /login/google`).
+- **Déploiement** :
+  - console Google Cloud : ajouter `https://testi.airid-africa.com` aux **origines JavaScript autorisées** du client OAuth Web ;
+  - `GOOGLE_WEB_CLIENT_ID` doit être dans le `.env` du serveur (bouton masqué sinon) ;
+  - `php artisan view:cache`. Ni migration supplémentaire, ni recompilation des assets.
+
+---
+
+## 2026-10-10 — Heure des paroles prophétiques, « Adorer Dieu », déconnexion depuis le profil
+
+- **Paroles prophétiques** : on note aussi l'**heure** à laquelle la parole a été reçue (facultative ; l'heure actuelle par défaut pour une nouvelle parole). Affichage « Reçue le 5 octobre 2026 à 14:30 » sur le site (carnet, page de la parole, témoignage d'accomplissement, Mon fil) et dans l'application. API : champ `received_time` (« HH:MM ») en écriture, `receivedTime` dans `ProphecyResource` et la version publique. [paroles-prophetiques.md](fonctionnalites/paroles-prophetiques.md)
+- **Réaction « Adorer »** renommée **« Adorer Dieu »** (site, directs, application ; la valeur `worship` ne change pas).
+- **Directs** : seuls le **diffuseur** et un **administrateur** peuvent couper un direct (`LiveSession::canBeEndedBy`, champ `canEnd` de l'API) ; un modérateur garde la modération du chat et des intervenants, mais ne coupe plus le direct de quelqu'un d'autre (403). Application : la page d'un événement ouvre la vue spectateur pour le public (même en préparation), le studio pour ses gestionnaires.
+- **Application** : bouton **Se déconnecter** en bas de *Mon profil*, avec la même confirmation que dans les Paramètres.
+- **Déploiement** : `php artisan migrate --force` (`2026_10_10_100001_add_received_time_to_prophecies_table`) ; `npm run build` ; `view:cache` si utilisé ; nouvelle version de l'application.
+
+## 2026-10-09 — Connexion avec Google, « Je prie » notifié, push
+
+- **Nouveau — Connexion avec Google** : `POST /api/v1/auth/google { id_token }` (contrôleur invokable `Api\GoogleAuthController`).
+  - Le jeton est vérifié par `tokeninfo` : audience `GOOGLE_WEB_CLIENT_ID` (ou l'une de `GOOGLE_CLIENT_ID`), émetteur Google, e-mail vérifié. Sinon 401.
+  - Compte retrouvé par `google_id`, puis par e-mail (liaison : `google_id`, photo si absente, e-mail vérifié) ; sinon créé sans mot de passe.
+  - Même réponse que `POST /auth/login` (`user`, `access_token`, `token_type`) avec `is_new_user` ; jeton Sanctum `mobile-google`.
+  - `POST /auth/social` passe par le même contrôleur et accepte `token` (nom envoyé par l'application actuelle, qui obtenait jusqu'ici une erreur 422). Les contrôles `iss` et `email_verified` y sont désormais appliqués.
+  - Les comptes sans mot de passe étaient déjà gérés (connexion e-mail refusée proprement, changement de mot de passe, suppression du compte).
+  - [connexion-google.md](fonctionnalites/connexion-google.md)
+- **« Je prie » sur une requête de prière** : l'auteur est prévenu (notification et push `prayer_request_prayed`, préférence « prières »), une seule fois par personne et par requête. Auparavant, aucune notification. [requetes-de-priere.md](fonctionnalites/requetes-de-priere.md)
+- **Notifications push** : relation `User::deviceTokens()` ; `storage/app/firebase-credentials.json` exclu de git ; `.env.example` propose ce chemin pour `FIREBASE_CREDENTIALS`. [notifications-push.md](fonctionnalites/notifications-push.md)
+- **Développeurs** : `SocialAuthRequest` et la logique Google de `Api\AuthController` sont supprimés (remplacés par `GoogleAuthController`).
+- **Déploiement** :
+  - migration `2026_10_09_200001_add_google_id_to_users_table` (`users.google_id`, reprise des liens de `social_auth_providers`) ;
+  - ajouter `GOOGLE_WEB_CLIENT_ID=566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com` au `.env` du serveur ;
+  - `php artisan migrate --force`, `php artisan config:clear`, `php artisan queue:restart`. Aucune dépendance Composer, aucun asset à recompiler.
+
+---
+
+## 2026-10-09 — Modération, réactions uniques, partages partout, Communauté complète
+
+- **Suppression réservée à l'auteur et aux administrateurs** : un **modérateur ne supprime jamais** ce qu'un autre a soumis : témoignage, requête ou session de prière, événement, commentaire, message ou commentaire du verset du jour. Il garde ses outils de modération (refuser, masquer, retirer, signaler). Les administrateurs suppriment encore. API, site et application suivent cette règle, et `canDelete` est exposé par les ressources. Sur le site, le témoignage a un bouton Supprimer pour l'auteur et l'administrateur (`DELETE /testimonies/{id}`).
+- **Réactions uniques** :
+  - Au plus une réaction « j'aime » (like, love, fire, glory, strong, touched) et une « je prie » (pray, amen, worship) par personne. Changer de réaction la remplace ; réagir de nouveau ne compte rien.
+  - Les doublons existants sont supprimés et les compteurs corrigés.
+  - L'application lit l'état « déjà aimé » et les compteurs du serveur, et un second appui retire la réaction. Avant, le cœur restait vide après un rechargement, et chaque appui ajoutait un « j'aime ».
+  - « Gloire ! » n'est plus comptée comme une prière.
+  - [reactions.md](fonctionnalites/reactions.md)
+- **Partages visibles partout** : l'en-tête « X a partagé » apparaît sur toutes les listes de témoignages de l'application (accueil, Mon fil, Explorer, catégories, recherche, profils, sauvegardés). `TestimonyResource` porte `repostedBy`, en montrant un compte suivi d'abord.
+- **Nouveau — Partager et réagir aux événements, requêtes et sessions de prière** :
+  - J'aime, je prie et partage sur TestiApp, avec un commentaire facultatif.
+  - Notification à l'auteur.
+  - Les publications partagées par les comptes suivis entrent dans Mon fil.
+  - Application : barre de réactions sur leurs pages et sous les éléments insérés dans les fils. [partage-interne.md](fonctionnalites/partage-interne.md)
+- **Événements** :
+  - Nouvel onglet **En cours** dans l'application (`GET /events?scope=ongoing`).
+  - Section **Événements à venir et en cours** et **Événements passés** sur le profil des organisateurs (application et site, `GET /events?organizer_id=`). On y retrouve les témoignages et commentaires des événements passés.
+- **Mon fil** : il montre aussi **ses propres publications** : témoignages (`feedReason: mine`), partages, requêtes et sessions de prière, événements et paroles prophétiques. En plus des événements à venir et en cours, il contient les **événements passés** depuis moins de 90 jours, avec l'étiquette « Événement passé · à revivre » (`pastEvents` de `GET /feed/inserts`). On y trouve aussi les sessions et requêtes de prière, les paroles prophétiques et les directs en cours.
+- **Communauté** : nouvel onglet **Tous**, ouvert par défaut dans l'application et sur le site, qui liste tous les comptes au défilement, sans attendre une recherche. L'onglet **Personnes** liste désormais tous les comptes personnels, et non plus seulement ceux qui ont publié. [abonnements.md](fonctionnalites/abonnements.md)
+- **API** :
+  - `DELETE testimonies/{id}/reactions?group=` (sans identifiant) ;
+  - `POST|DELETE events|prayer/requests|prayer/sessions/{id}/reactions` et `…/repost` ;
+  - `GET /community?tab=all` ;
+  - nouveaux types de réaction `glory`, `strong`, `touched`.
+- **Développeurs** :
+  - `TestimonyReactions`, `ContentInteractions`, `ContentReaction`, `ContentRepost`, `Api\ContentInteractionController`, `Reposts::highlightFor`, `FeedInserts` (partages des comptes suivis) ;
+  - application : `lib/features/repost/content_interactions.dart`, `lib/features/testimony/testimony_delete.dart` ;
+  - tests `ReactionsAndSharesTest`, `test/reactions_shares_test.dart`.
+- **Déploiement** (les réactions et partages renvoyaient 404 en production : la liste des routes mise en cache sur le serveur n'avait pas été régénérée) :
+  - `php artisan optimize:clear`, puis `route:cache` ;
+  - `php artisan migrate --force` (`2026_10_09_100001_dedupe_testimony_reactions`, `2026_10_09_100002_create_content_reactions_and_reposts_tables`) ;
+  - `npm run build` ;
+  - `route:cache` et `view:cache` si utilisés ;
+  - nouvelle version de l'application.
+
+## 2026-10-08 — Administrateurs de compte
+
+- **Nouveau** : chaque titulaire administre son compte et peut nommer **2 personnes** (comptes personnels actifs) qui publient des témoignages, des événements, des requêtes et des sessions de prière, commentent, réagissent et suivent **au nom du compte**. Cela vaut pour tous les comptes, personnels et organisations ; les gestionnaires d'organisation existants deviennent administrateurs du compte. [administrateurs-de-compte.md](fonctionnalites/administrateurs-de-compte.md)
+- **Basculer** :
+  - **Site** : « Mes comptes » dans le menu du compte, et un bandeau « Vous agissez au nom de … » avec « Revenir à mon compte ».
+  - **Application** : la même chose, avec le compte actif mémorisé.
+- **Réservé au titulaire** : e-mail, téléphone, mot de passe, connexion, suppression du compte, choix des administrateurs, vérification, position, réglages, appareils, carnet privé et paroles prophétiques, modération et administration. Les comptes de l'équipe (modérateurs, administrateurs) ne peuvent pas être confiés.
+- **Journal** : chaque action faite au nom du compte est enregistrée (`account_delegate_actions`) et visible du titulaire. Notifications `account_manager_added` et `account_manager_removed`.
+- **API** :
+  - En-tête `X-Act-As` (refus `403` avec `code` `acting_as_forbidden` ou `owner_only`).
+  - Nouvelles routes : `GET /users/me/accounts`, `GET /users/me` (suit `X-Act-As`), `GET /users/me/managers/activity`.
+  - `GET/POST/DELETE /users/me/managers` est désormais ouvert à tous les comptes, et non plus seulement aux organisations.
+- **Développeurs** : `AccountDelegation`, middleware `ActAsAccount` (groupes `api` et `web`), `AccountSwitchController`, `AccountDelegateAction` ; tests `AccountManagersTest`.
+- **Déploiement** : `php artisan migrate --force` (`2026_10_08_100001_create_account_delegate_actions_table`) ; `npm run build` ; `route:cache` et `view:cache` si utilisés ; nouvelle version de l'application.
+
+## 2026-10-07 — Fils classés par zone puis par goûts
+
+- **Nouveau — Le plus proche d'abord** : sur l'accueil « Pour vous » et dans **Mon fil** (application, site, API), les témoignages, requêtes et sessions de prière, événements et paroles insérés sont classés du plus proche (même village/quartier ou < 5 km, même ville ou < 30 km, même région, même pays, même continent) au plus lointain, puis selon les goûts (catégories, auteurs et types de contenus aimés, priés, enregistrés, commentés), la fraîcheur et la popularité. Rien n'est retiré : les fils sont réordonnés. Mon fil garde les comptes suivis en tête (du plus proche au plus lointain à l'intérieur). [localisation.md](fonctionnalites/localisation.md), [recommandations.md](fonctionnalites/recommandations.md)
+- **Nouveau — Réglage « Utiliser ma position pour personnaliser mes fils »** (application : Paramètres › Localisation ; site : Paramètres du compte › Localisation) : consentement explicite, « Mettre à jour ma position », « Ma ville », « Supprimer ma position » (effacement immédiat). Sans position : ville et pays du profil, puis indicatif du téléphone, puis langue de l'appareil (aussi pour les visiteurs).
+- **Interface** : mention « Près de chez vous · Cotonou » en tête des fils (lien vers le réglage), invitation refermable « Activez votre position pour des témoignages proches de vous », étiquette discrète « À Cotonou » / « Au Bénin » sur les cartes proches (application).
+- **Vie privée** : coordonnées arrondies à 2 décimales (≈ 1 km), géocodées par le serveur (Nominatim, 1 requête/s, cache 30 jours) ; jamais dans les ressources publiques ; effacées à la suppression du compte.
+- **API** : `GET/PUT/DELETE /api/v1/users/me/location` ; `meta.place` et `meta.nearby` sur `GET /testimonies?sort=for_you` et `GET /feed` ; `GET /prayer/requests?scope=feed&near=1` ; `GET /feed/inserts` classé par zone.
+- **Développeurs** : `App\Services\Locations`, `App\Support\Place`, `App\Support\Continents`, `Countries::inPhrase()`, `UserLocation`, `ContentLocation`, `LocationServiceProvider` (copie du lieu à la création des contenus), `Recommendations::tastes/placeMeta/nearbyLabels`, `FeedInserts::rankByPlace`, poids dans `config/recommendations.php`. Application : `lib/features/location/`. Tests `LocationFeedTest` (serveur) et `test/location_feed_test.dart` (application).
+- **Déploiement** : `php artisan migrate --force` (`2026_10_07_200001_create_user_and_content_locations_tables`), puis **`php artisan locations:backfill`** (lieu des contenus existants depuis le profil des auteurs ; idempotent) ; `php artisan config:cache`, `route:cache` et `view:cache` si utilisés ; variables facultatives `GEOCODER_ENABLED`, `GEOCODER_URL`, `GEOCODER_USER_AGENT`, `RECO_GUEST_COUNTRY` ; aucun asset à recompiler ; nouvelle version de l'application (texte de permission iOS mis à jour).
+
+## 2026-10-07 — Vérification des comptes personnels
+
+- **Nouveau — Badge « Compte vérifié »** : une personne (pasteur, évangéliste, chantre, responsable de ministère, personnalité publique…) peut demander la vérification de son compte : nom complet, fonction, église ou ministère, liens publics facultatifs, message, **1 à 3 pièces justificatives** (pièce d'identité, lettre de l'église ; JPG, PNG, WebP ou PDF, 8 Mo). Statuts : aucune → en attente → vérifié / refusé (motif) ; nouvelle demande possible 24 h après un refus ou un retrait. Site : `/profile/verification` (lien sur son profil) ; application : Profil → « Faire vérifier mon compte ». [verification-des-comptes.md](fonctionnalites/verification-des-comptes.md)
+- **Pièces privées** : disque `local` (`storage/app/private/verification-requests/…`), jamais d'URL publique ; servies seulement aux administrateurs (`/admin/verifications/{id}/pieces/{n}`, `GET /api/v1/admin/verification-requests/{id}/documents/{n}`, `no-store`) ; effacées à la suppression du compte.
+- **Administration** : menu « Vérification des comptes » (`/admin/verifications`) et icône dans le tableau de bord de l'application : approuver, refuser (motif obligatoire), retirer la vérification (aussi depuis la fiche du compte). Notifications `account_verified` / `account_verification_rejected` (application + push).
+- **Badge** : le badge s'affiche pour les personnes vérifiées partout où il s'affichait pour les organisations (profils, cartes de témoignages, commentaires, requêtes et sessions de prière, suggestions, mentions) ; libellé « Compte vérifié » (personne) ou « Organisation vérifiée ». Raison des suggestions : « Compte vérifié ».
+- **Droits inchangés** : création d'événements, diffusion d'un événement et gestionnaires restent réservés aux **organisations** vérifiées et aux administrateurs (`User::isVerifiedOrganization()` ; `User::isVerified()` vaut désormais pour tout compte vérifié).
+- **API** : `GET/POST /api/v1/users/me/verification` ; admin : `GET /admin/verification-requests`, `GET …/{id}`, `GET …/{id}/documents/{index}`, `POST …/{id}/approve`, `POST …/{id}/reject`, `POST /admin/users/{id}/revoke-verification`. `UserResource.verification_status` d'une personne n'est public que si elle est vérifiée. Auteurs des requêtes / sessions / messages de prière : champ `isOrganization` ajouté.
+- **Développeurs** : `App\Services\PersonalVerification`, `App\Models\VerificationRequest`, `App\Enums\PersonalVerificationRole`, `Api\AccountVerificationController`, `Web\AccountVerificationController` ; tests `AccountVerificationTest` (serveur) et `test/account_verification_test.dart` (application).
+- **Déploiement** : `php artisan migrate --force` (`2026_10_07_100001_create_verification_requests_table`) ; `php artisan route:cache` et `view:cache` si utilisés ; aucun asset à recompiler ; nouvelle version de l'application.
+
+## 2026-10-07 — Mentions « @ » dans les témoignages et les requêtes de prière
+
+- **Nouveau — Témoignages** : taper « @ » dans le texte (ou la description / transcription d'un audio ou d'une vidéo) propose les comptes, comme dans les commentaires (application : formulaire Publier, étape 1 ; site : éditeur mis en forme de « Partager un témoignage »). Les personnes mentionnées reçoivent une notification `mention` (« Marie vous a mentionné dans son témoignage « Titre » », push selon la préférence « commentaires ») **quand le témoignage est approuvé**, une seule fois chacune (après une modification, seules les nouvelles mentions sont prévenues à la nouvelle approbation) ; jamais pour le carnet privé ; témoignage réservé aux abonnés : seuls les abonnés mentionnés. Les mentions sont des liens vers le profil (page du témoignage sur le site, lecture dans l'application).
+- **Nouveau — Requêtes de prière** : mentions dans le texte de la requête (application : « Confier une requête » ; site : formulaire de création). Notification immédiate aux seules personnes qui peuvent voir la requête (publique : tous ; abonnés : les abonnés) ; jamais pour une requête « Moi seul » ; requête anonyme : « Quelqu'un vous a mentionné dans une requête de prière » (ni nom, ni photo, ni identifiant de l'auteur). Une modification qui ajoute une mention ou élargit la visibilité prévient les nouvelles personnes, jamais deux fois la même.
+- **API** : `TestimonyResource.bodyText` et `PrayerRequestResource.body` sont rendus lisibles (« @Nom ») avec `mentions: [{id, displayName}]` ; `POST/PUT /testimonies` et `/prayer/requests` acceptent les jetons `@[Nom](user:id)` ou `mention_ids[]`. La longueur des requêtes de prière (2 000) se mesure sur le texte affiché. L'aperçu de modération (`contentPreview`) est lisible.
+- **Développeurs** : `Mentions::notifyTestimony()` (appelé par `Api\ModerationController::approve` et `Web\ModerationController::approve`), `Mentions::notifyPrayerRequest()` (`PrayerRequests::create/update`), contexte `anonymous` de `Mentions::notify()`, `RichText::toHtml()` rend les jetons en liens. Application : `PublishDraft.mentions`, `Testimony.mentions`, `PrayerRequest.mentions`, `ProgressiveRichText(mentions:)`. Tests `ContentMentionsTest` (serveur) et `test/content_mentions_test.dart` (application). [mentions.md](fonctionnalites/mentions.md)
+- **Déploiement** : aucune migration ; `php artisan view:cache` ; nouvelle version de l'application.
+
+## 2026-10-07 — Autocomplétion des barres de recherche
+
+- **Nouveau — Suggestions pendant la saisie** (site et application) : dès 2 caractères, complétion de texte (titres de témoignages publiés, catégories, comptes actifs, événements, livres de la Bible, sessions de prière publiques, recherches populaires), accents et casse ignorés, partie saisie en gras, flèche « Compléter », résultats directs qui ouvrent la page. Champ vide : recherches récentes de l'appareil ou du navigateur (effaçables). [recherche.md](fonctionnalites/recherche.md)
+- **Nouveau — API** : `GET /api/v1/search/suggest?q=&scope=all|testimonies|users|events|prayer|bible&limit=` (public, cache 60 s par préfixe ; contenu privé, comptes suspendus ou privés, e-mail et téléphone jamais renvoyés) et `POST /api/v1/search/log` (recherche validée, anonyme). La page Explorer du site enregistre aussi ses recherches.
+- **Site** : composant `components/search-autocomplete` (script en ligne, ARIA combobox, ↑ ↓ Entrée Échap) branché sur l'en-tête, Explorer, Vidéos, Communauté, Mes abonnés, Mes abonnements, Événements, carnet privé (récentes seulement), administration (utilisateurs, contenu) ; nouveau champ « Aller à un livre » dans la Bible.
+- **Application** (`testi_app`) : widget `SearchAutocomplete` / `SearchAutocompleteField` branché sur la recherche de l'accueil et d'Explorer, Communauté, Mes abonnés, Mes abonnements, carnet privé (récentes seulement), administration des utilisateurs ; la loupe du lecteur de la Bible ouvre « Aller à un livre » (aussi hors ligne, « Jean 3 »).
+- **Développeurs** : `App\Services\SearchSuggestions`, `Api\SearchController`, table `search_queries` ; tests `SearchSuggestTest` (serveur) et `test/search_autocomplete_test.dart` (application).
+- **Déploiement** : `php artisan migrate --force` (`2026_10_07_300001_create_search_queries_table`) ; `php artisan route:cache` et `view:cache` si ces caches sont utilisés ; aucun asset à recompiler.
+
+## 2026-10-06 — Alignement de l'API sur l'application mobile
+
+L'application (`testi_app`) et l'API ont été comparées champ par champ ; les corrections ci-dessous sont faites côté serveur.
+
+- **Corrigé — Sessions de prière** : modifier une session déjà commencée (titre, sujets…) renvoyait 422 « La session doit être programmée dans le futur ». Un horaire renvoyé inchangé est maintenant accepté ; un nouvel horaire doit rester dans le futur. [sessions-de-priere.md](fonctionnalites/sessions-de-priere.md)
+- **Corrigé — Verset du jour** : `POST /daily-verse/react` ne renvoie plus 409 quand la réaction existe déjà (état local de l'application périmé). [verset-du-jour.md](fonctionnalites/verset-du-jour.md)
+- **Corrigé — Notifications** :
+  - « Je prie » sur un témoignage crée une notification `prayer` (« X prie pour votre témoignage », préférence `push_prayers`) au lieu de `like` ;
+  - une mention sous le verset du jour porte `dailyVerseId` (push : `daily_verse_id`).
+  [notifications-push.md](fonctionnalites/notifications-push.md)
+- **Corrigé — Mentions** : la longueur maximale des commentaires (témoignages, verset du jour, événements, directs) se mesure sur le texte affiché, et non plus sur les jetons `@[Nom](user:id)`. [mentions.md](fonctionnalites/mentions.md)
+- **Corrigé — Mes témoignages** :
+  - renommer (`PUT testimonies/{id}` avec `{ title }` seul) ne renvoie plus 422 ;
+  - `rejectionReason` (motif et note du refus) est renvoyé à l'auteur ;
+  - un verset cité de plus de 255 caractères ne provoque plus d'erreur 500 (colonne `TEXT`).
+  [reglages-et-compte.md](fonctionnalites/reglages-et-compte.md)
+- **Nouveau — Réglages** : route `GET /users/me/settings`. Le réglage **« Qui peut commenter »** (`everyone` / `followers` / `nobody`) est maintenant appliqué (API et site, 403), et `canComment` est exposé sur les témoignages.
+- **Corrigé — Supprimer son compte** : un compte sans mot de passe (téléphone, Google, Facebook) peut être supprimé avec `{ confirm: true }`.
+- **Modifié — Partages** : `POST /testimonies/{id}/share` et `POST /daily-verse/share` acceptent les invités (30 par minute). Un témoignage non publié ou privé renvoie 404.
+- **Développeurs** :
+  - nouveaux éléments : règle `App\Rules\VisibleLength`, `Testimony::acceptsCommentsFrom()`, `NotificationType::Prayer` ;
+  - tests : nouveau fichier `AppContractTest`, compléments dans `PrayerTest`, `DailyVerseTest` et `MentionsTest` (numéros de téléphone de test déterministes).
+- **Nouveau — `has_password`** dans le profil de la personne connectée (`auth/me`) : faux pour un compte téléphone, Google ou Facebook.
+- **Application corrigée le même jour** (`testi_app`) :
+  - le profil reprend `bio` et `country` du serveur avant l'enregistrement : ils ne sont plus effacés ;
+  - les réglages sont lus et enregistrés sur le serveur (`GET` / `PUT /users/me/settings`) ; « Qui peut commenter » propose aussi « Mes abonnés » ;
+  - supprimer son compte appelle `DELETE /users/me` (mot de passe, ou confirmation pour un compte sans mot de passe) ;
+  - nouvel écran « Changer le mot de passe » (`POST /auth/change-password`) ;
+  - notifications `follow`, `share`, `mention`, `testimony_rejected` avec leur propre texte et leur navigation (profil, témoignage, direct, verset du jour), y compris depuis un push ; plus d'appel `GET /notifications` sans compte ;
+  - `verse_ref` envoyé à la publication.
+- **Fausse alerte — catégories** : la base de production (et la base locale) utilise bien `protection` et `provision`, comme la liste de secours de l'application. C'est `database/seeders/CategorySeeder.php` qui est ancien (`protection_divine`, `finances`…) : seule une installation neuve en dépend.
+- Vérifié : `php artisan test` (seul `ExampleTest` échoue, comme avant) ; `php artisan view:cache` ; application : `dart analyze` sans remarque, `flutter test` (537 tests réussis).
+- **Déploiement** : `php artisan migrate --force` (`2026_10_06_500001_widen_bible_verse_columns`) ; `php artisan route:cache` et `config:cache` si ces caches sont utilisés ; aucun asset à recompiler.
+
 ## 2026-10-06 — Événements : liste compacte, report, signalement, sondage « A-t-il vraiment eu lieu ? »
 
 - **Nouveau — Liste compacte** (site `/evenements`, application écran Événements) : bascule **Cartes / Liste compacte** (une ligne : vignette date, titre, lieu / ville, organisateur, pastilles d'état), mémorisée (site : cookie `event_layout`, aussi sans compte ; application : stockage local `event_layout`). La grille de cartes est inchangée.

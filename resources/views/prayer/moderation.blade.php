@@ -30,7 +30,7 @@
             @if($item->isHidden())<span class="badge-rejected">Retirée</span>@endif
             <span class="badge-orange">{{ $item->pending_reports_count }} signalement{{ $item->pending_reports_count > 1 ? 's' : '' }} à traiter</span>
         </div>
-        <p class="mt-3 text-sm break-words whitespace-pre-line text-slate-800">{{ Str::limit($item->body, 600) }}</p>
+        <p class="mt-3 text-sm break-words whitespace-pre-line text-slate-800">{{ Str::limit(\App\Services\Mentions::plain($item->body), 600) }}</p>
         @if($item->isHidden() && $item->hidden_reason)<p class="mt-2 text-xs text-slate-500">Motif : {{ $item->hidden_reason }}</p>@endif
 
         @if($item->reports->isNotEmpty())

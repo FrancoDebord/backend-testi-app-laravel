@@ -52,6 +52,9 @@ class FeedController extends Controller
         $lives = LiveSession::with('host')->onAir()->latest('started_at')->limit(6)->get()
             ->filter(fn ($l) => $l->isVisibleTo($user));
 
-        return view('feed.personal', compact('items', 'reasons', 'reposts', 'followsSomeone', 'inserts', 'lives'));
+        // « Près de chez vous · Cotonou » (docs/fonctionnalites/localisation.md).
+        $place = $this->recommendations->placeMeta($user);
+
+        return view('feed.personal', compact('items', 'reasons', 'reposts', 'followsSomeone', 'inserts', 'lives', 'place'));
     }
 }

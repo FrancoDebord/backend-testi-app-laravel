@@ -13,6 +13,9 @@ Schedule::command('prayer-sessions:remind')->everyFiveMinutes()->withoutOverlapp
 // Événements : sondage « A-t-il vraiment eu lieu ? » aux participants, une fois après la fin (docs/fonctionnalites/evenements.md)
 Schedule::command('events:send-surveys')->hourly()->withoutOverlapping();
 
+// Vidéos Bunny Stream : envois jamais terminés (> 24 h) passés en échec, vidéo Bunny supprimée (docs/fonctionnalites/videos-bunny-stream.md)
+Schedule::command('videos:expire-uploads')->hourly()->withoutOverlapping();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

@@ -13,12 +13,13 @@
         ['like', 'fa-thumbs-up', "J'aime"],
         ['pray', 'fa-hands-praying', 'Prière'],
         ['amen', 'fa-hands-clapping', 'Amen'],
-        ['worship', 'fa-hands', 'Adorer'],
+        ['worship', 'fa-hands', 'Adorer Dieu'],
         ['fire', 'fa-fire', 'Feu'],
     ];
 @endphp
 
-@if($canModerate && $live->isActive())
+{{-- Couper le direct : le diffuseur ou un administrateur (jamais un modérateur). --}}
+@if($live->canBeEndedBy(auth()->user()) && $live->isActive())
 @section('headerActions')
     <form id="live-end-form" data-no-loading>
         <button type="button" class="btn-secondary text-red-700"

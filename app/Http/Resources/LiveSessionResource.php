@@ -53,6 +53,8 @@ class LiveSessionResource extends JsonResource
             'prayerSession' => $this->prayer_session_id ? ['id' => $this->prayer_session_id, 'title' => $this->prayerSession?->title] : null,
             'isHost'      => $this->isHost($user),
             'canModerate' => $this->canBeModeratedBy($user),
+            // Couper le direct : le diffuseur ou un administrateur (jamais un modérateur).
+            'canEnd'      => $this->canBeEndedBy($user),
             'webUrl'      => route('lives.show', $this->id),
             'startedAt'   => $this->started_at?->toIso8601String(),
             'endedAt'     => $this->ended_at?->toIso8601String(),

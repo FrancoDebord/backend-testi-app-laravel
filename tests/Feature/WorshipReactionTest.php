@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
-/** Réaction « Adorer » (worship), identique à celle de l'application mobile. */
+/** Réaction « Adorer Dieu » (worship), identique à celle de l'application mobile. */
 class WorshipReactionTest extends TestCase
 {
     use RefreshDatabase;
@@ -30,7 +30,7 @@ class WorshipReactionTest extends TestCase
 
     public function test_enum_describes_worship(): void
     {
-        $this->assertSame('Adorer', ReactionType::Worship->label());
+        $this->assertSame('Adorer Dieu', ReactionType::Worship->label());
         $this->assertSame('🙌', ReactionType::Worship->emoji());
         $this->assertSame('prayer_count', ReactionType::Worship->counterField());
         $this->assertSame('like_count', ReactionType::Fire->counterField());
@@ -58,6 +58,6 @@ class WorshipReactionTest extends TestCase
 
     public function test_testimony_page_shows_the_adorer_button(): void
     {
-        $this->get("/testimonies/{$this->testimony->id}")->assertOk()->assertSee('data-reaction="worship"', false)->assertSee('Adorer');
+        $this->get("/testimonies/{$this->testimony->id}")->assertOk()->assertSee('data-reaction="worship"', false)->assertSee('Adorer Dieu');
     }
 }

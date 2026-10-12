@@ -10,8 +10,9 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * Page « Communauté » (site et application) : comptes à suivre.
+ * - Tous : tous les comptes actifs (organisations refusées exclues) ; vérifiés d'abord, puis les plus suivis.
  * - Organisations : actives et non refusées ; vérifiées d'abord, puis les plus suivies.
- * - Personnes : actives, avec au moins un témoignage publié ; les plus suivies d'abord.
+ * - Personnes : tous les comptes personnels actifs, qu'ils aient publié ou non ; les plus suivis d'abord.
  * La personne connectée n'y figure jamais. Voir docs/fonctionnalites/abonnements.md
  *
  * Les témoignages sont comptés en direct (`published_testimony_count`) : le compteur
@@ -22,6 +23,7 @@ class CommunityDirectory
     public const PER_PAGE = 24;
 
     public const TABS = [
+        'all'           => 'Tous',
         'organizations' => 'Organisations',
         'people'        => 'Personnes',
     ];
@@ -36,7 +38,14 @@ class CommunityDirectory
 
         if ($tab === 'people') {
             $query->where(fn ($q) => $q->whereNull('account_type')->orWhere('account_type', AccountType::Individual->value))
-                ->whereHas('testimonies', fn ($t) => $t->published())
+                ->orderByDesc('follower_count')
+                ->orderByDesc('published_testimony_count');
+        } elseif ($tab === 'all') {
+            $query->where(fn ($q) => $q->whereNull('account_type')
+                    ->orWhere('account_type', '!=', AccountType::Organization->value)
+                    ->orWhereNull('verification_status')
+                    ->orWhere('verification_status', '!=', VerificationStatus::Rejected->value))
+                ->orderByRaw('CASE WHEN verification_status = ? THEN 0 ELSE 1 END', [VerificationStatus::Verified->value])
                 ->orderByDesc('follower_count')
                 ->orderByDesc('published_testimony_count');
         } else {

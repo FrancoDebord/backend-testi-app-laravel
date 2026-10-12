@@ -13,7 +13,8 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 /**
- * Mentions « @ » dans les commentaires (témoignages, directs, messages des requêtes de prière).
+ * Mentions « @ » dans les commentaires (témoignages, directs, messages des requêtes de prière),
+ * le texte des témoignages (notifyTestimony, à l'approbation) et des requêtes de prière (notifyPrayerRequest).
  *
  * Format enregistré (stable, indépendant des changements de nom) : `@[Nom affiché](user:uuid)`.
  * Les API et le site n'exposent jamais ce format brut : le texte est rendu « @Nom affiché »
@@ -148,7 +149,9 @@ class Mentions
      *
      * @param string[] $ids
      * @param string[] $skip
-     * @param array{testimony_id?: ?string, testimony_title?: ?string, comment_id?: ?string, payload?: array, where?: string} $context
+     * `anonymous` : l'auteur n'est pas révélé (« Quelqu'un vous a mentionné… », ni identifiant ni photo).
+     *
+     * @param array{testimony_id?: ?string, testimony_title?: ?string, comment_id?: ?string, payload?: array, where?: string, anonymous?: bool} $context
      */
     public static function notify(array $ids, User $actor, array $context = [], array $skip = []): int
     {
@@ -159,19 +162,21 @@ class Mentions
         }
 
         $where = $context['where'] ?? 'un commentaire';
+        $anonymous = (bool) ($context['anonymous'] ?? false);
+        $name = $anonymous ? "Quelqu'un" : $actor->display_name;
         $sent = 0;
         foreach (User::whereIn('id', $targets)->where('status', UserAccountStatus::Active->value)->pluck('id') as $recipientId) {
             try {
                 AppNotification::create([
                     'recipient_id'    => $recipientId,
-                    'actor_id'        => $actor->id,
-                    'actor_name'      => $actor->display_name,
-                    'actor_avatar'    => $actor->avatar_url,
+                    'actor_id'        => $anonymous ? null : $actor->id,
+                    'actor_name'      => $name,
+                    'actor_avatar'    => $anonymous ? null : $actor->avatar_url,
                     'type'            => NotificationType::Mention->value,
                     'testimony_id'    => $context['testimony_id'] ?? null,
                     'testimony_title' => $context['testimony_title'] ?? null,
                     'comment_id'      => $context['comment_id'] ?? null,
-                    'message'         => $actor->display_name . ' vous a mentionné dans ' . $where,
+                    'message'         => $name . ' vous a mentionné dans ' . $where,
                     'payload'         => $context['payload'] ?? null,
                     'created_at'      => now(),
                 ]);
@@ -182,6 +187,68 @@ class Mentions
         }
 
         return $sent;
+    }
+
+    /**
+     * Mentions du texte d'un témoignage, prévenues quand il devient visible (approbation par la modération).
+     * Une seule fois par personne et par témoignage (notification « mention » déjà envoyée = pas de nouvelle,
+     * même après modification puis nouvelle approbation) ; seulement les personnes qui peuvent le lire
+     * (public : tous ; abonnés : les abonnés de l'auteur). Jamais pour le carnet privé ni un témoignage non approuvé.
+     */
+    public static function notifyTestimony(\App\Models\Testimony $testimony): int
+    {
+        $author = $testimony->user;
+        if (!$author || $testimony->isInJournal() || $testimony->status !== \App\Enums\TestimonyStatus::Approved) {
+            return 0;
+        }
+        $ids = self::ids($testimony->body_text);
+        if ($ids === []) {
+            return 0;
+        }
+
+        $already = AppNotification::where('type', NotificationType::Mention->value)
+            ->where('testimony_id', $testimony->id)->whereNull('comment_id')
+            ->where('payload->mention_in', 'testimony')
+            ->whereIn('recipient_id', $ids)->pluck('recipient_id')->map(fn ($id) => strtolower($id))->all();
+        $visible = User::whereIn('id', array_diff($ids, $already))->get()
+            ->filter(fn (User $u) => $testimony->isVisibleTo($u))->pluck('id')->all();
+
+        return self::notify($visible, $author, [
+            'testimony_id'    => $testimony->id,
+            'testimony_title' => $testimony->title,
+            'where'           => 'son témoignage « ' . $testimony->title . ' »',
+            'payload'         => ['mention_in' => 'testimony'],
+        ]);
+    }
+
+    /**
+     * Mentions du texte d'une requête de prière (création, modification) : seules les personnes qui peuvent
+     * la voir, une seule fois par personne ; jamais pour une requête privée ou retirée par la modération.
+     * Requête anonyme : « Quelqu'un vous a mentionné dans une requête de prière » (auteur non révélé).
+     */
+    public static function notifyPrayerRequest(\App\Models\PrayerRequest $request): int
+    {
+        $author = $request->user;
+        if (!$author || $request->visibility === \App\Models\PrayerRequest::PRIVATE || $request->isHidden()) {
+            return 0;
+        }
+        $ids = self::ids($request->body);
+        if ($ids === []) {
+            return 0;
+        }
+
+        $already = AppNotification::where('type', NotificationType::Mention->value)
+            ->where('payload->mention_in', 'prayer_request')
+            ->where('payload->prayer_request_id', $request->id)
+            ->whereIn('recipient_id', $ids)->pluck('recipient_id')->map(fn ($id) => strtolower($id))->all();
+        $visible = User::whereIn('id', array_diff($ids, $already))->get()
+            ->filter(fn (User $u) => $request->isVisibleTo($u))->pluck('id')->all();
+
+        return self::notify($visible, $author, [
+            'where'     => 'une requête de prière',
+            'anonymous' => (bool) $request->is_anonymous,
+            'payload'   => ['prayer_request_id' => $request->id, 'mention_in' => 'prayer_request'],
+        ]);
     }
 
     // ─── Recherche (autocomplétion) ──────────────────────────────────────────

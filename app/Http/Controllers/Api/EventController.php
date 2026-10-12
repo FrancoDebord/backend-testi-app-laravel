@@ -19,6 +19,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Rules\VisibleLength;
 
 /**
  * Événements chrétiens (croisades, conférences, camps…), au format JSON { success, data, message }.
@@ -50,9 +51,15 @@ class EventController extends Controller
             'following' => $user
                 ? $query->published()->upcoming()->followedBy($user)
                 : $query->whereRaw('1 = 0'),
-            'past'  => $query->published()->past(),
-            default => $query->published()->upcoming(),
+            'past'    => $query->published()->past(),
+            'ongoing' => $query->published()->ongoing(),
+            default   => $query->published()->upcoming(),
         };
+
+        // Profil d'un organisateur : ses événements (organisés en son nom), à venir ou passés.
+        if (\Illuminate\Support\Str::isUuid($organizer = (string) $request->query('organizer_id'))) {
+            $query->where('organizer_id', $organizer);
+        }
 
         if ($type = EventType::tryFrom((string) $request->query('type'))) {
             $query->where('type', $type->value);
@@ -233,9 +240,8 @@ class EventController extends Controller
     public function storeComment(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $request->validate(['body' => 'required|string|min:2|max:3000'], [
+        $request->validate(['body' => ['required', 'string', 'min:2', new VisibleLength(3000, '3 000 caractères au plus.')]], [
             'body.required' => 'Écrivez votre message.',
-            'body.max'      => '3 000 caractères au plus.',
         ]);
 
         return $this->attempt(function () use ($request, $event) {
@@ -445,7 +451,7 @@ class EventController extends Controller
     private function creatableFor(?User $user): array
     {
         if (!$user) return [];
-        $self = ($user->isAdmin() || $user->isVerified()) ? collect([$user]) : collect();
+        $self = ($user->isAdmin() || $user->isVerifiedOrganization()) ? collect([$user]) : collect();
 
         return $self->concat($user->verifiedOrganizationsManaged()->get())
             ->map(fn (User $o) => [

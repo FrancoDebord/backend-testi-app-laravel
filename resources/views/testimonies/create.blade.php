@@ -119,8 +119,13 @@
                     'labelId' => 'body_text_label',
                     'placeholder' => 'Racontez comment Dieu a agi dans votre vie…',
                     'requiredMessage' => 'Merci de rédiger votre témoignage.',
+                    'mentions' => true,
                 ])
-                <p class="form-hint">Vous pouvez mettre des passages en gras ou en italique et ajouter des émojis.</p>
+                @include('components.mention-input')
+                @foreach(array_filter((array) old('mention_ids', []), 'is_string') as $mentionId)
+                <input type="hidden" name="mention_ids[]" value="{{ $mentionId }}">
+                @endforeach
+                <p class="form-hint">Vous pouvez mettre des passages en gras ou en italique et ajouter des émojis. Tapez « @ » pour mentionner quelqu'un : la personne sera prévenue à la publication du témoignage.</p>
                 <p class="form-hint" data-media-summary-hint hidden>Pour un témoignage audio ou vidéo, ce texte est facultatif et sert de résumé.</p>
                 @error('body_text')<p class="form-error">{{ $message }}</p>@enderror
             </div>

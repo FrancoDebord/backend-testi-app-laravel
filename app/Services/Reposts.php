@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\UserAccountStatus;
 use App\Models\AppNotification;
 use App\Models\Testimony;
 use App\Models\TestimonyRepost;
@@ -133,5 +134,28 @@ class Reposts
     {
         $user->followers()->select('users.id')->limit(2000)->pluck('users.id')
             ->each(fn ($id) => Cache::forget(Recommendations::personalCacheKey($id)));
+    }
+
+    /**
+     * Partage à montrer avec le témoignage dans les listes (« X a partagé ») : un compte suivi par
+     * $viewer d'abord, puis le sien, puis le plus récent. Null si personne ne l'a partagé.
+     * Aucune requête pour un témoignage jamais partagé (`repost_count` = 0).
+     */
+    public function highlightFor(Testimony $testimony, ?User $viewer): ?TestimonyRepost
+    {
+        if ((int) ($testimony->repost_count ?? 0) <= 0) return null;
+
+        $query = TestimonyRepost::query()
+            ->where('testimony_id', $testimony->id)
+            ->whereHas('user', fn ($u) => $u->where('status', UserAccountStatus::Active->value))
+            ->with('user');
+        if ($viewer) {
+            $query->orderByRaw(
+                'CASE WHEN user_id IN (SELECT following_id FROM follows WHERE follower_id = ?) THEN 0 WHEN user_id = ? THEN 1 ELSE 2 END',
+                [$viewer->id, $viewer->id],
+            );
+        }
+
+        return $query->latest()->first();
     }
 }

@@ -44,6 +44,7 @@ class DailyVerseComment extends Model
 
     public function canBeDeletedBy(?User $user): bool
     {
-        return $user !== null && ($user->id === $this->user_id || $user->canModerate());
+        // Auteur ou administrateur (un modérateur ne supprime pas ce qu'un autre a écrit).
+        return $user !== null && ($user->id === $this->user_id || $user->isAdmin());
     }
 }

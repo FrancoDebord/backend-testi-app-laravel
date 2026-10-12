@@ -124,9 +124,10 @@ class PrayerRequest extends Model
         return !$this->is_anonymous || $this->isAuthor($user) || (bool) $user?->canModerate();
     }
 
+    /** L'auteur ou un administrateur ; un modérateur retire la requête (hide) sans la supprimer. */
     public function canBeDeletedBy(?User $user): bool
     {
-        return $this->isAuthor($user) || (bool) $user?->canModerate();
+        return $this->isAuthor($user) || (bool) $user?->isAdmin();
     }
 
     /** Encouragements possibles : requête visible, non retirée, et pas privée (sauf pour l'auteur). */

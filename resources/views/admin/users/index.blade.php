@@ -44,7 +44,7 @@
         <label for="users-q" class="sr-only">Rechercher</label>
         <div class="relative min-w-0 flex-1 basis-full sm:basis-60">
             <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400"></i>
-            <input id="users-q" type="search" name="q" value="{{ request('q') }}" class="form-input pl-9" placeholder="Nom, e-mail…">
+            <input id="users-q" type="search" name="q" value="{{ request('q') }}" data-search-autocomplete="users" data-search-recent-key="admin-users" autocomplete="off" class="form-input pl-9" placeholder="Nom, e-mail…">
         </div>
         <button type="button" class="btn-secondary md:hidden" data-toggle="users-filters" aria-controls="users-filters" aria-expanded="false">
             <i class="fa-solid fa-sliders"></i>Filtres

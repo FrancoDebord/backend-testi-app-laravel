@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Web;
 use App\Enums\OrganizationType;
 use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
-use App\Models\Event;
+use App\Models\AccountDelegateAction;
 use App\Models\Follow;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Services\AccountDelegation;
 use App\Services\EventActionException;
 use App\Services\EventService;
 use App\Services\OrganizationAccounts;
@@ -42,7 +43,13 @@ class ProfileController extends Controller
         // Partages internes récents (docs/fonctionnalites/partage-interne.md).
         $reposts = app(\App\Services\Reposts::class)->ofUser($profile)->limit(12)->get();
 
-        return view('profile.show', compact('profile', 'isOwner', 'isFollowing', 'testimonies', 'reposts'));
+        // Événements organisés : à venir / en cours, puis passés (témoignages et commentaires à revoir).
+        $events = fn () => \App\Models\Event::query()->published()->where('organizer_id', $profile->id)
+            ->with(\App\Services\FeedInserts::eventRelations());
+        $upcomingEvents = $events()->upcoming()->limit(6)->get();
+        $pastEvents     = $events()->past()->limit(6)->get();
+
+        return view('profile.show', compact('profile', 'isOwner', 'isFollowing', 'testimonies', 'reposts', 'upcomingEvents', 'pastEvents'));
     }
 
     public function edit(): View
@@ -137,18 +144,22 @@ class ProfileController extends Controller
         $user     = Auth::user();
         $settings = $user->settings ?? new \App\Models\UserSetting();
 
-        // Gestionnaires de l'organisation (comptes organisation) ou organisations gérées (personnes).
-        $orgManagers = $user->isOrganization() ? $user->organizationManagers()->orderBy('display_name')->get() : collect();
-        $managedOrgs = $user->isOrganization() ? collect() : $user->managedOrganizations()->orderBy('display_name')->get();
+        // Administrateurs du compte (tous les comptes, sauf ceux de l'équipe) et comptes que
+        // j'administre : docs/fonctionnalites/administrateurs-de-compte.md
+        $isStaff       = AccountDelegation::isStaff($user);
+        $orgManagers   = $isStaff ? collect() : $user->organizationManagers()->orderBy('display_name')->get();
+        $managedOrgs   = $user->managedOrganizations()->orderBy('display_name')->get();
+        $delegateLog   = $isStaff ? collect() : AccountDelegateAction::where('account_id', $user->id)
+            ->latest('created_at')->limit(20)->get();
         // Recherche sans JavaScript (?personne=…) : components/user-picker
-        $pickerResults = $user->isOrganization() && $orgManagers->count() < Event::MAX_ORGANIZATION_MANAGERS && $request->filled('personne')
+        $pickerResults = !$isStaff && $orgManagers->count() < AccountDelegation::MAX_MANAGERS && $request->filled('personne')
             ? UserSearchController::search((string) $request->query('personne'), [$user->id, ...$orgManagers->pluck('id')])
             : null;
 
-        return view('profile.settings', compact('settings', 'orgManagers', 'managedOrgs', 'pickerResults'));
+        return view('profile.settings', compact('settings', 'isStaff', 'orgManagers', 'managedOrgs', 'delegateLog', 'pickerResults'));
     }
 
-    // ─── Gestionnaires d'une organisation (docs/fonctionnalites/evenements.md) ───
+    // ─── Administrateurs du compte (docs/fonctionnalites/administrateurs-de-compte.md) ───
 
     public function addOrganizationManager(Request $request, EventService $events): RedirectResponse
     {
@@ -161,11 +172,11 @@ class ProfileController extends Controller
         try {
             $target = $events->addOrganizationManager($org, $org, $request->input('user_id'));
         } catch (EventActionException $e) {
-            return redirect()->to(route('profile.settings') . '#gestionnaires')->with('error', $e->getMessage());
+            return redirect()->to(route('profile.settings') . '#administrateurs')->with('error', $e->getMessage());
         }
 
-        return redirect()->to(route('profile.settings') . '#gestionnaires')
-            ->with('success', "{$target->display_name} peut maintenant créer et gérer vos événements.");
+        return redirect()->to(route('profile.settings') . '#administrateurs')
+            ->with('success', "{$target->display_name} peut maintenant administrer votre compte.");
     }
 
     public function removeOrganizationManager(Request $request, EventService $events, string $user): RedirectResponse
@@ -175,13 +186,13 @@ class ProfileController extends Controller
         try {
             $events->removeOrganizationManager($org, $org, $user);
         } catch (EventActionException $e) {
-            return redirect()->to(route('profile.settings') . '#gestionnaires')->with('error', $e->getMessage());
+            return redirect()->to(route('profile.settings') . '#administrateurs')->with('error', $e->getMessage());
         }
 
-        return redirect()->to(route('profile.settings') . '#gestionnaires')->with('success', 'Gestionnaire retiré.');
+        return redirect()->to(route('profile.settings') . '#administrateurs')->with('success', 'Administrateur retiré.');
     }
 
-    /** Ne plus gérer les événements d'une organisation. */
+    /** Ne plus administrer un compte qu'on m'a confié. */
     public function leaveOrganization(Request $request, EventService $events, string $organization): RedirectResponse
     {
         $org = User::find($organization);
@@ -190,11 +201,11 @@ class ProfileController extends Controller
         try {
             $events->removeOrganizationManager($org, $request->user(), $request->user()->id);
         } catch (EventActionException $e) {
-            return redirect()->to(route('profile.settings') . '#organisations-gerees')->with('error', $e->getMessage());
+            return redirect()->to(route('profile.settings') . '#comptes-administres')->with('error', $e->getMessage());
         }
 
-        return redirect()->to(route('profile.settings') . '#organisations-gerees')
-            ->with('success', 'Vous ne gérez plus les événements de ' . ($org->organization_name ?: $org->display_name) . '.');
+        return redirect()->to(route('profile.settings') . '#comptes-administres')
+            ->with('success', "Vous n'administrez plus le compte de " . ($org->organization_name ?: $org->display_name) . '.');
     }
 
     public function updateSettings(Request $request): RedirectResponse

@@ -67,6 +67,18 @@
         <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i>
         <p class="min-w-0 break-words"><span class="font-semibold">Vérification refusée</span>@if($profile->verification_note) : {{ rtrim($profile->verification_note, " .") }}@endif. Vous pouvez corriger les informations de votre organisation depuis <a href="{{ route('profile.edit') }}" class="font-semibold underline">Modifier le profil</a> ou l'application mobile : la demande sera alors réexaminée.</p>
     </div>
+    @elseif($isOwner && !$profile->isOrganization())
+    {{-- Compte personnel : docs/fonctionnalites/verification-des-comptes.md --}}
+    <p class="mt-4 px-2 text-sm sm:px-6">
+        <a href="{{ route('profile.verification') }}" class="inline-flex items-center gap-1.5 font-semibold text-primary-600 hover:underline">
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>{{ match($profile->verification_status) {
+                \App\Enums\VerificationStatus::Verified => 'Compte vérifié',
+                \App\Enums\VerificationStatus::Pending  => 'Vérification en cours',
+                \App\Enums\VerificationStatus::Rejected => 'Vérification refusée : voir le détail',
+                default => 'Faire vérifier mon compte',
+            } }}
+        </a>
+    </p>
     @endif
 
     @if($profile->bio)
@@ -102,6 +114,20 @@
     </div>
     {{ $testimonies->links() }}
 @endif
+
+{{-- Événements organisés : à venir / en cours, puis passés (témoignages et commentaires restent consultables). --}}
+@foreach([['À venir et en cours', $upcomingEvents ?? collect()], ['Événements passés', $pastEvents ?? collect()]] as [$eventsTitle, $eventsList])
+@if($eventsList->isNotEmpty())
+<div class="mt-10 mb-6 flex items-center gap-3 border-b border-slate-200">
+    <h2 class="tab-active"><i class="fa-solid fa-calendar-days mr-1" aria-hidden="true"></i>{{ $eventsTitle }}</h2>
+</div>
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    @foreach($eventsList as $event)
+        @include('events.partials.card', ['event' => $event])
+    @endforeach
+</div>
+@endif
+@endforeach
 
 {{-- Partages internes (« X a partagé ») : la carte garde l'auteur d'origine. docs/fonctionnalites/partage-interne.md --}}
 @if(($reposts ?? collect())->isNotEmpty())

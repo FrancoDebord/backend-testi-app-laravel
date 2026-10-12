@@ -182,6 +182,14 @@ class UserController extends Controller
         return $this->success(['following' => false, 'followerCount' => $target->fresh()->follower_count], 'Abonnement annulé');
     }
 
+    // GET /users/me/settings : réglages enregistrés (valeurs par défaut si jamais modifiés).
+    public function settings(Request $request): JsonResponse
+    {
+        $settings = $request->user()->settings()->firstOrCreate([]);
+
+        return $this->success($settings->fresh());
+    }
+
     public function updateSettings(Request $request): JsonResponse
     {
         $request->validate([
@@ -199,7 +207,7 @@ class UserController extends Controller
             'last_bible_translation' => ['nullable', 'string', 'max:10'],
         ]);
 
-        $settings = $request->user()->settings ?? $request->user()->settings()->create([]);
+        $settings = $request->user()->settings()->firstOrCreate([]);
         $settings->update($request->only([
             'is_private_account', 'comment_permission', 'push_comments',
             'push_likes', 'push_prayers', 'push_approval', 'push_new_followed',
@@ -207,15 +215,20 @@ class UserController extends Controller
             'last_bible_book', 'last_bible_chapter', 'last_bible_translation',
         ]));
 
-        return $this->success($settings, 'Paramètres mis à jour');
+        return $this->success($settings->fresh(), 'Paramètres mis à jour');
     }
 
     public function deleteAccount(Request $request): JsonResponse
     {
-        $request->validate(['password' => 'required|string']);
-
-        if (!password_verify($request->password, $request->user()->password)) {
-            return $this->error('Mot de passe incorrect', 403);
+        $user = $request->user();
+        // Compte créé par téléphone ou Google/Facebook : pas de mot de passe, confirmation explicite.
+        if (empty($user->password)) {
+            $request->validate(['confirm' => 'accepted'], ['confirm.accepted' => 'Confirmez la suppression du compte.']);
+        } else {
+            $request->validate(['password' => 'required|string']);
+            if (!password_verify($request->password, $user->password)) {
+                return $this->error('Mot de passe incorrect', 403);
+            }
         }
 
         $request->user()->tokens()->delete();

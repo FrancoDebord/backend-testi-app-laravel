@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BibleAnnotationController;
 use App\Http\Controllers\Api\DeviceTokenController;
+use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\BibleController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DailyVerseController;
@@ -19,6 +20,9 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TestimonyController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +40,10 @@ Route::prefix('v1')->group(function () {
         Route::post('login',           [AuthController::class, 'login']);
         Route::post('register',        [AuthController::class, 'register']);
         Route::post('phone',           [AuthController::class, 'phoneAuth']);
-        Route::post('social',          [AuthController::class, 'socialAuth']);
+        // Connexion Google : { id_token } → même réponse que /auth/login (docs/fonctionnalites/connexion-google.md).
+        // /social : anciennes versions de l'application ({ provider: google, token | id_token }), même traitement.
+        Route::post('google',          GoogleAuthController::class)->middleware('throttle:20,1');
+        Route::post('social',          GoogleAuthController::class)->middleware('throttle:20,1');
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
     });
 
@@ -51,10 +58,14 @@ Route::prefix('v1')->group(function () {
         Route::get('daily-verse/{id}/prayer-requests', [DailyVerseController::class, 'prayerRequests']);
         Route::get('daily-verse/{id}/testimonies',     [DailyVerseController::class, 'testimonies']);
     });
+    // Compteurs de partage : ouverts aux invités (l'application partage aussi sans compte), limités en débit.
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::post('daily-verse/share',       [DailyVerseController::class, 'share']);
+        Route::post('testimonies/{id}/share',  [TestimonyController::class, 'recordShare']);
+    });
     Route::middleware('auth:sanctum')->group(function () {
         Route::post  ('daily-verse/react',  [DailyVerseController::class, 'react']);
         Route::delete('daily-verse/react',  [DailyVerseController::class, 'unreact']);
-        Route::post  ('daily-verse/share',  [DailyVerseController::class, 'share']);
         Route::whereNumber('id')->whereUuid('commentId')->group(function () {
             Route::post  ('daily-verse/{id}/react',                       [DailyVerseController::class, 'reactTo'])->middleware('throttle:60,1');
             Route::post  ('daily-verse/{id}/comments',                    [DailyVerseController::class, 'storeComment'])->middleware('throttle:20,1');
@@ -93,6 +104,10 @@ Route::prefix('v1')->group(function () {
     Route::get('categories',        [CategoryController::class, 'index']);
     Route::get('categories/{slug}', [CategoryController::class, 'show']);
 
+    // ── Autocomplétion des barres de recherche (public) ─ docs/fonctionnalites/recherche.md
+    Route::get('search/suggest', [\App\Http\Controllers\Api\SearchController::class, 'suggest'])->middleware('throttle:120,1'); // ?q=&scope=&limit=
+    Route::post('search/log',    [\App\Http\Controllers\Api\SearchController::class, 'log'])->middleware('throttle:30,1');     // { q } recherche validée, anonyme
+
     // ── Testimonies (public read) ────────────────────────────────────────
     Route::get('testimonies',           [TestimonyController::class, 'index']);
     Route::get('testimonies/featured',  [TestimonyController::class, 'featured']);
@@ -106,7 +121,7 @@ Route::prefix('v1')->group(function () {
     // ─ docs/fonctionnalites/abonnements.md, docs/fonctionnalites/mentions.md
     Route::get('users/suggestions',    [\App\Http\Controllers\Api\CommunityController::class, 'suggestions'])->middleware('throttle:60,1');
     Route::get('users/mention-search', [\App\Http\Controllers\Api\CommunityController::class, 'mentionSearch'])->middleware(['auth:sanctum', 'throttle:120,1']);
-    Route::get('users/{id}',           [UserController::class, 'show']);
+    Route::get('users/{id}',           [UserController::class, 'show'])->where('id', '(?!me$)[^/]+'); // « me » : profil connecté (plus bas)
     // Communauté : organisations et personnes à suivre (docs/fonctionnalites/abonnements.md)
     Route::get('community',            [\App\Http\Controllers\Api\CommunityController::class, 'index']);
     Route::get('users/{id}/testimonies', [UserController::class, 'testimonies']);
@@ -121,6 +136,8 @@ Route::prefix('v1')->group(function () {
     Route::get('lives/{id}/stage',          [LiveController::class, 'stage'])->whereUuid('id');
     Route::get('lives/{id}/viewers',        [LiveController::class, 'viewers'])->whereUuid('id')->middleware('throttle:30,1');
     Route::post('livekit/webhook',          LiveKitWebhookController::class)->name('livekit.webhook');
+    // Bunny Stream (public, état relu par l'API Bunny) — docs/fonctionnalites/videos-bunny-stream.md
+    Route::post('webhooks/bunny',           \App\Http\Controllers\Api\BunnyWebhookController::class)->middleware('throttle:120,1')->name('bunny.webhook');
 
     Route::middleware('auth:sanctum')->whereUuid('id')->group(function () {
         Route::post('lives',                               [LiveController::class, 'store']); // droits vérifiés par LiveService::start (modération, ou gestionnaire de l'événement)
@@ -183,6 +200,9 @@ Route::prefix('v1')->group(function () {
         Route::get('users/me/managers',                         [\App\Http\Controllers\Api\OrganizationManagerController::class, 'index']);
         Route::post('users/me/managers',                        [\App\Http\Controllers\Api\OrganizationManagerController::class, 'store']);
         Route::delete('users/me/managers/{userId}',             [\App\Http\Controllers\Api\OrganizationManagerController::class, 'destroy'])->whereUuid('userId');
+        // Administrateurs de compte ─ docs/fonctionnalites/administrateurs-de-compte.md
+        Route::get('users/me/accounts',                         [\App\Http\Controllers\Api\OrganizationManagerController::class, 'accounts']);
+        Route::get('users/me/managers/activity',                [\App\Http\Controllers\Api\OrganizationManagerController::class, 'activity']);
         Route::get('users/me/managed-organizations',            [\App\Http\Controllers\Api\OrganizationManagerController::class, 'managed']);
         Route::delete('users/me/managed-organizations/{organizationId}', [\App\Http\Controllers\Api\OrganizationManagerController::class, 'leave'])->whereUuid('organizationId');
     });
@@ -224,6 +244,17 @@ Route::prefix('v1')->group(function () {
         });
     });
 
+    // ── Réactions et partages internes des événements, requêtes et sessions de prière
+    // docs/fonctionnalites/reactions.md, partage-interne.md
+    Route::middleware('auth:sanctum')->whereUuid('id')->group(function () {
+        foreach (['events' => 'event', 'prayer/requests' => 'prayer_request', 'prayer/sessions' => 'prayer_session'] as $prefix => $kind) {
+            Route::post("{$prefix}/{id}/reactions",   [\App\Http\Controllers\Api\ContentInteractionController::class, 'react'])->defaults('kind', $kind)->middleware('throttle:60,1');
+            Route::delete("{$prefix}/{id}/reactions", [\App\Http\Controllers\Api\ContentInteractionController::class, 'unreact'])->defaults('kind', $kind)->middleware('throttle:60,1');
+            Route::post("{$prefix}/{id}/repost",      [\App\Http\Controllers\Api\ContentInteractionController::class, 'repost'])->defaults('kind', $kind)->middleware('throttle:30,1');
+            Route::delete("{$prefix}/{id}/repost",    [\App\Http\Controllers\Api\ContentInteractionController::class, 'unrepost'])->defaults('kind', $kind);
+        }
+    });
+
     Route::middleware('auth:sanctum')->group(function () {
 
         // Auth
@@ -234,12 +265,18 @@ Route::prefix('v1')->group(function () {
 
         // Testimonies (write)
         Route::post('testimonies',         [TestimonyController::class, 'store']);
+
+        // Témoignage vidéo envoyé directement à Bunny Stream (TUS) — docs/fonctionnalites/videos-bunny-stream.md
+        Route::post('videos/upload-init', [\App\Http\Controllers\Api\VideoUploadController::class, 'init'])->middleware('throttle:20,1');
+        Route::whereUuid('id')->group(function () {
+            Route::post('videos/{id}/upload-signature', [\App\Http\Controllers\Api\VideoUploadController::class, 'signature'])->middleware('throttle:60,1');
+            Route::post('videos/{id}/upload-complete',  [\App\Http\Controllers\Api\VideoUploadController::class, 'complete']);
+        });
         Route::put('testimonies/{id}',     [TestimonyController::class, 'update']);
         Route::delete('testimonies/{id}',  [TestimonyController::class, 'destroy']);
         Route::put('testimonies/{id}/save',    [TestimonyController::class, 'save']);
         Route::delete('testimonies/{id}/unsave', [TestimonyController::class, 'unsave']);
         Route::get('testimonies/saved/list',   [TestimonyController::class, 'saved']);
-        Route::post('testimonies/{id}/share',  [TestimonyController::class, 'recordShare']);
         Route::post('testimonies/{id}/report', [ReportController::class, 'store']);
         // Preuves (docs/fonctionnalites/preuves.md)
         Route::post('testimonies/{id}/proofs',             [\App\Http\Controllers\Api\TestimonyProofController::class, 'store'])->middleware('throttle:20,1');
@@ -271,6 +308,7 @@ Route::prefix('v1')->group(function () {
         // Reactions
         Route::post('testimonies/{id}/reactions', [ReactionController::class, 'store']);
         Route::delete('testimonies/{id}/reactions/{reactionId}', [ReactionController::class, 'destroy']);
+        Route::delete('testimonies/{id}/reactions', [ReactionController::class, 'destroy']);
 
         // Comments
         Route::post('testimonies/{id}/comments', [CommentController::class, 'store']);
@@ -278,6 +316,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('comments/{id}',           [CommentController::class, 'destroy']);
 
         // Users (self management)
+        Route::get('users/me',            [AuthController::class, 'me']); // comme auth/me, mais suit X-Act-As (compte administré)
         Route::put('users/me',            [UserController::class, 'updateMe']);
         Route::get('users/me/following',  [UserController::class, 'following']);    // Mes abonnements
         Route::get('users/me/followers',  [UserController::class, 'followers']);    // Mes abonnés
@@ -285,7 +324,15 @@ Route::prefix('v1')->group(function () {
         Route::post('users/me/avatar',    [UserController::class, 'uploadAvatar']);
         Route::post('users/me/cover',     [UserController::class, 'uploadCover'])->middleware('throttle:20,1'); // photo de couverture
         Route::delete('users/me/cover',   [UserController::class, 'deleteCover']);
+        // Vérification des comptes personnels ─ docs/fonctionnalites/verification-des-comptes.md
+        Route::get('users/me/verification',  [\App\Http\Controllers\Api\AccountVerificationController::class, 'show']);
+        Route::post('users/me/verification', [\App\Http\Controllers\Api\AccountVerificationController::class, 'store'])->middleware('throttle:10,60');
         Route::put('users/me/settings',   [UserController::class, 'updateSettings']);
+        Route::get('users/me/settings',   [UserController::class, 'settings']);
+        // Localisation privée pour classer les fils par zone ─ docs/fonctionnalites/localisation.md
+        Route::get('users/me/location',    [\App\Http\Controllers\Api\LocationController::class, 'show']);
+        Route::put('users/me/location',    [\App\Http\Controllers\Api\LocationController::class, 'update'])->middleware('throttle:20,1');
+        Route::delete('users/me/location', [\App\Http\Controllers\Api\LocationController::class, 'destroy']);
         Route::delete('users/me',         [UserController::class, 'deleteAccount']);
         Route::post('users/{id}/follow',  [UserController::class, 'follow'])->middleware('throttle:30,1');
         Route::delete('users/{id}/unfollow', [UserController::class, 'unfollow']);
@@ -302,6 +349,8 @@ Route::prefix('v1')->group(function () {
         // FCM device tokens (push notifications)
         Route::post  ('devices/token', [DeviceTokenController::class, 'store']);
         Route::delete('devices/token', [DeviceTokenController::class, 'destroy']);
+        Route::post  ('device-tokens', [DeviceTokenController::class, 'store']);
+        Route::delete('device-tokens', [DeviceTokenController::class, 'destroy']);
 
         // Moderation (moderateur + admin)
         Route::middleware('role:moderateur,administrateur')->prefix('moderation')->group(function () {
@@ -324,6 +373,13 @@ Route::prefix('v1')->group(function () {
             // Comptes organisation ─ docs/fonctionnalites/comptes-organisation.md
             Route::post('users/{id}/verify',              [AdminController::class, 'verifyOrganization']);
             Route::post('users/{id}/reject-verification', [AdminController::class, 'rejectOrganization']);
+            // Comptes personnels ─ docs/fonctionnalites/verification-des-comptes.md
+            Route::post('users/{id}/revoke-verification', [\App\Http\Controllers\Api\AccountVerificationController::class, 'revoke']);
+            Route::get('verification-requests',                         [\App\Http\Controllers\Api\AccountVerificationController::class, 'index']);
+            Route::get('verification-requests/{id}',                    [\App\Http\Controllers\Api\AccountVerificationController::class, 'adminShow'])->whereUuid('id');
+            Route::get('verification-requests/{id}/documents/{index}',  [\App\Http\Controllers\Api\AccountVerificationController::class, 'document'])->whereUuid('id')->whereNumber('index');
+            Route::post('verification-requests/{id}/approve',           [\App\Http\Controllers\Api\AccountVerificationController::class, 'approve'])->whereUuid('id');
+            Route::post('verification-requests/{id}/reject',            [\App\Http\Controllers\Api\AccountVerificationController::class, 'reject'])->whereUuid('id');
             Route::get('testimonies',             [AdminController::class, 'content']);
             Route::get('categories',              [AdminController::class, 'categories']);
             Route::post('categories',             [AdminController::class, 'storeCategory']);
@@ -334,3 +390,15 @@ Route::prefix('v1')->group(function () {
         });
     });
 });
+
+
+Route::post('/_deploy', function (Request $request) {
+    $token = (string) config('app.deploy_token');
+    abort_unless($token !== '' && hash_equals($token, (string) $request->header('X-Deploy-Token')), 403);
+
+    Artisan::call('migrate', ['--force' => true]);
+    $migrate = Artisan::output();
+    Artisan::call('optimize:clear');
+
+    return response()->json(['ok' => true, 'migrate' => $migrate]);
+})->middleware('throttle:5,1');

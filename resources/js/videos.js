@@ -442,6 +442,10 @@ document.addEventListener('click', async (e) => {
     try {
         const data = await request(group.dataset.reactions, { method: 'POST', data: { type: button.dataset.reaction } });
         setPressed(button, data.reacted);
+        // Une réaction par groupe (j'aime / je prie) : l'ancienne du même groupe est remplacée.
+        if (Array.isArray(data.my_reactions)) {
+            group.querySelectorAll('[data-reaction]').forEach((b) => setPressed(b, data.my_reactions.includes(b.dataset.reaction)));
+        }
         group.querySelectorAll('[data-count]').forEach((el) => (el.textContent = formatCount(data[el.dataset.count] ?? 0)));
     } catch (error) {
         flash(error.message, 'error');

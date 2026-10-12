@@ -25,7 +25,7 @@
     <label for="videos-q" class="sr-only">Rechercher une vidéo</label>
     <div class="relative min-w-0 flex-1">
         <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
-        <input id="videos-q" type="search" name="q" value="{{ $q }}" maxlength="100" autocomplete="off"
+        <input id="videos-q" type="search" name="q" value="{{ $q }}" data-search-autocomplete="testimonies" data-search-recent-key="videos" maxlength="100" autocomplete="off"
                class="form-input pl-9" placeholder="Titre, auteur, catégorie, mot-clé…">
     </div>
     <button type="submit" class="btn-primary"><i class="fa-solid fa-magnifying-glass sm:hidden" aria-hidden="true"></i><span class="max-sm:sr-only">Rechercher</span></button>

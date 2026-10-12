@@ -24,7 +24,7 @@
         <label for="journal-q" class="sr-only">Rechercher dans mon carnet</label>
         <div class="relative min-w-0 flex-1">
             <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
-            <input id="journal-q" type="search" name="q" value="{{ $q }}" class="form-input pl-9" placeholder="Titre ou texte…">
+            <input id="journal-q" type="search" name="q" value="{{ $q }}" data-search-autocomplete="local" data-search-recent-key="journal" autocomplete="off" class="form-input pl-9" placeholder="Titre ou texte…">
         </div>
         <button type="submit" class="btn-secondary" aria-label="Rechercher"><i class="fa-solid fa-magnifying-glass sm:hidden" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">Rechercher</span></button>
     </form>

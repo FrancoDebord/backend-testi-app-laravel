@@ -22,8 +22,14 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasUuids, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        // Pièces justificatives de vérification : supprimées avec le compte (données sensibles).
+        static::deleted(fn (User $user) => \App\Services\PersonalVerification::purgeDocuments($user));
+    }
+
     protected $fillable = [
-        'display_name', 'email', 'phone', 'phone_country', 'phone_verified_at', 'firebase_uid', 'password',
+        'display_name', 'email', 'phone', 'phone_country', 'phone_verified_at', 'firebase_uid', 'google_id', 'password',
         'avatar_url', 'cover_url', 'country', 'bio', 'role', 'status', 'is_active',
         'email_verified_at', 'testimony_count', 'like_count', 'prayer_count',
         'follower_count', 'following_count',
@@ -34,7 +40,7 @@ class User extends Authenticatable
         'verification_note',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'google_id'];
 
     protected function casts(): array
     {
@@ -87,6 +93,12 @@ class User extends Authenticatable
     public function settings(): HasOne
     {
         return $this->hasOne(UserSetting::class);
+    }
+
+    /** Appareils qui reçoivent les notifications push (docs/fonctionnalites/notifications-push.md). */
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
     }
 
     public function socialProviders(): HasMany
@@ -174,10 +186,28 @@ class User extends Authenticatable
         return $this->account_type === AccountType::Organization;
     }
 
-    /** Organisation dont l'identité a été confirmée par un administrateur. */
+    /**
+     * Compte vérifié par un administrateur (badge) : organisation ou personne.
+     * Voir docs/fonctionnalites/verification-des-comptes.md
+     */
     public function isVerified(): bool
     {
-        return $this->isOrganization() && $this->verification_status === VerificationStatus::Verified;
+        return $this->verification_status === VerificationStatus::Verified;
+    }
+
+    /**
+     * Organisation vérifiée : seule à donner des droits (créer des événements, diffuser).
+     * Une personne vérifiée n'obtient que le badge.
+     */
+    public function isVerifiedOrganization(): bool
+    {
+        return $this->isOrganization() && $this->isVerified();
+    }
+
+    /** Demandes de vérification d'un compte personnel (la plus récente d'abord). */
+    public function verificationRequests(): HasMany
+    {
+        return $this->hasMany(VerificationRequest::class)->latest();
     }
 
     // ---------- Téléphone (docs/fonctionnalites/telephone.md) ----------

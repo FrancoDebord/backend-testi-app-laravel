@@ -219,7 +219,7 @@
                 <ul class="card mb-6 divide-y divide-slate-100">
                     @foreach($comments as $comment)
                     @php
-                        $canDelete = $authUser && ($comment->user_id === $authUser->id || $manager || $authUser->canModerate());
+                        $canDelete = $authUser && ($comment->user_id === $authUser->id || $manager || $authUser->isAdmin());
                     @endphp
                     <li class="flex gap-3 px-4 py-4 sm:px-5" id="commentaire-{{ $comment->id }}">
                         @include('components.avatar', ['user' => $comment->user, 'size' => 'sm'])

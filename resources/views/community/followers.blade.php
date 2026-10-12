@@ -20,7 +20,7 @@
     <label for="followers-q" class="sr-only">Rechercher dans mes abonnés</label>
     <div class="relative min-w-0 flex-1">
         <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
-        <input id="followers-q" type="search" name="q" value="{{ $q }}" maxlength="100" autocomplete="off"
+        <input id="followers-q" type="search" name="q" value="{{ $q }}" data-search-autocomplete="users" data-search-recent-key="followers" maxlength="100" autocomplete="off"
                class="form-input pl-9" placeholder="Nom, ville, pays…">
     </div>
     <button type="submit" class="btn-primary"><i class="fa-solid fa-magnifying-glass sm:hidden" aria-hidden="true"></i><span class="max-sm:sr-only">Rechercher</span></button>

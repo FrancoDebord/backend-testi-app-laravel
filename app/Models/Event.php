@@ -154,7 +154,7 @@ class Event extends Model
      */
     public static function canBeCreatedBy(?User $user): bool
     {
-        return $user !== null && ($user->isAdmin() || $user->isVerified()
+        return $user !== null && ($user->isAdmin() || $user->isVerifiedOrganization()
             || $user->verifiedOrganizationsManaged()->exists());
     }
 
@@ -169,6 +169,15 @@ class Event extends Model
         if ($user->isAdmin() || $user->id === $this->organizer_id) return true;
 
         return $user->managedOrganizations()->whereKey($this->organizer_id)->exists();
+    }
+
+    /**
+     * Peut supprimer l'événement : son responsable (organisateur, ses gestionnaires) ou un
+     * administrateur. Jamais un modérateur : il masque l'événement (hide) sans le supprimer.
+     */
+    public function canBeDeletedBy(?User $user): bool
+    {
+        return $this->canBeAdministeredBy($user);
     }
 
     /** Gestionnaire de la page : responsable (ci-dessus) ou co-gestionnaire de l'événement. */
@@ -411,6 +420,14 @@ class Event extends Model
         return $q->where(fn ($w) => $w->where('ends_at', '>=', now())
                 ->orWhere(fn ($t) => $t->where('status', EventStatus::Postponed->value)->where('date_tbd', true)))
             ->orderBy('date_tbd')->orderBy('starts_at');
+    }
+
+    /** En cours : commencé et pas encore terminé. */
+    public function scopeOngoing(Builder $q): Builder
+    {
+        return $q->where('starts_at', '<=', now())->where('ends_at', '>=', now())
+            ->whereNot(fn ($t) => $t->where('status', EventStatus::Postponed->value)->where('date_tbd', true))
+            ->orderBy('ends_at');
     }
 
     public function scopePast(Builder $q): Builder

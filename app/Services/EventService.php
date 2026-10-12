@@ -122,7 +122,7 @@ class EventService
     {
         if ($organizationId && $organizationId !== $user->id) {
             $org = User::find($organizationId);
-            if (!$org || !$org->isVerified()) {
+            if (!$org || !$org->isVerifiedOrganization()) {
                 throw new EventActionException('Organisation introuvable ou non vérifiée.', 422);
             }
             if (!$user->isAdmin() && !$user->canActForOrganization($org)) {
@@ -130,7 +130,7 @@ class EventService
             }
             return $org;
         }
-        if ($user->isAdmin() || $user->isVerified()) {
+        if ($user->isAdmin() || $user->isVerifiedOrganization()) {
             return $user;
         }
         $orgs = $user->verifiedOrganizationsManaged()->get();
@@ -309,7 +309,10 @@ class EventService
 
     public function delete(Event $event, User $user): void
     {
-        $this->ensureAdministrator($event, $user);
+        $this->ensureActive($user);
+        if (!$event->canBeDeletedBy($user)) {
+            throw new EventActionException("Seuls l'organisateur et les administrateurs peuvent supprimer cet événement.", 403);
+        }
         foreach ($event->images as $image) {
             $this->deleteFile($image->url);
         }
@@ -469,7 +472,8 @@ class EventService
     public function deleteComment(EventComment $comment, User $user): void
     {
         $event = $comment->event;
-        if ($comment->user_id !== $user->id && !$event->canBeManagedBy($user) && !$user->canModerate()) {
+        // Auteur, gestionnaires de l'événement, administrateurs ; jamais un modérateur.
+        if ($comment->user_id !== $user->id && !$event->canBeManagedBy($user) && !$user->isAdmin()) {
             throw new EventActionException('Vous ne pouvez pas supprimer ce commentaire.', 403);
         }
         $comment->delete();
@@ -560,48 +564,18 @@ class EventService
         $event->managers()->detach($userId);
     }
 
-    // ─── Gestionnaires d'une organisation (2 au plus) ────────────────────────
+    // ─── Administrateurs du compte (2 au plus, tous comptes) ─────────────────
 
-    /** L'organisation (ou un administrateur) désigne une personne qui gère ses événements. */
+    /** Administrateurs de compte (tous comptes) ─ docs/fonctionnalites/administrateurs-de-compte.md */
     public function addOrganizationManager(User $organization, User $actor, string $userId): User
     {
-        $this->ensureCanDelegate($organization, $actor);
-        $target = $this->activeUser($userId);
-        if ($target->id === $organization->id) {
-            throw new EventActionException('Une organisation ne peut pas être sa propre gestionnaire.', 422);
-        }
-        if ($target->isOrganization()) {
-            throw new EventActionException('Choisissez le compte personnel du gestionnaire, pas un compte organisation.', 422);
-        }
-        if ($organization->organizationManagers()->whereKey($target->id)->exists()) {
-            throw new EventActionException('Cette personne est déjà gestionnaire.', 409);
-        }
-        if ($organization->organizationManagers()->count() >= Event::MAX_ORGANIZATION_MANAGERS) {
-            throw new EventActionException('Deux gestionnaires au plus par organisation. Retirez-en un pour en ajouter un autre.', 422);
-        }
-        $organization->organizationManagers()->attach($target->id);
-
-        return $target;
+        return AccountDelegation::add($organization, $actor, $userId);
     }
 
-    /** Par l'organisation (ou un administrateur), ou par le gestionnaire lui-même. */
+    /** Par le titulaire (ou un administrateur), ou par la personne elle-même. */
     public function removeOrganizationManager(User $organization, User $actor, string $userId): void
     {
-        if ($actor->id !== $userId) {
-            $this->ensureCanDelegate($organization, $actor);
-        }
-        $organization->organizationManagers()->detach($userId);
-    }
-
-    private function ensureCanDelegate(User $organization, User $actor): void
-    {
-        $this->ensureActive($actor);
-        if (!$organization->isOrganization()) {
-            throw new EventActionException('Seuls les comptes organisation ont des gestionnaires.', 422);
-        }
-        if ($actor->id !== $organization->id && !$actor->isAdmin()) {
-            throw new EventActionException("Seule l'organisation peut choisir ses gestionnaires.", 403);
-        }
+        AccountDelegation::remove($organization, $actor, $userId);
     }
 
     private function activeUser(string $userId): User

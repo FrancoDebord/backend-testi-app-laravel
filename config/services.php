@@ -36,7 +36,12 @@ return [
     ],
 
     'google' => [
-        'client_id' => env('GOOGLE_CLIENT_ID', '78564751626-m3e7ll7olaj58oce4id71tmrc2q6lkus.apps.googleusercontent.com'),
+        // Connexion Google (docs/fonctionnalites/connexion-google.md) : identifiant client Web passé en
+        // `serverClientId` par l'application ; audience attendue du jeton. Vide (et client_id vide) = tout jeton refusé.
+        'web_client_id' => env('GOOGLE_WEB_CLIENT_ID'),
+        // Audiences supplémentaires acceptées (anciennes versions de l'application). Identifiant(s) client Web acceptés comme audience du jeton Google, séparés par des virgules :
+        // projet Firebase de com.askrea.temoignage (566166419345-…) et ancien projet (78564751626-…).
+        'client_id' => env('GOOGLE_CLIENT_ID', '566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com,78564751626-m3e7ll7olaj58oce4id71tmrc2q6lkus.apps.googleusercontent.com'),
     ],
 
     // Notifications push Firebase Cloud Messaging (API HTTP v1) — docs/fonctionnalites/notifications-push.md
@@ -50,6 +55,20 @@ return [
         // Canal Android créé par l'application (lib/services/fcm_service.dart).
         'android_channel' => env('FCM_ANDROID_CHANNEL', 'testi_notifications'),
         'timeout'         => (int) env('FCM_TIMEOUT', 10),
+        // queue (défaut) : file d'attente, traitée par un queue:work (tâche cron chaque minute sur LWS) ;
+        // after_response : envoi juste après la réponse HTTP, sans file ni nouvel essai (solution de repli).
+        'delivery'        => env('PUSH_DELIVERY', 'queue'),
+        // File des push, séparée des conversions vidéo : queue:work --queue=push,default
+        'queue'           => env('PUSH_QUEUE', 'push'),
+    ],
+
+    // Vidéos des témoignages hébergées par Bunny Stream (docs/fonctionnalites/videos-bunny-stream.md).
+    // Les fichiers vont directement de l'application à Bunny (TUS) : ils ne passent jamais par ce serveur.
+    'bunny_stream' => [
+        'library_id' => env('BUNNY_STREAM_LIBRARY_ID'),
+        'api_key'    => env('BUNNY_STREAM_API_KEY'),
+        // Nom d'hôte du CDN de la bibliothèque, sans https:// (ex. vz-xxxxxxxx-xxx.b-cdn.net).
+        'cdn_host'   => env('BUNNY_STREAM_CDN_HOST'),
     ],
 
 ];

@@ -14,6 +14,7 @@ use App\Services\LiveStage;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Rules\VisibleLength;
 
 /**
  * Actions des témoignages en direct, au format JSON { success, data, message }.
@@ -146,9 +147,8 @@ class LiveController extends Controller
 
     public function storeComment(Request $request, string $id): JsonResponse
     {
-        $request->validate(['body' => 'required|string|max:' . config('livekit.comment_max_length')], [
+        $request->validate(['body' => ['required', 'string', new VisibleLength((int) config('livekit.comment_max_length'), 'Le commentaire est trop long.')]], [
             'body.required' => 'Le commentaire est vide.',
-            'body.max'      => 'Le commentaire est trop long.',
         ]);
         $live = $this->find($id, $request);
 

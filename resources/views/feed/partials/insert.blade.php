@@ -10,7 +10,7 @@
 <div class="flex min-w-0 flex-col gap-1.5 {{ $compactList ? 'p-3 sm:max-w-md' : '' }}">
     <p class="flex items-center gap-1.5 truncate text-xs font-semibold text-accent-700">
         <i class="fa-solid fa-calendar-day" aria-hidden="true"></i>
-        <span class="truncate">Événement · {{ $insert->organizer?->display_name }}</span>
+        <span class="truncate">{{ match ($insert->phase()) { 'past' => 'Événement passé · à revivre', 'ongoing' => 'En cours', default => 'Événement' } }} · {{ $insert->organizer?->display_name }}</span>
     </p>
     @include('events.partials.card', ['event' => $insert])
 </div>
@@ -40,7 +40,7 @@
     <a href="{{ route('testimonies.show', $insert->testimony_id) }}" class="card-insight flex h-full flex-col gap-2 p-4 hover:border-sun-400 sm:p-5">
         @if(filled($insert->title))<h3 class="font-semibold break-words text-slate-900">{{ $insert->title }}</h3>@endif
         <p class="text-xs text-slate-600">
-            @if($insert->received_on)Reçue le {{ $insert->received_on->translatedFormat('j F Y') }}@endif{{ filled($insert->given_by) ? ', donnée par ' . $insert->given_by : '' }}
+            @if($insert->received_on)Reçue le {{ $insert->receivedLabel() }}@endif{{ filled($insert->given_by) ? ', donnée par ' . $insert->given_by : '' }}
         </p>
         @if(filled($insert->body_text))
         <p class="text-sm break-words text-slate-800 italic">« {{ Str::limit($insert->body_text, 220) }} »</p>

@@ -141,8 +141,8 @@
                 @endif
             @endif
 
-            @if($viewer?->canModerate() && !$isHost && $live)
-            <p class="form-hint mt-3">Modération : coupez la salle depuis la page du direct (« Couper le direct »).</p>
+            @if($viewer?->isAdmin() && !$isHost && $live)
+            <p class="form-hint mt-3">Administration : coupez la salle depuis la page du direct (« Couper le direct »).</p>
             @endif
         </section>
     </aside>

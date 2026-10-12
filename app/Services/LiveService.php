@@ -64,7 +64,7 @@ class LiveService
             }
             // L'événement doit appartenir à une organisation encore vérifiée (ou à un administrateur).
             $organizer = $event->organizer;
-            if (!$host->canModerate() && !($organizer?->isVerified() || $organizer?->isAdmin())) {
+            if (!$host->canModerate() && !($organizer?->isVerifiedOrganization() || $organizer?->isAdmin())) {
                 throw new LiveActionException("Seules les organisations vérifiées peuvent diffuser leurs événements.", 403);
             }
         } elseif (!empty($data['prayer_session_id'])) {
@@ -294,8 +294,9 @@ class LiveService
 
     public function end(LiveSession $live, ?User $actor, string $reason): LiveSession
     {
-        if ($actor && !$live->canBeModeratedBy($actor)) {
-            throw new LiveActionException('Vous ne pouvez pas arrêter ce direct.', 403);
+        // Le diffuseur ou un administrateur (jamais un modérateur) ; sans acteur : arrêt automatique.
+        if ($actor && !$live->canBeEndedBy($actor)) {
+            throw new LiveActionException('Seuls le diffuseur et les administrateurs peuvent couper ce direct.', 403);
         }
         if ($live->status === LiveStatus::Ended) {
             return $live;

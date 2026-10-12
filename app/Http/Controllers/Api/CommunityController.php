@@ -27,7 +27,7 @@ class CommunityController extends Controller
             'q'   => 'nullable|string|max:100',
         ]);
 
-        $accounts = $directory->search($request->query('tab', 'organizations'), $request->query('q'), $request->user('sanctum'));
+        $accounts = $directory->search($request->query('tab', 'all'), $request->query('q'), $request->user('sanctum'));
 
         return $this->paginated(UserResource::collection($accounts->items()), [
             'current_page' => $accounts->currentPage(),

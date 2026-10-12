@@ -10,7 +10,7 @@ Permettre de **suivre** une organisation (église, ministère, association…) o
 
 | Endroit | Bouton |
 |---|---|
-| **Communauté** (`/communaute`, menu Découvrir) | Onglets **Organisations** (vérifiées d'abord, puis les plus suivies) et **Personnes** (ayant au moins un témoignage publié) ; recherche par nom, ville ou pays ; fiche : avatar, nom, coche vérifiée, type · ville · pays, abonnés, témoignages, présentation, **Suivre**, Voir le profil |
+| **Communauté** (`/communaute`, menu Découvrir) | Onglets **Tous** (par défaut : tous les comptes actifs, vérifiés d'abord, puis les plus suivis), **Organisations** (vérifiées d'abord, puis les plus suivies) et **Personnes** (tous les comptes personnels actifs, qu'ils aient publié ou non) ; recherche par nom, ville ou pays ; fiche : avatar, nom, coche vérifiée, type · ville · pays, abonnés, témoignages, présentation, **Suivre**, Voir le profil |
 | Profil (`/profiles/{id}`) | **Suivre** (bouton principal) / **Abonné** ; le nombre d'abonnés se met à jour |
 | Page de lecture d'un témoignage | **Suivre** à côté de l'auteur |
 | **Mes abonnements** (`/profile/abonnements`, menu Mon espace, ou le nombre d'« abonnements » de son profil) | Comptes suivis, les plus récents d'abord, recherche ; mêmes fiches que la Communauté. Se désabonner laisse la fiche en place (bouton « Suivre ») pour revenir sur son choix ; elle disparaît au rechargement. Liste vide : lien « Découvrir la Communauté » |
@@ -21,7 +21,7 @@ Le bouton bascule sans recharger la page (« Suivre » ↔ « Abonné ») ; sans
 ### Application mobile
 
 - **Menu latéral** (icône ☰ de l'accueil) : Communauté, Directs, Mes abonnements, Mon carnet privé, Mes témoignages, Sauvegardés, Paramètres, et Modération / Administration selon le rôle.
-- **Communauté** : mêmes onglets, recherche, liste qui se charge au défilement.
+- **Communauté** : s'ouvre sur l'onglet **Tous**, qui liste tous les comptes dès l'ouverture, sans attendre une recherche. Suivent les onglets Suggestions, Organisations et Personnes. La liste se charge au défilement, par pages de 24, et charge la page suivante tant que l'écran n'est pas rempli. Une recherche filtre la liste. API : `GET /community?tab=all|organizations|people&q=&page=` (`all` par défaut).
 - **Abonnés et abonnements** : un écran à deux onglets. **Mes abonnés** (`/followers`) : depuis la statistique « Abonnés » de *Mon profil*, le menu latéral ou le menu du profil ; « N comptes vous suivent », recherche, **Suivre en retour** / Abonné. **Mes abonnements** (`/following`) : depuis le menu latéral ou la ligne « abonnements » de *Mon profil* ; « Vous suivez N comptes », recherche, Suivre / Abonné, lien vers la Communauté si la liste est vide.
 - **Messages d'erreur** : si le serveur répond 404 (mise à jour pas encore déployée), la liste affiche « Cette liste n'est pas encore disponible sur le serveur » au lieu d'un message de connexion.
 - **Profil d'un auteur** (`/users/{id}`), ouvert depuis l'avatar ou le nom sur une carte, la page d'un témoignage, le lecteur vidéo ou « Qui regarde » d'un direct : présentation, compteurs, **Suivre**, témoignages publiés.
@@ -30,7 +30,7 @@ Le bouton bascule sans recharger la page (« Suivre » ↔ « Abonné ») ; sans
 ### Comptes à suivre (suggestions)
 
 - **Site** : en haut de la Communauté, « Suggestions pour vous » (organisations ou personnes selon l'onglet) ; le partiel `community.partials.suggested` peut être inclus ailleurs (Mon fil, accueil) sans variable.
-- **Application** : onglet **Suggestions** (premier onglet de la Communauté), avec la raison de chaque suggestion ; bandeau réutilisable **« Comptes à suivre »** (`SuggestedAccountsStrip`) : cartes horizontales (avatar, nom, coche, raison, **Suivre**), « Voir plus » vers la Communauté. Une carte suivie disparaît et la suggestion suivante prend sa place ; le bandeau est **masqué** pendant le chargement, si la liste est vide ou en cas d'erreur.
+- **Application** : onglet **Suggestions** (deuxième onglet de la Communauté, après « Tous »), avec la raison de chaque suggestion ; bandeau réutilisable **« Comptes à suivre »** (`SuggestedAccountsStrip`) : cartes horizontales (avatar, nom, coche, raison, **Suivre**), « Voir plus » vers la Communauté. Une carte suivie disparaît et la suggestion suivante prend sa place ; le bandeau est **masqué** pendant le chargement, si la liste est vide ou en cas d'erreur.
 
 | Critère (score) | Détail |
 |---|---|

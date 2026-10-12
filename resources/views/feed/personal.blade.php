@@ -13,6 +13,8 @@
 @section('content')
 {{-- Directs en cours (masqué s'il n'y en a pas) --}}
 @include('lives.partials.now', ['lives' => $lives, 'class' => 'mb-6'])
+{{-- Zone utilisée pour le classement et invitation à activer la position (docs/fonctionnalites/localisation.md) --}}
+@include('feed.partials.place', ['place' => $place ?? null])
 
 @if($items->isEmpty())
     @include('components.empty-state', [

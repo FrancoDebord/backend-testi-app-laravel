@@ -151,7 +151,7 @@ class FollowTest extends TestCase
 
     // ─── Communauté ────────────────────────────────────────────────────────
 
-    public function test_community_lists_organizations_then_people(): void
+    public function test_community_lists_all_accounts_organizations_and_people(): void
     {
         $me = $this->user('Moi', ['testimony_count' => 3]);
         $pending = $this->org('Ministère en attente', 'pending', ['follower_count' => 50]);
@@ -164,7 +164,7 @@ class FollowTest extends TestCase
         ]);
         $this->user('Compte sans témoignage');
 
-        $html = $this->actingAs($me)->get('/communaute')->assertOk()
+        $html = $this->actingAs($me)->get('/communaute?tab=organizations')->assertOk()
             ->assertSee('Église vérifiée')
             ->assertSee('Ministère en attente')
             ->assertDontSee('Organisation refusée')
@@ -175,8 +175,16 @@ class FollowTest extends TestCase
 
         $this->actingAs($me)->get('/communaute?tab=people')->assertOk()
             ->assertSee('Témoin actif')
-            ->assertDontSee('Compte sans témoignage')
+            ->assertSee('Compte sans témoignage')
+            ->assertDontSee('Église vérifiée')
             ->assertDontSee('data-follow-user="' . $me->id . '"', false);
+
+        // Onglet par défaut « Tous » : personnes et organisations, refusées exclues.
+        $this->actingAs($me)->get('/communaute')->assertOk()
+            ->assertSee('Église vérifiée')
+            ->assertSee('Compte sans témoignage')
+            ->assertSee('Témoin actif')
+            ->assertDontSee('Organisation refusée');
 
         $this->actingAs($me)->get('/communaute?q=vérifiée')->assertOk()
             ->assertSee('Église vérifiée')->assertDontSee('Ministère en attente');

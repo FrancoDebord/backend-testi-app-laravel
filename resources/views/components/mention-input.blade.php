@@ -8,6 +8,9 @@
     - Le texte reste lisible (« @Nom ») ; à l'envoi, chaque mention choisie devient le jeton
       « @[Nom](user:id) » que le serveur valide (comptes actifs seulement) avant d'enregistrer.
     - Bouton « Répondre » portant data-mention + data-mention-id : la mention préremplie est reconnue aussi.
+    - Éditeur mis en forme (components/rich-editor avec 'mentions' => true : data-mention-input sur la zone
+      contenteditable) : le texte reste « @Nom » (Markdown léger) ; à l'envoi, les comptes choisis partent
+      en champs cachés mention_ids[] et le serveur reconnaît « @Nom » pour eux (Mentions::prepare).
     Script en ligne (comme events/show) : aucune recompilation des fichiers JavaScript n'est nécessaire.
 --}}
 @once
@@ -15,7 +18,8 @@
 <script>
 (function () {
     const SEARCH_URL = @json(route('users.mentions'));
-    const store = new WeakMap(); // textarea → Map(nom → id)
+    const store = new WeakMap(); // champ (textarea ou zone contenteditable) → Map(nom → id)
+    const FIELD = 'textarea[data-mention-input], [contenteditable="true"][data-mention-input]';
     const mentionsOf = (ta) => { if (!store.has(ta)) store.set(ta, new Map()); return store.get(ta); };
     const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -27,17 +31,35 @@
         target?.setAttribute('aria-expanded', 'false');
     }
 
-    /** « @requête » juste avant le curseur, ou null. */
-    function queryAt(ta) {
-        const caret = ta.selectionStart;
-        if (caret !== ta.selectionEnd) return null;
-        const before = ta.value.slice(0, caret);
-        const m = before.match(/(?:^|[\s(])@([^@\n\[\]]{0,40})$/u);
+    /** « @requête » à la fin de before, ou null (mention déjà choisie suivie d'une espace : rien à chercher). */
+    function match(el, before) {
+        const m = before.match(/(?:^|[\s(*])@([^@\n\[\]]{0,40})$/u);
         if (!m) return null;
         const q = m[1];
         if (/\s{2,}/.test(q) || q.split(' ').length > 3) return null;
-        return { q, start: caret - q.length - 1, end: caret };
+        if (/\s$/.test(q) && mentionsOf(el).has(q.trim())) return null;
+        return q;
     }
+
+    /** « @requête » juste avant le curseur, ou null. */
+    function queryAt(ta) {
+        if (ta.isContentEditable) {
+            const sel = window.getSelection();
+            if (!sel.rangeCount || !sel.isCollapsed) return null;
+            const node = sel.anchorNode;
+            if (!node || node.nodeType !== Node.TEXT_NODE || !ta.contains(node)) return null;
+            const caret = sel.anchorOffset;
+            const q = match(ta, node.textContent.slice(0, caret));
+            return q === null ? null : { q, node, start: caret - q.length - 1, end: caret };
+        }
+        const caret = ta.selectionStart;
+        if (caret !== ta.selectionEnd) return null;
+        const q = match(ta, ta.value.slice(0, caret));
+        return q === null ? null : { q, start: caret - q.length - 1, end: caret };
+    }
+
+    /** Conteneur de la liste : hors de l'éditeur mis en forme (qui masque ce qui dépasse). */
+    const holderOf = (el) => (el.isContentEditable && el.closest('[data-rich-editor]')?.parentElement) || el.parentElement;
 
     function render(ta, people, status) {
         close();
@@ -79,7 +101,7 @@
             box.append(li);
             return { li, person: p };
         });
-        const holder = ta.parentElement;
+        const holder = holderOf(ta);
         if (getComputedStyle(holder).position === 'static') holder.style.position = 'relative';
         holder.append(box);
         ta.setAttribute('aria-expanded', 'true');
@@ -97,7 +119,30 @@
         const r = range || queryAt(ta);
         if (!ta || !r) return close();
         const insert = `@${person.displayName} `;
-        ta.value = ta.value.slice(0, r.start) + insert + ta.value.slice(r.end);
+        if (ta.isContentEditable) {
+            // Remplace « @requête » par « @Nom » (annulable ; l'éditeur se synchronise sur l'événement input).
+            mentionsOf(ta).set(person.displayName, person.id);
+            const sel = window.getSelection();
+            const sub = document.createRange();
+            try {
+                sub.setStart(r.node, r.start);
+                sub.setEnd(r.node, r.end);
+            } catch {
+                return close();
+            }
+            close();
+            ta.focus();
+            sel.removeAllRanges();
+            sel.addRange(sub);
+            if (!document.execCommand('insertText', false, insert)) {
+                sub.deleteContents();
+                sub.insertNode(document.createTextNode(insert));
+                sel.collapseToEnd();
+                ta.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            return;
+        }
+        ta.value =ta.value.slice(0, r.start) + insert + ta.value.slice(r.end);
         const caret = r.start + insert.length;
         ta.setSelectionRange(caret, caret);
         mentionsOf(ta).set(person.displayName, person.id);
@@ -134,20 +179,21 @@
     }
 
     document.addEventListener('input', (e) => {
-        const ta = e.target.closest?.('textarea[data-mention-input]');
+        const ta = e.target.closest?.(FIELD);
         if (!ta) return;
         clearTimeout(timer);
         if (!queryAt(ta)) { controller?.abort(); return close(); }
         timer = setTimeout(() => search(ta), 300);
     });
 
+    // Phase de capture : avant l'éditeur mis en forme (Entrée y ajouterait une ligne).
     document.addEventListener('keydown', (e) => {
-        if (!box || e.target !== target) return;
+        if (!box || !target || (e.target !== target && !target.contains(e.target))) return;
         if (e.key === 'ArrowDown' && items.length) { e.preventDefault(); highlight((active + 1) % items.length); }
         else if (e.key === 'ArrowUp' && items.length) { e.preventDefault(); highlight((active - 1 + items.length) % items.length); }
-        else if ((e.key === 'Enter' || e.key === 'Tab') && items[active]) { e.preventDefault(); choose(items[active].person); }
+        else if ((e.key === 'Enter' || e.key === 'Tab') && items[active]) { e.preventDefault(); e.stopPropagation(); choose(items[active].person); }
         else if (e.key === 'Escape') { e.preventDefault(); close(); }
-    });
+    }, true);
 
     document.addEventListener('focusout', (e) => { if (e.target === target) setTimeout(close, 150); });
 
@@ -164,6 +210,22 @@
 
     // Envoi (phase de capture : avant les scripts de la page) : « @Nom » choisi → jeton « @[Nom](user:id) ».
     document.addEventListener('submit', (e) => {
+        // Éditeur mis en forme : « @Nom » reste dans le texte, les comptes choisis partent en mention_ids[].
+        e.target.querySelectorAll?.('[contenteditable="true"][data-mention-input]').forEach((el) => {
+            const map = store.get(el);
+            if (!map?.size) return;
+            const text = el.textContent;
+            const sent = [...e.target.querySelectorAll('input[name="mention_ids[]"]')].map((i) => i.value);
+            map.forEach((id, name) => {
+                if (!text.includes(`@${name}`) || sent.includes(id)) return;
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'mention_ids[]';
+                input.value = id;
+                e.target.append(input);
+                sent.push(id);
+            });
+        });
         e.target.querySelectorAll?.('textarea[data-mention-input]').forEach((ta) => {
             const map = store.get(ta);
             if (!map?.size) return;

@@ -52,7 +52,8 @@ class HomeController extends Controller
         $showShelves = !$category && !$type && $feed->onFirstPage();
         // Requêtes de prière publiques récentes, insérées dans « Témoignages récents » (sans filtre).
         $inserts = !$category && !$type
-            ? app(PrayerRequests::class)->list($viewer, 'feed')->limit(10)->get()
+            // les plus proches d'abord (zone de la personne ou langue du navigateur : localisation.md)
+            ? app(\App\Services\FeedInserts::class)->rankByPlace('prayerRequests', app(PrayerRequests::class)->list($viewer, 'feed')->limit(30)->get(), $viewer, 10)
             : collect();
         $data = compact('feed', 'categories', 'category', 'type', 'showShelves', 'inserts');
 

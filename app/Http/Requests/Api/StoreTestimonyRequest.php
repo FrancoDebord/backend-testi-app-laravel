@@ -15,8 +15,9 @@ class StoreTestimonyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'        => ['required', 'string', 'max:200'],
-            'type'         => ['required', new Enum(TestimonyType::class)],
+            // En modification (PUT), seuls les champs envoyés changent : renommer = { title } seul.
+            'title'        => [Rule::requiredIf(fn () => $this->isMethod('post')), 'string', 'max:200'],
+            'type'         => [Rule::requiredIf(fn () => $this->isMethod('post')), new Enum(TestimonyType::class)],
             // Obligatoire à la création d'un témoignage public ; facultative dans
             // le carnet privé (« autre » par défaut) et en modification.
             'category'     => [
@@ -25,6 +26,9 @@ class StoreTestimonyRequest extends FormRequest
                 'nullable', 'string',
             ],
             'body_text'    => ['nullable', 'string'],
+            // Mentions « @ » choisies si le texte est envoyé lisible (docs/fonctionnalites/mentions.md).
+            'mention_ids'  => ['nullable', 'array', 'max:20'],
+            'mention_ids.*' => ['string'],
             'media_url'    => ['nullable', 'string'],
             // Lien YouTube : administrateurs seulement (docs/fonctionnalites/videos-youtube.md)
             'youtube_url'  => ['nullable', 'string', 'max:300'],

@@ -157,6 +157,15 @@
                 </a>
             </li>
             @endif
+            @if(($stats['pendingAccountVerifications'] ?? 0) > 0)
+            <li class="px-5 py-3">
+                <a href="{{ route('admin.verifications.index') }}" class="card-insight flex items-center gap-3 p-3 text-sm hover:border-sun-400">
+                    <i class="fa-solid fa-user-check text-sun-700" aria-hidden="true"></i>
+                    <span class="min-w-0 flex-1"><span class="font-semibold">{{ $stats['pendingAccountVerifications'] }} compte(s) personnel(s)</span> à vérifier</span>
+                    <i class="fa-solid fa-arrow-right text-xs text-sun-700" aria-hidden="true"></i>
+                </a>
+            </li>
+            @endif
         </ul>
         <div class="mt-auto p-5 pt-2">
             <a href="{{ route('moderation.index') }}" class="btn-primary w-full">Ouvrir la file de modération</a>

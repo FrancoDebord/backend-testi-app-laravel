@@ -30,10 +30,12 @@ class PushNotifications
         'new_followed_testimony' => 'push_new_followed',
         'live_started'           => 'push_new_followed',
         'prayer_encouragement'   => 'push_prayers',
+        'prayer_request_prayed'  => 'push_prayers',
     ];
 
     private const TITLES = [
         'like'                   => 'Nouvelle réaction',
+        'prayer'                 => 'Nouvelle prière',
         'comment'                => 'Nouveau commentaire',
         'reply'                  => 'Nouvelle réponse',
         'mention'                => 'Vous avez été mentionné',
@@ -45,8 +47,11 @@ class PushNotifications
         'pending_correction'     => 'Correction demandée',
         'organization_verified'  => 'Organisation vérifiée',
         'organization_rejected'  => 'Vérification refusée',
+        'account_verified'       => 'Compte vérifié',
+        'account_verification_rejected' => 'Vérification du compte',
         'live_started'           => 'En direct',
         'prayer_encouragement'   => 'Encouragement reçu',
+        'prayer_request_prayed'  => 'Nouvelle prière',
         'prayer_session_started' => 'Session de prière',
         'prayer_session_reminder' => 'Session de prière bientôt',
         'event_postponed'        => 'Événement reporté',
@@ -70,6 +75,11 @@ class PushNotifications
                 return;
             }
 
+            // Jamais de push pour sa propre action (ex. modérateur qui approuve son témoignage).
+            if ($notification->actor_id && (string) $notification->actor_id === (string) $recipientId) {
+                return;
+            }
+
             if (!self::allows($recipientId, self::rawType($notification))) {
                 return;
             }
@@ -79,10 +89,29 @@ class PushNotifications
             }
 
             $message = self::message($notification);
-            SendPushNotificationJob::dispatch($recipientId, $message['title'], $message['body'], $message['data']);
+            self::dispatch($recipientId, $message['title'], $message['body'], $message['data']);
         } catch (Throwable $e) {
             report($e);
         }
+    }
+
+    /**
+     * Met en file l'envoi (PUSH_DELIVERY=queue, défaut) ou l'exécute juste après la réponse HTTP
+     * (PUSH_DELIVERY=after_response : hébergement sans tâche cron pour la file, sans nouvel essai).
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function dispatch(string $userId, string $title, string $body, array $data = []): void
+    {
+        $job = new SendPushNotificationJob($userId, $title, $body, $data);
+
+        if (config('services.fcm.delivery') === 'after_response') {
+            $job->retryOnFailure = false;
+            dispatch($job)->afterResponse();
+            return;
+        }
+
+        dispatch($job);
     }
 
     /** L'utilisateur accepte-t-il les push de ce type ? Sans réglages enregistrés : oui. */
@@ -121,6 +150,11 @@ class PushNotifications
 
         $data = FcmClient::stringifyData([
             'type'            => $type,
+            // Identifiant de l'objet principal à ouvrir (requête, session, événement, direct, verset,
+            // témoignage, sinon la personne pour un abonnement) ; les clés détaillées restent fournies.
+            'id'              => $payload['prayer_request_id'] ?? $payload['prayer_session_id'] ?? $payload['event_id']
+                ?? $payload['live_id'] ?? $payload['daily_verse_id'] ?? $notification->testimony_id
+                ?? ($type === 'follow' ? $notification->actor_id : null),
             'testimony_id'    => $notification->testimony_id,
             'comment_id'      => $notification->comment_id,
             'actor_id'        => $notification->actor_id,
@@ -131,6 +165,8 @@ class PushNotifications
             'prayer_session_id' => $payload['prayer_session_id'] ?? null,
             // Événements (types event_*) : ouvre la page de l'événement.
             'event_id'          => $payload['event_id'] ?? null,
+            // Mention dans un commentaire du verset du jour : ouvre la page du verset.
+            'daily_verse_id'    => $payload['daily_verse_id'] ?? null,
         ]);
 
         return [
@@ -147,6 +183,7 @@ class PushNotifications
 
         return match ($type) {
             'like'                   => "{$actor} a réagi à votre témoignage{$title}",
+            'prayer'                 => "{$actor} prie pour votre témoignage{$title}",
             'comment'                => "{$actor} a commenté votre témoignage{$title}",
             'reply'                  => "{$actor} a répondu à votre commentaire",
             'mention'                => "{$actor} vous a mentionné",
@@ -158,7 +195,10 @@ class PushNotifications
             'pending_correction'     => "Votre témoignage{$title} doit être corrigé",
             'organization_verified'  => 'Votre organisation a été vérifiée',
             'organization_rejected'  => 'La vérification de votre organisation a été refusée',
+            'account_verified'       => 'Votre compte a été vérifié',
+            'account_verification_rejected' => 'La vérification de votre compte a été refusée',
             'live_started'           => "{$actor} est en direct",
+            'prayer_request_prayed'  => "{$actor} prie pour votre requête de prière",
             default                  => 'Vous avez une nouvelle notification',
         };
     }

@@ -97,6 +97,9 @@ class TestimonyController extends Controller
             // Parole prophétique accomplie (docs/fonctionnalites/paroles-prophetiques.md)
             'prophecy_id'     => 'nullable|uuid',
             'prophecy_public' => 'nullable|boolean',
+            // Mentions « @ » choisies dans le texte (docs/fonctionnalites/mentions.md)
+            'mention_ids'     => 'nullable|array|max:20',
+            'mention_ids.*'   => 'nullable|string',
         ], TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
             'title.required'         => 'Merci de donner un titre à votre témoignage.',
             'youtube_url.required_if' => 'Collez le lien de la vidéo YouTube.',
@@ -155,7 +158,9 @@ class TestimonyController extends Controller
             'title'         => $data['title'],
             'type'          => $data['type'],
             'category_slug' => $data['category'],
-            'body_text'     => $data['body_text'] ?? null,
+            // Mentions « @ » validées ; prévenues à l'approbation (Mentions::notifyTestimony).
+            'body_text'     => isset($data['body_text'])
+                ? \App\Services\Mentions::prepare($data['body_text'], (array) ($data['mention_ids'] ?? []))['text'] : null,
             'cover_url'     => $coverUrl ?? ($youtubeId ? YouTube::thumbnailUrl($youtubeId) : null),
             'media_url'     => $mediaUrl,
             'youtube_id'    => $youtubeId,
@@ -226,6 +231,18 @@ class TestimonyController extends Controller
         return view('testimonies.mine', compact('testimonies', 'status'));
     }
 
+    /** Supprimer un témoignage : son auteur ou un administrateur (jamais un modérateur). */
+    public function destroy(string $id): RedirectResponse
+    {
+        $testimony = Testimony::findOrFail($id);
+        abort_unless($testimony->canBeDeletedBy(Auth::user()), 403);
+
+        $mine = $testimony->user_id === Auth::id();
+        $testimony->delete();
+
+        return redirect()->route($mine ? 'testimonies.mine' : 'home')->with('success', 'Témoignage supprimé.');
+    }
+
     public function report(Request $request, string $id): RedirectResponse
     {
         $request->validate([
@@ -249,33 +266,18 @@ class TestimonyController extends Controller
 
         $testimony = Testimony::findOrFail($id);
 
-        $existing = Reaction::where([
-            'user_id'      => Auth::id(),
-            'testimony_id' => $id,
-            'type'         => $request->type,
-        ])->first();
-
-        if ($existing) {
-            $field = $existing->type->counterField();
-            $testimony->decrement($field);
-            $existing->delete();
-            $reacted = false;
-        } else {
-            Reaction::create([
-                'user_id'      => Auth::id(),
-                'testimony_id' => $id,
-                'type'         => $request->type,
-            ]);
-            $field = \App\Enums\ReactionType::from($request->type)->counterField();
-            $testimony->increment($field);
-            $reacted = true;
-        }
+        // Une réaction par groupe (j'aime / je prie) : docs/fonctionnalites/reactions.md
+        $reacted = app(\App\Services\TestimonyReactions::class)
+            ->toggle(Auth::user(), $testimony, \App\Enums\ReactionType::from($request->type));
 
         $testimony->refresh();
 
         if ($request->ajax()) {
             return response()->json([
                 'reacted'       => $reacted,
+                // Réactions de la personne après le changement (une par groupe) : boutons à jour.
+                'my_reactions'  => Reaction::where('user_id', Auth::id())->where('testimony_id', $testimony->id)
+                    ->pluck('type')->map(fn ($t) => $t->value)->values(),
                 'like_count'    => $testimony->like_count,
                 'prayer_count'  => $testimony->prayer_count,
             ]);
@@ -318,6 +320,11 @@ class TestimonyController extends Controller
         $request->validate(['body' => 'required|string|max:2000']);
 
         $testimony = Testimony::findOrFail($id);
+        if (!$testimony->acceptsCommentsFrom(Auth::user())) {
+            return $request->expectsJson()
+                ? response()->json(['message' => Testimony::COMMENTS_CLOSED_MESSAGE], 403)
+                : back()->with('error', Testimony::COMMENTS_CLOSED_MESSAGE);
+        }
 
         // Mentions « @ » (docs/fonctionnalites/mentions.md)
         $mentions = \App\Services\Mentions::prepare((string) $request->body);

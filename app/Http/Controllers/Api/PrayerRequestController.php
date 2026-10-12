@@ -35,6 +35,14 @@ class PrayerRequestController extends Controller
         $items = $this->requests->list($user, $scope, $request->query('event_id'), $request->query('status'), is_numeric($verseId) ? (int) $verseId : null)
             ->paginate(min(max((int) $request->query('limit', 20), 1), 50));
 
+        // `near=1` (fil « Pour vous », première page) : les plus proches de la personne d'abord, parmi
+        // les 3 × limit plus récentes (docs/fonctionnalites/localisation.md).
+        if ($request->boolean('near') && $items->currentPage() === 1 && $items->isNotEmpty()) {
+            $candidates = $this->requests->list($user, $scope, $request->query('event_id'), $request->query('status'), is_numeric($verseId) ? (int) $verseId : null)
+                ->limit($items->perPage() * 3)->get();
+            $items->setCollection(app(\App\Services\FeedInserts::class)->rankByPlace('prayerRequests', $candidates, $user, $items->perPage()));
+        }
+
         return $this->paginated(PrayerRequestResource::collection($items->items()), [
             ...$this->meta($items),
             'scope'     => $scope,

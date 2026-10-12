@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->statefulApi();
+
+        // Agir au nom d'un compte administré (docs/fonctionnalites/administrateurs-de-compte.md)
+        $middleware->appendToGroup('api', \App\Http\Middleware\ActAsAccount::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\ActAsAccount::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Adresse de caméra IP (peut contenir un mot de passe) : jamais remise en session (docs/fonctionnalites/lives-camera-ip.md)

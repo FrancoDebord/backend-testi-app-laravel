@@ -20,6 +20,16 @@
                 <option value="{{ $t }}" @selected($t === $translation)>{{ $t }}</option>
                 @endforeach
             </select>
+            {{-- Aller à un livre (autocomplétion) ─ docs/fonctionnalites/recherche.md --}}
+            <form method="GET" action="{{ route('bible.reader') }}" role="search" class="mt-3">
+                <label for="bible-book-q" class="sr-only">Aller à un livre de la Bible</label>
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
+                    <input id="bible-book-q" type="search" maxlength="60" class="form-input pl-9" placeholder="Aller à un livre…"
+                           data-search-autocomplete="bible" data-search-submit="first-result" data-search-recent-key="bible"
+                           data-search-translation="{{ $translation }}">
+                </div>
+            </form>
         </div>
 
         <div id="book-list" class="p-2">

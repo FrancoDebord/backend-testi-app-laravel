@@ -2,6 +2,7 @@
 
 return [
 
+'deploy_token' => env('DEPLOY_TOKEN',"b827c035fa9f2bbbb9c98555af84e998a8ebb02a0700557ccae0ea66b57fc625"),
     /*
     |--------------------------------------------------------------------------
     | Application Name

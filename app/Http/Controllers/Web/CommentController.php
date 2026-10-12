@@ -29,6 +29,11 @@ class CommentController extends Controller
     {
         $testimony = VideoController::findVisible($request, $id);
         $user      = $request->user();
+        if (!$testimony->acceptsCommentsFrom($user)) {
+            return $request->expectsJson()
+                ? response()->json(['message' => \App\Models\Testimony::COMMENTS_CLOSED_MESSAGE], 403)
+                : back()->with('error', \App\Models\Testimony::COMMENTS_CLOSED_MESSAGE);
+        }
         $parent    = $this->resolveParent($testimony, $request->validated('parent_id'));
 
         // Mentions « @ » (docs/fonctionnalites/mentions.md) : jetons envoyés par l'autocomplétion.

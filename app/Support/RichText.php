@@ -28,6 +28,11 @@ class RichText
         $html = preg_replace('/\*\*(?=\S)([^\n]+?)(?<=\S)\*\*/u', '<strong>$1</strong>', $html);
         $html = preg_replace('/(?<!\*)\*(?=[^\s*])([^\n]*?)(?<=[^\s*])\*(?!\*)/u', '<em>$1</em>', $html);
 
+        // Mentions « @ » (docs/fonctionnalites/mentions.md) : jeton `@[Nom](user:id)` → lien vers le profil
+        // (le nom est déjà échappé ci-dessus).
+        $html = preg_replace_callback(\App\Services\Mentions::TOKEN, fn ($m) => '<a href="' . e(route('profiles.show', strtolower($m[2])))
+            . '" class="font-semibold text-primary-700 hover:underline" data-mention-link="' . e(strtolower($m[2])) . '">@' . $m[1] . '</a>', $html) ?? $html;
+
         return new HtmlString(str_replace(self::STAR, '*', $html));
     }
 

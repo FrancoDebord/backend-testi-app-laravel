@@ -26,7 +26,9 @@ class PrayerRequestResource extends JsonResource
         return [
             'type'        => 'prayer_request', // repère pour les fils mélangés
             'id'          => $this->id,
-            'body'        => $this->body,
+            // Texte lisible (« @Nom ») + mentions cliquables (docs/fonctionnalites/mentions.md).
+            'body'        => \App\Services\Mentions::plain($this->body),
+            'mentions'    => \App\Services\Mentions::of($this->body),
             'visibility'  => $this->visibility,
             'visibilityLabel' => PrayerRequest::VISIBILITY_LABELS[$this->visibility] ?? $this->visibility,
             'isAnonymous' => $this->is_anonymous,
@@ -39,6 +41,7 @@ class PrayerRequestResource extends JsonResource
                 'avatarUrl'   => $author->avatar_url,
                 'avatar'      => $author->avatar_url,
                 'isVerified'  => $author->isVerified(),
+                'isOrganization' => $author->isOrganization(),
             ] : null,
             'status'      => $this->status,          // open | answered
             'isAnswered'  => $this->isAnswered(),
@@ -61,6 +64,8 @@ class PrayerRequestResource extends JsonResource
             'canModerate' => $moderator,
             'canMessage'  => $this->acceptsMessagesFrom($viewer),
             'webUrl'      => route('prayer.requests.show', $this->id),
+            // Réactions « j'aime » et partage interne « X a partagé » (« Je prie » : prayerCount / hasPrayed).
+            ...app(\App\Services\ContentInteractions::class)->payload($this->resource, $viewer, $request),
             'createdAt'   => $this->created_at?->toIso8601String(),
             'updatedAt'   => $this->updated_at?->toIso8601String(),
         ];

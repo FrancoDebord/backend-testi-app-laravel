@@ -25,7 +25,7 @@
     <label for="events-q" class="sr-only">Rechercher un événement</label>
     <div class="relative min-w-0 flex-1">
         <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
-        <input id="events-q" type="search" name="q" value="{{ $q }}" class="form-input pl-9" placeholder="Titre, ville, lieu…">
+        <input id="events-q" type="search" name="q" value="{{ $q }}" data-search-autocomplete="events" autocomplete="off" class="form-input pl-9" placeholder="Titre, ville, lieu…">
     </div>
     <button type="submit" class="btn-secondary" aria-label="Rechercher"><i class="fa-solid fa-magnifying-glass sm:hidden" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">Rechercher</span></button>
 </form>

@@ -13,6 +13,8 @@ Comme un transfert WhatsApp ou un partage Facebook : une personne connectée **p
 | Application, page d'un témoignage | Bouton **Partager** → feuille de partage → **« Partager sur TestiApp »** : commentaire facultatif (500 caractères), **Partager avec mes abonnés** ; une fois partagé, **Mettre à jour mon partage** ou **Annuler mon partage**. Invité : invitation à créer un compte. |
 | Site, page d'un témoignage | Bouton **« Partager sur TestiApp »** (avec le nombre de partages) → fenêtre avec le commentaire ; **Partagé sur TestiApp** une fois fait (mettre à jour, **Annuler le partage**). |
 | Mon fil des abonnés | En-tête **« X a partagé · il y a… »**, le commentaire, puis la carte du témoignage d'origine. |
+| Tous les fils et listes de l'application | Accueil « Pour vous », Mon fil, Explorer, catégories, recherche, profils, sauvegardés : un témoignage partagé porte l'en-tête « X a partagé ». Il montre le partage d'un compte suivi d'abord, puis le sien, puis le plus récent (champ `repostedBy` de `TestimonyResource`). |
+| Événements, requêtes et sessions de prière | Bouton **Partager** de la page et des éléments insérés dans les fils, puis **« Sur TestiApp »**, avec un commentaire facultatif. Les publications partagées par les comptes suivis (30 derniers jours) rejoignent le groupe « suivis » de Mon fil, avec l'en-tête « X a partagé ». |
 | Profil du partageur | Section **« Partages »** (site : 12 derniers ; application : 10 derniers, profil public). |
 | Auteur d'origine | Notification **« X a partagé votre témoignage « titre » »** (type `share`, push « réactions »). |
 
@@ -29,6 +31,15 @@ Comme un transfert WhatsApp ou un partage Facebook : une personne connectée **p
 | Témoignage devenu non public / supprimé | Le partage n'est plus montré (filtré à l'affichage, Mon fil et profil) ; il réapparaît si le témoignage redevient public. |
 | Mon fil | Les partages des comptes suivis (30 derniers jours) se mêlent à leurs témoignages, du plus récent au plus ancien ; un témoignage n'apparaît qu'une fois (au partage le plus récent). Les partages de ses propres témoignages par d'autres n'apparaissent pas dans son fil. Voir [recommandations.md](recommandations.md#mon-fil-get-apiv1feedpagelimit-connecté--site-mon-fil). |
 
+### Événements, requêtes et sessions de prière
+
+Mêmes règles que pour les témoignages, avec ces différences :
+- seule une publication **publique** peut être partagée : événement publié ou reporté et non masqué, requête publique et non retirée, session publique et non annulée ;
+- partager sa propre publication est refusé (422) ;
+- l'auteur est prévenu (notification `share` avec `payload.event_id`, `prayer_request_id` ou `prayer_session_id`).
+
+Les routes sont `POST|DELETE events|prayer/requests|prayer/sessions/{id}/repost`. Elles renvoient `reactions` et `repost`, décrits dans [reactions.md](reactions.md). Les partages sont enregistrés dans la table `content_reposts`, avec la colonne `repost_count` de chaque publication.
+
 ## API mobile (`/api/v1`)
 
 | Méthode | Route | Rôle |
@@ -37,6 +48,8 @@ Comme un transfert WhatsApp ou un partage Facebook : une personne connectée **p
 | DELETE | `testimonies/{id}/repost` (connecté) | Annuler → `{ repostsCount }` ; 404 si aucun partage |
 | GET | `users/{id}/reposts?limit=20&page=` (public) | Partages d'un compte, les plus récents d'abord (format ci-dessous) |
 | GET | `feed` (connecté) | Mon fil : les partages des comptes suivis y figurent avec `feedReason: repost` |
+
+Dans toutes les listes, `TestimonyResource` ajoute `repostId`, `repostedBy`, `repostComment` et `repostedAt` quand le témoignage a été partagé (un compte suivi d'abord). Aucune requête n'est faite si `repost_count` vaut 0.
 
 Élément « partage » (Mon fil et `users/{id}/reposts`) : un `TestimonyResource` complet (son `user` = **auteur d'origine**) + `feedReason: "repost"`, `repostId`, `repostedBy` (UserResource du partageur), `repostComment` (ou `null`), `repostedAt` (ISO 8601).
 
@@ -69,7 +82,7 @@ Application : `lib/features/repost/repost.dart` (`RepostInfo`, `RepostRepository
 
 ## Limites connues
 
-- Les **cartes du fil** n'ont pas de menu : le partage interne se fait depuis la page du témoignage (application et site).
+- Sur le site, le partage interne se fait depuis la page du témoignage. L'application le propose aussi sur les cartes, avec le bouton Partager.
 - L'application ne sait pas, à l'ouverture de la feuille, si le témoignage est déjà partagé (sauf pendant la session) : « Partager » met alors simplement à jour le commentaire, et « Annuler mon partage » est toujours proposé.
 - Pas de « partage d'un partage » : on partage toujours le témoignage d'origine.
 - Les abonnés voient un nouveau partage tout de suite (cache vidé pour 2 000 abonnés au plus ; au-delà, sous 10 minutes).

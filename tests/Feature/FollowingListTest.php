@@ -42,14 +42,15 @@ class FollowingListTest extends TestCase
         $this->publish($author, 'pending');
         $silent = $this->user('Sans Témoignage', ['testimony_count' => 5]); // compteur faux, aucun témoignage publié
 
-        $this->getJson('/api/v1/community?tab=people')->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $author->id)
-            ->assertJsonPath('data.0.testimony_count', 2);
+        // Tous les comptes personnels sont listés, qu'ils aient publié ou non ; le nombre affiché est le vrai.
+        $data = collect($this->getJson('/api/v1/community?tab=people')->assertOk()
+            ->assertJsonCount(2, 'data')->json('data'))->keyBy('id');
+        $this->assertSame(2, $data[$author->id]['testimony_count']);
+        $this->assertSame(0, $data[$silent->id]['testimony_count']);
 
         $this->get('/communaute?tab=people')->assertOk()
             ->assertSee('Awa Témoin')->assertSee('2 témoignages')
-            ->assertDontSee('Sans Témoignage');
+            ->assertSee('Sans Témoignage');
 
         $this->getJson("/api/v1/users/{$author->id}")->assertJsonPath('data.testimony_count', 2);
         $this->assertNotNull($silent);

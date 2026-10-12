@@ -226,7 +226,7 @@ class VideoPageTest extends TestCase
         $this->assertSame(0, $video->fresh()->comment_count);
     }
 
-    public function test_moderator_can_delete_a_reply_and_counters_follow(): void
+    public function test_admin_can_delete_a_reply_and_counters_follow(): void
     {
         $video = $this->testimony('Vidéo');
         $this->actingAs($this->viewer)->postJson("/videos/{$video->id}/comments", ['body' => 'Principal']);
@@ -234,7 +234,10 @@ class VideoPageTest extends TestCase
         $this->actingAs($this->author)->postJson("/videos/{$video->id}/comments", ['body' => 'Réponse', 'parent_id' => $rootId]);
         $replyId = Comment::whereNotNull('parent_id')->value('id');
 
-        $this->actingAs($this->moderator)->deleteJson("/comments/{$replyId}")
+        // Un modérateur ne supprime jamais ce qu'un autre a écrit ; un administrateur, oui.
+        $this->actingAs($this->moderator)->deleteJson("/comments/{$replyId}")->assertForbidden();
+        $this->moderator->update(['role' => 'administrateur']);
+        $this->actingAs($this->moderator->fresh())->deleteJson("/comments/{$replyId}")
             ->assertOk()->assertJsonPath('parentId', $rootId)->assertJsonPath('replies', 0)->assertJsonPath('count', 1);
     }
 

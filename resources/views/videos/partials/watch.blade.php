@@ -13,7 +13,7 @@
         ['like',    'fa-thumbs-up',      "J'aime"],
         ['pray',    'fa-hands-praying',  'Prière'],
         ['amen',    'fa-hands-clapping', 'Amen'],
-        ['worship', 'fa-hands',          'Adorer'],
+        ['worship', 'fa-hands',          'Adorer Dieu'],
         ['fire',    'fa-fire',           'Feu'],
     ];
     // Page d'origine : /videos/{id} ou /testimonies/{id} (même présentation).
@@ -300,6 +300,14 @@
                     </button>
                     <form id="journal-store-form" method="POST" action="{{ route('journal.store', $testimony->id) }}" data-loading-label="Enregistrement…" hidden>@csrf</form>
                     @endif
+                    @if($testimony->canBeDeletedBy(Auth::user()))
+                    {{-- Auteur ou administrateur (jamais un modérateur) --}}
+                    <button type="button" class="chip text-error-600" title="Supprimer le témoignage"
+                            onclick="openConfirmModal('testimony-delete-form', '{{ Auth::id() === $testimony->user_id ? 'Votre témoignage' : 'Ce témoignage' }} sera supprimé définitivement, avec ses commentaires et ses réactions.', 'Supprimer le témoignage', 'Supprimer', 'fa-trash')">
+                        <i class="fa-solid fa-trash" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">Supprimer</span><span class="sr-only">Supprimer le témoignage</span>
+                    </button>
+                    <form id="testimony-delete-form" method="POST" action="{{ route('testimonies.destroy', $testimony->id) }}" data-loading-label="Suppression…" hidden>@csrf @method('DELETE')</form>
+                    @endif
                     @if($canReport)
                     <button type="button" class="chip" data-modal-open="report-modal" aria-label="Signaler ce témoignage" title="Signaler">
                         <i class="fa-regular fa-flag" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">Signaler</span>
@@ -395,7 +403,7 @@
 
                 <dl class="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                     @if($prophecy->received_on)
-                    <div class="min-w-0"><dt class="text-xs text-slate-500">Reçue le</dt><dd class="font-medium text-slate-900">{{ $fmtDate($prophecy->received_on) }}</dd></div>
+                    <div class="min-w-0"><dt class="text-xs text-slate-500">Reçue le</dt><dd class="font-medium text-slate-900">{{ $prophecy->receivedLabel() }}</dd></div>
                     @endif
                     @if(filled($prophecy->given_by))
                     <div class="min-w-0"><dt class="text-xs text-slate-500">Donnée par</dt><dd class="font-medium break-words text-slate-900">{{ $prophecy->given_by }}</dd></div>

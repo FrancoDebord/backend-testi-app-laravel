@@ -22,9 +22,9 @@ class NotificationController extends Controller
         } elseif ($filter === 'comments') {
             $query->whereIn('type', ['comment', 'reply', 'mention']);
         } elseif ($filter === 'reactions') {
-            $query->whereIn('type', ['like', 'follow', 'share']);
+            $query->whereIn('type', ['like', 'prayer', 'follow', 'share']);
         } elseif ($filter === 'system') {
-            $query->whereIn('type', ['testimony_approved', 'testimony_rejected', 'pending_correction']);
+            $query->whereIn('type', ['testimony_approved', 'testimony_rejected', 'pending_correction', 'account_verified', 'account_verification_rejected']);
         }
 
         $notifications = $query->paginate(20);

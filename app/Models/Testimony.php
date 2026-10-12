@@ -28,7 +28,15 @@ class Testimony extends Model
         'is_featured', 'views_count', 'like_count', 'prayer_count',
         'comment_count', 'share_count', 'bookmark_count',
         'approved_by', 'approved_at',
+        // Bunny Stream (docs/fonctionnalites/videos-bunny-stream.md)
+        'bunny_video_id', 'video_status', 'duration', 'available_resolutions',
     ];
+
+    // États d'une vidéo Bunny Stream (video_status ; null = pas de vidéo Bunny).
+    public const VIDEO_UPLOADING  = 'uploading';
+    public const VIDEO_PROCESSING = 'processing';
+    public const VIDEO_READY      = 'ready';
+    public const VIDEO_FAILED     = 'failed';
 
     protected function casts(): array
     {
@@ -42,6 +50,7 @@ class Testimony extends Model
             'proofs_public' => 'boolean',
             'approved_at' => 'datetime',
             'duration_sec'    => 'integer',
+            'duration'        => 'integer',
             'views_count'     => 'integer',
             'like_count'      => 'integer',
             'prayer_count'    => 'integer',
@@ -56,6 +65,24 @@ class Testimony extends Model
 
     protected static function booted(): void
     {
+        // Publié, dépublié ou supprimé : « Mon fil » de l'auteur (où figurent ses propres témoignages)
+        // est recalculé tout de suite au lieu d'attendre la fin du cache.
+        $forgetAuthorFeed = function (Testimony $testimony) {
+            if ($testimony->user_id && ($testimony->wasRecentlyCreated || $testimony->wasChanged(['status', 'visibility', 'approved_at']) || !$testimony->exists)) {
+                \Illuminate\Support\Facades\Cache::forget(\App\Services\Recommendations::personalCacheKey($testimony->user_id));
+            }
+        };
+        static::saved($forgetAuthorFeed);
+        static::deleted($forgetAuthorFeed);
+
+        // Vidéo Bunny supprimée avec le témoignage, après la réponse ; un échec est journalisé
+        // sans bloquer la suppression (docs/fonctionnalites/videos-bunny-stream.md).
+        static::deleted(function (Testimony $testimony) {
+            if ($guid = $testimony->bunny_video_id) {
+                dispatch(fn () => \App\Services\BunnyStreamVideos::deleteQuietly($guid))->afterResponse();
+            }
+        });
+
         // L'identifiant est fixé dès la création pour enregistrer l'URL en une seule requête.
         static::creating(function (Testimony $testimony) {
             if (!$testimony->getKey()) {
@@ -185,13 +212,29 @@ class Testimony extends Model
 
     public function scopePublished($query)
     {
-        return $query->where('status', TestimonyStatus::Approved)->where('visibility', TestimonyVisibility::Public);
+        return $query->where('status', TestimonyStatus::Approved)->where('visibility', TestimonyVisibility::Public)->videoPlayable();
     }
 
     public function scopePending($query)
     {
-        // Le carnet privé ne passe jamais en modération.
-        return $query->where('status', TestimonyStatus::Pending)->withoutJournal();
+        // Le carnet privé ne passe jamais en modération ; une vidéo Bunny pas encore prête non plus.
+        return $query->where('status', TestimonyStatus::Pending)->withoutJournal()->videoPlayable();
+    }
+
+    /**
+     * Vidéo lisible (docs/fonctionnalites/videos-bunny-stream.md) : pas de vidéo Bunny, vidéo Bunny prête,
+     * ou ancien fichier encore présent (vidéo LWS en cours de reprise par Bunny).
+     */
+    public function scopeVideoPlayable($query)
+    {
+        return $query->where(fn ($q) => $q->whereNull($q->qualifyColumn('video_status'))
+            ->orWhere($q->qualifyColumn('video_status'), self::VIDEO_READY)
+            ->orWhereNotNull($q->qualifyColumn('media_url')));
+    }
+
+    public function isVideoPlayable(): bool
+    {
+        return $this->video_status === null || $this->video_status === self::VIDEO_READY || filled($this->media_url);
     }
 
     // ---------- Carnet privé (docs/fonctionnalites/carnet-prive.md) ----------
@@ -323,6 +366,11 @@ class Testimony extends Model
             return true;
         }
 
+        // Vidéo Bunny en cours d'envoi ou de traitement : auteur et modération seulement.
+        if (!$this->isVideoPlayable()) {
+            return false;
+        }
+
         if ($this->status !== TestimonyStatus::Approved) {
             return false;
         }
@@ -410,17 +458,48 @@ class Testimony extends Model
             : sprintf('%d:%02d', $mins, $secs);
     }
 
+    /** A réagi « j'aime » (like, love ou fire) : une seule réaction de ce groupe par personne. */
     public function isLikedBy(?string $userId): bool
     {
         if (!$userId) return false;
-        return $this->reactions()->where('user_id', $userId)->where('type', 'like')->exists();
+        return $this->reactions()->where('user_id', $userId)
+            ->whereIn('type', \App\Enums\ReactionType::valuesOfGroup('appreciation'))->exists();
     }
 
+    /** A réagi « je prie » (pray, amen ou worship). */
     public function isPrayedBy(?string $userId): bool
     {
         if (!$userId) return false;
-        return $this->reactions()->where('user_id', $userId)->where('type', 'pray')->exists();
+        return $this->reactions()->where('user_id', $userId)
+            ->whereIn('type', \App\Enums\ReactionType::valuesOfGroup('prayer'))->exists();
     }
+
+    /**
+     * Supprimer le témoignage : son auteur ou un administrateur. Un modérateur ne supprime jamais
+     * ce qu'un autre a soumis : il refuse ou dépublie (modération).
+     */
+    public function canBeDeletedBy(?User $user): bool
+    {
+        return $user !== null && ($user->id === $this->user_id || $user->isAdmin());
+    }
+
+    /**
+     * Réglage « Qui peut commenter » de l'auteur (user_settings.comment_permission) :
+     * everyone, followers (abonnés de l'auteur) ou nobody. L'auteur et la modération peuvent toujours.
+     */
+    public function acceptsCommentsFrom(?User $user): bool
+    {
+        if (!$user) return false;
+        if ($user->id === $this->user_id || $user->canModerate()) return true;
+
+        return match ($this->user?->settings?->comment_permission ?? 'everyone') {
+            'nobody'    => false,
+            'followers' => $user->isFollowing($this->user_id),
+            default     => true,
+        };
+    }
+
+    public const COMMENTS_CLOSED_MESSAGE = "L'auteur a limité les commentaires sur ses témoignages.";
 
     public function isSavedBy(?string $userId): bool
     {
