@@ -73,6 +73,16 @@ jobs:
       # - uses: actions/setup-node@v4
       #   with: { node-version: '20' }
       # - run: npm ci && npm run build
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Compilation des assets (Vite)
+        run: |
+          npm ci
+          npm run build
 
       - name: Envoi FTP (fichiers modifiés uniquement)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
