@@ -74,6 +74,13 @@ Route::prefix('v1')->group(function () {
         });
     });
 
+    // Designs du verset : catalogue (public) et préférences synchronisées — docs/fonctionnalites/designs-du-verset.md
+    Route::get('verse-designs', [\App\Http\Controllers\Api\VerseStyleController::class, 'designs']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('me/verse-style', [\App\Http\Controllers\Api\VerseStyleController::class, 'show']);
+        Route::put('me/verse-style', [\App\Http\Controllers\Api\VerseStyleController::class, 'update'])->middleware('throttle:60,1');
+    });
+
     // ── Bible (public) ──────────────────────────────────────────────────
     Route::prefix('bible')->group(function () {
         Route::get('translations',                          [BibleController::class, 'translations']);

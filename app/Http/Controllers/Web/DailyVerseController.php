@@ -8,6 +8,12 @@ use App\Models\PrayerRequest;
 use App\Services\DailyVerses;
 use App\Services\PrayerActionException;
 use App\Services\PrayerRequests;
+use App\Services\VerseDesignOfTheDay;
+use App\Services\VerseShareImage;
+use App\Services\VerseStyles;
+use App\Support\VerseDesigns;
+use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,6 +49,7 @@ class DailyVerseController extends Controller
         $current   = $preferred === 'ORIGINAL' ? null : $versions->firstWhere('code', $preferred);
 
         $viewer = Auth::user();
+        $designDate = $date ?? VerseDesignOfTheDay::todayDate();
         $tab    = in_array($request->query('onglet'), ['prieres', 'commentaires', 'temoignages'], true) ? $request->query('onglet') : 'prieres';
 
         return view('daily-verse.show', [
@@ -61,7 +68,35 @@ class DailyVerseController extends Controller
             'commentCount' => $this->verses->commentCount($verse),
             'testimonies'  => $this->verses->linkedTestimonies($verse, 12),
             'reasons'      => DailyVerses::REPORT_REASONS,
+            // Designs : docs/fonctionnalites/designs-du-verset.md
+            'designDate'   => $designDate,
+            ...app(VerseStyles::class)->forView($viewer, $designDate),
         ]);
+    }
+
+    /**
+     * GET /verset-du-jour/{date}/image.png?design=  Image de partage 1080 × 1350 (design du jour par
+     * défaut ; design inconnu ou désactivé → design du jour). Générée une fois puis servie du cache.
+     */
+    public function image(Request $request, string $date): BinaryFileResponse
+    {
+        $verse = $this->verses->forDate($date);
+        abort_if(!$verse, 404);
+        $design = $request->query('design');
+        $design = is_string($design) && VerseDesigns::isActive($design) ? $design : VerseDesignOfTheDay::forDate($date);
+
+        return response()->file(app(VerseShareImage::class)->path($verse, $date, $design), [
+            'Content-Type'  => 'image/png',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
+    /** PUT /verset-du-jour/style  Design et réglages du texte du membre (mêmes règles que PUT /api/v1/me/verse-style). */
+    public function updateStyle(Request $request, VerseStyles $styles): JsonResponse
+    {
+        $data = $request->validate(VerseStyles::rules(), VerseStyles::MESSAGES);
+
+        return response()->json(['success' => true, 'data' => $styles->update(Auth::user(), $data), 'message' => 'Préférences enregistrées.']);
     }
 
     public function react(Request $request, int $id): RedirectResponse

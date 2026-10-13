@@ -95,6 +95,12 @@ class User extends Authenticatable
         return $this->hasOne(UserSetting::class);
     }
 
+    /** Design et réglages du texte du verset du jour (docs/fonctionnalites/designs-du-verset.md). */
+    public function verseStylePreference(): HasOne
+    {
+        return $this->hasOne(VerseStylePreference::class);
+    }
+
     /** Appareils qui reçoivent les notifications push (docs/fonctionnalites/notifications-push.md). */
     public function deviceTokens(): HasMany
     {

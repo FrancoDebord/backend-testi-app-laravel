@@ -1,0 +1,201 @@
+/*
+|--------------------------------------------------------------------------
+| Verset du jour : designs (docs/fonctionnalites/designs-du-verset.md)
+|--------------------------------------------------------------------------
+| Polices embarquées (pas de service externe), surface commune des designs, carte de l'accueil,
+| plein écran et sélecteur. Les couleurs de chaque design : verse-designs.css (généré).
+| Chaque design gère son rendu clair ou sombre : aucune dépendance au mode sombre du site.
+*/
+
+@import './verse-designs.css';
+
+/* Polices variables (graisses 400 à 600), sous-ensemble latin (français compris). Licence OFL. */
+@font-face {
+    font-family: 'Lora';
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url('../fonts/lora.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Source Serif 4';
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url('../fonts/source-serif-4.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url('../fonts/inter.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Nunito Sans';
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url('../fonts/nunito-sans.woff2') format('woff2');
+}
+
+
+@layer components {
+    /* ── Surface d'un design ──────────────────────────────────────────── */
+    .verse-design {
+        --verse-long: 100cqi; /* plus grand côté, précisé par verse-style.js */
+        --verse-size: 22px;
+        --verse-font: 'Lora', Georgia, serif;
+        container-type: inline-size;
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        color: var(--verse-ink);
+    }
+    .verse-design__bg {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+    }
+    .verse-design__bg::before,
+    .verse-design__bg::after {
+        content: '';
+        position: absolute;
+        pointer-events: none;
+    }
+    /* Halos et formes : flous (lumière diffuse). */
+    .verse-design__bg::before {
+        inset: -8%;
+        filter: blur(calc(var(--verse-long) * 0.025));
+    }
+    /* Motif, grain et voile. */
+    .verse-design__bg::after {
+        inset: 0;
+    }
+    .verse-design__content {
+        transition: opacity 0.18s ease;
+    }
+    .verse-design.is-switching .verse-design__content,
+    .verse-design.is-switching .verse-design__bg {
+        opacity: 0;
+    }
+    .verse-design__bg {
+        transition: opacity 0.18s ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .verse-design__content,
+        .verse-design__bg {
+            transition: none;
+        }
+    }
+
+    .verse-design__text {
+        font-family: var(--verse-font);
+        font-size: var(--verse-size);
+        line-height: 1.4;
+        font-weight: 400;
+        overflow-wrap: break-word;
+        color: var(--verse-ink);
+    }
+    .verse-design__ref {
+        font-family: var(--verse-font);
+        font-weight: 600;
+        color: var(--verse-accent);
+    }
+    .verse-design__label {
+        color: var(--verse-accent);
+    }
+    /* Ornements : affichés selon le design (verse-designs.css). */
+    .verse-design__line,
+    .verse-design__quote {
+        display: none;
+    }
+    .verse-design__line {
+        width: 2rem;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--verse-decoration);
+    }
+    .verse-design__quote {
+        position: absolute;
+        top: 0.25rem;
+        right: 1rem;
+        font-family: Georgia, serif;
+        font-size: 7rem;
+        line-height: 1;
+        color: var(--verse-decoration);
+        opacity: 0.18;
+        pointer-events: none;
+    }
+
+    /* Police et alignement choisis */
+    .verse-font--lora { --verse-font: 'Lora', Georgia, serif; }
+    .verse-font--sourceSerif { --verse-font: 'Source Serif 4', Georgia, serif; }
+    .verse-font--inter { --verse-font: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+    .verse-font--nunitoSans { --verse-font: 'Nunito Sans', ui-sans-serif, system-ui, sans-serif; }
+    .verse-align--start .verse-design__align { text-align: start; }
+    .verse-align--center .verse-design__align { text-align: center; }
+    .verse-align--center .verse-design__line { margin-inline: auto; }
+
+    /* Actions posées sur le design (j'aime, commentaires, partage) : teintes du design. */
+    .verse-action {
+        display: inline-flex;
+        min-height: 2.5rem;
+        align-items: center;
+        gap: 0.4rem;
+        border-radius: var(--krea-radius-md);
+        padding: 0.4rem 0.8rem;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--verse-ink);
+        background: var(--verse-chip);
+    }
+    .verse-action:hover {
+        background: var(--verse-chip-hover);
+    }
+    .verse-action:focus-visible {
+        outline: 2px solid var(--verse-ink);
+        outline-offset: 2px;
+    }
+    .verse-action[aria-pressed='true'] {
+        background: var(--verse-ink);
+        color: var(--verse-on-ink, #fff);
+    }
+    .verse-design.verse-tone--light { --verse-on-ink: #ffffff; }
+    .verse-design.verse-tone--dark { --verse-on-ink: #0b2044; }
+
+    /* ── Carte de l'accueil ───────────────────────────────────────────── */
+    .verse-card {
+        border-radius: var(--krea-radius-lg);
+        box-shadow: 0 1px 2px rgb(16 24 40 / 0.06);
+    }
+    .verse-card .verse-design__text {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: var(--verse-lines, 8);
+        line-clamp: var(--verse-lines, 8);
+        overflow: hidden;
+    }
+
+    /* ── Plein écran : le design couvre tout le premier écran ─────────── */
+    .verse-hero {
+        min-height: calc(100svh - 4rem); /* en-tête du site : h-16 */
+    }
+    .verse-hero .verse-design__quote {
+        top: 4rem; /* sous la barre du haut (bouton Fermer) */
+    }
+
+    /* Vignette d'aperçu (sélecteur) */
+    .verse-thumb {
+        aspect-ratio: 4 / 5;
+        border-radius: var(--krea-radius-md);
+    }
+    .verse-thumb .verse-design__text {
+        --verse-size: 11px;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 4;
+        overflow: hidden;
+    }
+}

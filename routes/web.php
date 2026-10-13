@@ -94,6 +94,11 @@ Route::get('/bible',                [BibleController::class, 'reader'])->name('b
 // Verset du jour en plein écran : versions, prière, commentaires, témoignages (docs/fonctionnalites/verset-du-jour.md)
 Route::get('/verset-du-jour/{date?}', [\App\Http\Controllers\Web\DailyVerseController::class, 'show'])
     ->where('date', '\d{4}-\d{2}-\d{2}')->name('daily-verse.show');
+// Image de partage (aperçu des réseaux sociaux) et design choisi : docs/fonctionnalites/designs-du-verset.md
+Route::get('/verset-du-jour/{date}/image.png', [\App\Http\Controllers\Web\DailyVerseController::class, 'image'])
+    ->where('date', '\d{4}-\d{2}-\d{2}')->middleware('throttle:60,1')->name('daily-verse.image');
+Route::put('/verset-du-jour/style', [\App\Http\Controllers\Web\DailyVerseController::class, 'updateStyle'])
+    ->middleware(['auth', 'throttle:60,1'])->name('daily-verse.style');
 Route::middleware('auth')->whereNumber('id')->whereUuid('comment')->group(function () {
     Route::post('/verset-du-jour/{id}/reagir',                          [\App\Http\Controllers\Web\DailyVerseController::class, 'react'])->middleware('throttle:60,1')->name('daily-verse.react');
     Route::post('/verset-du-jour/{id}/prieres',                         [\App\Http\Controllers\Web\DailyVerseController::class, 'storePrayer'])->middleware('throttle:20,1')->name('daily-verse.prayers.store');

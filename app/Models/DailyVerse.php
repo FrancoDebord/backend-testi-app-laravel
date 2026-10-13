@@ -44,9 +44,21 @@ class DailyVerse extends Model
         return $this->hasMany(PrayerRequest::class);
     }
 
+    /** Verset du jour au calendrier Africa/Porto-Novo : change à minuit, en même temps que le design du jour. */
     public static function today(): ?self
     {
-        return static::forDate(now()->toDateString());
+        return static::forDate(\App\Services\VerseDesignOfTheDay::todayDate());
+    }
+
+    /** Images de partage générées : supprimées quand le verset change (texte, référence, date, activation). */
+    protected static function booted(): void
+    {
+        static::saved(function (self $verse) {
+            if ($verse->wasChanged(['verse_text', 'reference', 'scheduled_date', 'is_active']) || $verse->wasRecentlyCreated) {
+                \App\Services\VerseShareImage::forgetFor($verse);
+            }
+        });
+        static::deleted(fn (self $verse) => \App\Services\VerseShareImage::forgetFor($verse));
     }
 
     /**
@@ -55,7 +67,7 @@ class DailyVerse extends Model
      */
     public static function forDate(string $date): ?self
     {
-        $scheduled = static::where('scheduled_date', $date)->where('is_active', true)->first();
+        $scheduled = static::whereDate('scheduled_date', $date)->where('is_active', true)->first();
         if ($scheduled) {
             return $scheduled;
         }

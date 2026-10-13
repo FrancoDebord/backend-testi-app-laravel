@@ -16,7 +16,7 @@ Lecture publique ; les actions demandent un compte (invité : connexion proposé
 
 | Règle | Détail |
 |---|---|
-| **Choix** | Verset actif programmé ce jour-là (`scheduled_date`). Sinon, un verset actif choisi **d'après la date** (même verset toute la journée, pour que commentaires et requêtes restent rattachés au verset affiché). Auparavant ce repli était tiré au hasard à chaque appel. |
+| **Choix** | Verset actif programmé ce jour-là (`scheduled_date`, jour du calendrier **Africa/Porto-Novo** depuis le 2026-10-13 : le verset change à minuit au Bénin, en même temps que le [design du jour](designs-du-verset.md)). Sinon, un verset actif choisi **d'après la date** (même verset toute la journée, pour que commentaires et requêtes restent rattachés au verset affiché). Auparavant ce repli était tiré au hasard à chaque appel. |
 | **Référence** | Texte libre saisi par l'équipe (« Jérémie 29 : 11 », « Jean 3:16-17 »). `App\Support\BibleReference` la reconnaît : noms français avec ou sans accents, noms anglais, abréviations courantes (« Jn », « Ps », « 1 Co »…), séparateurs `:` `.` `,`, plages `16-18`, `16–18`, `16 à 18`. Une plage qui déborde sur le chapitre suivant est réduite à son premier chapitre. |
 | **Référence non reconnue** | Seul le **texte du jour** (saisi par l'équipe) est proposé ; pas de versions ni de témoignages liés. |
 
@@ -90,10 +90,11 @@ Commentaire :
 
 ## Site
 
+- Depuis le 2026-10-13, le premier écran (et la carte de l'accueil) prend le design du jour ou celui choisi par le membre ; J'aime, Commentaires et Partager y restent, tandis que Je prie, Écouter et Mode lecture passent dans la première carte blanche. Voir [designs-du-verset.md](designs-du-verset.md).
 - `GET /verset-du-jour` et `/verset-du-jour/{AAAA-MM-JJ}` (`daily-verse.show`) : bloc immersif, versions (`?version=`, `?comparer=1`), onglets `?onglet=prieres|commentaires|temoignages`, mode lecture (`<dialog>`), partage (feuille du système ou copie), écoute (`speechSynthesis`, bouton masqué si le navigateur ne sait pas lire), lien « Lire tout le chapitre » vers `/bible`.
 - Actions (connecté) : `POST /verset-du-jour/{id}/reagir` (`type`), `/prieres`, `/commentaires`, `DELETE /commentaires/{comment}`, `POST /commentaires/{comment}/signaler`.
 - Accueil : le bloc « Verset du jour » (`home/index.blade.php`) est un lien vers la page.
-- Fichiers : `Web\DailyVerseController`, `resources/views/daily-verse/show.blade.php` (styles du dégradé en ligne : aucune nouvelle classe Tailwind à compiler).
+- Fichiers : `Web\DailyVerseController`, `resources/views/daily-verse/show.blade.php`, composant `<x-verse-of-the-day-card />` ; designs : `resources/css/verse.css`, `resources/css/verse-designs.css` (généré), `resources/js/verse-style.js`.
 
 ## Application
 

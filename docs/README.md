@@ -14,6 +14,7 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Événements chrétiens](fonctionnalites/evenements.md) | Croisades, conférences, camps… créés par les organisations vérifiées et les administrateurs : carrousel d'images, invités, « Je participe », commentaires des participants, témoignages officiels, direct de l'événement (site et application) |
 | [Requêtes de prière](fonctionnalites/requetes-de-priere.md) | Publication directe, visibilité publique / abonnés / privée, anonymat, « Je prie », encouragements, exaucée, signalement et retrait par la modération, rattachement à un événement (site et application) |
 | [Verset du jour en plein écran](fonctionnalites/verset-du-jour.md) | Page immersive du verset du jour (site et application) : versions de la Bible (choix mémorisé, « Comparer », hors connexion), J'aime / Je prie, partage, écoute, mode lecture ; sujets de prière rattachés, commentaires (mentions, signalement), témoignages qui citent le verset |
+| [Designs du verset du jour](fonctionnalites/designs-du-verset.md) | 12 designs communs à l'app et au site (catalogue `config/verse_designs.php`), design du jour (même algorithme que l'app, Africa/Porto-Novo), police, taille et alignement du texte synchronisés (`/me/verse-style`), carte de l'accueil et premier écran plein design, image de partage 1080 × 1350 (GD) et aperçu des réseaux sociaux |
 | [Sessions de prière](fonctionnalites/sessions-de-priere.md) | Sessions programmées par tout compte, inscriptions « Je serai là », rappel 15 min avant ; la salle est un direct LiveKit ouvert par l'hôte (commentaires, intervenants) |
 | [Paroles prophétiques](fonctionnalites/paroles-prophetiques.md) | Carnet privé (application) : garder les paroles reçues (texte ou audio), journal de prière, rappels, proclamation, témoignage de l'accomplissement et parole rendue publique avec lui |
 | [Messages pour inciter à témoigner](fonctionnalites/encouragements.md) | Versets (Psaume 78:4, Apocalypse 12:11…) et invitations sur les pages et dans les fils, bouton Témoigner |
@@ -212,9 +213,20 @@ Le fichier `storage/app/firebase-credentials.json` (chemin proposé par `.env.ex
 
 [connexion-google.md](fonctionnalites/connexion-google.md) — 2026-10-09 : migration `2026_10_09_200001_add_google_id_to_users_table` (`php artisan migrate --force`), variable `GOOGLE_WEB_CLIENT_ID` (identifiant client **Web**, `566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com`) à ajouter au `.env` du serveur, puis `php artisan config:clear`. Sans elle (et sans `GOOGLE_CLIENT_ID`), toute connexion Google est refusée et le bouton du site est masqué. Pour le bouton « Continuer avec Google » de `/login` (2026-10-10) : ajouter `https://testi.airid-africa.com` aux **origines JavaScript autorisées** du client OAuth Web dans la console Google Cloud.
 
+### Designs du verset du jour
+
+[designs-du-verset.md](fonctionnalites/designs-du-verset.md), 2026-10-13 :
+
+- migration `2026_10_13_100001_create_verse_style_preferences_table` ;
+- nouvelle dépendance `intervention/image` (^3, extension **GD** requise : présente sur LWS) ;
+- recompilation des assets (polices embarquées, `verse.css`, `verse-style.js`) ;
+- `storage/app/public/verse-images/` accessible en écriture (créé automatiquement).
+
+Aucune variable d'environnement. Après une régénération des couleurs (`php scripts/generate-verse-colors.php`) : recompiler et vider `storage/app/public/verse-images/`.
+
 ### Dépendances PHP
 
-`vendor/` n'est pas versionné : après un changement de `composer.json` / `composer.lock` (2026-09-28 : `league/flysystem-aws-s3-v3` et mises à jour de sécurité), lancer `composer install --no-dev --optimize-autoloader` sur le serveur, ou copier `vendor/`. Pour les enregistrements de directs, la clé `LIVEKIT_RECORDING_S3_KEY` doit permettre lecture **et** écriture du bucket (dépôt des versions allégées).
+`vendor/` n'est pas versionné : après un changement de `composer.json` / `composer.lock` (2026-09-28 : `league/flysystem-aws-s3-v3` et mises à jour de sécurité ; 2026-10-13 : `intervention/image`), lancer `composer install --no-dev --optimize-autoloader` sur le serveur, ou copier `vendor/`. Pour les enregistrements de directs, la clé `LIVEKIT_RECORDING_S3_KEY` doit permettre lecture **et** écriture du bucket (dépôt des versions allégées).
 
 ### Après chaque déploiement
 

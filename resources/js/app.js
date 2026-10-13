@@ -2,6 +2,9 @@ import './bootstrap';
 import './videos';
 import './tts';
 
+// Designs du verset du jour : chargé seulement sur les pages qui l'affichent.
+if (document.getElementById('verse-style-config')) import('./verse-style');
+
 /*
 |--------------------------------------------------------------------------
 | Interface commune TestiApp (charte ARISE & SHINE Krea) — JavaScript natif

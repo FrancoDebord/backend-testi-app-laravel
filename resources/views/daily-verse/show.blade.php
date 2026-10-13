@@ -1,14 +1,18 @@
 @extends('layouts.app')
 {{--
-    Verset du jour en plein écran (docs/fonctionnalites/verset-du-jour.md) : présentation immersive,
-    versions de la Bible (choix mémorisé en session, « Comparer »), réactions, partage, lecture vocale,
-    mode lecture, puis requêtes de prière, commentaires et témoignages liés.
+    Verset du jour en plein écran (docs/fonctionnalites/verset-du-jour.md) : le premier écran est
+    entièrement occupé par le design du jour ou celui choisi (docs/fonctionnalites/designs-du-verset.md) :
+    verset, référence, j'aime / commentaires / partage, vignette du sélecteur. Au défilement, sur des
+    cartes blanches : prière, écoute, mode lecture, versions de la Bible, puis requêtes de prière,
+    commentaires et témoignages liés.
 --}}
 @php
-    $header      = 'Verset du jour';
-    $subheader   = $date ? \Illuminate\Support\Carbon::parse($date)->translatedFormat('l j F Y') : ($verse->themeLabel());
+    $fullBleed   = true; // le design couvre toute la largeur ; le titre est dans le premier écran
+    $header      = null;
     $breadcrumbs = [['label' => 'Accueil', 'url' => route('home')], ['label' => 'Verset du jour']];
+    $dayLabel    = $date ? \Illuminate\Support\Carbon::parse($date)->translatedFormat('l j F Y') : $verse->themeLabel();
     $text        = $current['text'] ?? $verse->verse_text;
+    $shown       = '« ' . trim($text) . ' »';
     $versionName = $current ? $current['name'] : 'Texte du jour';
     $reference   = $parsed['label'] ?? $verse->reference;
     $liked       = in_array('like', $myReactions, true);
@@ -18,61 +22,115 @@
     $versionUrl  = fn (string $code) => route('daily-verse.show', array_filter(['date' => $date, 'version' => $code, 'onglet' => $tab !== 'prieres' ? $tab : null]));
     $publishUrl  = route('publish', ['verset' => $text, 'reference' => $reference]);
     $loginUrl    = route('login');
+    // Design affiché : classes complètes (verse.css et verse-designs.css), mises à jour par verse-style.js.
+    $tone        = \App\Support\VerseDesigns::tone($designId);
+    $surface     = "verse-design verse-design--{$designId} verse-font--{$style['font']} verse-align--{$style['text_align']} verse-tone--{$tone}";
+    $fullSizes   = \App\Services\VerseStyles::sizesFor($shown, 'fullscreen');
+    $shareImage  = route('daily-verse.image', ['date' => $designDate]);
 @endphp
 @section('title', 'Verset du jour — ' . $reference)
 
-@section('headerActions')
-    <a href="{{ route('home') }}" class="btn-ghost btn-sm" aria-label="Fermer et revenir à l'accueil"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span>Fermer</span></a>
-@endsection
+@push('meta')
+    {{-- Aperçu des réseaux sociaux : image générée dans le design du jour --}}
+    <meta name="description" content="{{ \Illuminate\Support\Str::limit($verse->verse_text, 200) }} — {{ $verse->reference }}">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="TestiApp · ARISE &amp; SHINE Krea">
+    <meta property="og:title" content="Verset du jour — {{ $verse->reference }}">
+    <meta property="og:description" content="{{ \Illuminate\Support\Str::limit($verse->verse_text, 200) }}">
+    <meta property="og:url" content="{{ $pageUrl }}">
+    <meta property="og:image" content="{{ $shareImage }}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1080">
+    <meta property="og:image:height" content="1350">
+    <meta property="og:image:alt" content="« {{ \Illuminate\Support\Str::limit($verse->verse_text, 120) }} » {{ $verse->reference }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Verset du jour — {{ $verse->reference }}">
+    <meta name="twitter:description" content="{{ \Illuminate\Support\Str::limit($verse->verse_text, 200) }}">
+    <meta name="twitter:image" content="{{ $shareImage }}">
+@endpush
 
 @section('content')
-<div class="mx-auto max-w-4xl space-y-6">
-
-    {{-- ── Le verset : présentation immersive ─────────────────────────── --}}
-    <section class="overflow-hidden rounded-2xl text-white shadow-card"
-             style="background: linear-gradient(140deg, #184797 0%, #103675 55%, #0a2149 100%);"
-             aria-labelledby="verse-heading">
-        <div class="relative px-5 py-8 sm:px-10 sm:py-12">
-            <div class="pointer-events-none absolute inset-x-0 top-0 h-1" style="background: linear-gradient(90deg, #F18717, #FCC11D);" aria-hidden="true"></div>
-            <p id="verse-heading" class="flex flex-wrap items-center gap-2 text-sm font-semibold" style="color:#FCC11D">
+{{-- ── Premier écran : le verset dans son design ──────────────────────── --}}
+<section class="verse-hero {{ $surface }} flex flex-col"
+         style="--verse-size: {{ $fullSizes[$style['text_size']] }}px"
+         data-verse-design data-verse-fit="{{ config('verse_designs.text_size_range.fullscreen.min') }}" data-verse-sizes='@json($fullSizes)'
+         aria-labelledby="verse-heading">
+    <span class="verse-design__bg" aria-hidden="true"></span>
+    <span class="verse-design__quote" aria-hidden="true">&rdquo;</span>
+    <div class="verse-design__content flex flex-1 flex-col px-5 pt-4 pb-5 sm:px-10 lg:px-16">
+        <div class="flex items-start justify-between gap-3">
+            <h1 id="verse-heading" class="verse-design__label flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold" style="color: var(--verse-accent)">
                 <i class="fa-solid fa-sun" aria-hidden="true"></i>Verset du jour
-                <span class="font-normal text-white/70">· {{ $versionName }}</span>
-            </p>
-            <blockquote class="mt-5 text-2xl leading-relaxed font-medium break-words sm:text-3xl" data-verse-text>« {{ $text }} »</blockquote>
-            <p class="mt-5 text-lg font-bold" style="color:#FCC11D" data-verse-ref>{{ $reference }}</p>
-            @if($current === null && $preferred !== 'ORIGINAL')
-            <p class="mt-3 text-sm text-white/70">Ce passage n'est pas disponible dans la version choisie : texte du jour affiché.</p>
-            @endif
+                <span class="font-normal" style="color: var(--verse-ink)">· {{ $dayLabel }} · {{ $versionName }}</span>
+            </h1>
+            <a href="{{ route('home') }}" class="verse-action shrink-0" aria-label="Fermer et revenir à l'accueil"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">Fermer</span></a>
+        </div>
 
-            <div class="mt-8 flex flex-wrap items-center gap-2">
+        <div class="flex flex-1 items-center py-8">
+            <div class="verse-design__align mx-auto w-full max-w-3xl">
+                <span class="verse-design__line mb-5" aria-hidden="true"></span>
+                <blockquote class="verse-design__text" data-verse-text>{{ $shown }}</blockquote>
+                <p class="verse-design__ref mt-5 text-lg" data-verse-ref>{{ $reference }}</p>
+                @if($current === null && $preferred !== 'ORIGINAL')
+                <p class="mt-3 text-sm">Ce passage n'est pas disponible dans la version choisie : texte du jour affiché.</p>
+                @endif
+            </div>
+        </div>
+
+        <div class="flex items-end justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
                 @auth
                 <form method="POST" action="{{ route('daily-verse.react', $verse->id) }}" data-loading-label="…">
                     @csrf <input type="hidden" name="type" value="like">
-                    <button type="submit" class="btn-sm inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold {{ $liked ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20' }}" aria-pressed="{{ $liked ? 'true' : 'false' }}">
+                    <button type="submit" class="verse-action" aria-pressed="{{ $liked ? 'true' : 'false' }}">
                         <i class="{{ $liked ? 'fa-solid' : 'fa-regular' }} fa-heart" aria-hidden="true"></i>J'aime <span class="tabular-nums">{{ $verse->like_count }}</span>
                     </button>
                 </form>
-                <form method="POST" action="{{ route('daily-verse.react', $verse->id) }}" data-loading-label="…">
-                    @csrf <input type="hidden" name="type" value="pray">
-                    <button type="submit" class="btn-sm inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold {{ $prayed ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20' }}" aria-pressed="{{ $prayed ? 'true' : 'false' }}">
-                        <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie <span class="tabular-nums">{{ $verse->prayer_count }}</span>
-                    </button>
-                </form>
                 @else
-                <a href="{{ $loginUrl }}" class="btn-sm inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-white/20"><i class="fa-regular fa-heart" aria-hidden="true"></i>J'aime <span class="tabular-nums">{{ $verse->like_count }}</span></a>
-                <a href="{{ $loginUrl }}" class="btn-sm inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-white/20"><i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie <span class="tabular-nums">{{ $verse->prayer_count }}</span></a>
+                <a href="{{ $loginUrl }}" class="verse-action"><i class="fa-regular fa-heart" aria-hidden="true"></i>J'aime <span class="tabular-nums">{{ $verse->like_count }}</span></a>
                 @endauth
-                <button type="button" class="btn-sm inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-white/20" data-verse-share data-share-url="{{ $pageUrl }}">
+                <a href="{{ $tabUrl('commentaires') }}" class="verse-action"><i class="fa-regular fa-comment" aria-hidden="true"></i>Commentaires <span class="tabular-nums">{{ $commentCount }}</span></a>
+                <button type="button" class="verse-action" data-verse-share data-share-url="{{ $pageUrl }}">
                     <i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span data-share-label>Partager</span>
                 </button>
-                <button type="button" class="btn-sm inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-white/20" data-verse-speak hidden>
-                    <i class="fa-solid fa-volume-high" aria-hidden="true"></i><span data-speak-label>Écouter</span>
-                </button>
-                <button type="button" class="btn-sm inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-primary-900 hover:opacity-90" style="background:#FCC11D" data-verse-reader-open>
-                    <i class="fa-solid fa-expand" aria-hidden="true"></i>Mode lecture
-                </button>
             </div>
+            {{-- Vignette du design affiché : ouvre le sélecteur --}}
+            <button type="button" class="{{ $surface }} verse-thumb flex w-12 shrink-0 items-center justify-center shadow-sm ring-1 ring-slate-900/15 sm:w-14"
+                    data-verse-design data-verse-style-open aria-haspopup="dialog" aria-controls="verse-style-panel" title="Changer le design">
+                <span class="verse-design__bg" aria-hidden="true"></span>
+                <span class="text-base font-semibold" style="font-family: var(--verse-font)" aria-hidden="true">Aa</span>
+                <span class="sr-only">Changer le design et le texte</span>
+            </button>
         </div>
+        <a href="#verse-more" class="mx-auto mt-3 flex flex-col items-center text-xs font-semibold" style="color: var(--verse-ink)">
+            Faire défiler<i class="fa-solid fa-chevron-down mt-1" aria-hidden="true"></i>
+        </a>
+    </div>
+</section>
+
+<div id="verse-more" class="mx-auto max-w-4xl scroll-mt-20 space-y-6 px-4 py-8 sm:px-6">
+
+    {{-- ── Méditer : prière, écoute, mode lecture ────────────────────────── --}}
+    <section class="card flex flex-wrap items-center gap-2 p-5" aria-label="Méditer le verset">
+        @auth
+        <form method="POST" action="{{ route('daily-verse.react', $verse->id) }}" data-loading-label="…">
+            @csrf <input type="hidden" name="type" value="pray">
+            <button type="submit" class="{{ $prayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $prayed ? 'true' : 'false' }}">
+                <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie <span class="tabular-nums">{{ $verse->prayer_count }}</span>
+            </button>
+        </form>
+        @else
+        <a href="{{ $loginUrl }}" class="btn-secondary btn-sm"><i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie <span class="tabular-nums">{{ $verse->prayer_count }}</span></a>
+        @endauth
+        <button type="button" class="btn-secondary btn-sm" data-verse-speak hidden>
+            <i class="fa-solid fa-volume-high" aria-hidden="true"></i><span data-speak-label>Écouter</span>
+        </button>
+        <button type="button" class="btn-secondary btn-sm" data-verse-reader-open>
+            <i class="fa-solid fa-expand" aria-hidden="true"></i>Mode lecture
+        </button>
+        <button type="button" class="btn-ghost btn-sm" data-verse-style-open aria-controls="verse-style-panel">
+            <i class="fa-solid fa-palette" aria-hidden="true"></i>Design et texte
+        </button>
     </section>
 
     {{-- ── Versions de la Bible ──────────────────────────────────────────── --}}
@@ -231,22 +289,105 @@
     </section>
 </div>
 
-{{-- ── Mode lecture : plein écran, grand texte ───────────────────────── --}}
-<dialog id="verse-reader" class="m-0 h-full max-h-none w-full max-w-none p-0 text-white backdrop:bg-slate-900/70"
-        style="background: linear-gradient(160deg, #184797 0%, #0a2149 100%);" aria-labelledby="verse-reader-title">
-    <div class="flex h-full flex-col">
+{{-- ── Mode lecture : plein écran, grand texte, dans le design affiché ── --}}
+<dialog id="verse-reader" class="{{ $surface }} m-0 h-full max-h-none w-full max-w-none p-0 backdrop:bg-slate-900/70"
+        style="--verse-size: {{ $fullSizes[$style['text_size']] }}px" data-verse-design data-verse-sizes='@json($fullSizes)' aria-labelledby="verse-reader-title">
+    <span class="verse-design__bg" aria-hidden="true"></span>
+    <div class="verse-design__content flex h-full flex-col">
         <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <h2 id="verse-reader-title" class="text-sm font-semibold" style="color:#FCC11D"><i class="fa-solid fa-sun mr-2" aria-hidden="true"></i>Verset du jour · {{ $versionName }}</h2>
-            <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 hover:bg-white/10" data-verse-reader-close aria-label="Fermer"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <h2 id="verse-reader-title" class="verse-design__label text-sm font-semibold" style="color: var(--verse-accent)"><i class="fa-solid fa-sun mr-2" aria-hidden="true"></i>Verset du jour · {{ $versionName }}</h2>
+            <button type="button" class="verse-action" data-verse-reader-close aria-label="Fermer"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
         <div class="flex flex-1 items-center overflow-y-auto px-6 py-8 sm:px-12">
-            <div class="mx-auto max-w-3xl">
-                <p class="text-3xl leading-relaxed font-medium break-words sm:text-4xl">« {{ $text }} »</p>
-                <p class="mt-8 text-xl font-bold" style="color:#FCC11D">{{ $reference }}</p>
+            <div class="verse-design__align mx-auto w-full max-w-3xl">
+                <p class="verse-design__text">{{ $shown }}</p>
+                <p class="verse-design__ref mt-8 text-xl">{{ $reference }}</p>
             </div>
         </div>
     </div>
 </dialog>
+
+{{-- ── Sélecteur : designs et texte ──────────────────────────────────── --}}
+<dialog id="verse-style-panel" class="m-auto w-[calc(100%-2rem)] max-w-xl rounded-xl bg-white p-0 shadow-card backdrop:bg-slate-900/50 max-sm:mb-0 max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none"
+        aria-labelledby="verse-style-title">
+    <div class="flex max-h-[85svh] flex-col">
+        <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 pt-4">
+            <div class="min-w-0">
+                <h2 id="verse-style-title" class="card-title">Personnaliser le verset</h2>
+                <nav class="mt-2 flex gap-5" role="tablist" aria-label="Réglages">
+                    <button type="button" class="tab-active" role="tab" aria-selected="true" data-verse-tab="designs"><i class="fa-solid fa-palette" aria-hidden="true"></i>Designs</button>
+                    <button type="button" class="tab" role="tab" aria-selected="false" data-verse-tab="text"><i class="fa-solid fa-font" aria-hidden="true"></i>Texte</button>
+                </nav>
+            </div>
+            <button type="button" class="btn-ghost btn-sm self-start" data-verse-style-close aria-label="Fermer"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="overflow-y-auto p-5">
+            <div data-verse-pane="designs" role="tabpanel">
+                <ul class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                    @foreach($designs as $d)
+                    <li>
+                        <button type="button" class="group block w-full rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+                                data-pick-design="{{ $d['id'] }}" aria-pressed="{{ $d['id'] === $designId ? 'true' : 'false' }}">
+                            <span class="verse-thumb verse-design verse-design--{{ $d['id'] }} verse-font--{{ $style['font'] }} verse-align--{{ $style['text_align'] }} block p-2 ring-primary-600 ring-offset-2 group-aria-pressed:ring-2"
+                                  data-verse-thumb="{{ $d['id'] }}">
+                                <span class="verse-design__bg" aria-hidden="true"></span>
+                                <span class="verse-design__content verse-design__align block">
+                                    <span class="verse-design__line mb-1.5" aria-hidden="true"></span>
+                                    <span class="verse-design__text block" aria-hidden="true">{{ \Illuminate\Support\Str::limit(trim($text), 70) }}</span>
+                                </span>
+                                <span class="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-white" data-verse-check @if($d['id'] !== $designId) hidden @endif aria-hidden="true"><i class="fa-solid fa-check text-[10px]"></i></span>
+                            </span>
+                            <span class="mt-1.5 block truncate text-xs font-semibold text-slate-700">{{ $d['name'] }}</span>
+                        </button>
+                    </li>
+                    @endforeach
+                </ul>
+                <label class="mt-4 flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" class="rounded" data-verse-always @checked($style['design_always'])>
+                    Toujours utiliser ce design
+                </label>
+                <p class="mt-1 text-xs text-slate-500">Sinon, votre choix vaut pour aujourd'hui ; demain, le design du jour revient.</p>
+            </div>
+
+            <div data-verse-pane="text" role="tabpanel" hidden class="space-y-5">
+                <fieldset>
+                    <legend class="form-label">Police</legend>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach(config('verse_designs.fonts') as $f)
+                        <button type="button" class="{{ $style['font'] === $f['id'] ? 'chip-active' : 'chip' }}" data-pick-font="{{ $f['id'] }}"
+                                aria-pressed="{{ $style['font'] === $f['id'] ? 'true' : 'false' }}" style="font-family: '{{ $f['family'] }}'">{{ $f['label'] }}</button>
+                        @endforeach
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend class="form-label">Taille</legend>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach(config('verse_designs.text_sizes') as $s)
+                        <button type="button" class="{{ $style['text_size'] === $s['id'] ? 'chip-active' : 'chip' }}" data-pick-size="{{ $s['id'] }}"
+                                aria-pressed="{{ $style['text_size'] === $s['id'] ? 'true' : 'false' }}">{{ $s['label'] }}</button>
+                        @endforeach
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend class="form-label">Alignement</legend>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach(config('verse_designs.text_aligns') as $a)
+                        <button type="button" class="{{ $style['text_align'] === $a['id'] ? 'chip-active' : 'chip' }}" data-pick-align="{{ $a['id'] }}"
+                                aria-pressed="{{ $style['text_align'] === $a['id'] ? 'true' : 'false' }}">
+                            <i class="fa-solid {{ $a['id'] === 'center' ? 'fa-align-center' : 'fa-align-left' }}" aria-hidden="true"></i>{{ $a['label'] }}
+                        </button>
+                        @endforeach
+                    </div>
+                </fieldset>
+            </div>
+            @guest
+            <p class="mt-5 text-xs text-slate-500">Vos choix sont gardés sur cet appareil. <a href="{{ $loginUrl }}" class="font-semibold text-primary-700 hover:underline">Connectez-vous</a> pour les retrouver partout.</p>
+            @endguest
+        </div>
+    </div>
+</dialog>
+<script type="application/json" id="verse-style-config">@json($config)</script>
 @endsection
 
 @push('scripts')

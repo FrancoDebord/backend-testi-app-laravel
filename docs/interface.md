@@ -126,6 +126,7 @@ Définis dans `resources/css/app.css`. À réutiliser tels quels : ne pas créer
 | Chargement | `spinner` |
 | Éditeur de texte | `rt-btn`, `rt-emoji`, `rt-content` (voir [mise en forme](fonctionnalites/mise-en-forme-temoignages.md)) |
 | Texte long issu de Markdown | `doc-content` (voir [documentation en ligne](fonctionnalites/documentation-en-ligne.md)) |
+| Verset du jour (designs) | `verse-design` + `verse-design--{id}` (fond peint, couleurs générées dans `verse-designs.css`), `verse-font--*`, `verse-align--*` ; `verse-action` : seuls boutons posés sur un design, aux couleurs du design (pas de `btn-*` sur ces fonds) ; `verse-thumb`, `verse-card`, `verse-hero`. Chaque design gère son rendu clair ou sombre. Voir [designs du verset](fonctionnalites/designs-du-verset.md) |
 
 **Menu latéral** : entrée active sur fond bleu plein, texte et icône blancs ; autres entrées en gris foncé, icône bleue, survol bleu clair. **Sélection** (carte de choix, pastille « Épingler », page courante de la pagination) : bordure ou fond `primary-600`, jamais le gris foncé.
 

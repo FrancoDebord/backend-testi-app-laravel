@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Services\DailyVerses;
 use App\Services\PrayerActionException;
 use App\Services\PrayerRequests;
+use App\Services\VerseDesignOfTheDay;
+use App\Services\VerseStyles;
 use App\Support\BibleReference;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -236,6 +238,28 @@ class DailyVerseController extends Controller
             ],
             'myReactions'  => $myReactions,
             'webUrl'       => route('daily-verse.show', $verse->scheduled_date ? ['date' => $verse->scheduled_date->toDateString()] : []),
+            ...$this->designFields($verse, $request, $user),
+        ];
+    }
+
+    /**
+     * Designs (docs/fonctionnalites/designs-du-verset.md) : design du jour de la date demandée,
+     * préférences du membre (null pour un visiteur) et design à afficher.
+     */
+    private function designFields(DailyVerse $verse, Request $request, ?User $user): array
+    {
+        $date = $request->query('date');
+        $date = is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)
+            ? $date
+            : ($verse->scheduled_date?->toDateString() ?? VerseDesignOfTheDay::todayDate());
+        $ofTheDay = VerseDesignOfTheDay::forDate($date);
+        $style = $user ? app(VerseStyles::class)->forUser($user) : null;
+
+        return [
+            'design_of_the_day'   => $ofTheDay,
+            'user_style'          => $style,
+            'effective_design_id' => VerseStyles::effectiveDesignId($style, $ofTheDay),
+            'share_image_url'     => route('daily-verse.image', ['date' => $date]),
         ];
     }
 

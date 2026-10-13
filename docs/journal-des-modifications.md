@@ -4,6 +4,36 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-13 — Designs du verset du jour
+
+- **Utilisateurs** :
+  - le verset du jour s'affiche dans l'un des **12 designs** de l'app (Aube, Nuit étoilée… Ardoise), le **design du jour** étant le même pour tous ;
+  - sur le site, la carte de l'accueil et le **premier écran** de la page du verset prennent ce design. Le reste de la page apparaît au défilement ;
+  - un sélecteur (vignette « Aa ») permet de choisir un autre design, pour la journée ou « toujours », ainsi que la police, la taille et l'alignement. Ces choix suivent le compte entre l'app et le site ; un visiteur les garde dans son navigateur ;
+  - les liens partagés affichent une **image du verset** (1080 × 1350) dans le design du jour ;
+  - le verset du jour change maintenant à **minuit, heure du Bénin** (auparavant à 1 h, minuit UTC). [designs-du-verset.md](fonctionnalites/designs-du-verset.md)
+- **API** :
+  - `GET /verse-designs` (public, cache 24 h) ;
+  - `GET` et `PUT /me/verse-style` (422 sur toute valeur hors catalogue) ;
+  - `GET /daily-verse` ajoute `design_of_the_day`, `user_style` (`null` pour un visiteur), `effective_design_id` et `share_image_url`. Les autres champs ne changent pas.
+- **Développeurs** :
+  - catalogue `config/verse_designs.php` (source unique ; ne jamais renommer un id) ;
+  - `App\Services\VerseDesignOfTheDay` (algorithme de l'app, Africa/Porto-Novo), `VerseStyles`, `VerseShareImage` ; `App\Support\VerseColors` (portage de `verse_design.dart`) et `VerseDesigns` ;
+  - script `scripts/generate-verse-colors.php`, qui génère `config/verse_design_colors.php` et `resources/css/verse-designs.css` ;
+  - composant `<x-verse-of-the-day-card />`, `resources/css/verse.css`, `resources/js/verse-style.js`, polices dans `resources/fonts/` ; pile `@stack('meta')` dans le layout ;
+  - `DailyVerse::today()` utilise Africa/Porto-Novo ;
+  - `DailyVerse::forDate()` utilise `whereDate` : sous SQLite, le verset programmé n'était jamais trouvé, ce qui faisait toujours tomber sur le repli ;
+  - les images de partage d'une date sont supprimées quand son verset est modifié ;
+  - route web `PUT /verset-du-jour/style` ;
+  - tests : `tests/Feature/VerseDesignTest.php`.
+- **Déploiement** :
+  - `composer install --no-dev --optimize-autoloader` (nouvelle dépendance `intervention/image`, GD requis) ;
+  - `php artisan migrate --force` (`2026_10_13_100001_create_verse_style_preferences_table`) ;
+  - **recompiler les assets** et copier `public/build/` ;
+  - aucune variable d'environnement.
+
+---
+
 ## 2026-10-12 — Vidéos des témoignages sur Bunny Stream
 
 - **Utilisateurs** : un témoignage vidéo est envoyé par l'application **directement à Bunny Stream**, sans passer par le serveur LWS. Il n'apparaît dans les listes publiques et dans la modération qu'une fois prêt. L'auteur le voit pendant l'envoi et l'encodage, puis reçoit une notification « Vidéo prête ». Un envoi abandonné depuis plus de 24 h passe en échec. [videos-bunny-stream.md](fonctionnalites/videos-bunny-stream.md)

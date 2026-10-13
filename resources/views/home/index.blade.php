@@ -339,13 +339,9 @@
 
         {{-- Verset du jour : encadré « inspiration » --}}
         @if($verse)
-        {{-- Clic : page plein écran (versions, prière, commentaires, témoignages) — docs/fonctionnalites/verset-du-jour.md --}}
-        <a href="{{ route('daily-verse.show') }}" class="card-insight block p-5 transition-shadow hover:shadow-card" aria-labelledby="home-verse-title" data-testid="home-daily-verse">
-            <h2 id="home-verse-title" class="mb-2 flex items-center gap-2 text-sm font-bold text-sun-700"><i class="fa-solid fa-sun text-sun-500" aria-hidden="true"></i>Verset du jour</h2>
-            <blockquote class="text-[15px] leading-relaxed text-slate-900 italic">« {{ $verse->verse_text }} »</blockquote>
-            <p class="mt-2 text-sm font-semibold text-primary-700">{{ $verse->reference }}</p>
-            <p class="mt-3 text-xs font-semibold text-primary-600">Méditer, prier, commenter <i class="fa-solid fa-arrow-right ml-1" aria-hidden="true"></i></p>
-        </a>
+        {{-- Clic : page plein écran (versions, prière, commentaires, témoignages) — docs/fonctionnalites/verset-du-jour.md.
+             Design du jour ou choisi : docs/fonctionnalites/designs-du-verset.md --}}
+        <x-verse-of-the-day-card :verse="$verse" />
         @endif
 
         {{-- Pourquoi témoigner ? (docs/fonctionnalites/pourquoi-temoigner.md) --}}

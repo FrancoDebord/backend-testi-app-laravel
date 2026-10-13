@@ -11,6 +11,9 @@
 /* ── Charte ARISE & SHINE Krea : couleurs, police, arrondis, ombres ──── */
 @import './theme.css';
 
+/* ── Verset du jour : polices embarquées et designs (docs/fonctionnalites/designs-du-verset.md) */
+@import './verse.css';
+
 @layer base {
     [hidden] {
         display: none !important;
