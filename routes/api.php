@@ -396,9 +396,20 @@ Route::post('/_deploy', function (Request $request) {
     $token = (string) config('app.deploy_token');
     abort_unless($token !== '' && hash_equals($token, (string) $request->header('X-Deploy-Token')), 403);
 
+    $out = [];
     Artisan::call('migrate', ['--force' => true]);
-    $migrate = Artisan::output();
+    $out['migrate'] = Artisan::output();
+
     Artisan::call('optimize:clear');
 
-    return response()->json(['ok' => true, 'migrate' => $migrate]);
+    if (! file_exists(public_path('storage'))) {
+        try {
+            Artisan::call('storage:link');
+            $out['storage_link'] = 'créé';
+        } catch (\Throwable $e) {
+            $out['storage_link'] = 'impossible : ' . $e->getMessage();
+        }
+    }
+
+    return response()->json(['ok' => true] + $out);
 })->middleware('throttle:5,1');

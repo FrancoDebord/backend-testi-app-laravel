@@ -1,12 +1,21 @@
-name: Déploiement LWS
+name: CI/CD – Tests puis déploiement LWS
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:        # permet aussi de lancer à la main depuis GitHub
+  pull_request:
+    branches: [ main ]      # les PR sont testées, mais pas déployées
+  workflow_dispatch:         # lancement manuel possible depuis l'onglet Actions
+
+# Évite deux déploiements simultanés
+concurrency:
+  group: deploy-lws
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  # ───────────────────────────── CI : TESTS ─────────────────────────────
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,10 +23,51 @@ jobs:
       - name: PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'     # même version que sur LWS
+          php-version: '8.2'              # même version que sur LWS
+          extensions: mbstring, pdo_sqlite, sqlite3, bcmath, intl, gd, zip
+          coverage: none
 
-      - name: Dépendances PHP
-        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: Dépendances (avec dev, pour les tests)
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Préparer l'environnement de test
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Lancer les tests
+        run: php artisan test
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+
+  # ──────────────────────────── CD : DÉPLOIEMENT ────────────────────────────
+  deploy:
+    name: Déploiement LWS
+    needs: tests                                  # ne part que si les tests passent
+    if: github.event_name != 'pull_request'       # jamais de déploiement depuis une PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Dépendances de production
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
 
       # Décommentez si vous utilisez Vite / des assets front
       # - uses: actions/setup-node@v4
@@ -30,20 +80,26 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps            # mettez ftp si ftps est refusé
-          server-dir: /public_html/temoignage.as-krea.com/
+          protocol: ftps                          # mettez ftp si ftps est refusé
+          server-dir: /temoignage.as-krea.com/    # ← à vérifier dans FileZilla (avec le / final)
           exclude: |
             **/.git*
             **/.git*/**
             **/node_modules/**
+            .github/**
+            tests/**
             .env
             .env.*
-            storage/**
-            bootstrap/cache/*.php
-            tests/**
+            .htaccess
+            public/.htaccess
             public/storage
+            bootstrap/cache/*.php
+            storage/logs/*.log
+            storage/framework/cache/data/**
+            storage/framework/sessions/*
+            storage/framework/views/*.php
 
-      - name: Tâches après déploiement (migrations, caches)
+      - name: Tâches après déploiement (migrations, caches, lien storage)
         run: |
           curl -fsS -X POST "${{ secrets.DEPLOY_URL }}" \
             -H "X-Deploy-Token: ${{ secrets.DEPLOY_TOKEN }}" \
