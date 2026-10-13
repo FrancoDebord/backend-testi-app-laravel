@@ -389,10 +389,9 @@ Route::prefix('v1')->group(function () {
             Route::put('settings',                [AdminController::class, 'updateSettings']);
         });
     });
-});
 
 
-Route::post('/_deploy', function (Request $request) {
+    Route::post('/_deploy', function (Request $request) {
     $token = (string) config('app.deploy_token');
     abort_unless($token !== '' && hash_equals($token, (string) $request->header('X-Deploy-Token')), 403);
 
@@ -413,3 +412,6 @@ Route::post('/_deploy', function (Request $request) {
 
     return response()->json(['ok' => true] + $out);
 })->middleware('throttle:5,1');
+});
+
+
