@@ -3,6 +3,7 @@
 return [
 
 'deploy_token' => env('DEPLOY_TOKEN'),
+'cron_token' => env('CRON_TOKEN'),
     /*
     |--------------------------------------------------------------------------
     | Application Name

@@ -432,6 +432,14 @@ Route::prefix('v1')->group(function () {
 
     return response()->json(['ok' => true] + $out);
 })->middleware('throttle:5,1');
+
+
+Route::get('/_cron', function (Request $request) {
+    $token = (string) config('app.cron_token');
+    abort_unless($token !== '' && hash_equals($token, (string) $request->query('token')), 403);
+    Artisan::call('schedule:run');
+    return response()->json(['ok' => true, 'output' => Artisan::output()]);
+})->middleware('throttle:10,1');
 });
 
 
