@@ -12,7 +12,8 @@
     ];
     $viewer   = auth()->user();
     $status   = $testimony->status->value;
-    $mp4      = $video ? collect((array) $video['mp4_urls'])->last() : null;
+    $hls      = $video['playback_url'] ?? null; // Bunny : HLS (hls.js), MP4 de secours sinon
+    $mp4      = $video['mp4_url'] ?? null;
     $bunnyWaiting = $testimony->bunny_video_id && $testimony->video_status !== \App\Models\Testimony::VIDEO_READY;
 @endphp
 
@@ -45,7 +46,7 @@
         </section>
 
         <section class="card overflow-hidden">
-            @if($testimony->cover_url && !$mp4)
+            @if($testimony->cover_url && !$mp4 && !$hls)
             <img src="{{ $testimony->cover_url }}" alt="" class="max-h-72 w-full object-cover">
             @endif
             <div class="p-5 sm:p-6">
@@ -56,10 +57,10 @@
                     <iframe src="{{ $testimony->youtubeEmbedUrl() }}" title="{{ $testimony->title }}" class="absolute inset-0 h-full w-full"
                             allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                 </div>
-                @elseif($mp4)
-                {{-- Vidéo Bunny Stream (MP4 de repli) ou ancienne vidéo du serveur --}}
+                @elseif($hls || $mp4)
+                {{-- Vidéo Bunny Stream (HLS, MP4 de secours) ou ancienne vidéo du serveur --}}
                 <div class="mb-5 overflow-hidden rounded-lg bg-black">
-                    <video controls preload="metadata" class="aspect-video w-full" @if($video['thumbnail_url']) poster="{{ $video['thumbnail_url'] }}" @endif><source src="{{ $mp4 }}" type="video/mp4"></video>
+                    <video controls playsinline preload="metadata" class="aspect-video w-full" @if($video['thumbnail_url']) poster="{{ $video['thumbnail_url'] }}" @endif @if($hls) data-hls="{{ $hls }}" @if($mp4) data-hls-fallback="{{ $mp4 }}" @endif @endif>@unless($hls)<source src="{{ $mp4 }}" type="video/mp4">@endunless</video>
                 </div>
                 @elseif($bunnyWaiting)
                 <p class="alert-warning mb-5" role="status"><i class="fa-solid fa-hourglass-half mt-0.5" aria-hidden="true"></i><span>Vidéo Bunny Stream en cours ({{ $testimony->video_status }}) : l’aperçu sera disponible une fois l’encodage terminé.</span></p>

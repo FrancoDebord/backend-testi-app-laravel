@@ -22,16 +22,16 @@
         'audio' => 'bg-slate-800',
         default => 'bg-slate-900',
     };
-    $preview = $type === 'video' && $testimony->media_url ? $testimony->media_url : null;
+    $preview = $type === 'video' ? $testimony->mp4PlaybackUrl() : null; // MP4 seulement (pas de HLS en aperçu)
 @endphp
 <article class="group relative flex min-w-0 flex-col" @if($preview) data-preview="{{ $preview }}" @endif>
     <div class="{{ $thumbBg }} {{ $short ? 'aspect-[9/16]' : 'aspect-video' }} relative overflow-hidden rounded-xl" data-preview-frame>
         @if($testimony->cover_url)
             <img src="{{ $testimony->cover_url }}" alt="" loading="lazy" decoding="async"
                  class="h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03]">
-        @elseif($type === 'video' && $testimony->media_url)
+        @elseif($type === 'video' && $preview)
             <div class="absolute inset-0 flex items-center justify-center text-3xl text-slate-600" aria-hidden="true"><i class="fa-solid fa-play"></i></div>
-            <video data-lazy-frame data-src="{{ $testimony->media_url }}#t=1" preload="none" muted playsinline tabindex="-1" aria-hidden="true"
+            <video data-lazy-frame data-src="{{ $preview }}#t=1" preload="none" muted playsinline tabindex="-1" aria-hidden="true"
                    class="relative h-full w-full object-cover opacity-0 transition-opacity duration-300"></video>
         @elseif($type === 'text')
             <div class="flex h-full flex-col justify-center gap-2 px-4 pt-4 pb-9 sm:px-5">

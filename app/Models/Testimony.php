@@ -54,6 +54,8 @@ class Testimony extends Model
             'proofs_public' => 'boolean',
             'approved_at' => 'datetime',
             'moderated_at'   => 'datetime',
+            'video_processing_at' => 'datetime', // docs/fonctionnalites/videos-bunny-stream.md
+            'video_alerted_at'    => 'datetime',
             'is_verified'    => 'boolean',
             'verified_at'    => 'datetime',
             'featured_order' => 'integer',
@@ -494,9 +496,34 @@ class Testimony extends Model
     /** Versions allégées (qualités) avec leur URL, de la plus légère à la plus lourde. Voir docs/fonctionnalites/qualites-media.md */
     public function playableRenditions(): array
     {
-        return $this->type === TestimonyType::Text || !$this->media_url
+        return $this->type === TestimonyType::Text || !$this->media_url || $this->isHlsMedia()
             ? []
             : MediaFile::renditionsForApi($this->renditions);
+    }
+
+    // ---------- Vidéos Bunny Stream (docs/fonctionnalites/videos-bunny-stream.md) ----------
+
+    /** Lecture HLS (vidéo Bunny prête) : le site la lit avec hls.js (Safari : nativement). */
+    public function isHlsMedia(): bool
+    {
+        return str_ends_with((string) parse_url((string) $this->media_url, PHP_URL_PATH), '.m3u8');
+    }
+
+    /** Vidéo Bunny envoyée ou en cours de traitement (pas encore lisible). */
+    public function isVideoProcessing(): bool
+    {
+        return in_array($this->video_status, [self::VIDEO_UPLOADING, self::VIDEO_PROCESSING], true) && !filled($this->media_url);
+    }
+
+    /** MP4 lisible par une balise <video> simple (aperçu des cartes, secours HLS) : MP4 Bunny ou fichier du serveur. */
+    public function mp4PlaybackUrl(): ?string
+    {
+        if (!$this->isHlsMedia()) {
+            return $this->media_url ?: null;
+        }
+        $urls = app(\App\Services\BunnyStreamVideos::class)->mp4Urls($this);
+
+        return $urls ? end($urls) : null;
     }
 
     public function scopeOfCategory($query, string $slug)

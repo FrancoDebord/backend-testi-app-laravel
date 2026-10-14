@@ -19,6 +19,8 @@ enum NotificationType: string
     // Témoignage modifié par son auteur et renvoyé en modération : prévient les modérateurs
     // (docs/fonctionnalites/gestion-des-temoignages.md)
     case TestimonyResubmitted = 'testimony_resubmitted';
+    // Vidéo Bunny en traitement depuis plus de 30 minutes : super-administrateurs (docs/fonctionnalites/videos-bunny-stream.md)
+    case VideoStuck = 'video_stuck';
     // Comptes organisation (docs/fonctionnalites/comptes-organisation.md)
     case OrganizationVerified = 'organization_verified';
     case OrganizationRejected = 'organization_rejected';
@@ -50,6 +52,7 @@ enum NotificationType: string
             self::TestimonyRejected,
             self::PendingCorrection,
             self::TestimonyResubmitted,
+            self::VideoStuck,
             self::OrganizationVerified,
             self::OrganizationRejected,
             self::AccountVerified,

@@ -15,7 +15,7 @@
     $duration = $testimony->durationLabel();
     $isYouTube = $testimony->isYouTube();
     $typeIcon = $isYouTube ? 'fa-brands fa-youtube' : 'fa-solid ' . (['video' => 'fa-video', 'audio' => 'fa-microphone', 'text' => 'fa-quote-left'][$type] ?? 'fa-play');
-    $preview  = $type === 'video' && $testimony->media_url && !$isYouTube ? $testimony->media_url : null;
+    $preview  = $type === 'video' && !$isYouTube ? $testimony->mp4PlaybackUrl() : null; // MP4 seulement (pas de HLS en aperçu)
     $n = fn ($v) => $v >= 1000 ? rtrim(rtrim(number_format($v / 1000, 1, ',', ' '), '0'), ',') . 'k' : (string) (int) $v;
     $thumbBg = match (true) {
         $type === 'text'  => 'bg-sun-50',
@@ -29,9 +29,9 @@
             @if($testimony->cover_url)
                 <img src="{{ $testimony->cover_url }}" alt="" loading="lazy" decoding="async"
                      class="h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03]">
-            @elseif($type === 'video' && $testimony->media_url)
+            @elseif($type === 'video' && $preview)
                 <div class="absolute inset-0 flex items-center justify-center text-3xl text-slate-600" aria-hidden="true"><i class="fa-solid fa-play"></i></div>
-                <video data-lazy-frame data-src="{{ $testimony->media_url }}#t=1" preload="none" muted playsinline tabindex="-1" aria-hidden="true"
+                <video data-lazy-frame data-src="{{ $preview }}#t=1" preload="none" muted playsinline tabindex="-1" aria-hidden="true"
                        class="relative h-full w-full object-cover opacity-0 transition-opacity duration-300"></video>
             @elseif($type === 'audio')
                 {{-- Audio : bouton de lecture et onde stylisée --}}

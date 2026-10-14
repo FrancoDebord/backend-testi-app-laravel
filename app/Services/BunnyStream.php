@@ -40,7 +40,7 @@ class BunnyStream
 
     public function libraryId(): string
     {
-        return (string) config('services.bunny_stream.library_id');
+        return trim((string) config('services.bunny_stream.library_id'));
     }
 
     /** Crée la vidéo (vide) dans la bibliothèque et renvoie son guid. */
@@ -116,12 +116,13 @@ class BunnyStream
 
     private function apiKey(): string
     {
-        return (string) config('services.bunny_stream.api_key');
+        return trim((string) config('services.bunny_stream.api_key'));
     }
 
-    private function cdnHost(): string
+    /** Nom d'hôte du CDN, toléré avec https:// ou une barre finale (erreur de saisie fréquente dans le .env). */
+    public function cdnHost(): string
     {
-        return (string) config('services.bunny_stream.cdn_host');
+        return rtrim((string) preg_replace('#^https?://#i', '', trim((string) config('services.bunny_stream.cdn_host'))), '/');
     }
 
     private function client(): PendingRequest

@@ -4,6 +4,36 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-15 — Vidéos Bunny Stream lisibles sur le site et dans l'application
+
+- **Utilisateurs** :
+  - une vidéo envoyée à Bunny est lisible dès la fin de l'encodage, sur le site (HLS) comme dans l'application ;
+  - sur le site, une vidéo part maintenant directement à Bunny depuis le navigateur, avec une barre de progression, jusqu'à 2 Go ; le témoignage affiche « Vidéo en cours de traitement » ;
+  - l'auteur est prévenu si l'encodage échoue. [videos-bunny-stream.md](fonctionnalites/videos-bunny-stream.md)
+- **Cause du problème en production** :
+  - le webhook répondait 200 vide dans tous les cas : bibliothèque différente de la configuration, GUID absent de `testimonies.bunny_video_id`, ou erreur de l'API Bunny avalée après la réponse ;
+  - surtout, une vidéo prête gardait `media_url` vide, que le site et les anciennes versions de l'application lisent.
+- **API** :
+  - le webhook répond `{ ok, action: updated | ignored | not_found }` et journalise chaque appel ;
+  - l'objet `video` expose `status` (`processing`, `ready` ou `failed`), `playback_url`, `mp4_url`, `thumbnail_url` et `duration`, sans aucune URL tant que la vidéo n'est pas lisible ; `hls_url` et `mp4_urls` sont gardés ;
+  - `mediaUrl` vaut la playlist HLS d'une vidéo Bunny prête ;
+  - push `video_failed` à l'auteur, notification `video_stuck` aux super-administrateurs.
+- **Développeurs** :
+  - service unique `BunnyVideoSync` ;
+  - commande `videos:sync-bunny-status {--guid=}`, planifiée toutes les 10 minutes et lancée par `_deploy` ;
+  - en lecture, `BUNNY_STREAM_CDN_HOSTNAME` est accepté, les valeurs du `.env` sont nettoyées, et `BUNNY_STREAM_MP4_FALLBACK` est ajouté ;
+  - envoi direct depuis le site : `Web\TestimonyController::store` (`bunny_upload`), routes `testimonies.video.signature` et `testimonies.video.complete` ;
+  - front : `resources/js/bunny-upload.js` (`tus-js-client`) et `resources/js/hls-player.js` (`hls.js`) ;
+  - helpers `Testimony::isHlsMedia()`, `isVideoProcessing()`, `mp4PlaybackUrl()` ;
+  - tests : `tests/Feature/BunnyVideoSyncTest.php`, `BunnyStreamTest` adapté.
+- **Déploiement** :
+  - migration `2026_10_15_100001_add_video_tracking_to_testimonies_table` ;
+  - nouveaux paquets npm (la CI lance `npm ci`) et recompilation des assets ;
+  - variables à vérifier : `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_CDN_HOST`, `BUNNY_STREAM_MP4_FALLBACK` (facultative) ;
+  - le déploiement lance `videos:sync-bunny-status` : la vidéo `c51171c5-…` est corrigée si un témoignage porte son GUID.
+
+---
+
 ## 2026-10-14 — Badge « Approuvé » des comptes
 
 - **Utilisateurs** : le badge de vérification devient le badge « Approuvé » (personnes et organisations). Un administrateur peut aussi l'attribuer ou le retirer directement, avec un motif ; la personne est prévenue. [badge-approuve.md](fonctionnalites/badge-approuve.md)

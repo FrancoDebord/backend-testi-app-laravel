@@ -75,7 +75,7 @@ class VideoUploadController extends Controller
 
         // Sans effet si le webhook a déjà fait avancer la vidéo (processing, ready).
         if ($testimony->video_status === Testimony::VIDEO_UPLOADING) {
-            $testimony->forceFill(['video_status' => Testimony::VIDEO_PROCESSING])->save();
+            $testimony->forceFill(['video_status' => Testimony::VIDEO_PROCESSING, 'video_processing_at' => now()])->save();
         }
 
         return $this->success(new TestimonyResource($testimony->load('user')), 'Vidéo en cours de traitement');

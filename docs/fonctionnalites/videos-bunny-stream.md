@@ -2,7 +2,7 @@
 
 Les vidéos des témoignages sont hébergées par **Bunny Stream** (bibliothèque `777434`, CDN `vz-5fc8c5f9-0fc.b-cdn.net`). Les fichiers vidéo ne passent **jamais** par le serveur LWS :
 
-- l'application envoie le fichier **directement à Bunny** (protocole TUS) avec une autorisation signée par le serveur ;
+- l'application **et le site** envoient le fichier **directement à Bunny** (protocole TUS) avec une autorisation signée par le serveur ;
 - pour reprendre une ancienne vidéo, le serveur demande à Bunny d'**aller chercher lui-même** le fichier à son URL publique.
 
 Le serveur ne fait que créer les vidéos, signer les envois, suivre leur état et fournir les URL de lecture.
@@ -67,63 +67,94 @@ Réservé au propriétaire (403 sinon). Fait passer la vidéo de `uploading` à 
 
 ### Webhook `POST /webhooks/bunny` (public)
 
-URL à déclarer dans la bibliothèque Bunny : `https://temoignage.as-krea.com/api/v1/webhooks/bunny`.
+URL à déclarer dans la bibliothèque Bunny : `https://temoignage.as-krea.com/api/v1/webhooks/bunny`. La route est dans le groupe `v1`, sans authentification ni CSRF.
 
-Contenu reçu : `{ VideoLibraryId, VideoGuid, Status }`. Le serveur répond toujours 200, et ignore l'appel si la bibliothèque n'est pas la nôtre ou si le guid est inconnu.
+**Contenu reçu** : `{ VideoLibraryId, VideoGuid, Status }`. Les statuts du **webhook** ne sont pas ceux de l'API : 3 = Finished, 4 = ResolutionFinished, 5 = Failed, les autres signalent une progression.
 
-Bunny ne signe pas ses webhooks : le contenu n'est jamais cru tel quel. Après la réponse, l'état est relu avec `GET /library/{id}/videos/{guid}`, puis traduit ainsi :
+**Réponse** : toujours **200 en JSON**, `{ "ok": true, "action": "updated" | "ignored" | "not_found" }`.
 
-| Statut renvoyé par `getVideo` | Nouvel état |
+| `action` | Cas |
 |---|---|
-| `4` (terminé), ou `3` (encodage) avec au moins une qualité disponible | `ready`, avec enregistrement de `length` et `availableResolutions` |
-| `5` (erreur) ou `6` (envoi échoué) | `failed` |
-| `1`, `2` ou `3` (sans qualité disponible) | `processing` |
-| autre | aucun changement |
+| `updated` | État relu chez Bunny et témoignage modifié |
+| `ignored` | GUID absent, Bunny non configuré, autre bibliothèque que `BUNNY_STREAM_LIBRARY_ID`, API Bunny refusée ou injoignable, ou aucun changement |
+| `not_found` | Aucun témoignage n'a ce `bunny_video_id` |
 
-Une vidéo `ready` ne revient jamais en arrière. Les webhooks suivants mettent seulement à jour les qualités et la durée.
+Chaque appel est journalisé dans `storage/logs/laravel.log` (`Bunny Stream : webhook`) avec le GUID, le statut reçu, l'action et la **raison**. Une erreur de l'API Bunny est journalisée en `error`, avec la bibliothèque utilisée.
 
-Quand la vidéo devient `ready`, une seule notification push est envoyée à l'auteur avec les données `{ "type": "video_ready", "testimony_id": "<uuid>" }`. L'envoi passe par `PushNotifications::dispatch`, c'est-à-dire par la file `push` puis `PushNotifier`. Les anciennes vidéos reprises par la commande de migration ne déclenchent pas de notification.
+Bunny ne signe pas ses webhooks : le contenu n'est jamais cru tel quel. L'état est relu **pendant la requête** par `GET /library/{id}/videos/{guid}` (`App\Services\BunnyVideoSync::syncFromBunny`, logique unique partagée avec la commande `videos:sync-bunny-status`). Traduction des statuts de l'**API** :
+
+| Statut de l'API (`getVideo`) | Nouvel état |
+|---|---|
+| `4` (terminée), ou `3` (encodage) avec au moins une résolution prête | `ready` |
+| `5` (erreur) ou `6` (envoi échoué) | `failed`, et l'auteur est prévenu une seule fois (push `{ type: video_failed, testimony_id }`) |
+| `1`, `2` ou `3` sans résolution | `processing` (`video_processing_at` est retenu) |
+| `0` (créée, rien reçu) | aucun changement |
+
+**Passage à `ready`** :
+- `media_url` = `https://{CDN}/{guid}/playlist.m3u8` (lecture HLS) ;
+- `cover_url` = `https://{CDN}/{guid}/thumbnail.jpg`, si aucune couverture n'a été envoyée ;
+- `duration` et `duration_sec` reçoivent `length`, `available_resolutions` reçoit `availableResolutions` ;
+- une seule notification push `{ "type": "video_ready", "testimony_id": "<uuid>" }`, grâce à une mise à jour conditionnelle ; pas de notification pour une ancienne vidéo reprise.
+
+Une vidéo `ready` ne revient jamais en arrière. Les appels suivants complètent seulement les qualités, la durée ou le lien manquant.
 
 ### Ressource témoignage : objet `video`
 
 ```json
 "video": {
   "status": "ready",
-  "hls_url": "https://vz-….b-cdn.net/<guid>/playlist.m3u8",
+  "playback_url": "https://vz-….b-cdn.net/<guid>/playlist.m3u8",
+  "mp4_url": "https://vz-….b-cdn.net/<guid>/play_720p.mp4",
   "thumbnail_url": "https://vz-….b-cdn.net/<guid>/thumbnail.jpg",
-  "mp4_urls": { "240": "https://…/play_240p.mp4", "360": "…", "720": "…" },
-  "duration": 42
+  "duration": 95,
+  "hls_url": "…playlist.m3u8",
+  "mp4_urls": { "240": "…", "720": "…" }
 }
 ```
 
-- `mp4_urls` ne contient que les qualités 240, 360, 480 et 720 présentes dans `available_resolutions`. C'est un objet, vide (`{}`) s'il n'y a aucune qualité.
-- Une vidéo Bunny qui n'est pas `ready` renvoie son `status`, avec des URL `null` et `mp4_urls` vide.
-- Une ancienne vidéo LWS renvoie `status: ready`, `hls_url: null`, `thumbnail_url` égal à `coverUrl`, et `mp4_urls` construit à partir des versions ffmpeg (`renditions`).
-- `video` vaut `null` pour un témoignage sans vidéo : texte, audio, ou YouTube (lu avec `youtubeId`).
-- Compatibilité avec les anciennes versions de l'application : pour une vidéo Bunny prête sans ancien fichier, `mediaUrl` reçoit le MP4 de meilleure qualité et `coverUrl` la miniature, si aucune couverture n'a été envoyée.
+- `status` vaut `processing` (envoi en cours compris), `ready` ou `failed`.
+- **Aucune URL tant que la vidéo n'est pas lisible** : `playback_url`, `mp4_url`, `thumbnail_url` et `duration` valent `null`.
+- `mp4_url` est la meilleure qualité `play_XXXp.mp4` produite (240, 360, 480 ou 720) si le MP4 de secours est actif (`BUNNY_STREAM_MP4_FALLBACK`, vrai par défaut). Sinon `null`.
+- `hls_url` et `mp4_urls` sont les anciens noms, gardés pour les versions de l'application déjà publiées.
+- Une ancienne vidéo du serveur renvoie `status: ready`, `playback_url: null`, et `mp4_url` égal au meilleur fichier ffmpeg ou au fichier d'origine.
+- `video` vaut `null` sans vidéo (texte, audio, YouTube).
+- `mediaUrl` vaut la playlist HLS pour une vidéo Bunny prête, ce qui permet aux anciennes versions de l'application de la lire (ExoPlayer et AVPlayer lisent le HLS).
+
+## Site web
+
+- **Publication** (`/testimonies/create`), quand Bunny est configuré, pour une vidéo : le fichier part **directement du navigateur vers Bunny** (`resources/js/bunny-upload.js`, `tus-js-client`) :
+  1. le formulaire est envoyé **sans le fichier**, avec `bunny_upload=1`, à `POST /testimonies`. Le serveur crée le témoignage (`uploading`) et la vidéo Bunny, puis renvoie l'autorisation signée (`signature`, `expiration`, `bunny_video_id`, `library_id`, `tus_endpoint`), **jamais la clé API** ;
+  2. le fichier est envoyé à `https://video.bunnycdn.com/tusupload` avec une barre de progression et une reprise automatique ; l'autorisation est renouvelée avant expiration par `POST /testimonies/{id}/video/signature` ;
+  3. `POST /testimonies/{id}/video/complete` passe la vidéo en `processing`, puis redirige vers le témoignage, qui affiche « Vidéo en cours de traitement ».
+
+  Limite : 2 Go. Les audios, et les vidéos quand JavaScript est désactivé, gardent l'envoi au serveur (100 Mo).
+- **Lecture** : une vidéo Bunny prête est lue en HLS (`<video data-hls>`, `resources/js/hls-player.js`). Safari la lit nativement, les autres navigateurs avec `hls.js`, chargé à la demande. En cas d'erreur fatale, le lecteur passe au MP4 de secours. Les cartes n'utilisent un aperçu au survol que s'il existe un MP4 (`Testimony::mp4PlaybackUrl()`), et affichent sinon la vignette.
+- Les anciennes vidéos du serveur (`/storage/media/…`) restent lues comme avant, jusqu'à leur reprise par `videos:migrate-to-bunny`.
 
 ## Suppression
 
-Quand un témoignage est supprimé, que ce soit depuis l'API, le site ou l'administration (suppression douce, aucune restauration possible), sa vidéo Bunny est supprimée après la réponse. Un échec est journalisé (`Log::warning`) sans bloquer la suppression. Cela passe par l'événement `deleted` du modèle `Testimony`.
+La vidéo Bunny est supprimée à la **suppression définitive** du témoignage seulement (événement `forceDeleted`). La corbeille, elle, reste restaurable ([gestion-des-temoignages.md](gestion-des-temoignages.md)).
 
 ## Tâches et commandes
 
-- **`videos:expire-uploads {--hours=24}`** : planifiée **chaque heure** (`routes/console.php`). Les témoignages restés en `uploading` plus de 24 h après leur création passent en `failed`. Leur vidéo Bunny est supprimée, puis `bunny_video_id` est vidé si la suppression a réussi.
-- **`videos:migrate-to-bunny {--dry-run} {--limit=10}`** : traite les anciennes vidéos (`type = video`, `media_url` renseigné, sans YouTube ni `bunny_video_id`), des plus anciennes aux plus récentes.
-  - Pour chacune, Bunny va chercher le fichier lui-même (`POST /library/{id}/videos/fetch`). L'URL publique est recalculée à partir du chemin, avec `APP_URL`.
-  - Le témoignage reçoit le guid et passe en `processing`. Le webhook le fera passer à `ready`.
-  - La commande affiche un récapitulatif : envoyées, échecs, restantes.
-  - Toujours lancer `--dry-run` d'abord, puis procéder par lots.
-  - À vérifier sur le premier lot réel : que la réponse de `fetch` contient bien l'identifiant de la vidéo (`guid` ou `id`). Sinon, la commande signale un échec sans rien modifier.
+- **`videos:sync-bunny-status {--guid=}`** : filet de sécurité du webhook, planifié **toutes les 10 minutes** (`withoutOverlapping`) et **lancé aussi par `POST /api/v1/_deploy`** après les migrations.
+  - Elle relit chez Bunny chaque vidéo en `uploading`, `processing`, sans état, sans `media_url`, ou `ready` sans lien HLS. Les vidéos en `failed` ne sont relues qu'avec `--guid`.
+  - Elle applique la même logique que le webhook.
+  - Elle alerte les **super-administrateurs** (à défaut, les administrateurs) **une seule fois** par vidéo restée en traitement plus de 30 minutes : notification `video_stuck` et push, `video_alerted_at` renseigné.
+  - Avec `--guid` inconnu en base, elle indique ce que Bunny connaît de la vidéo et les témoignages candidats, aussi dans `laravel.log`.
+- **`videos:expire-uploads {--hours=24}`** : chaque heure, les envois jamais terminés passent en `failed` et leur vidéo Bunny est supprimée.
+- **`videos:migrate-to-bunny {--dry-run} {--limit=10}`** : reprise des anciennes vidéos (Bunny va chercher le fichier). Le fichier d'origine reste lu tant que la vidéo Bunny n'est pas prête ; ensuite `media_url` devient la playlist HLS.
 
 ## Code
 
-- `App\Services\BunnyStream` : client HTTP (`https://video.bunnycdn.com`, en-tête `AccessKey`, délai de 15 s), signature TUS et URL du CDN.
-- `App\Services\BunnyStreamVideos` : préparation de l'envoi, synchronisation, objet `video`, envois abandonnés, suppression silencieuse.
-- `App\Services\TestimonyCreator` : création commune à `POST /testimonies` et `upload-init`.
-- `Api\VideoUploadController`, `Api\BunnyWebhookController`, `InitVideoUploadRequest`.
-- Commandes `ExpireVideoUploads` et `MigrateVideosToBunny`.
-- Tests : `tests/Feature/BunnyStreamTest.php`.
+- `App\Services\BunnyStream` : client HTTP (en-tête `AccessKey`, délai de 15 s), signature TUS, URL du CDN. Les valeurs du `.env` sont nettoyées (espaces, `https://`, barre finale).
+- `App\Services\BunnyVideoSync` : synchronisation unique (webhook et commande), transitions, notifications, alerte des vidéos bloquées.
+- `App\Services\BunnyStreamVideos` : préparation de l'envoi, objet `video`, MP4 disponibles, envois abandonnés, suppression silencieuse.
+- `Api\VideoUploadController` (API Sanctum, et routes web `testimonies.video.signature` et `testimonies.video.complete` en session), `Api\BunnyWebhookController`, `Web\TestimonyController::store` (`bunny_upload`).
+- Commandes `SyncBunnyStatus`, `ExpireVideoUploads`, `MigrateVideosToBunny`.
+- Front : `resources/js/bunny-upload.js`, `resources/js/hls-player.js` (paquets npm `tus-js-client` et `hls.js`).
+- Migration `2026_10_15_100001_add_video_tracking_to_testimonies_table` : `video_processing_at`, `video_alerted_at`.
+- Tests : `tests/Feature/BunnyStreamTest.php`, `tests/Feature/BunnyVideoSyncTest.php`.
 
 ## Configuration
 
@@ -131,18 +162,17 @@ Quand un témoignage est supprimé, que ce soit depuis l'API, le site ou l'admin
 
 ```
 BUNNY_STREAM_LIBRARY_ID=777434
-BUNNY_STREAM_API_KEY=…        # clé API de la bibliothèque (jamais versionnée)
-BUNNY_STREAM_CDN_HOST=vz-5fc8c5f9-0fc.b-cdn.net
+BUNNY_STREAM_API_KEY=…                          # clé API de la BIBLIOTHÈQUE Stream (pas la clé du compte)
+BUNNY_STREAM_CDN_HOST=vz-5fc8c5f9-0fc.b-cdn.net  # sans https:// ; BUNNY_STREAM_CDN_HOSTNAME accepté aussi
+BUNNY_STREAM_MP4_FALLBACK=true                   # false si « MP4 Fallback » n'est pas activé dans la bibliothèque
 ```
 
-Sans ces variables, `upload-init` répond 503.
+Sans les trois premières variables, l'envoi direct est désactivé (`upload-init` répond 503), et le webhook et la commande ignorent tout. Après toute modification du `.env` sur le serveur, il faut vider le cache de configuration : un nouveau déploiement suffit, car `_deploy` lance `optimize:clear`.
 
-Dans la bibliothèque Bunny, deux réglages sont nécessaires :
-
-- activer **MP4 Fallback**, sinon les liens `play_{hauteur}p.mp4` répondent 404 ;
+Dans la bibliothèque Bunny :
+- activer **MP4 Fallback** (liens `play_XXXp.mp4`) ;
 - déclarer l'URL du webhook.
 
 ## Reste à faire
 
-- Les pages du **site** (lecteur, page Vidéos) lisent encore `media_url` et les versions ffmpeg. Une vidéo envoyée seulement à Bunny n'y est pas encore lisible. Prochaine étape : utiliser `hls_url` et `mp4_urls` dans `videos/partials/watch.blade.php` et dans la page d'un témoignage.
-- Après la reprise de toutes les anciennes vidéos : supprimer les fichiers de `storage/app/public` et, par une nouvelle migration, les colonnes de l'ancien stockage.
+- Après la reprise de toutes les anciennes vidéos : supprimer les fichiers de `storage/app/public/media` et, par une nouvelle migration, les colonnes de l'ancien stockage (`renditions`).

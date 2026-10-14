@@ -68,7 +68,10 @@ return [
         'library_id' => env('BUNNY_STREAM_LIBRARY_ID'),
         'api_key'    => env('BUNNY_STREAM_API_KEY'),
         // Nom d'hôte du CDN de la bibliothèque, sans https:// (ex. vz-xxxxxxxx-xxx.b-cdn.net).
-        'cdn_host'   => env('BUNNY_STREAM_CDN_HOST'),
+        // BUNNY_STREAM_CDN_HOSTNAME accepté aussi (nom affiché par le tableau de bord Bunny).
+        'cdn_host'   => env('BUNNY_STREAM_CDN_HOST', env('BUNNY_STREAM_CDN_HOSTNAME')),
+        // Option « MP4 Fallback » activée dans la bibliothèque : liens play_XXXp.mp4 (mp4_url, aperçus du site).
+        'mp4_fallback' => (bool) env('BUNNY_STREAM_MP4_FALLBACK', true),
     ],
 
 ];

@@ -413,6 +413,14 @@ Route::prefix('v1')->group(function () {
 
     Artisan::call('optimize:clear');
 
+    // Vidéos Bunny Stream : état relu chez Bunny juste après les migrations (docs/fonctionnalites/videos-bunny-stream.md).
+    try {
+        Artisan::call('videos:sync-bunny-status');
+        $out['bunny_sync'] = trim(Artisan::output());
+    } catch (\Throwable $e) {
+        $out['bunny_sync'] = 'impossible : ' . $e->getMessage();
+    }
+
     if (! file_exists(public_path('storage'))) {
         try {
             Artisan::call('storage:link');

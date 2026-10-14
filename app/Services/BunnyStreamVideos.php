@@ -39,61 +39,37 @@ class BunnyStreamVideos
     }
 
     /**
-     * Relit l'état de la vidéo chez Bunny (le contenu du webhook n'est jamais pris tel quel) et met le
-     * témoignage à jour. Passage à « ready » : notification push à l'auteur (une seule fois).
+     * Relit l'état de la vidéo chez Bunny et met le témoignage à jour : App\Services\BunnyVideoSync
+     * (logique commune au webhook et à videos:sync-bunny-status).
      */
-    public function syncFromBunny(Testimony $testimony): void
+    public function syncFromBunny(Testimony $testimony): array
     {
-        $guid = $testimony->bunny_video_id;
-        if (!$guid) {
-            return;
-        }
-
-        $video       = $this->bunny->getVideo($guid);
-        $status      = (int) ($video['status'] ?? -1);
-        $resolutions = trim((string) ($video['availableResolutions'] ?? ''));
-        $length      = (int) ($video['length'] ?? 0);
-
-        $target = match (true) {
-            $status === BunnyStream::STATUS_FINISHED,
-            $status === BunnyStream::STATUS_TRANSCODING && $resolutions !== '' => Testimony::VIDEO_READY,
-            in_array($status, [BunnyStream::STATUS_ERROR, BunnyStream::STATUS_UPLOAD_FAILED], true) => Testimony::VIDEO_FAILED,
-            in_array($status, [BunnyStream::STATUS_UPLOADED, BunnyStream::STATUS_PROCESSING, BunnyStream::STATUS_TRANSCODING], true) => Testimony::VIDEO_PROCESSING,
-            default => null, // créée, envoi pas encore reçu : rien ne change
-        };
-
-        if ($target === Testimony::VIDEO_READY) {
-            $this->markReady($testimony, $length, $resolutions);
-            return;
-        }
-
-        // Jamais de retour en arrière depuis « ready » (webhooks tardifs, encodage d'une qualité supplémentaire).
-        if ($target !== null && $testimony->video_status !== Testimony::VIDEO_READY && $testimony->video_status !== $target) {
-            $testimony->forceFill(['video_status' => $target])->save();
-        }
+        return app(BunnyVideoSync::class)->syncFromBunny($testimony);
     }
 
     /**
-     * Objet « video » de la ressource témoignage, ou null s'il n'y a pas de vidéo (texte, audio, YouTube).
+     * Objet « video » de la ressource témoignage, ou null sans vidéo (texte, audio, YouTube) :
+     *   status        processing | ready | failed (envoi en cours = processing)
+     *   playback_url  lecture HLS (Bunny) ; null pour une ancienne vidéo du serveur
+     *   mp4_url       meilleure qualité MP4 disponible (MP4 de secours Bunny, ou fichier du serveur)
+     *   thumbnail_url, duration
+     * Aucune URL tant que la vidéo n'est pas lisible. Anciens noms gardés pour les versions de l'application
+     * déjà publiées : hls_url (= playback_url), mp4_urls (par hauteur).
      *
-     * @return array{status: string, hls_url: ?string, thumbnail_url: ?string, mp4_urls: object, duration: ?int}|null
+     * @return array{status: string, playback_url: ?string, mp4_url: ?string, thumbnail_url: ?string, duration: ?int, hls_url: ?string, mp4_urls: object}|null
      */
     public function payload(Testimony $testimony): ?array
     {
         if ($testimony->video_status === Testimony::VIDEO_READY && $testimony->bunny_video_id) {
             $guid = $testimony->bunny_video_id;
+            $mp4  = $this->mp4Urls($testimony);
 
-            return [
-                'status'        => Testimony::VIDEO_READY,
-                'hls_url'       => $this->bunny->hlsUrl($guid),
-                'thumbnail_url' => $this->bunny->thumbnailUrl($guid),
-                'mp4_urls'      => (object) $this->mp4Urls($testimony),
-                'duration'      => $testimony->duration ?? ($testimony->duration_sec ?: null),
-            ];
+            return self::shape(Testimony::VIDEO_READY, $this->bunny->hlsUrl($guid), $mp4 ? end($mp4) : null,
+                $this->bunny->thumbnailUrl($guid), $testimony->duration ?? ($testimony->duration_sec ?: null), $mp4);
         }
 
-        // Ancienne vidéo stockée sur LWS (y compris pendant sa reprise par Bunny) : versions ffmpeg.
-        if ($testimony->type?->value === 'video' && filled($testimony->media_url)) {
+        // Ancienne vidéo stockée sur le serveur (y compris pendant sa reprise par Bunny) : versions ffmpeg.
+        if ($testimony->type?->value === 'video' && filled($testimony->media_url) && !str_ends_with((string) $testimony->media_url, '.m3u8')) {
             $mp4 = [];
             foreach (\App\Models\MediaFile::renditionsForApi($testimony->renditions) as $r) {
                 if (isset($r['height'])) {
@@ -101,33 +77,39 @@ class BunnyStreamVideos
                 }
             }
 
-            return [
-                'status'        => Testimony::VIDEO_READY,
-                'hls_url'       => null,
-                'thumbnail_url' => $testimony->cover_url,
-                'mp4_urls'      => (object) $mp4,
-                'duration'      => $testimony->duration_sec ?: null,
-            ];
+            return self::shape(Testimony::VIDEO_READY, null, $mp4 ? end($mp4) : $testimony->media_url,
+                $testimony->cover_url, $testimony->duration_sec ?: null, $mp4);
         }
 
-        // Vidéo Bunny en cours d'envoi, en cours de traitement ou en échec : rien à lire encore.
+        // Vidéo Bunny en cours d'envoi, en cours de traitement ou en échec : rien à lire.
         if ($testimony->video_status !== null) {
-            return [
-                'status'        => $testimony->video_status,
-                'hls_url'       => null,
-                'thumbnail_url' => null,
-                'mp4_urls'      => (object) [],
-                'duration'      => null,
-            ];
+            $status = $testimony->video_status === Testimony::VIDEO_FAILED ? Testimony::VIDEO_FAILED : Testimony::VIDEO_PROCESSING;
+
+            return self::shape($status, null, null, null, null, []);
         }
 
         return null;
     }
 
+    private static function shape(string $status, ?string $playback, ?string $mp4, ?string $thumbnail, ?int $duration, array $mp4Urls): array
+    {
+        return [
+            'status'        => $status,
+            'playback_url'  => $playback,
+            'mp4_url'       => $mp4,
+            'thumbnail_url' => $thumbnail,
+            'duration'      => $duration,
+            // Anciens noms (versions de l'application déjà publiées).
+            'hls_url'       => $playback,
+            'mp4_urls'      => (object) $mp4Urls,
+        ];
+    }
+
     /** @return array<string, string> MP4 par hauteur (« 240 » => URL), pour les seules qualités produites par Bunny. */
     public function mp4Urls(Testimony $testimony): array
     {
-        if (!$testimony->bunny_video_id) {
+        // Sans l'option « MP4 Fallback » de la bibliothèque, Bunny ne produit que le HLS.
+        if (!$testimony->bunny_video_id || !config('services.bunny_stream.mp4_fallback', true)) {
             return [];
         }
 
@@ -189,43 +171,5 @@ class BunnyStreamVideos
         $id = $this->bunny->libraryId();
 
         return ctype_digit($id) ? (int) $id : $id;
-    }
-
-    private function markReady(Testimony $testimony, int $length, string $resolutions): void
-    {
-        $values = [
-            'available_resolutions' => $resolutions !== '' ? $resolutions : $testimony->available_resolutions,
-        ];
-        if ($length > 0) {
-            $values['duration']     = $length;
-            $values['duration_sec'] = $length; // shorts (≤ 60 s) et affichage de la durée
-        }
-
-        // Mise à jour conditionnelle : deux webhooks simultanés ne déclenchent qu'une notification.
-        $becameReady = Testimony::whereKey($testimony->id)
-            ->where(fn ($q) => $q->whereNull('video_status')->orWhere('video_status', '!=', Testimony::VIDEO_READY))
-            ->update(['video_status' => Testimony::VIDEO_READY, 'updated_at' => now()] + $values) > 0;
-
-        if (!$becameReady) {
-            // Déjà prête : seules les qualités (nouvelle résolution encodée) et la durée sont mises à jour.
-            Testimony::whereKey($testimony->id)->update($values);
-        }
-
-        $testimony->refresh();
-
-        // Modération non obligatoire : publié dès que la vidéo est lisible (docs/fonctionnalites/gestion-des-temoignages.md).
-        if ($becameReady) {
-            app(TestimonyModeration::class)->submitted($testimony);
-        }
-
-        // Ancienne vidéo reprise par Bunny (videos:migrate-to-bunny) : l'auteur n'attend rien, pas de notification.
-        if ($becameReady && blank($testimony->media_url)) {
-            PushNotifications::dispatch(
-                $testimony->user_id,
-                'Vidéo prête',
-                "Votre vidéo « {$testimony->title} » est prête.",
-                ['type' => 'video_ready', 'testimony_id' => $testimony->id],
-            );
-        }
     }
 }

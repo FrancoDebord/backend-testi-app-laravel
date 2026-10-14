@@ -5,6 +5,11 @@ import './tts';
 // Designs du verset du jour : chargé seulement sur les pages qui l'affichent.
 if (document.getElementById('verse-style-config')) import('./verse-style');
 
+// Vidéos Bunny Stream : lecture HLS (hls.js) et envoi direct depuis le formulaire (tus-js-client),
+// chargés à la demande (docs/fonctionnalites/videos-bunny-stream.md).
+if (document.querySelector('video[data-hls]')) import('./hls-player').then((m) => m.initHlsPlayers());
+if (document.querySelector('form[data-bunny-upload]')) import('./bunny-upload').then((m) => m.initBunnyUpload());
+
 /*
 |--------------------------------------------------------------------------
 | Interface commune TestiApp (charte ARISE & SHINE Krea) — JavaScript natif

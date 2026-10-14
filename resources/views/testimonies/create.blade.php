@@ -44,7 +44,8 @@
     <form method="POST" action="{{ route('testimonies.store') }}" enctype="multipart/form-data" id="testimony-form"
           class="card divide-y divide-slate-100"
           data-autosave="testimony-create" data-has-old="{{ session()->hasOldInput() ? '1' : '0' }}"
-          data-online-only data-loading-label="Envoi du témoignage…">
+          data-online-only data-loading-label="Envoi du témoignage…"
+          @if($bunnyVideos) data-bunny-upload @endif>
         @csrf
         {{-- Témoignage officiel d'un événement (docs/fonctionnalites/evenements.md) --}}
         @if($event ?? null)
@@ -135,6 +136,18 @@
                 <input id="media_file" type="file" name="media_file" accept="audio/*,video/*" class="form-input">
                 <p class="form-hint" data-media-hint>Audio : MP3, M4A, WAV. Vidéo : MP4, MOV. 100 Mo maximum.</p>
                 @error('media_file')<p class="form-error">{{ $message }}</p>@enderror
+                {{-- Progression de l'envoi vers Bunny Stream (resources/js/bunny-upload.js) --}}
+                <div class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3" data-bunny-progress hidden aria-live="polite">
+                    <div class="flex items-center justify-between gap-3 text-sm">
+                        <p class="min-w-0 font-medium text-slate-800" data-bunny-state>Préparation…</p>
+                        <span class="shrink-0 font-semibold text-primary-700 tabular-nums" data-bunny-percent>0 %</span>
+                    </div>
+                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="Envoi de la vidéo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="h-full rounded-full bg-primary-600 transition-[width] duration-300" style="width: 0%" data-bunny-bar></div>
+                    </div>
+                    <p class="form-error mt-2" data-bunny-error hidden></p>
+                    <p class="form-hint mt-1">Gardez cette page ouverte jusqu’à la fin de l’envoi.</p>
+                </div>
             </div>
 
             @if($isAdmin)
@@ -250,7 +263,7 @@
     const media = document.getElementById('media_file');
     const MEDIA = {
         audio: { label: 'Fichier audio', accept: 'audio/*', hint: 'MP3, M4A ou WAV, 100 Mo maximum.' },
-        video: { label: 'Fichier vidéo', accept: 'video/*', hint: 'MP4 ou MOV, 100 Mo maximum.' },
+        video: { label: 'Fichier vidéo', accept: 'video/*', hint: {{ \Illuminate\Support\Js::from($bunnyVideos ? 'MP4 ou MOV, 2 Go maximum. Envoi direct à notre hébergeur vidéo, avec progression.' : 'MP4 ou MOV, 100 Mo maximum.') }} },
     };
 
     function syncType() {

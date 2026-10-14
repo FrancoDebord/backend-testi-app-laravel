@@ -39,13 +39,17 @@
         'data-view-url'   => route('videos.view', $testimony->id),
         'data-kind'       => $type,
         'data-testimony'  => $testimony->id,
-        'data-original'   => $testimony->media_url,
+        // Vidéo Bunny (HLS, docs/fonctionnalites/videos-bunny-stream.md) : lue par hls.js ; l'original de secours est le MP4.
+        'data-original'   => $testimony->isHlsMedia() ? ($testimony->mp4PlaybackUrl() ?? '') : $testimony->media_url,
         'data-renditions' => json_encode($renditions, JSON_UNESCAPED_SLASHES),
         'data-up-next'    => json_encode($upNext, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
     ];
     // Preuves : auteur et équipe de modération (docs/fonctionnalites/preuves.md).
     $proofList = \App\Services\TestimonyProofs::canView(Auth::user(), $testimony) ? $testimony->proofs : collect();
     // Valeurs échappées par e() : le JSON reste valide dans l'attribut.
+    if ($testimony->isHlsMedia()) {
+        $playerData['data-hls'] = $testimony->media_url;
+    }
     $playerAttrs = collect($playerData)->map(fn ($v, $k) => $v === true ? $k : $k . '="' . e($v) . '"')->implode(' ');
 @endphp
 <div class="mx-auto max-w-[1680px]">
@@ -122,7 +126,7 @@
                            @if($testimony->cover_url) poster="{{ $testimony->cover_url }}" @endif
                            aria-label="Lecture de la vidéo : {{ $testimony->title }}"
                            class="{{ $isShort ? 'aspect-[9/16] max-h-[78vh] w-full max-w-[min(100%,44vh)]' : 'aspect-video w-full' }} bg-black object-contain">
-                        <source src="{{ $testimony->media_url }}">
+                        @unless($testimony->isHlsMedia())<source src="{{ $testimony->media_url }}">@endunless
                         Votre navigateur ne peut pas lire cette vidéo.
                     </video>
                     <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900 p-6 text-center text-sm text-slate-200" data-player-error hidden>
@@ -130,10 +134,17 @@
                         <p>La vidéo ne peut pas être lue pour le moment. Vérifiez votre connexion, puis rechargez la page.</p>
                     </div>
                 </div>
+                @elseif($testimony->isVideoProcessing())
+                {{-- Vidéo Bunny envoyée, en cours de traitement (visible de l'auteur et de la modération) --}}
+                <div class="flex aspect-video flex-col items-center justify-center gap-2 rounded-xl bg-slate-900 p-6 text-center text-sm text-slate-300" role="status">
+                    <i class="fa-solid fa-gear fa-spin text-2xl text-slate-400" aria-hidden="true"></i>
+                    <p class="font-semibold text-white">Vidéo en cours de traitement</p>
+                    <p>Elle sera lisible dans quelques minutes. Rechargez la page plus tard.</p>
+                </div>
                 @else
                 <div class="flex aspect-video flex-col items-center justify-center gap-2 rounded-xl bg-slate-900 p-6 text-center text-sm text-slate-300">
                     <i class="fa-solid fa-video-slash text-2xl text-slate-500" aria-hidden="true"></i>
-                    <p>La vidéo de ce témoignage n'est pas disponible.</p>
+                    <p>{{ $testimony->video_status === \App\Models\Testimony::VIDEO_FAILED ? 'La vidéo n\x27a pas pu être traitée.' : 'La vidéo de ce témoignage n\x27est pas disponible.' }}</p>
                 </div>
                 @endif
 

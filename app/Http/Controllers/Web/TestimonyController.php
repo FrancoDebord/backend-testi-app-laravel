@@ -56,7 +56,10 @@ class TestimonyController extends Controller
             ? app(\App\Services\Prophecies::class)->find($request->user(), $request->query('prophecy'))
             : null;
 
-        return view('testimonies.create', compact('categories', 'event', 'prophecy'));
+        // Vidéo envoyée directement à Bunny Stream par le navigateur (docs/fonctionnalites/videos-bunny-stream.md).
+        $bunnyVideos = app(\App\Services\BunnyStream::class)->isConfigured();
+
+        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos'));
     }
 
     /** Événement auquel rattacher le témoignage ; refuse si la personne n'en est pas gestionnaire. */
@@ -73,7 +76,12 @@ class TestimonyController extends Controller
         }
     }
 
-    public function store(Request $request, TestimonyProofs $proofs): RedirectResponse
+    /**
+     * Publication depuis le site. Vidéo : envoyée DIRECTEMENT par le navigateur à Bunny Stream
+     * (bunny_upload=1, sans fichier) ; la réponse JSON donne l'autorisation TUS, puis le navigateur appelle
+     * upload-complete (docs/fonctionnalites/videos-bunny-stream.md). Audio : fichier enregistré sur le serveur.
+     */
+    public function store(Request $request, TestimonyProofs $proofs): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'title'         => 'required|string|max:200',
@@ -100,6 +108,8 @@ class TestimonyController extends Controller
             // Mentions « @ » choisies dans le texte (docs/fonctionnalites/mentions.md)
             'mention_ids'     => 'nullable|array|max:20',
             'mention_ids.*'   => 'nullable|string',
+            // Vidéo envoyée directement à Bunny Stream par le navigateur (resources/js/bunny-upload.js)
+            'bunny_upload'    => 'nullable|boolean',
         ], TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
             'title.required'         => 'Merci de donner un titre à votre témoignage.',
             'youtube_url.required_if' => 'Collez le lien de la vidéo YouTube.',
@@ -123,13 +133,17 @@ class TestimonyController extends Controller
         if ($youtubeId) {
             $data['type'] = 'video';
         }
+        $bunnyUpload = !$youtubeId && $data['type'] === 'video' && $request->boolean('bunny_upload');
+        if ($bunnyUpload && !app(\App\Services\BunnyStream::class)->isConfigured()) {
+            return response()->json(['message' => "L'envoi de vidéos est momentanément indisponible."], 503);
+        }
 
         if ($request->hasFile('cover')) {
             $path     = $request->file('cover')->store('covers', 'public');
             $coverUrl = asset('storage/' . $path);
         }
 
-        if (!$youtubeId && $request->hasFile('media_file')) {
+        if (!$youtubeId && !$bunnyUpload && $request->hasFile('media_file')) {
             $file     = $request->file('media_file');
             $path     = $file->store('media', 'public');
             $mediaUrl = asset('storage/' . $path);
@@ -171,10 +185,27 @@ class TestimonyController extends Controller
             'visibility'    => $data['visibility'] ?? 'public',
             // Carnet privé (docs/fonctionnalites/carnet-prive.md) : jamais soumis à la modération, comme dans l'API.
             'status'        => ($isJournal ? TestimonyStatus::Draft : TestimonyStatus::Pending)->value,
+            // Vidéo Bunny : en cours d'envoi, hors des listes jusqu'à ce qu'elle soit lisible.
+            'video_status'  => $bunnyUpload ? Testimony::VIDEO_UPLOADING : null,
         ]);
 
-        // Modération non obligatoire (config testimonies.require_moderation) : approuvé aussitôt.
-        app(\App\Services\TestimonyModeration::class)->submitted($testimony);
+        // Vidéo Bunny : création chez Bunny et autorisation d'envoi ; échec → rien n'est gardé.
+        $upload = null;
+        if ($bunnyUpload) {
+            try {
+                $upload = app(\App\Services\BunnyStreamVideos::class)->initUpload($testimony);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Bunny Stream : création de la vidéo impossible (site).', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
+                $testimony->forceDelete();
+
+                return response()->json(['message' => "L'envoi de la vidéo n'a pas pu être préparé. Réessayez dans un instant."], 502);
+            }
+        }
+
+        // Modération non obligatoire (config testimonies.require_moderation) : approuvé aussitôt (vidéo Bunny : une fois lisible).
+        if (!$bunnyUpload) {
+            app(\App\Services\TestimonyModeration::class)->submitted($testimony);
+        }
 
         // Parole accomplie : montrée avec le témoignage une fois publié, si l'auteur le souhaite (jamais pour le carnet).
         if ($prophecy) {
@@ -189,6 +220,17 @@ class TestimonyController extends Controller
             if ($request->hasFile("proof_{$position}")) {
                 $proofs->add($testimony, $request->file("proof_{$position}"), $request->user(), $position);
             }
+        }
+
+        if ($upload) {
+            // Le navigateur envoie le fichier à Bunny (TUS), puis appelle complete_url (resources/js/bunny-upload.js).
+            return response()->json([
+                'testimony_id'  => $testimony->id,
+                'upload'        => $upload,
+                'signature_url' => route('testimonies.video.signature', $testimony->id),
+                'complete_url'  => route('testimonies.video.complete', $testimony->id),
+                'redirect'      => route('testimonies.show', $testimony->id),
+            ], 201);
         }
 
         return redirect()->route('testimonies.show', $testimony->id)

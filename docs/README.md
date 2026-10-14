@@ -219,6 +219,15 @@ Le fichier `storage/app/firebase-credentials.json` (chemin proposé par `.env.ex
 
 [badge-approuve.md](fonctionnalites/badge-approuve.md), 2026-10-14 : migration `2026_10_14_200001_add_approval_source_to_users_table` (reprend la source des badges existants). Pas de variable d'environnement.
 
+### Vidéos Bunny Stream lisibles (2026-10-15)
+
+[videos-bunny-stream.md](fonctionnalites/videos-bunny-stream.md) :
+
+- migration `2026_10_15_100001_add_video_tracking_to_testimonies_table` ;
+- nouveaux paquets npm `tus-js-client` et `hls.js` (`npm ci` dans la CI), puis recompilation des assets ;
+- `.env` : `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY` (clé de la bibliothèque Stream), `BUNNY_STREAM_CDN_HOST` (ou `BUNNY_STREAM_CDN_HOSTNAME`), `BUNNY_STREAM_MP4_FALLBACK` (facultative, `true` par défaut) ;
+- `POST /_deploy` lance `videos:sync-bunny-status` après les migrations (réparation sans SSH), et la tâche est aussi planifiée toutes les 10 minutes.
+
 ### Gestion des témoignages
 
 [gestion-des-temoignages.md](fonctionnalites/gestion-des-temoignages.md), 2026-10-14 :

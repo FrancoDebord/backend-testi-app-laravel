@@ -98,7 +98,9 @@ class BunnyStreamTest extends TestCase
         $this->assertSame(0, Testimony::pending()->count());
         // L'auteur la voit, avec son état.
         $this->actingAs($author)->getJson("/api/v1/testimonies/{$testimony->id}")->assertOk()
-            ->assertJsonPath('data.video.status', 'uploading')
+            ->assertJsonPath('data.video.status', 'processing') // envoi en cours : « processing » pour l'application
+            ->assertJsonPath('data.video.playback_url', null)
+            ->assertJsonPath('data.video.mp4_url', null)
             ->assertJsonPath('data.video.hls_url', null);
     }
 
@@ -195,11 +197,16 @@ class BunnyStreamTest extends TestCase
         $base = 'https://' . self::CDN . '/' . self::GUID;
         $this->assertSame([
             'status'        => 'ready',
-            'hls_url'       => "{$base}/playlist.m3u8",
+            'playback_url'  => "{$base}/playlist.m3u8",
+            'mp4_url'       => "{$base}/play_720p.mp4",
             'thumbnail_url' => "{$base}/thumbnail.jpg",
-            'mp4_urls'      => ['240' => "{$base}/play_240p.mp4", '360' => "{$base}/play_360p.mp4", '720' => "{$base}/play_720p.mp4"],
             'duration'      => 42,
+            'hls_url'       => "{$base}/playlist.m3u8",
+            'mp4_urls'      => ['240' => "{$base}/play_240p.mp4", '360' => "{$base}/play_360p.mp4", '720' => "{$base}/play_720p.mp4"],
         ], $video);
+        // Lien de lecture HLS et vignette enregistrés sur le témoignage.
+        $this->assertSame("{$base}/playlist.m3u8", $testimony->fresh()->media_url);
+        $this->assertSame("{$base}/thumbnail.jpg", $testimony->fresh()->cover_url);
 
         // Webhook suivant (autre qualité encodée) : pas de seconde notification.
         $this->postJson('/api/v1/webhooks/bunny', ['VideoLibraryId' => (int) self::LIBRARY, 'VideoGuid' => self::GUID, 'Status' => 4])
@@ -251,7 +258,10 @@ class BunnyStreamTest extends TestCase
             ->assertOk();
 
         $this->assertSame(Testimony::VIDEO_FAILED, $testimony->fresh()->video_status);
-        Queue::assertNothingPushed();
+        // Auteur prévenu une seule fois.
+        Queue::assertPushed(SendPushNotificationJob::class, fn ($job) => $job->data === ['type' => 'video_failed', 'testimony_id' => $testimony->id]);
+        $this->postJson('/api/v1/webhooks/bunny', ['VideoLibraryId' => (int) self::LIBRARY, 'VideoGuid' => self::GUID, 'Status' => 5])->assertOk();
+        Queue::assertPushed(SendPushNotificationJob::class, 1);
     }
 
     // ─── Ressource ─────────────────────────────────────────────────────────

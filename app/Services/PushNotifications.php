@@ -46,6 +46,7 @@ class PushNotifications
         'new_followed_testimony' => 'Nouveau témoignage',
         'pending_correction'     => 'Correction demandée',
         'testimony_resubmitted'  => 'Témoignage à relire',
+        'video_stuck'            => 'Vidéo bloquée chez Bunny',
         'organization_verified'  => 'Organisation vérifiée',
         'organization_rejected'  => 'Vérification refusée',
         'account_verified'       => 'Compte vérifié',
