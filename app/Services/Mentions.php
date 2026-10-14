@@ -314,6 +314,7 @@ class Mentions
                 'initials'       => $r['user']->initials,
                 'isOrganization' => $r['user']->account_type === AccountType::Organization,
                 'isVerified'     => $r['user']->isVerified(),
+                ...\App\Models\User::approvalFieldsFor($r['user']), // badge-approuve.md
                 'isFollowing'    => $r['following'],
             ])
             ->values();

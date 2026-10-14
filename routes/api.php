@@ -122,6 +122,8 @@ Route::prefix('v1')->group(function () {
     Route::get('testimonies/{id}',      [TestimonyController::class, 'show']);
     Route::get('testimonies/{id}/proofs/{proofId}', [\App\Http\Controllers\Api\TestimonyProofController::class, 'show']); // public si accepté par l'auteur
     Route::get('testimonies/{id}/recommendations', [TestimonyController::class, 'recommendations'])->middleware('throttle:60,1');
+    // Vue dédoublonnée (30 min) + secondes regardées : statistiques (docs/fonctionnalites/gestion-des-temoignages.md)
+    Route::post('testimonies/{id}/view', [TestimonyController::class, 'recordView'])->middleware('throttle:120,1');
     Route::get('testimonies/{id}/comments',  [CommentController::class, 'index']);
     Route::get('testimonies/{id}/reactions', [ReactionController::class, 'index']);
     // Avant users/{id} : comptes à suivre (invité accepté) et mentions « @ » (connecté)
@@ -382,6 +384,9 @@ Route::prefix('v1')->group(function () {
             Route::post('users/{id}/reject-verification', [AdminController::class, 'rejectOrganization']);
             // Comptes personnels ─ docs/fonctionnalites/verification-des-comptes.md
             Route::post('users/{id}/revoke-verification', [\App\Http\Controllers\Api\AccountVerificationController::class, 'revoke']);
+            // Badge « Approuvé » manuel, motif obligatoire ─ docs/fonctionnalites/badge-approuve.md
+            Route::post('users/{id}/approval',   [\App\Http\Controllers\Api\AccountApprovalController::class, 'grant'])->whereUuid('id');
+            Route::delete('users/{id}/approval', [\App\Http\Controllers\Api\AccountApprovalController::class, 'revoke'])->whereUuid('id');
             Route::get('verification-requests',                         [\App\Http\Controllers\Api\AccountVerificationController::class, 'index']);
             Route::get('verification-requests/{id}',                    [\App\Http\Controllers\Api\AccountVerificationController::class, 'adminShow'])->whereUuid('id');
             Route::get('verification-requests/{id}/documents/{index}',  [\App\Http\Controllers\Api\AccountVerificationController::class, 'document'])->whereUuid('id')->whereNumber('index');

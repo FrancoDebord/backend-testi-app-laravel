@@ -24,6 +24,7 @@ class DailyVerseCommentResource extends JsonResource
                 'initials'    => $this->user?->initials,
                 'avatarUrl'   => $this->user?->avatar_url,
                 'isVerified'  => (bool) $this->user?->isVerified(),
+                ...\App\Models\User::approvalFieldsFor($this->user), // badge-approuve.md
             ],
             'isMine'    => $mine,
             'isHidden'  => $this->isHidden(),

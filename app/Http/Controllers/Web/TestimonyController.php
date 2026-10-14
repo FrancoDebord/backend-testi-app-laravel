@@ -173,6 +173,9 @@ class TestimonyController extends Controller
             'status'        => ($isJournal ? TestimonyStatus::Draft : TestimonyStatus::Pending)->value,
         ]);
 
+        // Modération non obligatoire (config testimonies.require_moderation) : approuvé aussitôt.
+        app(\App\Services\TestimonyModeration::class)->submitted($testimony);
+
         // Parole accomplie : montrée avec le témoignage une fois publié, si l'auteur le souhaite (jamais pour le carnet).
         if ($prophecy) {
             $prophecies->attachTestimony($prophecy, $testimony->id, !$isJournal && $request->boolean('prophecy_public'));
@@ -189,7 +192,11 @@ class TestimonyController extends Controller
         }
 
         return redirect()->route('testimonies.show', $testimony->id)
-                         ->with('success', $isJournal ? 'Témoignage enregistré dans votre carnet privé.' : 'Témoignage soumis pour modération.');
+                         ->with('success', match (true) {
+                             $isJournal => 'Témoignage enregistré dans votre carnet privé.',
+                             $testimony->status === TestimonyStatus::Approved => 'Témoignage publié.',
+                             default => 'Témoignage soumis pour modération.',
+                         });
     }
 
     /** Lien YouTube du formulaire : administrateurs seulement, identifiant reconnu. */

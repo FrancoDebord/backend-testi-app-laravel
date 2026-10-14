@@ -286,6 +286,7 @@ class BunnyStreamTest extends TestCase
             && $r->url() === 'https://video.bunnycdn.com/library/' . self::LIBRARY . '/videos/' . self::GUID);
     }
 
+    /** Corbeille (restaurable) : la vidéo Bunny est gardée ; suppression définitive : supprimée, même si Bunny échoue. */
     public function test_deleting_a_testimony_deletes_its_bunny_video_even_if_bunny_fails(): void
     {
         Http::fake(['video.bunnycdn.com/*' => Http::response('Erreur', 500)]);
@@ -295,6 +296,13 @@ class BunnyStreamTest extends TestCase
         $this->actingAs($author)->deleteJson("/api/v1/testimonies/{$testimony->id}")->assertOk();
 
         $this->assertSoftDeleted($testimony);
+        Http::assertNothingSent();
+
+        // Suppression définitive : super-administrateur, depuis la corbeille du back-office.
+        $super = $this->user('Super');
+        $super->forceFill(['role' => 'administrateur', 'is_super_admin' => true])->save();
+        $this->actingAs($super)->delete("/moderation/{$testimony->id}/definitif")->assertRedirect();
+        $this->assertDatabaseMissing('testimonies', ['id' => $testimony->id]);
         Http::assertSent(fn (HttpRequest $r) => $r->method() === 'DELETE' && str_ends_with($r->url(), '/videos/' . self::GUID));
     }
 

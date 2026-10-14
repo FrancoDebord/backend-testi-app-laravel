@@ -64,6 +64,14 @@ class AdminController extends Controller
             $query->where('verification_status', $verification);
         }
 
+        // Comptes approuvés (badge « Approuvé », docs/fonctionnalites/badge-approuve.md) ; ?approval_source=
+        if ($request->boolean('approved')) {
+            $query->where('verification_status', 'verified');
+        }
+        if ($source = $request->query('approval_source')) {
+            $query->where('approval_source', $source);
+        }
+
         $users = $query->latest()->paginate(20);
 
         return $this->paginated(

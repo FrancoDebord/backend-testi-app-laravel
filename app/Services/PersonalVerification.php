@@ -217,6 +217,7 @@ class PersonalVerification
             throw new VerificationActionException('Ce compte a été supprimé.', 422);
         }
 
+        $before = AccountApproval::snapshot($user);
         DB::transaction(function () use ($request, $user, $admin) {
             $request->update([
                 'status'      => VerificationRequest::APPROVED,
@@ -229,8 +230,10 @@ class PersonalVerification
                 'verified_at'         => now(),
                 'verified_by'         => $admin->id,
                 'verification_note'   => null,
+                'approval_source'     => 'verification_form', // docs/fonctionnalites/badge-approuve.md
             ])->save();
         });
+        AccountApproval::audit($user, $admin, 'user.badge_granted', $before, 'Demande de vérification approuvée');
 
         self::notify($user, $admin, NotificationType::AccountVerified,
             'Votre compte est vérifié. Le badge « Compte vérifié » apparaît désormais sur votre profil et vos publications.');
@@ -257,6 +260,7 @@ class PersonalVerification
                     'verified_at'         => null,
                     'verified_by'         => $admin->id,
                     'verification_note'   => $reason,
+                    'approval_source'     => null,
                 ])->save();
             }
         });
@@ -278,6 +282,7 @@ class PersonalVerification
             throw new VerificationActionException('Ce compte n’est pas vérifié.', 422);
         }
         $reason = trim($reason);
+        $before = AccountApproval::snapshot($user);
 
         DB::transaction(function () use ($user, $admin, $reason) {
             VerificationRequest::where('user_id', $user->id)
@@ -294,10 +299,13 @@ class PersonalVerification
                 'verified_at'         => null,
                 'verified_by'         => $admin->id,
                 'verification_note'   => $reason,
+                'approval_source'     => null,
             ])->save();
         });
+        AccountApproval::audit($user, $admin, 'user.badge_revoked', $before, $reason);
 
-        self::notify($user, $admin, NotificationType::AccountVerificationRejected,
+        // Badge retiré (et non demande refusée) : type dédié (docs/fonctionnalites/badge-approuve.md).
+        self::notify($user, $admin, NotificationType::AccountApprovalRevoked,
             'La vérification de votre compte a été retirée : ' . rtrim($reason, ' .') . '.');
     }
 

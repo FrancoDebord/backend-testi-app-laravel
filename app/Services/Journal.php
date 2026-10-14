@@ -46,6 +46,8 @@ class Journal
             'category_id'   => $category?->id ?? $testimony->category_id,
         ]);
         $category?->increment('testimony_count');
+        // Modération non obligatoire : approuvé aussitôt (docs/fonctionnalites/gestion-des-temoignages.md).
+        app(TestimonyModeration::class)->submitted($testimony);
 
         return $testimony;
     }

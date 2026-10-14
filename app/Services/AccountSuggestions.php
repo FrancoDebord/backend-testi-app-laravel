@@ -98,6 +98,7 @@ class AccountSuggestions
             'testimonyCount'       => $testimonies,
             'followersCount'       => (int) $u->follower_count,
             'isVerified'           => $u->isVerified(),
+            ...\App\Models\User::approvalFieldsFor($u), // badge-approuve.md
             'isOrganization'       => $isOrg,
             'reason'               => $reason,
         ];

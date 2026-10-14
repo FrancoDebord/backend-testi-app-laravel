@@ -17,6 +17,8 @@
         'all'           => ['Tous les comptes', 'Tous'],
         'organizations' => ['Organisations', 'Organisations'],
         'pending'       => ['Organisations en attente', 'En attente'],
+        // Badge « Approuvé » (docs/fonctionnalites/badge-approuve.md)
+        'approved'      => ['Comptes approuvés', 'Approuvés'],
     ];
 @endphp
 

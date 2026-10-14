@@ -45,6 +45,7 @@ class PrayerRequestMessage extends Model
                 'initials'    => $this->user?->initials,
                 'avatarUrl'   => $this->user?->avatar_url,
                 'isVerified'  => (bool) $this->user?->isVerified(),
+                ...User::approvalFieldsFor($this->user), // badge-approuve.md
                 'isOrganization' => (bool) $this->user?->isOrganization(),
             ],
             'isMine'    => $viewer !== null && $viewer->id === $this->user_id,

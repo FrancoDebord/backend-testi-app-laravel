@@ -18,6 +18,7 @@ class ModerationItemResource extends JsonResource
                 'displayName' => $this->user->display_name,
                 'country'     => $this->user->country,
                 'avatarUrl'   => $this->user->avatar_url,
+                ...\App\Models\User::approvalFieldsFor($this->user), // badge-approuve.md
             ],
             'title'           => $this->title,
             'category'        => $this->category_slug,

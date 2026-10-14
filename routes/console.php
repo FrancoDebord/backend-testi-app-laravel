@@ -16,6 +16,11 @@ Schedule::command('events:send-surveys')->hourly()->withoutOverlapping();
 // Vidéos Bunny Stream : envois jamais terminés (> 24 h) passés en échec, vidéo Bunny supprimée (docs/fonctionnalites/videos-bunny-stream.md)
 Schedule::command('videos:expire-uploads')->hourly()->withoutOverlapping();
 
+// Témoignages (docs/fonctionnalites/gestion-des-temoignages.md) : statistiques de la veille (heure du Bénin),
+// puis corbeille de plus de 30 jours vidée (suppression définitive, vidéo Bunny comprise).
+Schedule::command('testimonies:aggregate-stats')->dailyAt('00:20')->timezone('Africa/Porto-Novo')->withoutOverlapping();
+Schedule::command('testimonies:purge-trash')->dailyAt('03:30')->timezone('Africa/Porto-Novo')->withoutOverlapping();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

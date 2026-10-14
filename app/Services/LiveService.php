@@ -598,6 +598,7 @@ class LiveService
                     'initials'    => $u->initials,
                     'avatarUrl'   => $u->avatar_url,
                     'isVerified'  => $u->isVerified(),
+                    ...\App\Models\User::approvalFieldsFor($u), // badge-approuve.md
                 ])->values()->all();
 
             return ['total' => count($people) + $anonymous, 'people' => $people, 'anonymous' => $anonymous];

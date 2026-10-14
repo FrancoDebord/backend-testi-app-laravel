@@ -1,5 +1,7 @@
 # Comptes organisation
 
+> **2026-10-14** : ce badge est aussi le badge « Approuvé » des comptes (source enregistrée dans `approval_source`, attribution et retrait manuels par un administrateur, journal d'audit, champs `is_approved` / `approval_badge` dans l'API). Voir [badge-approuve.md](badge-approuve.md).
+
 ## But
 
 Permettre aux **églises, ministères, associations, ONG et médias chrétiens** d'avoir un compte à leur nom sur TestiApp, et à un administrateur de **confirmer leur identité**. Une organisation confirmée porte une **coche « Organisation vérifiée »** à côté de son nom (profil, témoignages), dans l'application mobile comme sur le site.

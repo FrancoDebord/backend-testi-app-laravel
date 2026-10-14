@@ -14,6 +14,8 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Événements chrétiens](fonctionnalites/evenements.md) | Croisades, conférences, camps… créés par les organisations vérifiées et les administrateurs : carrousel d'images, invités, « Je participe », commentaires des participants, témoignages officiels, direct de l'événement (site et application) |
 | [Requêtes de prière](fonctionnalites/requetes-de-priere.md) | Publication directe, visibilité publique / abonnés / privée, anonymat, « Je prie », encouragements, exaucée, signalement et retrait par la modération, rattachement à un événement (site et application) |
 | [Verset du jour en plein écran](fonctionnalites/verset-du-jour.md) | Page immersive du verset du jour (site et application) : versions de la Bible (choix mémorisé, « Comparer », hors connexion), J'aime / Je prie, partage, écoute, mode lecture ; sujets de prière rattachés, commentaires (mentions, signalement), témoignages qui citent le verset |
+| [Badge « Approuvé » des comptes](fonctionnalites/badge-approuve.md) | Badge des personnes et des organisations (= vérification existante) : demande de vérification, vérification des organisations ou attribution manuelle par un administrateur (motif, audit, notification), retrait ; `is_approved`, `account_type`, `approval_badge` dans toutes les ressources utilisateur et auteur ; onglet « Comptes approuvés » |
+| [Gestion des témoignages](fonctionnalites/gestion-des-temoignages.md) | Back-office `/moderation` (modérateurs et administrateurs) : onglets, actions groupées, motif de refus obligatoire, « Modifier et renvoyer », label « Témoignage approuvé » (administrateurs), à la une avec ordre et dates, corbeille 30 jours, suppression définitive (super-administrateur), statistiques par jour, journal d'audit |
 | [Designs du verset du jour](fonctionnalites/designs-du-verset.md) | 12 designs communs à l'app et au site (catalogue `config/verse_designs.php`), design du jour (même algorithme que l'app, Africa/Porto-Novo), police, taille et alignement du texte synchronisés (`/me/verse-style`), carte de l'accueil et premier écran plein design, image de partage 1080 × 1350 (GD) et aperçu des réseaux sociaux |
 | [Sessions de prière](fonctionnalites/sessions-de-priere.md) | Sessions programmées par tout compte, inscriptions « Je serai là », rappel 15 min avant ; la salle est un direct LiveKit ouvert par l'hôte (commentaires, intervenants) |
 | [Paroles prophétiques](fonctionnalites/paroles-prophetiques.md) | Carnet privé (application) : garder les paroles reçues (texte ou audio), journal de prière, rappels, proclamation, témoignage de l'accomplissement et parole rendue publique avec lui |
@@ -212,6 +214,20 @@ Le fichier `storage/app/firebase-credentials.json` (chemin proposé par `.env.ex
 ### Connexion avec Google
 
 [connexion-google.md](fonctionnalites/connexion-google.md) — 2026-10-09 : migration `2026_10_09_200001_add_google_id_to_users_table` (`php artisan migrate --force`), variable `GOOGLE_WEB_CLIENT_ID` (identifiant client **Web**, `566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com`) à ajouter au `.env` du serveur, puis `php artisan config:clear`. Sans elle (et sans `GOOGLE_CLIENT_ID`), toute connexion Google est refusée et le bouton du site est masqué. Pour le bouton « Continuer avec Google » de `/login` (2026-10-10) : ajouter `https://testi.airid-africa.com` aux **origines JavaScript autorisées** du client OAuth Web dans la console Google Cloud.
+
+### Badge « Approuvé » des comptes
+
+[badge-approuve.md](fonctionnalites/badge-approuve.md), 2026-10-14 : migration `2026_10_14_200001_add_approval_source_to_users_table` (reprend la source des badges existants). Pas de variable d'environnement.
+
+### Gestion des témoignages
+
+[gestion-des-temoignages.md](fonctionnalites/gestion-des-temoignages.md), 2026-10-14 :
+
+- migrations `2026_10_14_100001_add_moderation_featured_fields_to_testimonies_table`, `2026_10_14_100002_create_admin_audit_logs_table`, `2026_10_14_100003_create_testimony_stats_tables` ;
+- tâches planifiées `testimonies:aggregate-stats` (0 h 20) et `testimonies:purge-trash` (3 h 30), lancées par le cron `schedule:run` existant ;
+- variables facultatives `TESTIMONIES_REQUIRE_MODERATION` (défaut `true`) et `TESTIMONIES_FEATURED_FILL_RECENT` (défaut `true`) ;
+- désigner un super-administrateur sur le serveur : `php artisan users:super-admin {email}` ;
+- recompilation des assets (nouvelles pages du back-office).
 
 ### Designs du verset du jour
 

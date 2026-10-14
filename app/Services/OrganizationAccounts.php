@@ -103,12 +103,15 @@ class OrganizationAccounts
 
     public static function verify(User $organization, User $admin): void
     {
-        $organization->update([
+        $before = AccountApproval::snapshot($organization);
+        $organization->forceFill([
             'verification_status' => VerificationStatus::Verified->value,
             'verified_at'         => now(),
             'verified_by'         => $admin->id,
             'verification_note'   => null,
-        ]);
+            'approval_source'     => 'organization_review', // docs/fonctionnalites/badge-approuve.md
+        ])->save();
+        AccountApproval::audit($organization, $admin, 'user.badge_granted', $before, 'Organisation vérifiée');
 
         self::notify($organization, $admin, NotificationType::OrganizationVerified,
             'Votre organisation « ' . $organization->organization_name . ' » est vérifiée. Le badge apparaît désormais sur votre profil et vos témoignages.');
@@ -118,15 +121,23 @@ class OrganizationAccounts
     {
         $reason = $reason !== null && trim($reason) !== '' ? trim($reason) : null;
 
-        $organization->update([
+        $before = AccountApproval::snapshot($organization);
+        $wasApproved = $organization->isApproved();
+        $organization->forceFill([
             'verification_status' => VerificationStatus::Rejected->value,
             'verified_at'         => null,
             'verified_by'         => $admin->id,
             'verification_note'   => $reason,
-        ]);
+            'approval_source'     => null,
+        ])->save();
+        if ($wasApproved) {
+            AccountApproval::audit($organization, $admin, 'user.badge_revoked', $before, $reason);
+        }
 
-        self::notify($organization, $admin, NotificationType::OrganizationRejected,
-            'La vérification de votre organisation « ' . $organization->organization_name . ' » a été refusée'
+        // Organisation qui avait le badge : retrait (type dédié) ; sinon refus de la demande.
+        self::notify($organization, $admin, $wasApproved ? NotificationType::AccountApprovalRevoked : NotificationType::OrganizationRejected,
+            'La vérification de votre organisation « ' . $organization->organization_name . ' » a été '
+            . ($wasApproved ? 'retirée' : 'refusée')
             . ($reason ? ' : ' . $reason : '.')
             . ' Vous pouvez corriger vos informations depuis votre profil.');
     }
@@ -137,6 +148,7 @@ class OrganizationAccounts
         $user->verified_at         = null;
         $user->verified_by         = null;
         $user->verification_note   = null;
+        $user->approval_source     = null;
     }
 
     /**

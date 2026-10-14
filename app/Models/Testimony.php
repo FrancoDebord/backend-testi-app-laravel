@@ -28,6 +28,10 @@ class Testimony extends Model
         'is_featured', 'views_count', 'like_count', 'prayer_count',
         'comment_count', 'share_count', 'bookmark_count',
         'approved_by', 'approved_at',
+        // Modération, label « Témoignage approuvé », mise à la une (docs/fonctionnalites/gestion-des-temoignages.md)
+        'moderated_by', 'moderated_at', 'rejection_reason',
+        'is_verified', 'verified_by', 'verified_at',
+        'featured_order', 'featured_from', 'featured_until',
         // Bunny Stream (docs/fonctionnalites/videos-bunny-stream.md)
         'bunny_video_id', 'video_status', 'duration', 'available_resolutions',
     ];
@@ -49,6 +53,12 @@ class Testimony extends Model
             'is_featured' => 'boolean',
             'proofs_public' => 'boolean',
             'approved_at' => 'datetime',
+            'moderated_at'   => 'datetime',
+            'is_verified'    => 'boolean',
+            'verified_at'    => 'datetime',
+            'featured_order' => 'integer',
+            'featured_from'  => 'datetime',
+            'featured_until' => 'datetime',
             'duration_sec'    => 'integer',
             'duration'        => 'integer',
             'views_count'     => 'integer',
@@ -75,9 +85,10 @@ class Testimony extends Model
         static::saved($forgetAuthorFeed);
         static::deleted($forgetAuthorFeed);
 
-        // Vidéo Bunny supprimée avec le témoignage, après la réponse ; un échec est journalisé
-        // sans bloquer la suppression (docs/fonctionnalites/videos-bunny-stream.md).
-        static::deleted(function (Testimony $testimony) {
+        // Vidéo Bunny supprimée à la suppression DÉFINITIVE seulement (la corbeille se restaure), après la
+        // réponse ; un échec est journalisé sans bloquer la suppression (docs/fonctionnalites/videos-bunny-stream.md,
+        // gestion-des-temoignages.md).
+        static::forceDeleted(function (Testimony $testimony) {
             if ($guid = $testimony->bunny_video_id) {
                 dispatch(fn () => \App\Services\BunnyStreamVideos::deleteQuietly($guid))->afterResponse();
             }
@@ -127,6 +138,24 @@ class Testimony extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Dernière personne qui a approuvé ou refusé (null : approbation automatique). */
+    public function moderator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'moderated_by');
+    }
+
+    /** Administrateur qui a attribué le label « Témoignage approuvé ». */
+    public function verifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    /** Statistiques par jour (docs/fonctionnalites/gestion-des-temoignages.md). */
+    public function dailyStats(): HasMany
+    {
+        return $this->hasMany(TestimonyDailyStat::class);
     }
 
     public function category(): BelongsTo
@@ -257,17 +286,55 @@ class Testimony extends Model
     }
 
     /**
-     * « À la une » : témoignages publiés (approuvés ET publics), mis en avant manuellement
-     * (is_featured) OU publiés depuis moins de FEATURED_RECENT_DAYS jours.
+     * « À la une » : témoignages publiés (approuvés ET publics), mis à la une manuellement et dans leurs
+     * dates, OU (si featured_fill_recent) publiés depuis moins de FEATURED_RECENT_DAYS jours.
+     * Liste ordonnée de GET /testimonies/featured : App\Services\FeaturedTestimonies.
      */
     public function scopeFeatured($query)
     {
+        if (!config('testimonies.featured_fill_recent', true)) {
+            return $query->manuallyFeatured();
+        }
         $since = now()->subDays(self::FEATURED_RECENT_DAYS);
 
         return $query->published()
-            ->where(fn ($q) => $q->where('is_featured', true)
+            ->where(fn ($q) => $q->where(fn ($m) => self::activeFeatureWindow($m->where('is_featured', true)))
                 ->orWhere('approved_at', '>=', $since)
                 ->orWhere(fn ($q2) => $q2->whereNull('approved_at')->where('created_at', '>=', $since)));
+    }
+
+    /** Mis à la une manuellement, publié, et dans ses dates (featured_from / featured_until facultatives). */
+    public function scopeManuallyFeatured($query)
+    {
+        return self::activeFeatureWindow($query->published()->where('is_featured', true));
+    }
+
+    private static function activeFeatureWindow($query)
+    {
+        $now = now();
+
+        return $query->where(fn ($q) => $q->whereNull('featured_from')->orWhere('featured_from', '<=', $now))
+            ->where(fn ($q) => $q->whereNull('featured_until')->orWhere('featured_until', '>=', $now));
+    }
+
+    /** Mise à la une manuelle en cours (badge « featured »). */
+    public function isManuallyFeatured(): bool
+    {
+        return $this->is_featured
+            && $this->status === TestimonyStatus::Approved
+            && $this->visibility === TestimonyVisibility::Public
+            && !$this->trashed()
+            && ($this->featured_from === null || $this->featured_from->lte(now()))
+            && ($this->featured_until === null || $this->featured_until->gte(now()));
+    }
+
+    /** Badges d'affichage (API, site) : verified (label « Témoignage approuvé »), featured (à la une manuelle). */
+    public function badges(): array
+    {
+        return array_values(array_filter([
+            $this->is_verified && $this->status === TestimonyStatus::Approved ? 'verified' : null,
+            $this->isManuallyFeatured() ? 'featured' : null,
+        ]));
     }
 
     /** Du plus récemment publié au plus ancien. */
@@ -294,8 +361,9 @@ class Testimony extends Model
             return false;
         }
 
-        return $this->is_featured
-            || ($this->publishedAt()?->gte(now()->subDays(self::FEATURED_RECENT_DAYS)) ?? false);
+        return $this->isManuallyFeatured()
+            || (config('testimonies.featured_fill_recent', true)
+                && ($this->publishedAt()?->gte(now()->subDays(self::FEATURED_RECENT_DAYS)) ?? false));
     }
 
     // ---------- Page Vidéos (docs/fonctionnalites/videos.md) ----------

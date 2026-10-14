@@ -118,6 +118,7 @@ class ContentInteractions
                     'initials'    => $repost->user->initials,
                     'avatarUrl'   => $repost->user->avatar_url,
                     'isVerified'  => (bool) $repost->user->isVerified(),
+                    ...\App\Models\User::approvalFieldsFor($repost->user), // badge-approuve.md
                 ],
             ] : null,
         ];

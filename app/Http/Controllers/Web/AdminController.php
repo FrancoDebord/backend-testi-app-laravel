@@ -67,10 +67,13 @@ class AdminController extends Controller
         $tab = match ($request->query('tab')) {
             'organizations' => 'organizations',
             'pending'       => 'pending',
+            'approved'      => 'approved',
             default         => 'all',
         };
         if ($tab === 'organizations') $query->organizations();
         if ($tab === 'pending')       $query->pendingVerification();
+        // Comptes approuvés : badge « Approuvé » (docs/fonctionnalites/badge-approuve.md)
+        if ($tab === 'approved')      $query->where('verification_status', 'verified');
 
         $users = $query->latest()->paginate(20);
         $pendingOrganizations = User::pendingVerification()->count();

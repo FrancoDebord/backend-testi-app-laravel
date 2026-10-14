@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\RejectionReason;
-use App\Enums\TestimonyStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\ModerationActionRequest;
 use App\Http\Resources\ModerationItemResource;
-use App\Models\AppNotification;
 use App\Models\ModerationLog;
 use App\Models\Testimony;
-use App\Services\FollowerNotifications;
+use App\Services\ContentActionException;
+use App\Services\TestimonyModeration;
+use Illuminate\Support\Facades\Gate;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -74,74 +74,30 @@ class ModerationController extends Controller
     {
         $testimony = Testimony::with('user')->withoutJournal()->find($id);
         if (!$testimony) return $this->notFound();
+        Gate::authorize('moderate', $testimony);
 
-        $testimony->update([
-            'status'      => TestimonyStatus::Approved->value,
-            'approved_by' => $request->user()->id,
-            'approved_at' => now(),
-        ]);
-
-        ModerationLog::create([
-            'testimony_id' => $id,
-            'moderator_id' => $request->user()->id,
-            'action'       => 'approved',
-            'created_at'   => now(),
-        ]);
-
-        $now = now();
-
-        // Notify author
-        AppNotification::create([
-            'recipient_id'    => $testimony->user_id,
-            'actor_id'        => $request->user()->id,
-            'actor_name'      => $request->user()->display_name,
-            'type'            => 'testimony_approved',
-            'testimony_id'    => $id,
-            'testimony_title' => $testimony->title,
-            'message'         => 'Votre témoignage "' . $testimony->title . '" a été approuvé',
-            'created_at'      => $now,
-        ]);
-
-        // Notify followers (insertion groupée + push : App\Services\FollowerNotifications)
-        FollowerNotifications::newTestimony($testimony->fresh('user'));
-        // Personnes mentionnées dans le texte : une seule fois chacune (docs/fonctionnalites/mentions.md)
-        \App\Services\Mentions::notifyTestimony($testimony->fresh('user'));
-
-        // Update user testimony count
-        $testimony->user->increment('testimony_count');
+        // Statut, journal, audit, notification de l'auteur, abonnés et mentions à la première publication.
+        app(TestimonyModeration::class)->approve($testimony, $request->user());
 
         return $this->success(null, 'Témoignage approuvé');
     }
 
+    /**
+     * Refus : motif obligatoire, code (reason) et/ou texte libre (rejection_reason). Voir
+     * docs/fonctionnalites/gestion-des-temoignages.md
+     */
     public function reject(ModerationActionRequest $request, string $id): JsonResponse
     {
         $testimony = Testimony::withoutJournal()->find($id);
         if (!$testimony) return $this->notFound();
+        Gate::authorize('moderate', $testimony);
 
-        $testimony->update(['status' => TestimonyStatus::Rejected->value]);
-
-        ModerationLog::create([
-            'testimony_id'     => $id,
-            'moderator_id'     => $request->user()->id,
-            'action'           => 'rejected',
-            'rejection_reason' => $request->reason,
-            'moderator_note'   => $request->moderator_note,
-            'created_at'       => now(),
-        ]);
-
-        // Notify author
-        $reasonLabel = RejectionReason::tryFrom((string) $request->reason)?->label()
-            ?? ($request->reason ? ucfirst($request->reason) : 'Non conforme');
-        AppNotification::create([
-            'recipient_id'    => $testimony->user_id,
-            'actor_id'        => $request->user()->id,
-            'actor_name'      => $request->user()->display_name,
-            'type'            => 'testimony_rejected',
-            'testimony_id'    => $id,
-            'testimony_title' => $testimony->title,
-            'message'         => 'Votre témoignage "' . $testimony->title . '" a été rejeté : ' . $reasonLabel,
-            'created_at'      => now(),
-        ]);
+        try {
+            app(TestimonyModeration::class)->reject($testimony, $request->user(), $request->input('rejection_reason'),
+                RejectionReason::tryFrom((string) $request->reason), $request->moderator_note);
+        } catch (ContentActionException $e) {
+            return $this->error($e->getMessage(), $e->status(), $e->errors());
+        }
 
         return $this->success(null, 'Témoignage rejeté');
     }

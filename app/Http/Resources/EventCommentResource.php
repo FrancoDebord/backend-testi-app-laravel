@@ -24,6 +24,7 @@ class EventCommentResource extends JsonResource
                 'initials'    => $this->user?->initials,
                 'avatarUrl'   => $this->user?->avatar_url,
                 'isVerified'  => (bool) $this->user?->isVerified(),
+                ...\App\Models\User::approvalFieldsFor($this->user), // badge-approuve.md
             ],
             // Enregistré comme témoignage officiel de l'événement.
             'testimonyId' => $this->testimony_id,

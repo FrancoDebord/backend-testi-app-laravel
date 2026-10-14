@@ -46,6 +46,7 @@ class PrayerSessionResource extends JsonResource
                 'initials'    => $this->host?->initials,
                 'avatarUrl'   => $this->host?->avatar_url,
                 'isVerified'  => (bool) $this->host?->isVerified(),
+                ...\App\Models\User::approvalFieldsFor($this->host), // badge-approuve.md
                 'isOrganization' => (bool) $this->host?->isOrganization(),
             ],
             'event'            => $this->event_id && $this->event ? ['id' => $this->event_id, 'title' => $this->event->title] : null,

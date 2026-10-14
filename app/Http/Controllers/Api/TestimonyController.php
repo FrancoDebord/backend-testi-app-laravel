@@ -41,13 +41,34 @@ class TestimonyController extends Controller
             ]);
         }
 
-        $query = Testimony::with('user')
-            ->published()
-            ->latest('updated_at');
+        // Filtres combinables (docs/fonctionnalites/gestion-des-temoignages.md) :
+        // ?status=approved (défaut ; pending | rejected : équipe de modération), ?verified=1, ?featured=1,
+        // ?sort=recent | popular | most_viewed (recommended : ancien nom de most_viewed).
+        $viewer = $request->user() ?? $request->user('sanctum');
+        $status = (string) $request->query('status', 'approved');
+        if (!in_array($status, ['approved', 'pending', 'rejected'], true)) {
+            return $this->error('Statut inconnu.', 422, ['status' => ['Valeurs possibles : approved, pending, rejected.']]);
+        }
+        if ($status !== 'approved' && !$viewer?->canModerate()) {
+            return $this->forbidden('Seule l\'équipe de modération peut lister les témoignages non publiés.');
+        }
+
+        $query = Testimony::with('user');
+        if ($status === 'approved') {
+            $query->published();
+        } else {
+            $query->where('status', $status)->withoutJournal()->videoPlayable();
+        }
+        if ($request->boolean('verified')) {
+            $query->where('is_verified', true);
+        }
+        if ($request->boolean('featured')) {
+            $query->manuallyFeatured();
+        }
 
         // Delta sync: return only records updated after cursor
         if ($after = $request->query('after')) {
-            $query->after($after);
+            $query->after($after)->latest('updated_at');
         }
 
         // Category filter
@@ -69,10 +90,11 @@ class TestimonyController extends Controller
         // Sort
         $sort = $request->query('sort', 'recent');
         match($sort) {
-            'popular'     => $query->orderByDesc('like_count'),
-            'recommended' => $query->orderByDesc('views_count'),
-            default       => $query->latest(),
+            'popular'                     => $query->orderByDesc('like_count')->orderByDesc('prayer_count')->orderByDesc('views_count'),
+            'most_viewed', 'recommended'  => $query->orderByDesc('views_count'),
+            default                       => $query->latestPublished(),
         };
+        $query->orderByDesc('id'); // ordre stable entre les pages
 
         $limit = min((int) $request->query('limit', 20), 50);
         $testimonies = $query->paginate($limit);
@@ -106,15 +128,39 @@ class TestimonyController extends Controller
         return $this->success(TestimonyResource::collection($items));
     }
 
+    /**
+     * À la une : mises à la une manuelles actives (featured_order), puis complément récent si
+     * featured_fill_recent. Chaque élément porte featured_source = manual | recent ; seuls les
+     * « manual » ont le badge « featured ». Liste en cache 10 min (App\Services\FeaturedTestimonies).
+     */
     public function featured(): JsonResponse
     {
-        $testimonies = Testimony::with('user')
-            ->featured()
-            ->latestPublished()
-            ->limit(10)
-            ->get();
+        return $this->success(TestimonyResource::collection(app(\App\Services\FeaturedTestimonies::class)->list()));
+    }
 
-        return $this->success(TestimonyResource::collection($testimonies));
+    /**
+     * POST /testimonies/{id}/view  { device_id?, watched_seconds? } (public) : vue dédoublonnée par
+     * personne (compte, sinon appareil X-Device-Id / device_id, sinon IP) sur 30 min ; secondes de
+     * vidéo regardées depuis le dernier envoi. Voir docs/fonctionnalites/gestion-des-temoignages.md
+     */
+    public function recordView(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'device_id'       => ['nullable', 'string', 'max:120'],
+            'watched_seconds' => ['nullable', 'integer', 'min:0', 'max:86400'],
+        ]);
+        $testimony = Testimony::find($id);
+        $viewer = $request->user() ?? $request->user('sanctum');
+        if (!$testimony || !$testimony->isVisibleTo($viewer)) {
+            return $this->notFound();
+        }
+
+        $counted = app(\App\Services\ViewCounter::class)->record($testimony, $request);
+        if (!empty($data['watched_seconds']) && $testimony->status === TestimonyStatus::Approved && !$testimony->isInJournal()) {
+            app(\App\Services\TestimonyStats::class)->recordWatch($testimony, $request, (int) $data['watched_seconds']);
+        }
+
+        return $this->success(['counted' => $counted, 'viewsCount' => (int) $testimony->views_count]);
     }
 
     public function show(Request $request, string $id): JsonResponse
@@ -132,9 +178,16 @@ class TestimonyController extends Controller
             return $testimony->isInJournal() ? $this->notFound() : $this->forbidden();
         }
 
-        // Seules les lectures d'un témoignage publié comptent (pas la relecture ni son propre carnet).
-        if (!$testimony->isInJournal() && $testimony->status->value === 'approved') {
-            $testimony->increment('views_count');
+        // Non publié (en attente, refusé) : visible de son auteur et de la modération seulement
+        // (docs/fonctionnalites/gestion-des-temoignages.md).
+        if ($testimony->status !== TestimonyStatus::Approved && $viewer?->id !== $testimony->user_id && !$isModerator) {
+            return $this->notFound();
+        }
+
+        // Seules les lectures d'un témoignage publié comptent, une fois par personne sur 30 min (ViewCounter).
+        // Historique de lecture (recommandations) : chaque lecture, comme avant.
+        app(\App\Services\ViewCounter::class)->record($testimony, $request, history: false);
+        if (!$testimony->isInJournal() && $testimony->status === TestimonyStatus::Approved) {
             \App\Services\Recommendations::recordView($viewer, $testimony);
         }
 
@@ -180,10 +233,14 @@ class TestimonyController extends Controller
         } catch (\App\Services\ContentActionException $e) {
             return $this->error($e->getMessage(), $e->status(), $e->errors());
         }
+        // Modération non obligatoire (config testimonies.require_moderation) : approuvé aussitôt.
+        app(\App\Services\TestimonyModeration::class)->submitted($testimony);
 
-        return $this->created(new TestimonyResource($testimony), $testimony->isInJournal()
-            ? 'Témoignage enregistré dans votre carnet privé'
-            : 'Témoignage soumis pour modération');
+        return $this->created(new TestimonyResource($testimony->fresh(['user'])), match (true) {
+            $testimony->isInJournal()                                    => 'Témoignage enregistré dans votre carnet privé',
+            $testimony->status === TestimonyStatus::Approved             => 'Témoignage publié',
+            default                                                      => 'Témoignage soumis pour modération',
+        });
     }
 
     public function myTestimonies(Request $request): JsonResponse
@@ -249,9 +306,15 @@ class TestimonyController extends Controller
             'visibility'   => $request->visibility ?? $testimony->visibility->value,
             'proofs_public' => $request->has('proofs_public') ? $request->boolean('proofs_public') : $testimony->proofs_public,
         ]);
-        // Carnet privé : reste un brouillon ; sinon nouvelle relecture.
-        $testimony->update(['status' => ($testimony->fresh()->isInJournal()
-            ? TestimonyStatus::Draft : TestimonyStatus::Pending)->value]);
+        // Carnet privé : reste un brouillon. Modification par l'AUTEUR (« Modifier et renvoyer ») : refusé →
+        // en attente, approuvé → en attente si la modération est obligatoire, label retiré
+        // (TestimonyModeration::editedByAuthor). Une correction par la modération garde le statut.
+        $testimony->refresh();
+        if ($testimony->isInJournal()) {
+            $testimony->update(['status' => TestimonyStatus::Draft->value]);
+        } elseif ($testimony->user_id === $request->user()->id) {
+            app(\App\Services\TestimonyModeration::class)->editedByAuthor($testimony, $request->user());
+        }
 
         return $this->success(new TestimonyResource($testimony->fresh(['user'])));
     }
@@ -315,8 +378,10 @@ class TestimonyController extends Controller
             'category_id'   => $category?->id ?? $testimony->category_id,
         ]);
         $category?->increment('testimony_count');
+        app(\App\Services\TestimonyModeration::class)->submitted($testimony->refresh());
 
-        return $this->success(new TestimonyResource($testimony->fresh(['user'])), 'Témoignage soumis pour modération');
+        return $this->success(new TestimonyResource($testimony->fresh(['user'])), $testimony->status === TestimonyStatus::Approved
+            ? 'Témoignage publié' : 'Témoignage soumis pour modération');
     }
 
     /** Retire un témoignage du public et le range dans le carnet privé. */
@@ -367,6 +432,7 @@ class TestimonyController extends Controller
         }
 
         $testimony->increment('share_count');
+        app(\App\Services\TestimonyStats::class)->recordShare($testimony, $request);
 
         return $this->success(['shareUrl' => $testimony->share_url ?? Testimony::shareUrlFor($testimony->id)], 'Partage enregistré');
     }

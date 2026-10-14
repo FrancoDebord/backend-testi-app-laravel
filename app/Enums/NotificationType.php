@@ -16,12 +16,18 @@ enum NotificationType: string
     case Share              = 'share';
     case NewFollowedTestimony = 'new_followed_testimony';
     case PendingCorrection  = 'pending_correction';
+    // Témoignage modifié par son auteur et renvoyé en modération : prévient les modérateurs
+    // (docs/fonctionnalites/gestion-des-temoignages.md)
+    case TestimonyResubmitted = 'testimony_resubmitted';
     // Comptes organisation (docs/fonctionnalites/comptes-organisation.md)
     case OrganizationVerified = 'organization_verified';
     case OrganizationRejected = 'organization_rejected';
     // Comptes personnels vérifiés (docs/fonctionnalites/verification-des-comptes.md)
     case AccountVerified             = 'account_verified';
     case AccountVerificationRejected = 'account_verification_rejected';
+    // Badge « Approuvé » retiré (personne ou organisation), par quelque chemin que ce soit :
+    // distinct du refus d'une demande (docs/fonctionnalites/badge-approuve.md)
+    case AccountApprovalRevoked      = 'account_approval_revoked';
     // Témoignages en direct (docs/fonctionnalites/lives.md)
     case LiveStarted          = 'live_started';
     // Requêtes et sessions de prière (docs/fonctionnalites/requetes-de-priere.md, sessions-de-priere.md)
@@ -43,10 +49,12 @@ enum NotificationType: string
             self::TestimonyApproved,
             self::TestimonyRejected,
             self::PendingCorrection,
+            self::TestimonyResubmitted,
             self::OrganizationVerified,
             self::OrganizationRejected,
             self::AccountVerified,
             self::AccountVerificationRejected,
+            self::AccountApprovalRevoked,
             self::AccountManagerAdded,
             self::AccountManagerRemoved,
         ]);

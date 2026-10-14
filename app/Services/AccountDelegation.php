@@ -100,6 +100,7 @@ class AccountDelegation
             'avatarUrl'      => $u->avatar_url,
             'isOrganization' => $u->isOrganization(),
             'isVerified'     => $u->isVerified(),
+            ...\App\Models\User::approvalFieldsFor($u), // badge-approuve.md
             'role'           => $role, // owner | manager
             'since'          => $since?->toIso8601String(),
         ];

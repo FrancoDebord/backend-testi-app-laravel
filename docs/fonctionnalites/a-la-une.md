@@ -1,5 +1,7 @@
 # Témoignages « à la une »
 
+> **Depuis le 2026-10-14**, la mise à la une manuelle a un ordre (`featured_order`) et des dates (`featured_from`, `featured_until`), se règle dans le back-office (`/moderation`), et `GET /testimonies/featured` liste d'abord les mises à la une manuelles, puis complète avec les plus récents (`featured_source` = manual | recent ; badge `featured` pour les manuelles seulement). La règle des 7 jours ci-dessous reste celle de `isFeatured` quand `featured_fill_recent` est vrai. Voir [gestion-des-temoignages.md](gestion-des-temoignages.md).
+
 ## But
 
 Mettre en avant les nouveaux témoignages : ceux publiés depuis **moins d'une semaine** sont automatiquement « à la une », en plus de ceux mis en avant manuellement.

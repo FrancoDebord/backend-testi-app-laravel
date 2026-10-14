@@ -41,6 +41,7 @@ class PrayerRequestResource extends JsonResource
                 'avatarUrl'   => $author->avatar_url,
                 'avatar'      => $author->avatar_url,
                 'isVerified'  => $author->isVerified(),
+                ...\App\Models\User::approvalFieldsFor($author), // badge-approuve.md
                 'isOrganization' => $author->isOrganization(),
             ] : null,
             'status'      => $this->status,          // open | answered

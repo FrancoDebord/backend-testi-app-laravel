@@ -60,6 +60,8 @@ class User extends Authenticatable
             'organization_type'   => OrganizationType::class,
             'verification_status' => VerificationStatus::class,
             'verified_at'         => 'datetime',
+            // Jamais dans $fillable : attribué seulement par php artisan users:super-admin.
+            'is_super_admin'      => 'boolean',
         ];
     }
 
@@ -187,6 +189,15 @@ class User extends Authenticatable
         return $this->role->isAdmin();
     }
 
+    /**
+     * Super-administrateur : administrateur avec is_super_admin (suppression définitive des témoignages).
+     * Attribué uniquement par php artisan users:super-admin {email} (docs/fonctionnalites/gestion-des-temoignages.md).
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->isAdmin() && (bool) $this->is_super_admin;
+    }
+
     public function isOrganization(): bool
     {
         return $this->account_type === AccountType::Organization;
@@ -199,6 +210,46 @@ class User extends Authenticatable
     public function isVerified(): bool
     {
         return $this->verification_status === VerificationStatus::Verified;
+    }
+
+    // ---------- Badge « Approuvé » (docs/fonctionnalites/badge-approuve.md) ----------
+
+    public const APPROVAL_SOURCES = ['verification_form', 'organization_review', 'admin_manual'];
+
+    /** Badge « Approuvé » : même état que le badge de vérification (verification_status = verified). */
+    public function isApproved(): bool
+    {
+        return $this->isVerified();
+    }
+
+    /** approved_personal | approved_organization | null. */
+    public function approvalBadge(): ?string
+    {
+        if (!$this->isApproved()) {
+            return null;
+        }
+
+        return $this->isOrganization() ? 'approved_organization' : 'approved_personal';
+    }
+
+    /** Date d'attribution du badge « Approuvé » (verified_at, ISO 8601) ; null sans badge. */
+    public function approvedAt(): ?string
+    {
+        return $this->isApproved() ? $this->verified_at?->toIso8601String() : null;
+    }
+
+    /**
+     * Champs exposés par chaque ressource utilisateur ou auteur de l'API (contrat de l'app) :
+     * is_approved, account_type (individual | organization), approval_badge, approved_at.
+     */
+    public static function approvalFieldsFor(?self $user): array
+    {
+        return [
+            'is_approved'    => (bool) $user?->isApproved(),
+            'account_type'   => $user ? ($user->account_type?->value ?? AccountType::Individual->value) : null,
+            'approval_badge' => $user?->approvalBadge(),
+            'approved_at'    => $user?->approvedAt(),
+        ];
     }
 
     /**

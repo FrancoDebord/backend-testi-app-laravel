@@ -4,6 +4,57 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-14 — Badge « Approuvé » des comptes
+
+- **Utilisateurs** : le badge de vérification devient le badge « Approuvé » (personnes et organisations). Un administrateur peut aussi l'attribuer ou le retirer directement, avec un motif ; la personne est prévenue. [badge-approuve.md](fonctionnalites/badge-approuve.md)
+- **API** :
+  - `POST` et `DELETE /admin/users/{id}/approval { reason }` (administrateurs) ;
+  - `GET /admin/users?approved=1&approval_source=` ;
+  - toutes les ressources utilisateur et auteur exposent `is_approved`, `account_type` (`individual` ou `organization`) et `approval_badge` (`approved_personal`, `approved_organization` ou `null`).
+- **Développeurs** :
+  - colonne `users.approval_source` (`verification_form`, `organization_review` ou `admin_manual`), renseignée par `PersonalVerification`, `OrganizationAccounts` et le nouveau service `AccountApproval` ;
+  - `User::isApproved()`, `approvalBadge()` et `approvalFieldsFor()` ;
+  - `App\Policies\UserPolicy` ;
+  - audit `user.badge_granted` et `user.badge_revoked` ;
+  - back-office : section « Badge Approuvé » sur la fiche utilisateur, onglet « Comptes approuvés » ;
+  - tests : `tests/Feature/AccountApprovalTest.php`.
+- **Déploiement** : `php artisan migrate --force` (`2026_10_14_200001_add_approval_source_to_users_table`, qui reprend la source des badges existants) ; recompiler les assets.
+
+---
+
+## 2026-10-14 — Gestion des témoignages (back-office, une, corbeille, statistiques)
+
+- **Utilisateurs** :
+  - un refus porte toujours un motif, envoyé à l'auteur ;
+  - en modifiant un témoignage refusé, l'auteur le renvoie en modération (« Modifier et renvoyer ») ; un témoignage publié qu'il modifie repasse aussi en relecture (modération obligatoire) ;
+  - nouveau label « Témoignage approuvé », attribué par un administrateur ;
+  - « À la une » est désormais choisi par l'équipe (ordre, dates), complété par les plus récents. [gestion-des-temoignages.md](fonctionnalites/gestion-des-temoignages.md)
+- **Équipe** : back-office `/moderation` (onglets En attente, Approuvés, Refusés, À la une et Corbeille, recherche, filtres, actions groupées), fiche avec historique et statistiques, tableau de bord `/moderation/tableau-de-bord`, journal d'audit. La corbeille se restaure pendant 30 jours ; la suppression définitive est réservée au super-administrateur.
+- **API** :
+  - `POST /testimonies/{id}/view` (vue dédoublonnée 30 min, `watched_seconds`) ;
+  - `GET /testimonies?status=&verified=1&featured=1&sort=recent|popular|most_viewed` ;
+  - `GET /testimonies/featured` : ordre manuel, champ `featured_source` ;
+  - `POST /moderation/{id}/reject` exige `reason` ou `rejection_reason` (422 sinon) ;
+  - ressource : `badges`, `featured_source`, `isVerified`, `verifiedAt`, `featuredOrder`, `featuredFrom`, `featuredUntil`, `moderatedAt` ;
+  - notification `testimony_resubmitted` aux modérateurs ;
+  - un témoignage en attente ou refusé renvoie 404 sauf à son auteur et à la modération ;
+  - `GET /testimonies/{id}` ne compte plus une vue à chaque lecture (30 min par personne).
+- **Développeurs** :
+  - `config/testimonies.php` ;
+  - services `TestimonyModeration` (commun à l'API, au site et aux actions groupées), `FeaturedTestimonies`, `TestimonyStats`, `AdminAudit` ;
+  - `App\Policies\TestimonyPolicy` ;
+  - commandes `testimonies:aggregate-stats`, `testimonies:purge-trash`, `users:super-admin` ;
+  - `User::isSuperAdmin()`.
+  - **La vidéo Bunny n'est plus supprimée à la mise à la corbeille, seulement à la suppression définitive.**
+  - Tests : `tests/Feature/TestimonyManagementTest.php` ; `BunnyStreamTest` adapté.
+- **Déploiement** :
+  - `php artisan migrate --force` (3 migrations `2026_10_14_*`) ;
+  - recompiler les assets ;
+  - désigner le super-administrateur : `php artisan users:super-admin {email}` ;
+  - le cron `schedule:run` existant lance les deux nouvelles tâches.
+
+---
+
 ## 2026-10-13 — Designs du verset du jour
 
 - **Utilisateurs** :

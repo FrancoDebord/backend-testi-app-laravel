@@ -344,11 +344,20 @@ Route::middleware('auth')->group(function () {
 
 // ── Moderation ────────────────────────────────────────────────────────────
 Route::middleware(['auth', 'role:moderateur,administrateur'])->prefix('moderation')->name('moderation.')->group(function () {
+    // Back-office des témoignages : onglets, actions groupées, fiche, statistiques (docs/fonctionnalites/gestion-des-temoignages.md)
     Route::get('/',                  [ModerationController::class, 'index'])->name('index');
+    Route::get('/tableau-de-bord',   [ModerationController::class, 'dashboard'])->name('dashboard');
+    Route::post('/actions-groupees', [ModerationController::class, 'bulk'])->name('bulk');
     Route::get('/{id}',              [ModerationController::class, 'show'])->name('show');
+    Route::get('/{id}/statistiques', [ModerationController::class, 'stats'])->name('stats');
     Route::post('/{id}/approve',     [ModerationController::class, 'approve'])->name('approve');
     Route::post('/{id}/reject',      [ModerationController::class, 'reject'])->name('reject');
     Route::post('/{id}/hide-proofs', [ModerationController::class, 'hideProofs'])->name('hide-proofs'); // docs/fonctionnalites/preuves.md
+    Route::post('/{id}/label',       [ModerationController::class, 'verify'])->name('verify');
+    Route::post('/{id}/une',         [ModerationController::class, 'feature'])->name('feature');
+    Route::delete('/{id}',           [ModerationController::class, 'trash'])->name('trash');
+    Route::post('/{id}/restaurer',   [ModerationController::class, 'restore'])->name('restore');
+    Route::delete('/{id}/definitif', [ModerationController::class, 'forceDelete'])->name('force-delete');
 });
 
 // ── Admin ──────────────────────────────────────────────────────────────────
@@ -362,6 +371,9 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin
     Route::post('/users/{id}/reject-verification', [AdminController::class, 'rejectOrganization'])->name('users.reject-verification');
     // Comptes personnels ─ docs/fonctionnalites/verification-des-comptes.md
     Route::post('/users/{id}/revoke-verification', [\App\Http\Controllers\Web\AccountVerificationController::class, 'revoke'])->name('users.revoke-verification');
+    // Badge « Approuvé » manuel ─ docs/fonctionnalites/badge-approuve.md
+    Route::post('/users/{id}/badge',   [\App\Http\Controllers\Web\AccountApprovalController::class, 'grant'])->name('users.approval.grant');
+    Route::delete('/users/{id}/badge', [\App\Http\Controllers\Web\AccountApprovalController::class, 'revoke'])->name('users.approval.revoke');
     Route::get('/verifications',                   [\App\Http\Controllers\Web\AccountVerificationController::class, 'index'])->name('verifications.index');
     Route::get('/verifications/{id}',              [\App\Http\Controllers\Web\AccountVerificationController::class, 'adminShow'])->whereUuid('id')->name('verifications.show');
     Route::get('/verifications/{id}/pieces/{index}', [\App\Http\Controllers\Web\AccountVerificationController::class, 'document'])->whereUuid('id')->whereNumber('index')->name('verifications.document');

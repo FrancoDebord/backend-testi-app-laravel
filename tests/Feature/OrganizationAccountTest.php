@@ -183,9 +183,11 @@ class OrganizationAccountTest extends TestCase
         $org->refresh();
         $this->assertSame('Site introuvable', $org->verification_note);
         $this->assertNull($org->verified_at);
-        $notif = AppNotification::where('recipient_id', $org->id)->where('type', 'organization_rejected')->first();
+        // Organisation qui était vérifiée : badge retiré (type dédié).
+        $notif = AppNotification::where('recipient_id', $org->id)->where('type', 'account_approval_revoked')->first();
         $this->assertNotNull($notif);
         $this->assertStringContainsString('Site introuvable', $notif->message);
+        $this->assertStringContainsString('retirée', $notif->message);
 
         // Une personne ne peut pas être « vérifiée ».
         $person = User::create(['display_name' => 'Paul', 'email' => 'paul@example.com', 'password' => 'secret123', 'role' => 'utilisateur', 'status' => 'active']);

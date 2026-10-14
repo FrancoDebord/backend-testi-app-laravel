@@ -13,8 +13,19 @@ class ModerationActionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reason'         => ['nullable', new Enum(RejectionReason::class)],
-            'moderator_note' => ['nullable', 'string', 'max:1000'],
+            // Refus : motif obligatoire, code (reason) ou texte libre (rejection_reason), ou les deux
+            // (docs/fonctionnalites/gestion-des-temoignages.md).
+            'reason'           => ['nullable', 'required_without:rejection_reason', new Enum(RejectionReason::class)],
+            'rejection_reason' => ['nullable', 'required_without:reason', 'string', 'max:1000'],
+            'moderator_note'   => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'reason.required_without'           => 'Indiquez le motif du refus.',
+            'rejection_reason.required_without' => 'Indiquez le motif du refus.',
         ];
     }
 }

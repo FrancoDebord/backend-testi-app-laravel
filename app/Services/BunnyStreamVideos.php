@@ -213,6 +213,11 @@ class BunnyStreamVideos
 
         $testimony->refresh();
 
+        // Modération non obligatoire : publié dès que la vidéo est lisible (docs/fonctionnalites/gestion-des-temoignages.md).
+        if ($becameReady) {
+            app(TestimonyModeration::class)->submitted($testimony);
+        }
+
         // Ancienne vidéo reprise par Bunny (videos:migrate-to-bunny) : l'auteur n'attend rien, pas de notification.
         if ($becameReady && blank($testimony->media_url)) {
             PushNotifications::dispatch(

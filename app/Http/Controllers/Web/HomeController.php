@@ -64,7 +64,8 @@ class HomeController extends Controller
         }
 
         $data += [
-            'featured' => Testimony::with(['user', 'category'])->featured()->latestPublished()->limit(5)->get(),
+            // À la une : même liste que GET /testimonies/featured (docs/fonctionnalites/gestion-des-temoignages.md)
+            'featured' => app(\App\Services\FeaturedTestimonies::class)->list(5, ['user', 'category']),
             'verse'    => DailyVerse::today(),
             // Directs à l'antenne visibles de la personne (comme « Mon fil » et l'application).
             'lives'    => LiveSession::with('host')->onAir()->latest('started_at')->limit(8)->get()

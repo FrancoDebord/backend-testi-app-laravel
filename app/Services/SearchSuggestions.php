@@ -277,6 +277,7 @@ class SearchSuggestions
                     'sub'      => $u->isOrganization() ? trim('Organisation' . ($u->organization_city ? ' · ' . $u->organization_city : '')) : 'Compte',
                     'avatar'   => $u->avatar_url,
                     'verified' => $u->isVerified(),
+                    ...\App\Models\User::approvalFieldsFor($u), // badge-approuve.md
                 ];
             }
         }

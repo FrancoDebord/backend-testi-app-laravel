@@ -129,6 +129,64 @@
         @endif
         @endif
 
+        {{-- Badge « Approuvé » : attribution ou retrait manuel, motif obligatoire (docs/fonctionnalites/badge-approuve.md) --}}
+        @php($approvalSources = ['verification_form' => 'Demande de vérification', 'organization_review' => 'Vérification de l’organisation', 'admin_manual' => 'Attribution manuelle'])
+        @php($approvalLog = \App\Models\AdminAuditLog::where('subject_type', 'user')->where('subject_id', $user->id)->whereIn('action', ['user.badge_granted', 'user.badge_revoked'])->latest('created_at')->limit(5)->get())
+        <section class="card p-5 sm:p-6" aria-labelledby="approval-title">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h2 id="approval-title" class="card-title">Badge « Approuvé »</h2>
+                @if($user->isApproved())
+                <span class="badge-validated"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>{{ $user->isOrganization() ? 'Organisation approuvée' : 'Compte approuvé' }}</span>
+                @else
+                <span class="badge-neutral">Sans badge</span>
+                @endif
+            </div>
+            @if($user->isApproved())
+            <p class="mb-4 text-sm text-slate-600">
+                Depuis le {{ $user->verified_at?->format('d/m/Y') ?? '—' }}@if($user->verifier) · par {{ $user->verifier->display_name }}@endif
+                · {{ $approvalSources[$user->approval_source] ?? 'Origine non renseignée' }}
+            </p>
+            <form id="approval-revoke-form" method="POST" action="{{ route('admin.users.approval.revoke', $user->id) }}" class="space-y-3" data-loading-label="Retrait…">
+                @csrf @method('DELETE')
+                <div>
+                    <label for="approval-revoke-reason" class="form-label">Motif du retrait *</label>
+                    <textarea id="approval-revoke-reason" name="reason" rows="2" required minlength="3" maxlength="500" class="form-input resize-none">{{ old('reason') }}</textarea>
+                    <p class="form-hint">Communiqué à la personne et consigné dans le journal d’audit.</p>
+                    @error('reason')<p class="form-error">{{ $message }}</p>@enderror
+                </div>
+                <button type="button" class="btn-secondary btn-sm text-error-700"
+                        onclick="openConfirmModal('approval-revoke-form', 'Le badge sera retiré et la personne prévenue avec le motif.', 'Retirer le badge « Approuvé »', 'Retirer le badge', 'fa-circle-minus')">
+                    Retirer le badge
+                </button>
+            </form>
+            @else
+            <form id="approval-grant-form" method="POST" action="{{ route('admin.users.approval.grant', $user->id) }}" class="space-y-3" data-loading-label="Attribution…">
+                @csrf
+                <div>
+                    <label for="approval-grant-reason" class="form-label">Motif de l’attribution *</label>
+                    <textarea id="approval-grant-reason" name="reason" rows="2" required minlength="3" maxlength="500" class="form-input resize-none" placeholder="Ex. : pasteur connu de l’équipe, identité vérifiée lors de…">{{ old('reason') }}</textarea>
+                    <p class="form-hint">Consigné dans le journal d’audit. La personne est prévenue.</p>
+                    @error('reason')<p class="form-error">{{ $message }}</p>@enderror
+                </div>
+                <button type="button" class="btn-primary btn-sm"
+                        onclick="openConfirmModal('approval-grant-form', @js('« ' . $user->display_name . ' » recevra le badge « Approuvé », visible sur son profil et ses publications.'), 'Attribuer le badge « Approuvé »', 'Attribuer le badge', 'fa-circle-check')">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>Attribuer le badge Approuvé
+                </button>
+            </form>
+            @endif
+            @if($approvalLog->isNotEmpty())
+            <ul class="mt-4 divide-y divide-slate-100 border-t border-slate-100 text-sm">
+                @foreach($approvalLog as $log)
+                <li class="py-2">
+                    <p class="text-slate-900"><span class="font-medium">{{ $log->label() }}</span> · {{ $log->actor_name }}</p>
+                    @if($log->reason)<p class="text-slate-600">« {{ $log->reason }} »</p>@endif
+                    <p class="text-xs text-slate-400">{{ $log->created_at->format('d/m/Y à H:i') }}</p>
+                </li>
+                @endforeach
+            </ul>
+            @endif
+        </section>
+
         <section class="card p-5 sm:p-6">
             <h2 class="card-title mb-4">Modifier le compte</h2>
             <form id="user-update-form" method="POST" action="{{ route('admin.users.update', $user->id) }}" data-loading-label="Enregistrement…">

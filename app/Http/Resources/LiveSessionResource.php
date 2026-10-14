@@ -32,6 +32,7 @@ class LiveSessionResource extends JsonResource
                 'displayName' => $this->host?->display_name,
                 'initials'    => $this->host?->initials,
                 'avatarUrl'   => $this->host?->avatar_url,
+                ...\App\Models\User::approvalFieldsFor($this->host), // badge-approuve.md
             ],
             'stats' => [
                 'peakViewers'  => $this->peak_viewers,

@@ -1,5 +1,7 @@
 # Vérification des comptes personnels
 
+> **2026-10-14** : ce badge est aussi le badge « Approuvé » des comptes (source enregistrée dans `approval_source`, attribution et retrait manuels par un administrateur, journal d'audit, champs `is_approved` / `approval_badge` dans l'API). Voir [badge-approuve.md](badge-approuve.md).
+
 ## But
 
 Permettre aux **personnes** (pasteurs, évangélistes, chantres, responsables de ministère, personnalités publiques…) d'obtenir le badge **« Compte vérifié »**, comme les organisations obtiennent « Organisation vérifiée » ([comptes-organisation.md](comptes-organisation.md)). La personne envoie une demande avec des **pièces justificatives privées** ; un administrateur l'approuve, la refuse (motif) ou retire plus tard la vérification.

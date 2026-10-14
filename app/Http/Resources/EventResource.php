@@ -95,6 +95,7 @@ class EventResource extends JsonResource
                 'avatarUrl'        => $this->organizer?->avatar_url,
                 'isOrganization'   => (bool) $this->organizer?->isOrganization(),
                 'isVerified'       => (bool) $this->organizer?->isVerified(),
+                ...\App\Models\User::approvalFieldsFor($this->organizer), // badge-approuve.md
                 // ≥ 3 événements confirmés par le sondage et aucun non confirmé (détail seulement).
                 'isReliable'       => (bool) ($reliability['reliable'] ?? false),
             ],

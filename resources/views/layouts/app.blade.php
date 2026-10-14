@@ -38,7 +38,9 @@
             'label' => 'Modération',
             'visible' => $authUser?->canModerate() ?? false,
             'items' => [
-                ['label' => 'File de modération', 'icon' => 'fa-shield-halved', 'url' => route('moderation.index'), 'active' => request()->routeIs('moderation.*')],
+                // Back-office des témoignages (docs/fonctionnalites/gestion-des-temoignages.md)
+                ['label' => 'Témoignages', 'icon' => 'fa-shield-halved', 'url' => route('moderation.index'), 'active' => request()->routeIs('moderation.*') && !request()->routeIs('moderation.dashboard')],
+                ['label' => 'Statistiques des témoignages', 'icon' => 'fa-chart-line', 'url' => route('moderation.dashboard'), 'active' => request()->routeIs('moderation.dashboard')],
                 ['label' => 'Requêtes de prière signalées', 'icon' => 'fa-flag', 'url' => route('prayer.moderation.index'), 'active' => request()->routeIs('prayer.moderation.*')],
                 ['label' => 'Événements signalés', 'icon' => 'fa-calendar-xmark', 'url' => route('events.moderation.index'), 'active' => request()->routeIs('events.moderation.*')],
                 ['label' => 'Lancer un direct',   'icon' => 'fa-video',         'url' => route('lives.create'),     'active' => request()->routeIs('lives.create', 'lives.studio')],

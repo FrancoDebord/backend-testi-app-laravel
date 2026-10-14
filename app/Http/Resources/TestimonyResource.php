@@ -62,7 +62,20 @@ class TestimonyResource extends JsonResource
             // Motif du refus (« Mes témoignages » de l'application) : auteur et modération seulement.
             'rejectionReason' => $this->rejectionReasonFor($request),
             'isFeatured'   => $this->isCurrentlyFeatured(),
-            'isPinned'     => (bool) $this->is_featured,
+            // Mise à la une manuelle en cours (dates comprises).
+            'isPinned'     => $this->resource->isManuallyFeatured(),
+            // Gestion des témoignages (docs/fonctionnalites/gestion-des-temoignages.md) :
+            // badges d'affichage : verified (label « Témoignage approuvé »), featured (à la une manuelle).
+            'badges'       => $this->resource->badges(),
+            // GET /testimonies/featured : manual (mis à la une) | recent (complément) ; ailleurs manual ou null.
+            'featured_source' => $this->resource->getAttribute('featured_source') ?? ($this->resource->isManuallyFeatured() ? 'manual' : null),
+            'featuredOrder' => $this->featured_order,
+            'featuredFrom'  => $this->featured_from?->toIso8601String(),
+            'featuredUntil' => $this->featured_until?->toIso8601String(),
+            'isVerified'    => (bool) $this->is_verified && $this->status === \App\Enums\TestimonyStatus::Approved,
+            'verifiedAt'    => $this->is_verified ? $this->verified_at?->toIso8601String() : null,
+            // Date de la dernière décision (approbation, refus ; approbation automatique : date de création).
+            'moderatedAt'   => $this->moderated_at?->toIso8601String(),
             'stats' => [
                 'viewsCount'     => $this->views_count,
                 'likesCount'     => $this->like_count,
@@ -113,6 +126,10 @@ class TestimonyResource extends JsonResource
         if ($this->status !== \App\Enums\TestimonyStatus::Rejected
             || !$viewer || ($viewer->id !== $this->user_id && !$viewer->canModerate())) {
             return null;
+        }
+        // Motif enregistré au refus (gestion-des-temoignages.md) ; anciens refus : dernier journal de modération.
+        if (filled($this->rejection_reason)) {
+            return $this->rejection_reason;
         }
         $log = $this->moderationLogs()->where('action', 'rejected')->latest('created_at')->first();
         if (!$log) {

@@ -57,6 +57,11 @@ class UserResource extends JsonResource
             'organization_city'    => $this->organization_city,
             'organization_website' => $this->organization_website,
             'is_verified'          => $this->isVerified(),
+            // Badge « Approuvé » (docs/fonctionnalites/badge-approuve.md) : approved_personal | approved_organization | null.
+            'is_approved'          => $this->isApproved(),
+            'approval_badge'       => $this->approvalBadge(),
+            // Date d'attribution du badge (verified_at) ; null sans badge.
+            'approved_at'          => $this->approvedAt(),
             // Abonnement de la personne connectée (profil, page Communauté) : présent seulement s'il a été chargé.
             'is_following'         => $this->when(array_key_exists('is_followed', $this->resource->getAttributes()), fn () => (bool) $this->is_followed),
             // Personne : une demande en cours ou refusée reste privée (docs/fonctionnalites/verification-des-comptes.md).

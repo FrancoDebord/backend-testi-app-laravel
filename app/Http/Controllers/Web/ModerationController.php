@@ -5,95 +5,164 @@ namespace App\Http\Controllers\Web;
 use App\Enums\RejectionReason;
 use App\Enums\TestimonyStatus;
 use App\Http\Controllers\Controller;
-use App\Models\AppNotification;
+use App\Models\AdminAuditLog;
+use App\Models\Category;
 use App\Models\ModerationLog;
 use App\Models\Testimony;
-use App\Services\FollowerNotifications;
+use App\Services\ContentActionException;
+use App\Services\TestimonyModeration;
+use App\Services\TestimonyStats;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
+/**
+ * Back-office des témoignages (modérateurs et administrateurs) : liste par onglets, recherche, filtres,
+ * actions groupées, fiche (aperçu, historique, statistiques), tableau de bord.
+ * Règles : App\Services\TestimonyModeration ; droits : App\Policies\TestimonyPolicy.
+ * Voir docs/fonctionnalites/gestion-des-temoignages.md
+ */
 class ModerationController extends Controller
 {
+    public const TABS = ['pending' => 'En attente', 'approved' => 'Approuvés', 'rejected' => 'Refusés', 'featured' => 'À la une', 'trash' => 'Corbeille'];
+
+    public function __construct(private readonly TestimonyModeration $moderation) {}
+
+    /** GET /moderation  ?onglet=pending|approved|rejected|featured|trash  ?q=  ?type=  ?categorie=  ?label=1 */
     public function index(Request $request): View
     {
-        $status = $request->query('status', 'pending');
-        $today  = now()->toDateString();
+        Gate::authorize('viewAny', Testimony::class);
+        $tab = array_key_exists((string) $request->query('onglet', $request->query('status')), self::TABS)
+            ? (string) $request->query('onglet', $request->query('status')) : 'pending';
 
-        $query = Testimony::with('user')
-            ->withoutJournal() // carnet privé exclu
-            ->whereIn('status', $status === 'all' ? ['pending', 'approved', 'rejected'] : [$status])
-            ->latest();
+        $query = Testimony::with(['user', 'moderator'])->withoutJournal();
+        match ($tab) {
+            'trash'    => $query->onlyTrashed()->latest('deleted_at'),
+            'featured' => $query->where('is_featured', true)->where('status', TestimonyStatus::Approved)
+                ->orderByRaw('CASE WHEN featured_order IS NULL THEN 1 ELSE 0 END')->orderBy('featured_order'),
+            'pending'  => $query->where('status', TestimonyStatus::Pending)->oldest(),
+            default    => $query->where('status', $tab)->latest('moderated_at')->latest(),
+        };
+        if ($q = trim((string) $request->query('q'))) {
+            $query->search($q);
+        }
+        if ($type = $request->query('type')) {
+            $query->where('type', $type);
+        }
+        if ($category = $request->query('categorie')) {
+            $query->where('category_slug', $category);
+        }
+        if ($request->boolean('label')) {
+            $query->where('is_verified', true);
+        }
 
-        $items = $query->paginate(20);
+        $today = now()->toDateString();
 
-        $stats = [
-            'pending'        => Testimony::pending()->count(),
-            'approvedToday'  => ModerationLog::where('action', 'approved')->whereDate('created_at', $today)->count(),
-            'rejectedToday'  => ModerationLog::where('action', 'rejected')->whereDate('created_at', $today)->count(),
-            'totalThisMonth' => ModerationLog::whereMonth('created_at', now()->month)->count(),
-        ];
-
-        $reasons = RejectionReason::cases();
-
-        return view('moderation.index', compact('items', 'stats', 'status', 'reasons'));
+        return view('moderation.index', [
+            'items'      => $query->paginate(20)->withQueryString(),
+            'tab'        => $tab,
+            'tabs'       => self::TABS,
+            'counts'     => [
+                'pending'  => Testimony::pending()->count(),
+                'trash'    => Testimony::onlyTrashed()->withoutJournal()->count(),
+                'featured' => Testimony::manuallyFeatured()->count(),
+            ],
+            'stats'      => [
+                'pending'        => Testimony::pending()->count(),
+                'approvedToday'  => ModerationLog::where('action', 'approved')->whereDate('created_at', $today)->count(),
+                'rejectedToday'  => ModerationLog::where('action', 'rejected')->whereDate('created_at', $today)->count(),
+                'totalThisMonth' => ModerationLog::whereIn('action', ['approved', 'rejected'])->where('created_at', '>=', now()->startOfMonth())->count(),
+            ],
+            'categories' => Category::orderBy('name')->get(['slug', 'name']),
+            'reasons'    => RejectionReason::cases(),
+            'trashDays'  => (int) config('testimonies.trash_days', 30),
+        ]);
     }
 
     public function show(string $id): View
     {
-        $testimony = Testimony::with(['user', 'moderationLogs.moderator', 'proofs'])->withoutJournal()->findOrFail($id);
+        $testimony = Testimony::withTrashed()->with(['user', 'moderationLogs.moderator', 'proofs', 'moderator', 'verifier'])->withoutJournal()->findOrFail($id);
+        Gate::authorize('viewStats', $testimony);
 
-        if ($testimony->status->value === 'pending') {
-            ModerationLog::create([
-                'testimony_id' => $id,
-                'moderator_id' => Auth::id(),
-                'action'       => 'in_review',
-                'created_at'   => now(),
-            ]);
+        if ($testimony->status === TestimonyStatus::Pending && !$testimony->trashed()) {
+            ModerationLog::create(['testimony_id' => $id, 'moderator_id' => Auth::id(), 'action' => 'in_review', 'created_at' => now()]);
         }
 
-        $reasons = RejectionReason::cases();
-        return view('moderation.show', compact('testimony', 'reasons'));
+        return view('moderation.show', [
+            'testimony' => $testimony,
+            'reasons'   => RejectionReason::cases(),
+            'audit'     => AdminAuditLog::where('subject_type', 'testimony')->where('subject_id', $id)->latest('created_at')->limit(50)->get(),
+            'stats'     => app(TestimonyStats::class)->series($testimony, 30),
+            'video'     => app(\App\Services\BunnyStreamVideos::class)->payload($testimony),
+        ]);
     }
 
-    public function approve(Request $request, string $id): RedirectResponse
+    /** GET /moderation/{id}/statistiques  ?jours=7|30|90 */
+    public function stats(Request $request, string $id): View
     {
-        // Même traitement que Api\ModerationController::approve (carnet privé exclu).
-        $testimony = Testimony::with('user')->withoutJournal()->findOrFail($id);
+        $testimony = Testimony::withTrashed()->with('user')->withoutJournal()->findOrFail($id);
+        Gate::authorize('viewStats', $testimony);
+        $days = in_array((int) $request->query('jours'), [7, 30, 90], true) ? (int) $request->query('jours') : 30;
 
-        $testimony->update([
-            'status'      => TestimonyStatus::Approved->value,
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
+        return view('moderation.stats', [
+            'testimony' => $testimony,
+            'days'      => $days,
+            'series'    => app(TestimonyStats::class)->series($testimony, $days),
         ]);
+    }
 
-        ModerationLog::create([
-            'testimony_id' => $id,
-            'moderator_id' => Auth::id(),
-            'action'       => 'approved',
-            'created_at'   => now(),
+    /** GET /moderation/tableau-de-bord  ?jours=7|30|90 */
+    public function dashboard(Request $request): View
+    {
+        Gate::authorize('viewAny', Testimony::class);
+        $days = in_array((int) $request->query('jours'), [7, 30, 90], true) ? (int) $request->query('jours') : 30;
+        $stats = app(TestimonyStats::class);
+
+        return view('moderation.dashboard', [
+            'days'    => $days,
+            'series'  => $stats->series(null, $days),
+            'top'     => $stats->top($days, 10),
+            'pending' => Testimony::with('user')->pending()->oldest()->limit(8)->get(),
+            'pendingCount' => Testimony::pending()->count(),
+            'counts'  => [
+                'approved' => Testimony::published()->count(),
+                'verified' => Testimony::published()->where('is_verified', true)->count(),
+                'featured' => Testimony::manuallyFeatured()->count(),
+                'trash'    => Testimony::onlyTrashed()->withoutJournal()->count(),
+            ],
         ]);
+    }
 
-        AppNotification::create([
-            'recipient_id'    => $testimony->user_id,
-            'actor_id'        => Auth::id(),
-            'actor_name'      => Auth::user()->display_name,
-            'type'            => 'testimony_approved',
-            'testimony_id'    => $id,
-            'testimony_title' => $testimony->title,
-            'message'         => 'Votre témoignage "' . $testimony->title . '" a été approuvé',
-            'created_at'      => now(),
-        ]);
+    // ─── Actions sur un témoignage ───────────────────────────────────────────
 
-        // Abonnés de l'auteur (insertion groupée + push : App\Services\FollowerNotifications)
-        FollowerNotifications::newTestimony($testimony->fresh('user'));
-        // Personnes mentionnées dans le texte : une seule fois chacune (docs/fonctionnalites/mentions.md)
-        \App\Services\Mentions::notifyTestimony($testimony->fresh('user'));
+    public function approve(string $id): RedirectResponse
+    {
+        $testimony = $this->find($id);
+        Gate::authorize('moderate', $testimony);
+        $this->moderation->approve($testimony, Auth::user());
 
-        $testimony->user->increment('testimony_count');
+        return $this->back('Témoignage approuvé.');
+    }
 
-        return redirect()->route('moderation.index')->with('success', 'Témoignage approuvé.');
+    public function reject(Request $request, string $id): RedirectResponse
+    {
+        $data = $request->validate([
+            'reason'           => ['required', Rule::enum(RejectionReason::class)],
+            'rejection_reason' => ['nullable', 'string', 'max:1000'],
+            'moderator_note'   => ['nullable', 'string', 'max:1000'],
+        ], ['reason.required' => 'Choisissez le motif du refus.']);
+        $testimony = $this->find($id);
+        Gate::authorize('moderate', $testimony);
+
+        $code = RejectionReason::from($data['reason']);
+        $text = trim(implode(' — ', array_filter([$code->label(), trim((string) ($data['rejection_reason'] ?? $data['moderator_note'] ?? ''))])));
+        $this->moderation->reject($testimony, Auth::user(), $text, $code, $data['moderator_note'] ?? $data['rejection_reason'] ?? null);
+
+        return $this->back('Témoignage refusé.');
     }
 
     /**
@@ -107,37 +176,137 @@ class ModerationController extends Controller
         return back()->with('success', "Les preuves ne sont plus visibles du public : seulement de l'auteur et de l'équipe de modération.");
     }
 
-    public function reject(Request $request, string $id): RedirectResponse
+    /** POST /moderation/{id}/label  { verified: 0|1, reason? } (administrateurs) */
+    public function verify(Request $request, string $id): RedirectResponse
     {
-        $request->validate([
-            'reason'         => 'required|string',
-            'moderator_note' => 'nullable|string|max:1000',
+        $data = $request->validate(['verified' => ['required', 'boolean'], 'reason' => ['nullable', 'string', 'max:500']]);
+        $testimony = $this->find($id);
+        Gate::authorize('verify', $testimony);
+
+        return $this->attempt(fn () => $this->moderation->setVerified($testimony, Auth::user(), (bool) $data['verified'], $data['reason'] ?? null),
+            $data['verified'] ? 'Label « Témoignage approuvé » attribué.' : 'Label retiré.');
+    }
+
+    /** POST /moderation/{id}/une  { featured: 0|1, featured_order?, featured_from?, featured_until? } */
+    public function feature(Request $request, string $id): RedirectResponse
+    {
+        $data = $request->validate([
+            'featured'       => ['required', 'boolean'],
+            'featured_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'featured_from'  => ['nullable', 'date'],
+            'featured_until' => ['nullable', 'date'],
         ]);
+        $testimony = $this->find($id);
+        Gate::authorize('feature', $testimony);
 
-        $testimony = Testimony::withoutJournal()->findOrFail($id);
-        $testimony->update(['status' => TestimonyStatus::Rejected->value]);
+        return $this->attempt(fn () => $this->moderation->setFeatured($testimony, Auth::user(), (bool) $data['featured'],
+            isset($data['featured_order']) ? (int) $data['featured_order'] : null,
+            !empty($data['featured_from']) ? Carbon::parse($data['featured_from']) : null,
+            !empty($data['featured_until']) ? Carbon::parse($data['featured_until']) : null,
+        ), $data['featured'] ? 'Témoignage mis à la une.' : 'Témoignage retiré de la une.');
+    }
 
-        ModerationLog::create([
-            'testimony_id'     => $id,
-            'moderator_id'     => Auth::id(),
-            'action'           => 'rejected',
-            'rejection_reason' => $request->reason,
-            'moderator_note'   => $request->moderator_note,
-            'created_at'       => now(),
+    /** DELETE /moderation/{id}  Corbeille (restaurable pendant 30 jours). */
+    public function trash(Request $request, string $id): RedirectResponse
+    {
+        $testimony = $this->find($id);
+        Gate::authorize('trash', $testimony);
+        $this->moderation->trash($testimony, Auth::user(), $request->input('reason'));
+
+        return redirect()->route('moderation.index', ['onglet' => 'trash'])->with('success', 'Témoignage placé dans la corbeille.');
+    }
+
+    public function restore(string $id): RedirectResponse
+    {
+        $testimony = Testimony::onlyTrashed()->withoutJournal()->findOrFail($id);
+        Gate::authorize('restore', $testimony);
+
+        return $this->attempt(fn () => $this->moderation->restore($testimony, Auth::user()), 'Témoignage restauré.');
+    }
+
+    /** DELETE /moderation/{id}/definitif  Super-administrateur seulement (vidéo Bunny comprise). */
+    public function forceDelete(Request $request, string $id): RedirectResponse
+    {
+        $testimony = Testimony::withTrashed()->withoutJournal()->findOrFail($id);
+        Gate::authorize('forceDelete', $testimony);
+        $this->moderation->forceDelete($testimony, Auth::user(), $request->input('reason'));
+
+        return redirect()->route('moderation.index', ['onglet' => 'trash'])->with('success', 'Témoignage supprimé définitivement.');
+    }
+
+    /**
+     * POST /moderation/actions-groupees  { ids[], action: approve|reject|feature|unfeature|trash|restore, reason?, rejection_reason? }
+     * Chaque témoignage est vérifié par la policy ; ceux qui ne s'y prêtent pas sont ignorés et comptés.
+     */
+    public function bulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'ids'              => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*'            => ['string'],
+            'action'           => ['required', Rule::in(['approve', 'reject', 'feature', 'unfeature', 'trash', 'restore'])],
+            'reason'           => ['nullable', 'required_if:action,reject', Rule::enum(RejectionReason::class)],
+            'rejection_reason' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'ids.required'       => 'Cochez au moins un témoignage.',
+            'reason.required_if' => 'Choisissez le motif du refus.',
         ]);
+        $user = Auth::user();
+        $done = 0;
+        $skipped = 0;
 
-        AppNotification::create([
-            'recipient_id'    => $testimony->user_id,
-            'actor_id'        => Auth::id(),
-            'actor_name'      => Auth::user()->display_name,
-            'type'            => 'testimony_rejected',
-            'testimony_id'    => $id,
-            'testimony_title' => $testimony->title,
-            'message'         => 'Votre témoignage "' . $testimony->title . '" a été rejeté : '
-                                 . (RejectionReason::tryFrom((string) $request->reason)?->label() ?? 'Non conforme'),
-            'created_at'      => now(),
-        ]);
+        foreach (Testimony::withTrashed()->withoutJournal()->whereIn('id', $data['ids'])->get() as $t) {
+            $ability = match ($data['action']) {
+                'approve', 'reject'      => 'moderate',
+                'feature', 'unfeature'   => 'feature',
+                default                  => $data['action'],
+            };
+            if (!Gate::forUser($user)->allows($ability, $t)) {
+                $skipped++;
+                continue;
+            }
+            try {
+                match ($data['action']) {
+                    'approve'   => $t->status === TestimonyStatus::Approved ? throw new ContentActionException('déjà approuvé') : $this->moderation->approve($t, $user),
+                    'reject'    => $this->moderation->reject($t, $user, trim(implode(' — ', array_filter([RejectionReason::from($data['reason'])->label(), trim((string) ($data['rejection_reason'] ?? ''))]))), RejectionReason::from($data['reason']), $data['rejection_reason'] ?? null),
+                    'feature'   => $this->moderation->setFeatured($t, $user, true),
+                    'unfeature' => $this->moderation->setFeatured($t, $user, false),
+                    'trash'     => $this->moderation->trash($t, $user),
+                    'restore'   => $this->moderation->restore($t, $user),
+                };
+                $done++;
+            } catch (ContentActionException) {
+                $skipped++;
+            }
+        }
 
-        return redirect()->route('moderation.index')->with('success', 'Témoignage rejeté.');
+        $message = $done . ' témoignage' . ($done > 1 ? 's' : '') . ' traité' . ($done > 1 ? 's' : '') . '.';
+        if ($skipped) {
+            $message .= ' ' . $skipped . ' ignoré' . ($skipped > 1 ? 's' : '') . ' (action impossible ou non autorisée).';
+        }
+
+        return back()->with($done ? 'success' : 'error', $message);
+    }
+
+    // ─── Outils ──────────────────────────────────────────────────────────────
+
+    private function find(string $id): Testimony
+    {
+        return Testimony::with('user')->withoutJournal()->findOrFail($id);
+    }
+
+    private function attempt(callable $action, string $success): RedirectResponse
+    {
+        try {
+            $action();
+        } catch (ContentActionException $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+
+        return back()->with('success', $success);
+    }
+
+    private function back(string $message): RedirectResponse
+    {
+        return redirect()->route('moderation.index')->with('success', $message);
     }
 }
