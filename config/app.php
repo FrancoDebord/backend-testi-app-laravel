@@ -53,14 +53,14 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'https://testi.airid-africa.com'),
+    'url' => env('APP_URL', 'https://temoignage.as-krea.com'),
 
     /*
     | Adresse publique des liens de partage des témoignages (share_url), indépendante de
     | APP_URL : un lien partagé doit toujours ouvrir le site public, même s'il a été créé
     | depuis un serveur de développement. Voir docs/fonctionnalites/lien-de-partage.md
     */
-    'share_url' => env('SHARE_URL', 'https://testi.airid-africa.com'),
+    'share_url' => env('SHARE_URL', 'https://temoignage.as-krea.com'),
 
     /*
     |--------------------------------------------------------------------------
