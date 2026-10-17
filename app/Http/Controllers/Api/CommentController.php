@@ -40,7 +40,7 @@ class CommentController extends Controller
         $testimony = Testimony::find($testimonyId);
         if (!$testimony) return $this->notFound();
         if (!$testimony->acceptsCommentsFrom($request->user())) {
-            return $this->error(Testimony::COMMENTS_CLOSED_MESSAGE, 403);
+            return $this->error(Testimony::commentsClosedMessage(), 403);
         }
 
         // Mentions « @ » validées (docs/fonctionnalites/mentions.md)
@@ -71,7 +71,7 @@ class CommentController extends Controller
                 'testimony_id'   => $testimonyId,
                 'testimony_title' => $testimony->title,
                 'comment_id'     => $comment->id,
-                'message'        => $request->user()->display_name . ' a commenté votre témoignage',
+                ...\App\Support\NotificationText::fields('comments.notify_comment', ['actor' => $request->user()->display_name]),
                 'created_at'     => now(),
             ]);
         }
@@ -85,13 +85,13 @@ class CommentController extends Controller
 
         $comment->load('user');
 
-        return $this->created(new CommentResource($comment), 'Commentaire ajouté');
+        return $this->created(new CommentResource($comment), __('comments.api.added'));
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
         $request->validate([
-            'text'          => ['required', 'string', new VisibleLength(2000, 'Le commentaire ne doit pas dépasser 2 000 caractères.')],
+            'text'          => ['required', 'string', new VisibleLength(2000, __('comments.too_long'))],
             'mention_ids'   => 'nullable|array|max:20',
             'mention_ids.*' => 'string|uuid',
         ]);
@@ -129,6 +129,6 @@ class CommentController extends Controller
         $comment->testimony->decrement('comment_count');
         $comment->delete();
 
-        return $this->success(null, 'Commentaire supprimé');
+        return $this->success(null, __('comments.api.deleted'));
     }
 }

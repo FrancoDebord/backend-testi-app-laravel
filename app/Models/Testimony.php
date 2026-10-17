@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TestimonyKind;
 use App\Enums\TestimonyType;
 use App\Enums\TestimonyStatus;
 use App\Enums\TestimonyVisibility;
@@ -23,6 +24,8 @@ class Testimony extends Model
 
     protected $fillable = [
         'user_id', 'category_id', 'event_id', 'title', 'type', 'category_slug',
+        // Témoignage de conversion (docs/fonctionnalites/temoignage-de-conversion.md)
+        'kind', 'conversion_year', 'conversion_place', 'conversion_verse',
         'body_text', 'media_url', 'youtube_id', 'proofs_public', 'renditions', 'cover_url', 'duration_sec',
         'bible_verse', 'bible_ref', 'tags', 'visibility', 'status',
         'is_featured', 'views_count', 'like_count', 'prayer_count',
@@ -36,6 +39,9 @@ class Testimony extends Model
         'bunny_video_id', 'video_status', 'duration', 'available_resolutions',
     ];
 
+    /** Témoignage standard tant que rien d'autre n'est demandé (valeur par défaut de la colonne). */
+    protected $attributes = ['kind' => 'standard'];
+
     // États d'une vidéo Bunny Stream (video_status ; null = pas de vidéo Bunny).
     public const VIDEO_UPLOADING  = 'uploading';
     public const VIDEO_PROCESSING = 'processing';
@@ -46,6 +52,8 @@ class Testimony extends Model
     {
         return [
             'type'        => TestimonyType::class,
+            'kind'        => TestimonyKind::class,
+            'conversion_year' => 'integer',
             'status'      => TestimonyStatus::class,
             'visibility'  => TestimonyVisibility::class,
             'tags'        => 'array',
@@ -240,6 +248,27 @@ class Testimony extends Model
     }
 
     // ---------- Scopes ----------
+
+    /** Témoignages de conversion (docs/fonctionnalites/temoignage-de-conversion.md). */
+    public function scopeConversion($query)
+    {
+        return $query->where($query->qualifyColumn('kind'), TestimonyKind::Conversion->value);
+    }
+
+    public function isConversion(): bool
+    {
+        return $this->kind === TestimonyKind::Conversion;
+    }
+
+    /** Année, lieu et verset d'un témoignage de conversion ; null pour un témoignage standard. */
+    public function conversionDetails(): ?array
+    {
+        return $this->isConversion() ? [
+            'year'  => $this->conversion_year,
+            'place' => $this->conversion_place,
+            'verse' => $this->conversion_verse,
+        ] : null;
+    }
 
     public function scopePublished($query)
     {
@@ -452,13 +481,12 @@ class Testimony extends Model
         };
     }
 
-    /** « 1 245 vues », « 1 vue », « Aucune vue ». */
+    /** « 1 245 vues », « 1 vue », « Aucune vue » (« 1,245 views » en anglais). */
     public function viewsLabel(): string
     {
         return match (true) {
-            $this->views_count === 0 => 'Aucune vue',
-            $this->views_count === 1 => '1 vue',
-            default                  => number_format($this->views_count, 0, ',', ' ') . ' vues',
+            $this->views_count === 0 => __('testimony_labels.no_views'),
+            default                  => trans_choice('testimony_labels.views', $this->views_count, ['count' => \App\Support\Locales::number($this->views_count)]),
         };
     }
 
@@ -475,10 +503,10 @@ class Testimony extends Model
     public function typePill(): ?array
     {
         return match (true) {
-            $this->relationLoaded('liveSession') && $this->liveSession !== null => ['fa-tower-broadcast', 'Rediffusion'],
-            $this->isShort()                      => ['fa-bolt', 'Short'],
-            $this->type === TestimonyType::Audio  => ['fa-microphone', 'Audio'],
-            $this->type === TestimonyType::Text   => ['fa-file-lines', 'Texte'],
+            $this->relationLoaded('liveSession') && $this->liveSession !== null => ['fa-tower-broadcast', __('testimony_labels.replay')],
+            $this->isShort()                      => ['fa-bolt', __('testimony_labels.short')],
+            $this->type === TestimonyType::Audio  => ['fa-microphone', TestimonyType::Audio->label()],
+            $this->type === TestimonyType::Text   => ['fa-file-lines', TestimonyType::Text->label()],
             default                               => null,
         };
     }
@@ -487,7 +515,7 @@ class Testimony extends Model
     public function durationLabel(): ?string
     {
         return match (true) {
-            $this->type === TestimonyType::Text => $this->readingMinutes() . ' min de lecture',
+            $this->type === TestimonyType::Text => __('testimony_labels.reading_minutes', ['count' => $this->readingMinutes()]),
             $this->duration_sec > 0             => $this->formattedDuration(),
             default                             => null,
         };
@@ -594,7 +622,11 @@ class Testimony extends Model
         };
     }
 
-    public const COMMENTS_CLOSED_MESSAGE = "L'auteur a limité les commentaires sur ses témoignages.";
+    /** Message affiché quand l'auteur a fermé les commentaires (dans la langue de la requête). */
+    public static function commentsClosedMessage(): string
+    {
+        return __('testimony_labels.comments_closed');
+    }
 
     public function isSavedBy(?string $userId): bool
     {

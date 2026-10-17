@@ -41,6 +41,6 @@ class ReportController extends Controller
             ]
         );
 
-        return $this->success(null, 'Signalement enregistré. Merci pour votre contribution.');
+        return $this->success(null, __('testimonies.api.reported'));
     }
 }

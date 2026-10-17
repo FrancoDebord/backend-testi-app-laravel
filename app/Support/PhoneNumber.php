@@ -90,15 +90,29 @@ final class PhoneNumber
                     }
                     $e164 = self::toE164(request()->input('phone_country'), (string) $value);
                     if ($e164 === null) {
-                        $fail('Numéro de téléphone invalide pour l\'indicatif choisi.');
+                        $fail(__('support.phone.invalid'));
                         return;
                     }
                     $taken = User::where('phone', $e164)->when($ignore, fn ($q) => $q->whereKeyNot($ignore->id))->exists();
                     if ($taken) {
-                        $fail('Ce numéro est déjà associé à un autre compte.');
+                        $fail(__('support.phone.taken'));
                     }
                 },
             ],
+        ];
+    }
+
+    /**
+     * Messages de validation dans la langue courante (lang/{fr,en}/support.php). MESSAGES garde le texte
+     * français d'origine pour les appels existants ; préférer messages().
+     */
+    public static function messages(): array
+    {
+        return [
+            'phone.required'              => __('support.phone.required'),
+            'phone.required_if'           => __('support.phone.required_if'),
+            'phone_country.required_with' => __('support.phone.country_required'),
+            'phone_country.in'            => __('support.phone.country_unknown'),
         ];
     }
 

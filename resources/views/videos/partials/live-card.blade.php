@@ -8,7 +8,7 @@
         <span class="{{ $live->status->badgeClass() }} absolute top-2 left-2">{{ $live->status->label() }}</span>
         @if($live->started_at)
         <span class="absolute right-2 bottom-2 rounded-md bg-slate-900/85 px-1.5 py-0.5 text-[11px] font-semibold text-white">
-            depuis {{ $live->started_at->diffForHumans(null, true) }}
+            {{ __('videos.live.since', ['time' => $live->started_at->diffForHumans(null, true)]) }}
         </span>
         @endif
     </div>
@@ -20,7 +20,7 @@
             </h3>
             <p class="mt-1 truncate text-xs text-slate-600">{{ $live->host->display_name }}</p>
             <p class="mt-0.5 text-xs text-slate-500">
-                {{ number_format($live->comment_count, 0, ',', ' ') }} commentaire{{ $live->comment_count > 1 ? 's' : '' }}
+                {{ trans_choice('videos.live.comments', $live->comment_count, ['count' => \App\Support\Locales::number($live->comment_count)]) }}
             </p>
         </div>
     </div>

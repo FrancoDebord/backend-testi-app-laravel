@@ -8,6 +8,7 @@ use App\Enums\VerificationStatus;
 use App\Models\AppNotification;
 use App\Models\User;
 use App\Models\VerificationRequest;
+use App\Support\NotificationText;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -54,19 +55,19 @@ class PersonalVerification
     public static function messages(): array
     {
         return [
-            'full_name.required'     => 'Indiquez votre nom complet.',
-            'full_name.min'          => 'Indiquez votre nom complet.',
-            'role.required'          => 'Choisissez votre fonction.',
-            'role_other.required_if' => 'Précisez votre fonction.',
-            'church.required'        => 'Indiquez votre église ou votre ministère.',
-            'links.max'              => 'Trois liens au plus.',
-            'links.*.url'            => 'Chaque lien doit être une adresse web (https://…).',
-            'documents.required'     => 'Ajoutez au moins une pièce justificative.',
-            'documents.min'          => 'Ajoutez au moins une pièce justificative.',
-            'documents.max'          => 'Trois pièces justificatives au plus.',
-            'documents.*.mimes'      => 'Pièce justificative : photo (JPG, PNG, WebP) ou PDF.',
-            'documents.*.max'        => 'Chaque pièce justificative doit faire 8 Mo au plus.',
-            'documents.*.file'       => 'Pièce justificative invalide.',
+            'full_name.required'     => __('verification.rules.full_name_required'),
+            'full_name.min'          => __('verification.rules.full_name_min'),
+            'role.required'          => __('verification.rules.role_required'),
+            'role_other.required_if' => __('verification.rules.role_other_required_if'),
+            'church.required'        => __('verification.rules.church_required'),
+            'links.max'              => __('verification.rules.links_max'),
+            'links.*.url'            => __('verification.rules.links_url'),
+            'documents.required'     => __('verification.rules.documents_required'),
+            'documents.min'          => __('verification.rules.documents_min'),
+            'documents.max'          => __('verification.rules.documents_max'),
+            'documents.*.mimes'      => __('verification.rules.documents_mimes'),
+            'documents.*.max'        => __('verification.rules.documents_file_max'),
+            'documents.*.file'       => __('verification.rules.documents_file'),
         ];
     }
 
@@ -90,17 +91,17 @@ class PersonalVerification
     public static function blockReason(User $user, ?VerificationRequest $latest = null): ?string
     {
         if ($user->isOrganization()) {
-            return 'Les organisations sont vérifiées à partir des informations de leur profil.';
+            return __('verification.block.organization');
         }
         if ($user->isVerified()) {
-            return 'Votre compte est déjà vérifié.';
+            return __('verification.block.already_verified');
         }
         $latest ??= self::latestRequest($user);
         if ($latest?->isPending()) {
-            return 'Votre demande est en cours d’examen.';
+            return __('verification.block.pending');
         }
         if ($at = self::retryAt($user, $latest)) {
-            return 'Vous pourrez envoyer une nouvelle demande à partir du ' . $at->translatedFormat('j F Y à H:i') . '.';
+            return __('verification.block.retry_at', ['date' => $at->translatedFormat(__('verification.date_time_format'))]);
         }
         return null;
     }
@@ -210,11 +211,11 @@ class PersonalVerification
     public static function approve(VerificationRequest $request, User $admin): void
     {
         if (!$request->isPending()) {
-            throw new VerificationActionException('Cette demande a déjà été traitée.', 422);
+            throw new VerificationActionException(__('verification.already_processed'), 422);
         }
         $user = $request->user;
         if (!$user || $user->trashed()) {
-            throw new VerificationActionException('Ce compte a été supprimé.', 422);
+            throw new VerificationActionException(__('verification.account_deleted'), 422);
         }
 
         $before = AccountApproval::snapshot($user);
@@ -236,13 +237,13 @@ class PersonalVerification
         AccountApproval::audit($user, $admin, 'user.badge_granted', $before, 'Demande de vérification approuvée');
 
         self::notify($user, $admin, NotificationType::AccountVerified,
-            'Votre compte est vérifié. Le badge « Compte vérifié » apparaît désormais sur votre profil et vos publications.');
+            'verification.notify_verified');
     }
 
     public static function reject(VerificationRequest $request, User $admin, string $reason): void
     {
         if (!$request->isPending()) {
-            throw new VerificationActionException('Cette demande a déjà été traitée.', 422);
+            throw new VerificationActionException(__('verification.already_processed'), 422);
         }
         $reason = trim($reason);
         $user   = $request->user;
@@ -267,8 +268,7 @@ class PersonalVerification
 
         if ($user && !$user->trashed()) {
             self::notify($user, $admin, NotificationType::AccountVerificationRejected,
-                'Votre demande de vérification a été refusée : ' . rtrim($reason, ' .') . '. '
-                . 'Vous pourrez envoyer une nouvelle demande dans ' . self::RETRY_DELAY_HOURS . ' heures.');
+                'verification.notify_rejected', ['reason' => rtrim($reason, ' .'), 'hours' => self::RETRY_DELAY_HOURS]);
         }
     }
 
@@ -276,10 +276,10 @@ class PersonalVerification
     public static function revoke(User $user, User $admin, string $reason): void
     {
         if ($user->isOrganization()) {
-            throw new VerificationActionException('Utilisez la vérification des organisations pour ce compte.', 422);
+            throw new VerificationActionException(__('verification.use_organization_review'), 422);
         }
         if (!$user->isVerified()) {
-            throw new VerificationActionException('Ce compte n’est pas vérifié.', 422);
+            throw new VerificationActionException(__('verification.not_verified'), 422);
         }
         $reason = trim($reason);
         $before = AccountApproval::snapshot($user);
@@ -306,7 +306,7 @@ class PersonalVerification
 
         // Badge retiré (et non demande refusée) : type dédié (docs/fonctionnalites/badge-approuve.md).
         self::notify($user, $admin, NotificationType::AccountApprovalRevoked,
-            'La vérification de votre compte a été retirée : ' . rtrim($reason, ' .') . '.');
+            'verification.notify_revoked', ['reason' => rtrim($reason, ' .')]);
     }
 
     /** Pièce justificative n° $index si le fichier existe encore, sinon null. */
@@ -372,7 +372,7 @@ class PersonalVerification
             $data['reviewer']  = $r->reviewer ? ['id' => $r->reviewer->id, 'displayName' => $r->reviewer->display_name] : null;
             $data['documents'] = array_map(fn (int $i) => [
                 'index'   => $i,
-                'name'    => $docs[$i]['name'] ?? ('Pièce ' . ($i + 1)),
+                'name'    => $docs[$i]['name'] ?? __('verification.document_n', ['n' => $i + 1]),
                 'mime'    => $docs[$i]['mime'] ?? null,
                 'size'    => $docs[$i]['size'] ?? null,
                 'isImage' => str_starts_with((string) ($docs[$i]['mime'] ?? ''), 'image/'),
@@ -387,14 +387,14 @@ class PersonalVerification
      * Notification dans l'application ; le push FCM part automatiquement
      * (AppNotificationObserver, docs/fonctionnalites/notifications-push.md).
      */
-    private static function notify(User $recipient, User $admin, NotificationType $type, string $message): void
+    private static function notify(User $recipient, User $admin, NotificationType $type, string $key, array $params = []): void
     {
         AppNotification::create([
             'recipient_id' => $recipient->id,
             'actor_id'     => $admin->id,
             'actor_name'   => $admin->display_name,
             'type'         => $type->value,
-            'message'      => mb_substr($message, 0, 255),
+            ...NotificationText::fields($key, $params),
             'created_at'   => now(),
         ]);
     }

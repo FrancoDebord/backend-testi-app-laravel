@@ -25,7 +25,7 @@ class AccountVerificationController extends Controller
         $user = Auth::user();
         if ($user->isOrganization()) {
             return redirect()->route('profile.edit')
-                ->with('status', 'Les organisations sont vérifiées à partir des informations de leur profil.');
+                ->with('status', __('verification.block.organization'));
         }
 
         return view('profile.verification', [
@@ -50,14 +50,14 @@ class AccountVerificationController extends Controller
         }
 
         return redirect()->route('profile.verification')
-            ->with('success', 'Demande envoyée. Notre équipe l’examinera et vous serez prévenu dans vos notifications.');
+            ->with('success', __('verification.flash.submitted'));
     }
 
     // ── Administration ───────────────────────────────────────────────────────
 
     public function index(Request $request): View
     {
-        $tab = array_key_exists($request->query('status'), VerificationRequest::STATUS_LABELS) || $request->query('status') === 'all'
+        $tab = array_key_exists($request->query('status'), VerificationRequest::statusLabels()) || $request->query('status') === 'all'
             ? $request->query('status')
             : VerificationRequest::PENDING;
 
@@ -97,13 +97,13 @@ class AccountVerificationController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Compte vérifié. La personne a été prévenue.');
+        return back()->with('success', __('verification.flash.approved'));
     }
 
     public function reject(Request $request, string $id): RedirectResponse
     {
         $request->validate(['reason' => ['required', 'string', 'min:3', 'max:255']],
-            ['reason.required' => 'Indiquez le motif du refus.', 'reason.min' => 'Indiquez le motif du refus.']);
+            ['reason.required' => __('verification.reject_reason_required'), 'reason.min' => __('verification.reject_reason_required')]);
         $verification = VerificationRequest::with('user')->findOrFail($id);
         try {
             PersonalVerification::reject($verification, Auth::user(), $request->input('reason'));
@@ -111,13 +111,13 @@ class AccountVerificationController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Demande refusée. La personne a été prévenue du motif.');
+        return back()->with('success', __('verification.flash.rejected'));
     }
 
     public function revoke(Request $request, string $id): RedirectResponse
     {
         $request->validate(['revoke_reason' => ['required', 'string', 'min:3', 'max:255']],
-            ['revoke_reason.required' => 'Indiquez le motif du retrait.', 'revoke_reason.min' => 'Indiquez le motif du retrait.']);
+            ['revoke_reason.required' => __('verification.approval.revoke_reason_required'), 'revoke_reason.min' => __('verification.approval.revoke_reason_required')]);
         $user = User::findOrFail($id);
         try {
             PersonalVerification::revoke($user, Auth::user(), $request->input('revoke_reason'));
@@ -125,6 +125,6 @@ class AccountVerificationController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Vérification retirée. La personne a été prévenue.');
+        return back()->with('success', __('verification.flash.revoked'));
     }
 }

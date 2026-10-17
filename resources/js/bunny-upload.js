@@ -11,6 +11,8 @@
 | Sans JavaScript, ou pour un audio, le formulaire est envoyé normalement.
 */
 
+import { t } from './i18n';
+
 const MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 Go
 
 export function initBunnyUpload() {
@@ -33,14 +35,14 @@ export function initBunnyUpload() {
         stateText.textContent = text;
         if (pct !== null) {
             bar.style.width = `${pct}%`;
-            percent.textContent = `${pct} %`;
+            percent.textContent = t('bunny.percent', { pct });
             bar.parentElement.setAttribute('aria-valuenow', String(pct));
         }
     };
     const fail = (message) => {
         errorBox.textContent = message;
         errorBox.hidden = false;
-        stateText.textContent = 'Envoi interrompu.';
+        stateText.textContent = t('bunny.interrupted');
         if (submit) {
             submit.disabled = false;
             submit.innerHTML = submit.dataset.bunnyLabel || submit.innerHTML;
@@ -56,7 +58,7 @@ export function initBunnyUpload() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
             const errors = data.errors ? Object.values(data.errors).flat() : [];
-            throw new Error(errors[0] || data.message || "L'envoi n'a pas pu être préparé.");
+            throw new Error(errors[0] || data.message || t('bunny.prepare_failed'));
         }
         return data;
     };
@@ -81,15 +83,15 @@ export function initBunnyUpload() {
         errorBox.hidden = true;
         if (file.size > MAX_BYTES) {
             panel.hidden = false;
-            fail('La vidéo dépasse 2 Go. Raccourcissez-la ou compressez-la avant de l’envoyer.');
+            fail(t('bunny.too_large'));
             return;
         }
         if (submit) {
             submit.dataset.bunnyLabel = submit.innerHTML;
             submit.disabled = true;
-            submit.textContent = 'Envoi en cours…';
+            submit.textContent = t('bunny.sending');
         }
-        setState('Préparation de l’envoi…', 0);
+        setState(t('bunny.preparing'), 0);
 
         let init;
         try {
@@ -107,7 +109,7 @@ export function initBunnyUpload() {
         try {
             tus = await import('tus-js-client');
         } catch {
-            fail('Le module d’envoi n’a pas pu être chargé. Rechargez la page.');
+            fail(t('bunny.module_failed'));
             return;
         }
 
@@ -130,10 +132,10 @@ export function initBunnyUpload() {
                 req.setHeader('AuthorizationSignature', auth.signature);
                 req.setHeader('AuthorizationExpire', String(auth.expiration));
             },
-            onProgress: (sent, total) => setState('Envoi de la vidéo…', Math.min(99, Math.floor((sent / total) * 100))),
-            onError: () => fail('L’envoi de la vidéo a échoué. Vérifiez votre connexion et réessayez.'),
+            onProgress: (sent, total) => setState(t('bunny.uploading'), Math.min(99, Math.floor((sent / total) * 100))),
+            onError: () => fail(t('bunny.upload_failed')),
             onSuccess: async () => {
-                setState('Vidéo envoyée. Traitement en cours chez notre hébergeur vidéo…', 100);
+                setState(t('bunny.processing'), 100);
                 try {
                     await post(init.complete_url, new FormData());
                 } catch {

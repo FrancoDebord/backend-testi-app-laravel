@@ -38,6 +38,7 @@ class Event extends Model
         'organizer_id', 'title', 'description', 'type', 'status', 'starts_at', 'ends_at',
         'location', 'city', 'country', 'guests', 'comments_enabled',
         'address', 'latitude', 'longitude',
+        'youtube_live_id', // direct YouTube (identifiant tiré du lien collé)
         'going_count', 'not_going_count', 'comment_count',
         // Report / annulation, modération, sondage (docs/fonctionnalites/evenements.md)
         'original_starts_at', 'original_ends_at', 'date_tbd', 'postponed_at', 'status_reason', 'status_changed_at',
@@ -58,13 +59,11 @@ class Event extends Model
     /** Invitations au sondage : événements terminés depuis moins de N jours. */
     public const SURVEY_INVITE_DAYS = 7;
 
-    public const REPORT_REASONS = [
-        'not_christian'         => 'Pas un événement chrétien',
-        'fake'                  => "Événement faux / n'existe pas",
-        'inappropriate_content' => 'Contenu inapproprié',
-        'scam'                  => "Arnaque / demande d'argent",
-        'other'                 => 'Autre',
-    ];
+    /** Motifs de signalement [code => libellé] (lang/{fr,en}/models.php › event_report_reasons). */
+    public static function reportReasons(): array
+    {
+        return __('models.event_report_reasons');
+    }
 
     protected function casts(): array
     {
@@ -249,14 +248,10 @@ class Event extends Model
 
     public function phaseLabel(): string
     {
-        if ($this->isCancelled()) return 'Annulé';
-        if ($this->isDateTbd()) return 'Reporté — date à confirmer';
+        if ($this->isCancelled()) return __('models.event_phase.cancelled');
+        if ($this->isDateTbd()) return __('models.event_phase.tbd');
 
-        return match ($this->phase()) {
-            'past'    => 'Terminé',
-            'ongoing' => 'En cours',
-            default   => 'À venir',
-        };
+        return __('models.event_phase.' . $this->phase());
     }
 
     /** Participer reste possible jusqu'à la fin de l'événement (sauf annulation), même reporté. */
@@ -336,6 +331,25 @@ class Event extends Model
     {
         return collect([$this->location, $this->address, $this->city, $this->country])
             ->filter(fn ($v) => filled($v))->implode(', ');
+    }
+
+    /**
+     * Direct YouTube (lien collé par l'organisateur) : identifiant, liens de lecture et miniature ;
+     * null s'il n'y en a pas. Voir docs/fonctionnalites/evenements.md › Direct YouTube
+     *
+     * @return array{id: string, url: string, embedUrl: string, thumbnailUrl: string}|null
+     */
+    public function youtubeLive(): ?array
+    {
+        $id = $this->youtube_live_id;
+        if (!filled($id)) return null;
+
+        return [
+            'id'           => $id,
+            'url'          => \App\Support\YouTube::watchUrl($id),
+            'embedUrl'     => \App\Support\YouTube::embedUrl($id),
+            'thumbnailUrl' => \App\Support\YouTube::thumbnailUrl($id),
+        ];
     }
 
     /**
@@ -428,6 +442,21 @@ class Event extends Model
         return $q->where('starts_at', '<=', now())->where('ends_at', '>=', now())
             ->whereNot(fn ($t) => $t->where('status', EventStatus::Postponed->value)->where('date_tbd', true))
             ->orderBy('ends_at');
+    }
+
+    /**
+     * Événements passés (page « Événements passés », GET /events?when=past) : publiés ou reportés et
+     * terminés, jamais annulés (ils n'ont pas eu lieu). docs/fonctionnalites/evenements.md
+     */
+    public function scopeFinished(Builder $q): Builder
+    {
+        return $q->published()->where('status', '!=', EventStatus::Cancelled->value)->past();
+    }
+
+    /** testimonies_count : témoignages publiés (approuvés, publics) de l'événement, en une requête. */
+    public function scopeWithPublishedTestimonyCount(Builder $q): Builder
+    {
+        return $q->withCount(['testimonies as testimonies_count' => fn ($t) => $t->published()]);
     }
 
     public function scopePast(Builder $q): Builder

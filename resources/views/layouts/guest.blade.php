@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +12,7 @@
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
+    <script>window.I18N = @json(__('js'));</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-full flex-col">
@@ -22,9 +23,12 @@
             <img src="{{ asset('icons/arise-shine-krea.png') }}" alt="ARISE &amp; SHINE Krea" class="h-14 w-auto" width="477" height="493">
             <span class="border-l border-slate-200 pl-3 text-sm font-bold text-primary-600">TestiApp</span>
         </a>
-        <a href="{{ route('home') }}" class="btn-ghost btn-sm">
-            <i class="fa-solid fa-arrow-left"></i><span class="hidden sm:inline">Retour au site</span>
-        </a>
+        <div class="flex items-center gap-2">
+            @include('components.locale-switcher')
+            <a href="{{ route('home') }}" class="btn-ghost btn-sm" aria-label="{{ __('layout.back_to_site') }}">
+                <i class="fa-solid fa-arrow-left"></i><span class="hidden sm:inline">{{ __('layout.back_to_site') }}</span>
+            </a>
+        </div>
     </div>
 </header>
 
@@ -35,20 +39,20 @@
         <aside class="hidden overflow-hidden rounded-2xl border border-primary-100 bg-primary-50 lg:sticky lg:top-8 lg:flex lg:min-h-[36rem] lg:flex-col lg:self-start">
             <div class="p-10 pb-4">
                 <span class="badge-yellow"><i class="fa-solid fa-sun" aria-hidden="true"></i>ARISE &amp; SHINE Krea</span>
-                <p class="text-h2 mt-5">Dieu agit encore.</p>
-                <p class="text-body mt-4 text-slate-600">TestiApp rassemble les témoignages de la communauté pour encourager, édifier et rendre gloire à Dieu.</p>
+                <p class="text-h2 mt-5">{{ __('layout.guest.tagline') }}</p>
+                <p class="text-body mt-4 text-slate-600">{{ __('layout.guest.intro') }}</p>
                 <ul class="mt-8 space-y-5">
                     <li class="flex items-start gap-3">
                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-primary-600 shadow-soft"><i class="fa-solid fa-book-open" aria-hidden="true"></i></span>
-                        <span><span class="block font-semibold text-slate-900">Lire, écouter, regarder</span><span class="text-secondary">Des témoignages en texte, audio et vidéo.</span></span>
+                        <span><span class="block font-semibold text-slate-900">{{ __('layout.guest.read_title') }}</span><span class="text-secondary">{{ __('layout.guest.read_text') }}</span></span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-primary-600 shadow-soft"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></span>
-                        <span><span class="block font-semibold text-slate-900">Suivre les directs</span><span class="text-secondary">Rejoindre la communauté en temps réel.</span></span>
+                        <span><span class="block font-semibold text-slate-900">{{ __('layout.guest.lives_title') }}</span><span class="text-secondary">{{ __('layout.guest.lives_text') }}</span></span>
                     </li>
                     <li class="flex items-start gap-3">
                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-accent-500 shadow-soft"><i class="fa-solid fa-feather-pointed" aria-hidden="true"></i></span>
-                        <span><span class="block font-semibold text-slate-900">Partager le vôtre</span><span class="text-secondary">Raconter ce que Dieu a fait dans votre vie.</span></span>
+                        <span><span class="block font-semibold text-slate-900">{{ __('layout.guest.share_title') }}</span><span class="text-secondary">{{ __('layout.guest.share_text') }}</span></span>
                     </li>
                 </ul>
             </div>
@@ -59,7 +63,7 @@
 
         <div class="mx-auto w-full max-w-lg lg:self-center">
             <div class="relative mb-5 overflow-hidden rounded-xl border border-primary-100 bg-primary-50 lg:hidden" aria-hidden="true">
-                <p class="absolute top-3 left-4 z-10 text-base font-bold text-primary-600 sm:top-4 sm:left-5 sm:text-lg">Dieu agit encore.</p>
+                <p class="absolute top-3 left-4 z-10 text-base font-bold text-primary-600 sm:top-4 sm:left-5 sm:text-lg">{{ __('layout.guest.tagline') }}</p>
                 @include('layouts.partials.krea-landscape', ['class' => 'block h-36 w-full sm:h-48', 'viewBox' => '0 50 400 150'])
             </div>
             @yield('content')

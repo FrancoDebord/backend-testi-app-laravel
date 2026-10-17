@@ -1,4 +1,5 @@
 import './bootstrap';
+import { t, tn, dateLocale } from './i18n';
 import './videos';
 import './tts';
 
@@ -87,7 +88,7 @@ document.addEventListener('keydown', (e) => {
 // ── Confirmation (remplace confirm()) ───────────────────────────────────
 let pendingConfirmForm = null;
 
-function openConfirmModal(formId, message, title = 'Confirmer', confirmLabel = 'Confirmer', icon = 'fa-circle-question') {
+function openConfirmModal(formId, message, title = t('app.confirm'), confirmLabel = t('app.confirm'), icon = 'fa-circle-question') {
     const form = document.getElementById(formId);
     if (!form) return;
     pendingConfirmForm = form;
@@ -157,7 +158,7 @@ document.addEventListener(
         if (form.hasAttribute('data-online-only') && !navigator.onLine) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            flash("Vous êtes hors connexion. Votre saisie est conservée : l'envoi sera possible dès le retour de la connexion.", 'warning');
+            flash(t('app.offline'), 'warning');
         }
     },
     true,
@@ -195,11 +196,11 @@ document.addEventListener('submit', (e) => {
     const submitter = e.submitter || form.querySelector('[type="submit"]');
 
     if (form.hasAttribute('data-loading-inline') || method === 'get') {
-        setButtonLoading(submitter, form.dataset.loadingLabel || 'Recherche…');
+        setButtonLoading(submitter, form.dataset.loadingLabel || t('app.searching'));
         return;
     }
 
-    const label = form.dataset.loadingLabel || 'Traitement en cours…';
+    const label = form.dataset.loadingLabel || t('app.processing');
     setButtonLoading(submitter, label);
     const overlay = document.getElementById('loading-overlay');
     if (overlay) {
@@ -258,7 +259,7 @@ function initAutosave(form) {
                     else if (el.type === 'checkbox') el.checked = Boolean(value);
                     else el.value = value;
                 });
-                if (status) status.textContent = `Brouillon restauré (enregistré le ${new Date(saved.at).toLocaleString('fr-FR')}).`;
+                if (status) status.textContent = t('app.draft_restored', { date: new Date(saved.at).toLocaleString(dateLocale) });
             }
         } catch {
             storage.removeItem(key);
@@ -279,7 +280,7 @@ function initAutosave(form) {
         });
         try {
             storage.setItem(key, JSON.stringify({ at: Date.now(), values }));
-            if (status) status.textContent = `Brouillon enregistré automatiquement à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`;
+            if (status) status.textContent = t('app.draft_saved', { time: new Date().toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' }) });
         } catch {
             /* quota dépassé : on ignore */
         }
@@ -512,7 +513,7 @@ function initCountrySelect(select) {
     input.className = 'form-input pr-9';
     input.autocomplete = 'off';
     input.spellcheck = false;
-    input.placeholder = select.dataset.placeholder || 'Rechercher un pays…';
+    input.placeholder = select.dataset.placeholder || t('app.country.search');
     if (select.getAttribute('aria-label')) input.setAttribute('aria-label', select.getAttribute('aria-label'));
     input.setAttribute('role', 'combobox');
     input.setAttribute('aria-autocomplete', 'list');
@@ -607,7 +608,7 @@ function initCountrySelect(select) {
         if (!shown.length) {
             const li = document.createElement('li');
             li.className = 'px-3 py-2 text-sm text-slate-500';
-            li.textContent = select.dataset.emptyText || 'Aucun pays ne correspond à votre recherche.';
+            li.textContent = select.dataset.emptyText || t('app.country.empty');
             list.replaceChildren(li);
             active = -1;
             return highlight();
@@ -752,13 +753,13 @@ document.addEventListener('submit', async (e) => {
             },
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || (res.status === 429 ? 'Trop d\'actions en peu de temps. Patientez un instant.' : 'Action impossible. Réessayez.'));
+        if (!res.ok) throw new Error(data.message || (res.status === 429 ? t('app.too_many_actions') : t('app.action_failed')));
 
         const now = !!data.following;
-        const name = button.getAttribute('aria-label').replace(/^(Ne plus suivre|Suivre) /, '');
+        const name = form.dataset.followName || '';
         button.setAttribute('aria-pressed', now ? 'true' : 'false');
-        button.setAttribute('aria-label', `${now ? 'Ne plus suivre' : 'Suivre'} ${name}`);
-        button.querySelector('[data-follow-label]').textContent = now ? 'Abonné' : 'Suivre';
+        button.setAttribute('aria-label', t(now ? 'app.follow.unfollow_name' : 'app.follow.follow_name', { name }));
+        button.querySelector('[data-follow-label]').textContent = now ? t('app.follow.following') : t('app.follow.follow');
         button.querySelector('[data-follow-icon]').className = `fa-solid ${now ? 'fa-check' : 'fa-user-plus'}`;
         // Bouton principal (en-tête de profil) : rouge pour « Suivre », secondaire une fois abonné.
         const primary = form.dataset.followPrimary === '1' && !now;
@@ -772,9 +773,9 @@ document.addEventListener('submit', async (e) => {
         }
         if (Number.isFinite(data.followerCount)) {
             document.querySelectorAll(`[data-follower-count="${CSS.escape(form.dataset.followUser)}"]`)
-                .forEach((el) => (el.textContent = Number(data.followerCount).toLocaleString('fr-FR')));
+                .forEach((el) => (el.textContent = Number(data.followerCount).toLocaleString(dateLocale)));
         }
-        flash(data.message || (now ? 'Abonnement effectué.' : 'Abonnement annulé.'));
+        flash(data.message || (now ? t('app.follow.done') : t('app.follow.undone')));
     } catch (err) {
         flash(err.message, 'error');
     } finally {
@@ -800,10 +801,10 @@ document.addEventListener('click', async (e) => {
         const field = document.getElementById(copy.dataset.copy);
         try {
             await navigator.clipboard.writeText(field?.value ?? '');
-            flash('Copié dans le presse-papiers.');
+            flash(t('app.copied'));
         } catch {
             field?.select();
-            flash('Copie impossible : sélectionnez le texte puis copiez-le.', 'warning');
+            flash(t('app.copy_failed'), 'warning');
         }
         return;
     }
@@ -813,8 +814,8 @@ document.addEventListener('click', async (e) => {
         if (!field) return;
         const shown = field.type === 'text';
         field.type = shown ? 'password' : 'text';
-        const what = reveal.dataset.revealLabel || 'la clé';
-        reveal.setAttribute('aria-label', `${shown ? 'Afficher' : 'Masquer'} ${what}`);
+        const what = reveal.dataset.revealLabel || t('app.reveal.default');
+        reveal.setAttribute('aria-label', t(shown ? 'app.reveal.show' : 'app.reveal.hide', { what }));
         reveal.querySelector('i').className = shown ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
     }
 });
@@ -932,7 +933,7 @@ function initEventImages(input) {
         urls = [];
         preview?.replaceChildren();
         const files = [...(input.files || [])];
-        const message = files.length > max ? `Vous pouvez choisir ${max} image${max > 1 ? 's' : ''} au plus.` : '';
+        const message = files.length > max ? tn('app.max_images', max) : '';
         input.setCustomValidity(message);
         input.setAttribute('aria-invalid', message ? 'true' : 'false');
         if (error) {
@@ -1002,7 +1003,7 @@ function initUserPicker(root) {
         const add = document.createElement('form');
         add.method = 'POST';
         add.action = root.dataset.addUrl;
-        add.dataset.loadingLabel = 'Ajout…';
+        add.dataset.loadingLabel = t('app.picker.adding');
         for (const [field, value] of [['_token', csrf], ['user_id', person.id]]) {
             const hidden = document.createElement('input');
             Object.assign(hidden, { type: 'hidden', name: field, value });
@@ -1011,9 +1012,9 @@ function initUserPicker(root) {
         const button = document.createElement('button');
         button.type = 'submit';
         button.className = 'btn-secondary btn-sm';
-        button.setAttribute('aria-label', `Ajouter ${person.displayName}`);
+        button.setAttribute('aria-label', t('app.picker.add_name', { name: person.displayName }));
         button.innerHTML = '<i class="fa-solid fa-user-plus" aria-hidden="true"></i>';
-        button.append('Ajouter');
+        button.append(t('app.picker.add'));
         add.append(button);
 
         li.append(avatar(person), name, add);
@@ -1032,17 +1033,17 @@ function initUserPicker(root) {
         const url = new URL(root.dataset.searchUrl, window.location.origin);
         url.searchParams.set('q', q);
         if (root.dataset.exclude) url.searchParams.set('exclude', root.dataset.exclude);
-        setStatus('Recherche…');
+        setStatus(t('app.searching'));
         try {
             const res = await fetch(url, {
                 credentials: 'same-origin',
                 signal: controller.signal,
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
-            if (!res.ok) throw new Error(res.status === 429 ? 'Trop de recherches en peu de temps. Patientez un instant.' : 'La recherche a échoué. Réessayez.');
+            if (!res.ok) throw new Error(res.status === 429 ? t('app.picker.too_many') : t('app.picker.failed'));
             const people = (await res.json()).data ?? [];
             list.replaceChildren(...people.map(row));
-            setStatus(people.length ? `${people.length} personne${people.length > 1 ? 's' : ''} trouvée${people.length > 1 ? 's' : ''}.` : 'Aucune personne trouvée.');
+            setStatus(people.length ? tn('app.picker.found', people.length) : t('app.picker.none'));
         } catch (err) {
             if (err.name === 'AbortError') return;
             setStatus(err.message);

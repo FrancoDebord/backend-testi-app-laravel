@@ -18,7 +18,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements \Illuminate\Contracts\Translation\HasLocalePreference
 {
     use HasApiTokens, HasFactory, Notifiable, HasUuids, SoftDeletes;
 
@@ -31,6 +31,8 @@ class User extends Authenticatable
     protected $fillable = [
         'display_name', 'email', 'phone', 'phone_country', 'phone_verified_at', 'firebase_uid', 'google_id', 'password',
         'avatar_url', 'cover_url', 'country', 'bio', 'role', 'status', 'is_active',
+        // Langue du compte (fr | en) : push et e-mails (docs/fonctionnalites/langues.md)
+        'locale',
         'email_verified_at', 'testimony_count', 'like_count', 'prayer_count',
         'follower_count', 'following_count',
         // Comptes organisation (docs/fonctionnalites/comptes-organisation.md).
@@ -70,6 +72,21 @@ class User extends Authenticatable
     public function testimonies(): HasMany
     {
         return $this->hasMany(Testimony::class);
+    }
+
+    /** Témoignage de conversion (un seul par compte personnel) : docs/fonctionnalites/temoignage-de-conversion.md */
+    public function conversionTestimony(): HasOne
+    {
+        return $this->hasOne(Testimony::class)->conversion()->latestOfMany();
+    }
+
+    /**
+     * Ajoute « has_conversion_testimony » (témoignage de conversion publié) en une requête,
+     * lu par UserResource (profil public).
+     */
+    public function scopeWithConversionTestimonyState($query)
+    {
+        return $query->withExists(['testimonies as has_conversion_testimony' => fn ($t) => $t->conversion()->published()]);
     }
 
     public function comments(): HasMany
@@ -170,6 +187,14 @@ class User extends Authenticatable
     public function prophecies(): HasMany
     {
         return $this->hasMany(Prophecy::class);
+    }
+
+    // ---------- Langue (docs/fonctionnalites/langues.md) ----------
+
+    /** Langue des e-mails et notifications Laravel envoyés à ce compte (HasLocalePreference). */
+    public function preferredLocale(): string
+    {
+        return \App\Support\Locales::forUser($this);
     }
 
     // ---------- Helpers ----------

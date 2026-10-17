@@ -62,7 +62,7 @@ class PrayerRequestController extends Controller
         return view('prayer.requests.show', [
             'prayer'   => $prayer,
             'messages' => $prayer->messages()->with('user')->oldest()->paginate(50),
-            'reasons'  => PrayerRequest::REPORT_REASONS,
+            'reasons'  => PrayerRequest::reportReasons(),
             'user'     => $user,
         ]);
     }
@@ -147,7 +147,7 @@ class PrayerRequestController extends Controller
         return view('prayer.moderation', [
             'filter'  => $filter,
             'items'   => $this->requests->moderationQueue($filter)->paginate(20)->withQueryString(),
-            'reasons' => PrayerRequest::REPORT_REASONS,
+            'reasons' => PrayerRequest::reportReasons(),
         ]);
     }
 

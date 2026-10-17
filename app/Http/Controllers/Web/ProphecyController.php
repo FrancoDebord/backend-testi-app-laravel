@@ -17,7 +17,11 @@ use Illuminate\View\View;
  */
 class ProphecyController extends Controller
 {
-    public const WEEKDAYS = [1 => 'Lundi', 2 => 'Mardi', 3 => 'Mercredi', 4 => 'Jeudi', 5 => 'Vendredi', 6 => 'Samedi', 7 => 'Dimanche'];
+    /** Jours du rappel hebdomadaire (1 = lundi … 7 = dimanche), libellés traduits. */
+    public static function weekdays(): array
+    {
+        return collect(range(1, 7))->mapWithKeys(fn ($d) => [$d => __('prophecies.weekdays.' . $d)])->all();
+    }
 
     public function __construct(private readonly Prophecies $prophecies) {}
 
@@ -41,7 +45,7 @@ class ProphecyController extends Controller
         $data = $this->validated($request);
         $prophecy = $this->prophecies->create($request->user(), $data);
 
-        return redirect()->route('prophecies.show', $prophecy->id)->with('success', 'Parole enregistrée dans votre carnet.');
+        return redirect()->route('prophecies.show', $prophecy->id)->with('success', __('prophecies.flash.created'));
     }
 
     public function show(Request $request, string $id): View
@@ -63,14 +67,14 @@ class ProphecyController extends Controller
         $data = $this->validated($request, $prophecy);
         $this->prophecies->update($prophecy, $data);
 
-        return redirect()->route('prophecies.show', $prophecy->id)->with('success', 'Parole mise à jour.');
+        return redirect()->route('prophecies.show', $prophecy->id)->with('success', __('prophecies.flash.updated'));
     }
 
     public function destroy(Request $request, string $id): RedirectResponse
     {
         $this->prophecies->delete($this->prophecies->find($request->user(), $id));
 
-        return redirect()->route('prophecies.index')->with('success', 'Parole supprimée de votre carnet.');
+        return redirect()->route('prophecies.index')->with('success', __('prophecies.flash.deleted'));
     }
 
     /** « Elle s'est accomplie », sans témoigner (témoigner reste possible ensuite). */
@@ -78,11 +82,11 @@ class ProphecyController extends Controller
     {
         $prophecy = $this->prophecies->find($request->user(), $id);
         $data = $request->validate(['fulfilled_on' => ['nullable', 'date', 'before_or_equal:today']], [
-            'fulfilled_on.before_or_equal' => "La date d'accomplissement ne peut pas être dans le futur.",
+            'fulfilled_on.before_or_equal' => __('prophecies.rules.fulfilled_on_future'),
         ]);
         $this->prophecies->update($prophecy, ['status' => Prophecy::FULFILLED, 'fulfilled_on' => $data['fulfilled_on'] ?? null]);
 
-        return redirect()->route('prophecies.show', $prophecy->id)->with('success', 'Gloire à Dieu ! La parole est marquée accomplie.');
+        return redirect()->route('prophecies.show', $prophecy->id)->with('success', __('prophecies.flash.fulfilled'));
     }
 
     /** Retour « en attente » : impossible si un témoignage est déjà publié pour la parole. */
@@ -95,7 +99,7 @@ class ProphecyController extends Controller
             return back()->with('error', collect($e->errors())->flatten()->first());
         }
 
-        return redirect()->route('prophecies.show', $prophecy->id)->with('success', 'La parole est de nouveau en attente.');
+        return redirect()->route('prophecies.show', $prophecy->id)->with('success', __('prophecies.flash.reopened'));
     }
 
     // ─── Journal de prière ───────────────────────────────────────────────────
@@ -106,7 +110,7 @@ class ProphecyController extends Controller
         $data = $request->validate(['note' => 'nullable|string|max:1000']);
         $this->prophecies->pray($prophecy, $data['note'] ?? null);
 
-        return redirect()->route('prophecies.show', $prophecy->id)->with('success', "Prière enregistrée. Dieu veille sur sa parole pour l'accomplir.");
+        return redirect()->route('prophecies.show', $prophecy->id)->with('success', __('prophecies.flash.prayed'));
     }
 
     public function deletePrayer(Request $request, string $id, int $prayer): RedirectResponse
@@ -114,7 +118,7 @@ class ProphecyController extends Controller
         $prophecy = $this->prophecies->find($request->user(), $id);
         $this->prophecies->deletePrayer($prophecy, $prayer);
 
-        return redirect()->route('prophecies.show', $prophecy->id)->with('success', 'Prière retirée du journal.');
+        return redirect()->route('prophecies.show', $prophecy->id)->with('success', __('prophecies.flash.prayer_deleted'));
     }
 
     // ─── Outils ──────────────────────────────────────────────────────────────
@@ -132,14 +136,14 @@ class ProphecyController extends Controller
             'due_on'       => ['nullable', 'date', 'after_or_equal:' . ($request->input('received_on') ?: now()->toDateString())],
             'audio'        => ['nullable', 'file', 'max:20480', 'mimetypes:audio/*,video/webm,video/mp4'],
             'remove_audio' => ['nullable', 'boolean'],
-        ], Prophecies::MESSAGES + [
-            'audio.max'       => "L'enregistrement ne doit pas dépasser 20 Mo.",
-            'audio.mimetypes' => "Le fichier doit être un enregistrement audio (MP3, M4A, WAV…).",
+        ], Prophecies::messages() + [
+            'audio.max'       => __('prophecies.rules.audio_max'),
+            'audio.mimetypes' => __('prophecies.rules.audio_mimetypes'),
         ]);
 
         $keepAudio = $current?->audio_url && !$request->boolean('remove_audio');
         if (blank($data['body_text'] ?? null) && !$request->hasFile('audio') && !$keepAudio) {
-            throw ValidationException::withMessages(['body_text' => Prophecies::MESSAGES['body_text.required_without']]);
+            throw ValidationException::withMessages(['body_text' => __('prophecies.rules.body_text_required')]);
         }
 
         if ($request->hasFile('audio')) {

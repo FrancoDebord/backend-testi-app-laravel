@@ -35,7 +35,7 @@
         @include('feed.partials.repost-header', ['repost' => $repost, 'compact' => $compact])
     @elseif(($reasons[$testimony->id] ?? null) === 'suggested')
     <div class="relative min-w-0">
-        <span class="badge-yellow pointer-events-none absolute top-2 left-2 z-10">Suggestion</span>
+        <span class="badge-yellow pointer-events-none absolute top-2 left-2 z-10">{{ __('videos.common.suggestion') }}</span>
     @endif
     @if($compact)
         @include('videos.partials.row', ['testimony' => $testimony, 'url' => route($routeName, $testimony->id)])

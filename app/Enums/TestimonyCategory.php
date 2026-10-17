@@ -17,18 +17,7 @@ enum TestimonyCategory: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Guerison        => 'Guérison',
-            self::Delivrance      => 'Délivrance',
-            self::Conversion      => 'Conversion',
-            self::Mariage         => 'Mariage',
-            self::Famille         => 'Famille',
-            self::Finances        => 'Finances',
-            self::Miracles        => 'Miracles',
-            self::ProtectionDivine => 'Protection Divine',
-            self::Ministere       => 'Ministère',
-            self::Salut           => 'Salut',
-        };
+        return __('enums.testimony_category.' . $this->value);
     }
 
     public function icon(): string

@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
  * avec leur code ISO 3166-1 (drapeau : public/flags/{code}.svg).
  * Les pays communs avec l'application mobile gardent exactement son orthographe
  * (« Congo (RDC) », « Côte d'Ivoire », « Swaziland »…) pour que les données restent homogènes.
+ * Noms affichés dans la langue courante : lang/{fr,en}/countries.php (label(), localName(), options()).
  */
 final class Countries
 {
@@ -150,26 +151,55 @@ final class Countries
         return $name === false ? null : $name;
     }
 
-    /** Pays sans article (« À Madagascar ») et au pluriel (« Aux Pays-Bas »). */
-    private const PHRASE_A = ['mg', 'mu', 'cu', 'ht', 'cy', 'mt', 'sg', 'mc', 'bh', 'lk', 'tw', 'st', 'sc', 'km', 'cv', 'bb', 'ag', 'dm', 'gd', 'kn', 'lc', 'vc', 'tt', 'jm', 'bn', 'sm', 'va', 'xk', 'il'];
-    private const PHRASE_AUX = ['nl', 'us', 'ae', 'ph', 'mv', 'bs', 'fj', 'mh', 'sb'];
-    /** Pays masculins qui se terminent par « e » (« Au Mexique »). */
-    private const MASCULINE_E = ['mx', 'kh', 'mz', 'zw', 'bz', 'sr', 'mm'];
+    /**
+     * Nom affiché d'un code ISO dans la langue courante (« Bénin », « Benin »), ou null.
+     * Les noms enregistrés restent ceux de la liste française (CODES) ; seule leur présentation change.
+     */
+    public static function localName(?string $code): ?string
+    {
+        $code = strtolower(trim((string) $code));
+        if (self::nameOf($code) === null) return null;
+        $key = "countries.names.{$code}";
+        $label = __($key);
 
-    /** « Au Bénin », « En Côte d'Ivoire », « Aux Pays-Bas », « À Madagascar » ; null pour un code inconnu. */
+        return $label === $key ? self::nameOf($code) : $label;
+    }
+
+    /** Nom affiché d'un pays enregistré (« Côte d'Ivoire ») ; un nom hors liste est rendu tel quel. */
+    public static function label(?string $name): ?string
+    {
+        $name = trim((string) $name);
+        if ($name === '') return null;
+
+        return self::localName(self::code($name)) ?? $name;
+    }
+
+    /**
+     * Options des listes déroulantes : nom enregistré (français) => nom affiché, triées dans l'ordre
+     * alphabétique de la langue courante, sans tenir compte des accents.
+     *
+     * @return array<string, string>
+     */
+    public static function options(): array
+    {
+        $options = [];
+        foreach (self::all() as $name) {
+            $options[$name] = self::label($name);
+        }
+        uasort($options, fn ($a, $b) => strcmp(self::key($a), self::key($b)));
+
+        return $options;
+    }
+
+    /** « Au Bénin », « En Côte d'Ivoire », « Aux Pays-Bas », « À Madagascar » (« In Benin » en anglais) ; null pour un code inconnu. */
     public static function inPhrase(?string $code): ?string
     {
         $code = strtolower(trim((string) $code));
-        $name = self::nameOf($code);
-        if ($name === null) return null;
-        if (in_array($code, self::PHRASE_A, true)) return "À {$name}";
-        if (in_array($code, self::PHRASE_AUX, true)) return "Aux {$name}";
-        $ascii = self::key($name);
-        $firstWord = preg_split('/[\s(]/', $ascii)[0] ?? $ascii;
-        $startsWithVowel = in_array($ascii[0] ?? '', ['a', 'e', 'i', 'o', 'u'], true);
-        $feminine = str_ends_with($firstWord, 'e') && !in_array($code, self::MASCULINE_E, true);
+        if (self::nameOf($code) === null) return null;
+        $key = "countries.in.{$code}";
+        $phrase = __($key);
 
-        return ($startsWithVowel || $feminine) ? "En {$name}" : "Au {$name}";
+        return $phrase === $key ? self::localName($code) : $phrase;
     }
 
     /** @return list<string> codes utilisés (pour vérifier que chaque drapeau existe) */

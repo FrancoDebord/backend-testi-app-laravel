@@ -21,19 +21,19 @@ class AccountApprovalController extends Controller
 
     public function grant(Request $request, string $id): RedirectResponse
     {
-        return $this->act($request, $id, fn (User $u, string $r) => $this->approval->grant($u, Auth::user(), $r), 'Badge « Approuvé » attribué.');
+        return $this->act($request, $id, fn (User $u, string $r) => $this->approval->grant($u, Auth::user(), $r), __('verification.flash.badge_granted'));
     }
 
     public function revoke(Request $request, string $id): RedirectResponse
     {
-        return $this->act($request, $id, fn (User $u, string $r) => $this->approval->revoke($u, Auth::user(), $r), 'Badge « Approuvé » retiré.');
+        return $this->act($request, $id, fn (User $u, string $r) => $this->approval->revoke($u, Auth::user(), $r), __('verification.flash.badge_revoked'));
     }
 
     private function act(Request $request, string $id, callable $action, string $message): RedirectResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:500']], [
-            'reason.required' => 'Indiquez le motif.',
-            'reason.min'      => 'Indiquez le motif.',
+            'reason.required' => __('verification.reason_required'),
+            'reason.min'      => __('verification.reason_required'),
         ]);
         $user = User::findOrFail($id);
         Gate::authorize('manageApproval', $user);

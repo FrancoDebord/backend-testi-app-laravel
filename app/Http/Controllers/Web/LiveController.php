@@ -40,13 +40,13 @@ class LiveController extends Controller
         $event = $this->authorizedEvent($request->query('event'));
         if ($event && $event->status !== \App\Enums\EventStatus::Published) {
             return redirect()->route('events.show', $event->id)
-                ->with('error', "L'événement doit être publié (et non annulé) pour être diffusé.");
+                ->with('error', __('lives.messages.event_not_published'));
         }
 
         $existing = LiveSession::active()->where('host_id', Auth::id())->first();
         if ($existing) {
             return redirect()->route('lives.studio', $existing->id)
-                ->with('status', 'Vous avez déjà un direct en cours : vous pouvez le reprendre ici.');
+                ->with('status', __('lives.messages.already_live'));
         }
 
         return view('lives.create', [
@@ -74,10 +74,10 @@ class LiveController extends Controller
             // Vérifications de la caméra de l'appareil : inutiles avec une caméra IP.
             'checks_passed'    => $request->input('source', 'browser') === 'browser' ? 'accepted' : 'nullable',
         ], [
-            'camera_url.required_if' => "Indiquez l'adresse du flux de la caméra.",
-            'camera_url.regex'       => "Adresse non reconnue : elle doit commencer par rtsp://, rtmp://, http(s):// ou srt://.",
-            'title.required'         => 'Merci de donner un titre au direct.',
-            'checks_passed.accepted' => 'Les vérifications de la caméra et du micro doivent réussir avant de lancer le direct.',
+            'camera_url.required_if' => __('lives.messages.camera_url_required'),
+            'camera_url.regex'       => __('lives.messages.camera_url_regex'),
+            'title.required'         => __('lives.messages.title_required'),
+            'checks_passed.accepted' => __('lives.messages.checks_required'),
         ]);
         $data['comments_enabled'] = $request->boolean('comments_enabled');
         $data['record'] = $request->boolean('record');
@@ -118,7 +118,7 @@ class LiveController extends Controller
     {
         $live = LiveSession::with('host')->findOrFail($id);
         abort_unless($live->isHost(Auth::user()), 403);
-        abort_if($live->status === LiveStatus::Ended, 410, 'Ce direct est terminé.');
+        abort_if($live->status === LiveStatus::Ended, 410, __('lives.messages.ended'));
 
         return view('lives.studio', ['live' => $live]);
     }

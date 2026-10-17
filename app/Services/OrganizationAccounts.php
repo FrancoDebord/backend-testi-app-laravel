@@ -8,6 +8,7 @@ use App\Enums\OrganizationType;
 use App\Enums\VerificationStatus;
 use App\Models\AppNotification;
 use App\Models\User;
+use App\Support\NotificationText;
 use Illuminate\Validation\Rule;
 
 /**
@@ -114,7 +115,7 @@ class OrganizationAccounts
         AccountApproval::audit($organization, $admin, 'user.badge_granted', $before, 'Organisation vérifiée');
 
         self::notify($organization, $admin, NotificationType::OrganizationVerified,
-            'Votre organisation « ' . $organization->organization_name . ' » est vérifiée. Le badge apparaît désormais sur votre profil et vos témoignages.');
+            'account.notify_organization_verified', ['name' => $organization->organization_name]);
     }
 
     public static function reject(User $organization, User $admin, ?string $reason): void
@@ -136,10 +137,8 @@ class OrganizationAccounts
 
         // Organisation qui avait le badge : retrait (type dédié) ; sinon refus de la demande.
         self::notify($organization, $admin, $wasApproved ? NotificationType::AccountApprovalRevoked : NotificationType::OrganizationRejected,
-            'La vérification de votre organisation « ' . $organization->organization_name . ' » a été '
-            . ($wasApproved ? 'retirée' : 'refusée')
-            . ($reason ? ' : ' . $reason : '.')
-            . ' Vous pouvez corriger vos informations depuis votre profil.');
+            'account.notify_organization_' . ($wasApproved ? 'revoked' : 'rejected') . ($reason ? '_reason' : ''),
+            ['name' => $organization->organization_name] + ($reason ? ['reason' => $reason] : []));
     }
 
     private static function resetToPending(User $user): void
@@ -156,14 +155,14 @@ class OrganizationAccounts
      * témoignages). Le push FCM part automatiquement (AppNotificationObserver,
      * docs/fonctionnalites/notifications-push.md).
      */
-    private static function notify(User $recipient, User $admin, NotificationType $type, string $message): void
+    private static function notify(User $recipient, User $admin, NotificationType $type, string $key, array $params): void
     {
         AppNotification::create([
             'recipient_id' => $recipient->id,
             'actor_id'     => $admin->id,
             'actor_name'   => $admin->display_name,
             'type'         => $type->value,
-            'message'      => mb_substr($message, 0, 255),
+            ...NotificationText::fields($key, $params),
             'created_at'   => now(),
         ]);
     }

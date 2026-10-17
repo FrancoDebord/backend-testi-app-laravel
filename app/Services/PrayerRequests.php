@@ -69,7 +69,7 @@ class PrayerRequests
     public static function reportRules(): array
     {
         return [
-            'reason'  => ['required', Rule::in(array_keys(PrayerRequest::REPORT_REASONS))],
+            'reason'  => ['required', Rule::in(array_keys(PrayerRequest::reportReasons()))],
             'comment' => ['nullable', 'string', 'max:500'],
         ];
     }

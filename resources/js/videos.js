@@ -6,15 +6,17 @@
 | fonctionnent normalement (envoi classique, page suivante).
 */
 
+import { t, tn, dateLocale } from './i18n';
+
 const flash = (message, type = 'success') => window.flash?.(message, type);
 
 // ── Requêtes JSON ───────────────────────────────────────────────────────
-const ERROR_MESSAGES = {
-    401: 'Connectez-vous pour continuer.',
-    403: "Vous n'avez pas le droit d'effectuer cette action.",
-    404: "Ce contenu n'existe plus.",
-    419: 'Votre session a expiré. Rechargez la page.',
-    429: "Trop d'actions en peu de temps. Patientez un instant.",
+const ERROR_KEYS = {
+    401: 'videos.errors.401',
+    403: 'videos.errors.403',
+    404: 'videos.errors.404',
+    419: 'videos.errors.419',
+    429: 'videos.errors.429',
 };
 
 async function request(url, { method = 'GET', data } = {}) {
@@ -29,13 +31,13 @@ async function request(url, { method = 'GET', data } = {}) {
     try {
         response = await fetch(url, { method, headers, credentials: 'same-origin', body: data ? JSON.stringify(data) : undefined });
     } catch {
-        throw new Error(navigator.onLine ? 'Le serveur ne répond pas. Réessayez.' : 'Vous êtes hors connexion.');
+        throw new Error(navigator.onLine ? t('videos.errors.no_response') : t('videos.errors.offline'));
     }
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
         const validation = payload?.errors ? Object.values(payload.errors)[0]?.[0] : null;
-        throw new Error(validation || ERROR_MESSAGES[response.status] || "L'opération n'a pas pu aboutir. Réessayez.");
+        throw new Error(validation || (ERROR_KEYS[response.status] ? t(ERROR_KEYS[response.status]) : t('videos.errors.failed')));
     }
     return payload;
 }
@@ -64,7 +66,7 @@ function withSpinner(button, label) {
     };
 }
 
-const formatCount = (n) => Number(n).toLocaleString('fr-FR');
+const formatCount = (n) => Number(n).toLocaleString(dateLocale);
 
 // ── Miniatures et prévisualisation ──────────────────────────────────────
 const lazyFrames =
@@ -130,7 +132,7 @@ document.addEventListener('click', async (e) => {
     e.preventDefault();
     if (button.getAttribute('aria-busy')) return;
 
-    const done = withSpinner(button, 'Chargement…');
+    const done = withSpinner(button, t('videos.loading'));
     try {
         const data = await request(button.href);
         const nodes = fragment(data.html);
@@ -282,7 +284,7 @@ function initQuality(player) {
         fellBack = true;
         select.value = 'original';
         switchSource(player, player.dataset.original);
-        flash("Cette qualité n'est pas disponible : lecture en qualité d'origine.", 'error');
+        flash(t('videos.quality_unavailable'), 'error');
         return true;
     };
 }
@@ -302,7 +304,7 @@ function initRepeatAndNext(player) {
             player.loop = !player.loop;
             setPressed(loopButton, player.loop);
             savePrefs({ loop: player.loop });
-            flash(player.loop ? 'Lecture en boucle activée.' : 'Lecture en boucle désactivée.');
+            flash(player.loop ? t('videos.loop_on') : t('videos.loop_off'));
         });
     }
 
@@ -348,7 +350,7 @@ function initRepeatAndNext(player) {
         setPressed(autoButton, autoplay);
         savePrefs({ autoplay });
         if (!autoplay) cancel();
-        flash(autoplay ? 'Lecture automatique activée.' : 'Lecture automatique désactivée.');
+        flash(autoplay ? t('videos.autoplay_on') : t('videos.autoplay_off'));
     });
 
     playLink.addEventListener('click', markAutoplay);
@@ -418,7 +420,7 @@ document.addEventListener('click', (e) => {
     const open = panel.hidden;
     panel.hidden = !open;
     button.setAttribute('aria-expanded', open ? 'true' : 'false');
-    button.title = open ? 'Masquer les détails' : 'Afficher les détails';
+    button.title = open ? t('videos.hide_details') : t('videos.show_details');
     button.querySelector('[data-row-icon]')?.classList.toggle('rotate-180', open);
 });
 
@@ -462,8 +464,8 @@ document.addEventListener('click', async (e) => {
         const data = await request(button.dataset.save, { method: 'PUT' });
         setPressed(button, data.saved);
         button.querySelector('[data-save-icon]').className = `${data.saved ? 'fa-solid' : 'fa-regular'} fa-bookmark`;
-        button.querySelector('[data-save-label]').textContent = data.saved ? 'Sauvegardé' : 'Sauvegarder';
-        flash(data.saved ? 'Ajouté à vos sauvegardes.' : 'Retiré de vos sauvegardes.');
+        button.querySelector('[data-save-label]').textContent = data.saved ? t('videos.saved') : t('videos.save');
+        flash(data.saved ? t('videos.saved_added') : t('videos.saved_removed'));
     } catch (error) {
         flash(error.message, 'error');
     } finally {
@@ -481,9 +483,9 @@ document.addEventListener('click', async (e) => {
             return;
         }
         await navigator.clipboard.writeText(url);
-        flash('Lien copié.');
+        flash(t('videos.link_copied'));
     } catch (error) {
-        if (error?.name !== 'AbortError') flash("Le lien n'a pas pu être copié.", 'error');
+        if (error?.name !== 'AbortError') flash(t('videos.link_copy_failed'), 'error');
     }
 });
 
@@ -492,7 +494,7 @@ document.addEventListener('click', (e) => {
     if (!button) return;
     const target = document.getElementById(button.dataset.expand);
     const expanded = target.classList.toggle('line-clamp-4') === false;
-    button.textContent = expanded ? 'Afficher moins' : 'Afficher plus';
+    button.textContent = expanded ? t('videos.show_less') : t('videos.show_more');
     button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
 });
 
@@ -508,7 +510,7 @@ function updateRepliesButton(root, count) {
     button.dataset.repliesCount = count;
     const loaded = root.querySelectorAll('[data-replies-list] > [data-comment]').length;
     button.hidden = count < 1 || loaded >= count;
-    button.querySelector('[data-replies-label]').textContent = count > 1 ? `Voir les ${count} réponses` : 'Voir la réponse';
+    button.querySelector('[data-replies-label]').textContent = tn('videos.see_replies', count);
 }
 
 function syncEmptyState() {
@@ -564,7 +566,7 @@ document.addEventListener('click', async (e) => {
     const root = button.closest('[data-comment-root]');
     const list = root.querySelector('[data-replies-list]');
 
-    const done = withSpinner(button, 'Chargement…');
+    const done = withSpinner(button, t('videos.loading'));
     try {
         const data = await request(button.dataset.repliesLoad);
         // Retire les réponses déjà affichées (publiées à l'instant) pour éviter les doublons.
@@ -605,7 +607,7 @@ document.addEventListener('submit', async (e) => {
     }
 
     form.setAttribute('aria-busy', 'true');
-    const done = submit ? withSpinner(submit, kind === 'edit' ? 'Enregistrement…' : 'Envoi…') : () => {};
+    const done = submit ? withSpinner(submit, kind === 'edit' ? t('videos.saving') : t('videos.sending')) : () => {};
     try {
         if (kind === 'create') {
             const parentId = form.querySelector('[name="parent_id"]')?.value || null;
@@ -625,7 +627,7 @@ document.addEventListener('submit', async (e) => {
             updateCommentCount(data.count);
             syncEmptyState();
             created?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-            flash(data.parentId ? 'Réponse publiée.' : 'Commentaire publié.');
+            flash(data.parentId ? t('videos.reply_posted') : t('videos.comment_posted'));
         }
 
         if (kind === 'edit') {
@@ -636,7 +638,7 @@ document.addEventListener('submit', async (e) => {
             form.hidden = true;
             text.hidden = false;
             comment.querySelector(':scope > div > [data-comment-actions]').hidden = false;
-            flash('Commentaire modifié.');
+            flash(t('videos.comment_updated'));
         }
 
         if (kind === 'delete') {
@@ -647,7 +649,7 @@ document.addEventListener('submit', async (e) => {
             updateCommentCount(data.count);
             if (root) updateRepliesButton(root, data.replies);
             syncEmptyState();
-            flash('Commentaire supprimé.');
+            flash(t('videos.comment_deleted'));
         }
     } catch (error) {
         flash(error.message, 'error');

@@ -71,9 +71,9 @@ class LiveController extends Controller
             'source'           => 'nullable|in:browser,rtmp,url',
             'camera_url'       => ['nullable', 'required_if:source,url', 'string', 'max:500', 'regex:#^(rtsps?|rtmps?|https?|srt)://[^\s]+$#i'],
         ], [
-            'title.required' => 'Merci de donner un titre au direct.',
-            'camera_url.required_if' => "Indiquez l'adresse du flux de la caméra.",
-            'camera_url.regex'       => "Adresse non reconnue : elle doit commencer par rtsp://, rtmp://, http(s):// ou srt://.",
+            'title.required' => __('lives.messages.title_required'),
+            'camera_url.required_if' => __('lives.messages.camera_url_required'),
+            'camera_url.regex'       => __('lives.messages.camera_url_regex'),
         ]);
 
         return $this->attempt(function () use ($request, $data) {
@@ -83,7 +83,7 @@ class LiveController extends Controller
             return $this->created([
                 'live'  => new LiveSessionResource($live->load('host')),
                 'video' => $this->lives->hostCredentials($live, $user),
-            ], 'Direct créé : il sera visible dès que la caméra est en ligne.');
+            ], __('lives.messages.created'));
         });
     }
 
@@ -107,7 +107,7 @@ class LiveController extends Controller
 
         return $this->attempt(fn () => $this->success(
             new LiveSessionResource($this->lives->goLive($live, $this->user($request))->load('host')),
-            'Vous êtes en direct.'
+            __('lives.messages.on_air')
         ));
     }
 
@@ -118,7 +118,7 @@ class LiveController extends Controller
 
         return $this->attempt(fn () => $this->success(
             new LiveSessionResource($this->lives->end($live, $user, $live->isHost($user) ? 'host' : 'moderator')->load('host')),
-            'Le direct est terminé.'
+            __('lives.messages.live_ended')
         ));
     }
 
@@ -147,14 +147,14 @@ class LiveController extends Controller
 
     public function storeComment(Request $request, string $id): JsonResponse
     {
-        $request->validate(['body' => ['required', 'string', new VisibleLength((int) config('livekit.comment_max_length'), 'Le commentaire est trop long.')]], [
-            'body.required' => 'Le commentaire est vide.',
+        $request->validate(['body' => ['required', 'string', new VisibleLength((int) config('livekit.comment_max_length'), __('lives.messages.comment_too_long'))]], [
+            'body.required' => __('lives.messages.comment_empty'),
         ]);
         $live = $this->find($id, $request);
 
         return $this->attempt(fn () => $this->created(
             $this->lives->postComment($live, $this->user($request), $request->input('body'))->toPayload(),
-            'Commentaire publié.'
+            __('lives.messages.comment_posted')
         ));
     }
 
@@ -165,7 +165,7 @@ class LiveController extends Controller
 
         return $this->attempt(function () use ($comment, $request) {
             $this->lives->hideComment($comment, $this->user($request));
-            return $this->success(null, 'Commentaire masqué.');
+            return $this->success(null, __('lives.messages.comment_hidden'));
         });
     }
 
@@ -176,7 +176,7 @@ class LiveController extends Controller
 
         return $this->attempt(fn () => $this->success(
             $this->lives->pinComment($comment, $this->user($request))->toPayload(),
-            'Commentaire épinglé.'
+            __('lives.messages.comment_pinned')
         ));
     }
 
@@ -186,7 +186,7 @@ class LiveController extends Controller
 
         return $this->attempt(function () use ($live, $request) {
             $this->lives->unpinComment($live, $this->user($request));
-            return $this->success(null, 'Commentaire désépinglé.');
+            return $this->success(null, __('lives.messages.comment_unpinned'));
         });
     }
 
@@ -197,7 +197,7 @@ class LiveController extends Controller
 
         return $this->attempt(function () use ($live, $request) {
             $this->lives->ban($live, User::findOrFail($request->input('user_id')), $this->user($request));
-            return $this->success(null, 'Cette personne ne peut plus commenter ni réagir pendant ce direct.');
+            return $this->success(null, __('lives.messages.banned'));
         });
     }
 
@@ -220,13 +220,13 @@ class LiveController extends Controller
     public function requestStage(Request $request, string $id): JsonResponse
     {
         $request->validate(['message' => 'nullable|string|max:' . config('livekit.stage_message_length')], [
-            'message.max' => 'Le sujet est trop long.',
+            'message.max' => __('lives.messages.subject_too_long'),
         ]);
         $live = $this->find($id, $request);
 
         return $this->attempt(function () use ($live, $request) {
             $this->stage->request($live, $this->user($request), $request->input('message'));
-            return $this->created($this->stage->state($live, $this->user($request)), 'Demande envoyée : le diffuseur vous invitera à votre tour.');
+            return $this->created($this->stage->state($live, $this->user($request)), __('lives.messages.stage_requested'));
         });
     }
 
@@ -249,7 +249,7 @@ class LiveController extends Controller
 
         return $this->attempt(function () use ($live, $request) {
             $this->stage->accept($live, $this->user($request), $request->input('identity'), $request->boolean('camera'));
-            return $this->success($this->stage->state($live, $this->user($request)), "Vous êtes à l'antenne.");
+            return $this->success($this->stage->state($live, $this->user($request)), __('lives.messages.stage_accepted'));
         });
     }
 
@@ -259,7 +259,7 @@ class LiveController extends Controller
 
         return $this->attempt(function () use ($live, $request, $speakerId) {
             $this->stage->invite($live, $speakerId, $this->user($request));
-            return $this->success($this->stage->state($live, $this->user($request)), 'Invitation envoyée.');
+            return $this->success($this->stage->state($live, $this->user($request)), __('lives.messages.stage_invited'));
         });
     }
 
@@ -269,7 +269,7 @@ class LiveController extends Controller
 
         return $this->attempt(function () use ($live, $request, $speakerId) {
             $this->stage->decline($live, $speakerId, $this->user($request));
-            return $this->success($this->stage->state($live, $this->user($request)), 'Demande retirée de la file.');
+            return $this->success($this->stage->state($live, $this->user($request)), __('lives.messages.stage_declined'));
         });
     }
 
@@ -279,7 +279,7 @@ class LiveController extends Controller
 
         return $this->attempt(function () use ($live, $request, $speakerId) {
             $this->stage->remove($live, $speakerId, $this->user($request));
-            return $this->success($this->stage->state($live, $this->user($request)), 'Intervention terminée.');
+            return $this->success($this->stage->state($live, $this->user($request)), __('lives.messages.stage_removed'));
         });
     }
 
@@ -292,7 +292,7 @@ class LiveController extends Controller
             $enabled = $request->boolean('enabled');
             $this->stage->setEnabled($live, $this->user($request), $enabled);
             return $this->success($this->stage->state($live, $this->user($request)),
-                $enabled ? "Demandes d'intervention ouvertes." : "Demandes d'intervention fermées.");
+                $enabled ? __('lives.messages.stage_opened') : __('lives.messages.stage_closed'));
         });
     }
 
@@ -306,7 +306,7 @@ class LiveController extends Controller
     private function find(string $id, Request $request): LiveSession
     {
         $live = LiveSession::with('host')->find($id);
-        abort_if(!$live || !$live->isVisibleTo($this->user($request)), 404, 'Direct introuvable.');
+        abort_if(!$live || !$live->isVisibleTo($this->user($request)), 404, __('lives.messages.not_found'));
 
         return $live;
     }

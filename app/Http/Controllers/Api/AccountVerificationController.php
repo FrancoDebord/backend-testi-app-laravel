@@ -41,7 +41,7 @@ class AccountVerificationController extends Controller
         }
 
         return $this->success(PersonalVerification::state($user->fresh()),
-            'Demande envoyée. Notre équipe l’examinera et vous serez prévenu dans l’application.', 201);
+            __('verification.api.submitted'), 201);
     }
 
     // ── Administration ───────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ class AccountVerificationController extends Controller
     {
         $status = $request->query('status', VerificationRequest::PENDING);
         $query  = VerificationRequest::with('user');
-        if ($status !== 'all' && array_key_exists($status, VerificationRequest::STATUS_LABELS)) {
+        if ($status !== 'all' && array_key_exists($status, VerificationRequest::statusLabels())) {
             $query->where('status', $status);
         }
         $page = $query->orderBy($status === VerificationRequest::PENDING ? 'created_at' : 'updated_at', $status === VerificationRequest::PENDING ? 'asc' : 'desc')
@@ -94,13 +94,13 @@ class AccountVerificationController extends Controller
             return $this->error($e->getMessage(), $e->status);
         }
 
-        return $this->success(PersonalVerification::adminPayload($r->fresh(['user', 'reviewer']), detail: true), 'Compte vérifié');
+        return $this->success(PersonalVerification::adminPayload($r->fresh(['user', 'reviewer']), detail: true), __('verification.api.approved'));
     }
 
     public function reject(Request $request, string $id): JsonResponse
     {
         $request->validate(['reason' => ['required', 'string', 'min:3', 'max:255']],
-            ['reason.required' => 'Indiquez le motif du refus.', 'reason.min' => 'Indiquez le motif du refus.']);
+            ['reason.required' => __('verification.reject_reason_required'), 'reason.min' => __('verification.reject_reason_required')]);
         $r = VerificationRequest::with('user')->find($id);
         if (!$r) return $this->notFound();
 
@@ -110,14 +110,14 @@ class AccountVerificationController extends Controller
             return $this->error($e->getMessage(), $e->status);
         }
 
-        return $this->success(PersonalVerification::adminPayload($r->fresh(['user', 'reviewer']), detail: true), 'Demande refusée');
+        return $this->success(PersonalVerification::adminPayload($r->fresh(['user', 'reviewer']), detail: true), __('verification.api.rejected'));
     }
 
     /** POST /admin/users/{id}/revoke-verification { reason } : retirer la vérification d'une personne. */
     public function revoke(Request $request, string $id): JsonResponse
     {
         $request->validate(['reason' => ['required', 'string', 'min:3', 'max:255']],
-            ['reason.required' => 'Indiquez le motif du retrait.', 'reason.min' => 'Indiquez le motif du retrait.']);
+            ['reason.required' => __('verification.approval.revoke_reason_required'), 'reason.min' => __('verification.approval.revoke_reason_required')]);
         $user = User::find($id);
         if (!$user) return $this->notFound();
 
@@ -127,6 +127,6 @@ class AccountVerificationController extends Controller
             return $this->error($e->getMessage(), $e->status);
         }
 
-        return $this->success(['userId' => $user->id, 'isVerified' => false], 'Vérification retirée');
+        return $this->success(['userId' => $user->id, 'isVerified' => false], __('verification.api.revoked'));
     }
 }

@@ -1,0 +1,112 @@
+<?php
+
+// Libellés des énumérations (app/Enums/*::label()), par valeur enregistrée.
+return [
+    'account_type' => [
+        'individual' => 'Personne',
+        'organization' => 'Organisation',
+    ],
+    'event_status' => [
+        'draft' => 'Brouillon',
+        'published' => 'Publié',
+        'postponed' => 'Reporté — date à confirmer',
+        'cancelled' => 'Annulé',
+    ],
+    'event_type' => [
+        'crusade' => 'Croisade d\'évangélisation',
+        'conference' => 'Conférence',
+        'seminar' => 'Séminaire',
+        'camp' => 'Camp',
+        'tour' => 'Tournée',
+        'worship' => 'Concert de louange',
+        'retreat' => 'Retraite spirituelle',
+        'other' => 'Autre événement',
+    ],
+    'live_status' => [
+        'preparing' => 'En préparation',
+        'live' => 'En direct',
+        'ended' => 'Terminé',
+    ],
+    'organization_type' => [
+        'church' => 'Église',
+        'ministry' => 'Ministère',
+        'association' => 'Association',
+        'ngo' => 'ONG',
+        'media' => 'Média chrétien',
+        'other' => 'Autre',
+    ],
+    'personal_verification_role' => [
+        'pastor' => 'Pasteur',
+        'evangelist' => 'Évangéliste',
+        'singer' => 'Chantre',
+        'ministry_leader' => 'Responsable de ministère',
+        'public_figure' => 'Personnalité publique',
+        'other' => 'Autre',
+    ],
+    'reaction_type' => [
+        'like' => 'J\'aime',
+        'love' => 'J\\\'adore Dieu',
+        'pray' => 'Prière',
+        'amen' => 'Amen',
+        'worship' => 'Adorer Dieu',
+        'fire' => 'Feu',
+        'glory' => 'Gloire à Dieu !',
+        'strong' => 'Inspirant',
+        'touched' => 'Touché',
+    ],
+    'rejection_reason' => [
+        'inappropriateContent' => 'Contenu inapproprié',
+        'falseTestimony' => 'Faux témoignage',
+        'hateSpeech' => 'Discours haineux',
+        'spam' => 'Spam',
+        'other' => 'Autre',
+    ],
+    'testimony_category' => [
+        'guerison' => 'Guérison',
+        'delivrance' => 'Délivrance',
+        'conversion' => 'Conversion',
+        'mariage' => 'Mariage',
+        'famille' => 'Famille',
+        'finances' => 'Finances',
+        'miracles' => 'Miracles',
+        'protection_divine' => 'Protection Divine',
+        'ministere' => 'Ministère',
+        'salut' => 'Salut',
+    ],
+    'testimony_status' => [
+        'draft' => 'Brouillon',
+        'pending' => 'En attente',
+        'approved' => 'Approuvé',
+        'rejected' => 'Rejeté',
+    ],
+    'testimony_type' => [
+        'text' => 'Texte',
+        'audio' => 'Audio',
+        'video' => 'Vidéo',
+    ],
+    'testimony_visibility' => [
+        'public' => 'Public',
+        'private' => 'Privé',
+        'followers' => 'Abonnés',
+    ],
+    'user_account_status' => [
+        'active' => 'Actif',
+        'suspended' => 'Suspendu',
+        'banned' => 'Banni',
+    ],
+    'user_role' => [
+        'visiteur' => 'Visiteur',
+        'utilisateur' => 'Utilisateur',
+        'moderateur' => 'Modérateur',
+        'administrateur' => 'Administrateur',
+    ],
+    'verification_status' => [
+        'pending' => 'En attente de vérification',
+        'verified' => 'Vérifiée',
+        'rejected' => 'Vérification refusée',
+    ],
+    'testimony_kind' => [
+        'standard' => 'Témoignage',
+        'conversion' => 'Témoignage de conversion',
+    ],
+];

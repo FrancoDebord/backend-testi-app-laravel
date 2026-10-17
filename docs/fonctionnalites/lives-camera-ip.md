@@ -78,7 +78,7 @@ Réglages conseillés : 720p, 2 à 4 Mbit/s, image clé toutes les 2 secondes, s
 | Appels LiveKit | `LiveKitClient::createIngress()`, `deleteIngress()` (Twirp `livekit.Ingress`, droit `ingressAdmin`) |
 | Création, fin | `LiveService::start()` → `connectCamera()`, `end()` → `disconnectCamera()` |
 | Colonnes | `live_sessions.source`, `ingress_id`, `ingress_url`, `ingress_stream_key`, `camera_url` (migration `2026_09_30_100004_add_camera_source_to_live_sessions_table`) |
-| Modèle | `LiveSession::SOURCES`, `usesExternalCamera()`, `cameraIdentity()` |
+| Modèle | `LiveSession::sources()`, `usesExternalCamera()`, `cameraIdentity()` |
 | Validation | `Web\LiveController::store()`, `Api\LiveController::store()` (`source`, `camera_url`) |
 | API | `LiveSessionResource` : `source`, `camera` (diffuseur seulement : `url`, `streamKey`, `sourceUrl`) |
 | Application | `models/ip_camera_config.dart` (composition, lecture, préréglages, adresses privées ; `test/ip_camera_test.dart`), `widgets/ip_camera_form.dart`, `screens/live_setup_screen.dart` |

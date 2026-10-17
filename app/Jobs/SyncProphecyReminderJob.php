@@ -4,7 +4,9 @@ namespace App\Jobs;
 
 use App\Models\DeviceToken;
 use App\Models\Prophecy;
+use App\Models\User;
 use App\Services\FcmClient;
+use App\Support\Locales;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use RuntimeException;
@@ -44,7 +46,10 @@ class SyncProphecyReminderJob implements ShouldQueue
             return;
         }
 
-        $data = self::payload(Prophecy::withTrashed()->where('user_id', $this->userId)->find($this->prophecyId), $this->prophecyId);
+        // Titre affiché par le rappel : dans la langue de l'auteur.
+        $prophecy = Prophecy::withTrashed()->where('user_id', $this->userId)->find($this->prophecyId);
+        $data = Locales::using(Locales::forUser(User::select(['id', 'locale'])->find($this->userId)),
+            fn () => self::payload($prophecy, $this->prophecyId));
         $sent = 0;
         $retry = 0;
         foreach ($tokens as $token) {
@@ -97,6 +102,6 @@ class SyncProphecyReminderJob implements ShouldQueue
             return mb_strlen($text) > 60 ? mb_substr($text, 0, 60) . '…' : $text;
         }
 
-        return 'Parole du ' . $prophecy->received_on?->format('j/n/Y');
+        return __('prophecies.reminder_title', ['date' => (string) $prophecy->received_on?->format(__('prophecies.reminder_date_format'))]);
     }
 }

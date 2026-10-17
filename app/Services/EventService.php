@@ -15,6 +15,8 @@ use App\Models\EventImage;
 use App\Models\EventParticipation;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Support\Locales;
+use App\Support\YouTube;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -52,7 +54,13 @@ class EventService
             'latitude'         => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
             'longitude'        => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'comments_enabled' => ['nullable', 'boolean'],
-            'guests'           => ['nullable', 'array', 'max:' . Event::MAX_GUESTS],
+            // Direct YouTube : lien (watch, youtu.be, /live/, /shorts/, /embed/) ou identifiant ; vide = retiré.
+            'youtube_live_url' => ['nullable', 'string', 'max:300', function (string $attribute, mixed $value, \Closure $fail) {
+                if (is_string($value) && trim($value) !== '' && YouTube::parseId($value) === null) {
+                    $fail(__('events.validation.youtube_live_invalid'));
+                }
+            }],
+            'guests'         => ['nullable', 'array', 'max:' . Event::MAX_GUESTS],
             'guests.*.name'    => ['required', 'string', 'max:120'],
             'guests.*.role'    => ['nullable', 'string', 'max:120'],
             // Gestionnaire d'une organisation : événement créé au nom de celle-ci.
@@ -60,22 +68,28 @@ class EventService
         ];
     }
 
-    public const MESSAGES = [
-        'title.required'      => "Donnez un titre à l'événement.",
-        'type.required'       => "Choisissez le type d'événement.",
-        'starts_at.required'  => 'Indiquez la date de début.',
-        'ends_at.required'    => 'Indiquez la date de fin.',
-        'ends_at.after_or_equal' => 'La fin doit être après le début.',
-        'guests.max'          => 'Dix invités au plus.',
-        'guests.*.name.required' => "Indiquez le nom de l'invité.",
-        'address.max'            => "L'adresse ne doit pas dépasser 300 caractères.",
-        'latitude.between'       => 'Latitude non valide (entre -90 et 90).',
-        'longitude.between'      => 'Longitude non valide (entre -180 et 180).',
-        'latitude.required_with' => 'Placez le repère sur la carte (latitude manquante).',
-        'longitude.required_with' => 'Placez le repère sur la carte (longitude manquante).',
-        'latitude.numeric'       => 'Latitude non valide.',
-        'longitude.numeric'      => 'Longitude non valide.',
-    ];
+    /** Messages de validation de l'événement, dans la langue courante. */
+    public static function messages(): array
+    {
+        return [
+            'title.required'      => __('events.validation.title_required'),
+            'type.required'       => __('events.validation.type_required'),
+            'starts_at.required'  => __('events.validation.starts_at_required'),
+            'ends_at.required'    => __('events.validation.ends_at_required'),
+            'ends_at.after_or_equal' => __('events.validation.ends_after_start'),
+            'guests.max'          => __('events.validation.guests_max'),
+            'guests.*.name.required' => __('events.validation.guest_name_required'),
+            'address.max'            => __('events.validation.address_max'),
+            'latitude.between'       => __('events.validation.latitude_between'),
+            'longitude.between'      => __('events.validation.longitude_between'),
+            'latitude.required_with' => __('events.validation.latitude_required_with'),
+            'longitude.required_with' => __('events.validation.longitude_required_with'),
+            'latitude.numeric'       => __('events.validation.latitude_numeric'),
+            'longitude.numeric'      => __('events.validation.longitude_numeric'),
+            'youtube_live_url.max'    => __('events.validation.youtube_live_invalid'),
+            'youtube_live_url.string' => __('events.validation.youtube_live_invalid'),
+        ];
+    }
 
     /** Image de couverture : 8 Mo au plus, 600 × 300 px au moins. */
     public static function imageRules(): array
@@ -83,13 +97,17 @@ class EventService
         return ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192', 'dimensions:min_width=600,min_height=300'];
     }
 
-    public const IMAGE_MESSAGES = [
-        'image.required'   => 'Choisissez une image.',
-        'image.image'      => "Le fichier doit être une image.",
-        'image.mimes'      => "L'image doit être au format JPG, PNG ou WebP.",
-        'image.max'        => "L'image ne doit pas dépasser 8 Mo.",
-        'image.dimensions' => "L'image doit mesurer au moins 600 × 300 pixels.",
-    ];
+    /** Messages de validation de l'image de couverture, dans la langue courante. */
+    public static function imageMessages(): array
+    {
+        return [
+            'image.required'   => __('events.image_validation.required'),
+            'image.image'      => __('events.image_validation.image'),
+            'image.mimes'      => __('events.image_validation.mimes'),
+            'image.max'        => __('events.image_validation.max'),
+            'image.dimensions' => __('events.image_validation.dimensions'),
+        ];
+    }
 
     // ─── Événement ───────────────────────────────────────────────────────────
 
@@ -97,8 +115,7 @@ class EventService
     {
         $this->ensureActive($user);
         if (!Event::canBeCreatedBy($user)) {
-            throw new EventActionException(
-                'Seules les organisations vérifiées et les administrateurs peuvent créer un événement.', 403);
+            throw new EventActionException(__('events.errors.create_forbidden'), 403);
         }
 
         $status = $data['status'] ?? EventStatus::Published->value;
@@ -123,10 +140,10 @@ class EventService
         if ($organizationId && $organizationId !== $user->id) {
             $org = User::find($organizationId);
             if (!$org || !$org->isVerifiedOrganization()) {
-                throw new EventActionException('Organisation introuvable ou non vérifiée.', 422);
+                throw new EventActionException(__('events.errors.organization_invalid'), 422);
             }
             if (!$user->isAdmin() && !$user->canActForOrganization($org)) {
-                throw new EventActionException("Vous ne gérez pas cette organisation.", 403);
+                throw new EventActionException(__('events.errors.not_organization_manager'), 403);
             }
             return $org;
         }
@@ -137,7 +154,7 @@ class EventService
         if ($orgs->count() === 1) {
             return $orgs->first();
         }
-        throw new EventActionException("Choisissez l'organisation au nom de laquelle créer l'événement.", 422);
+        throw new EventActionException(__('events.errors.choose_organization'), 422);
     }
 
     /**
@@ -177,9 +194,9 @@ class EventService
         $event->refresh();
 
         if (!$wasCancelled && $event->isCancelled()) {
-            $this->notifyGoing($event, NotificationType::EventCancelled, $this->cancelMessage($event), $user);
+            $this->notifyGoing($event, NotificationType::EventCancelled, ...$this->cancelMessage($event), actor: $user);
         } elseif ($rescheduled && $event->isOpen()) {
-            $this->notifyGoing($event, NotificationType::EventPostponed, $this->postponeMessage($event), $user);
+            $this->notifyGoing($event, NotificationType::EventPostponed, ...$this->postponeMessage($event), actor: $user);
         }
 
         return $event;
@@ -200,15 +217,19 @@ class EventService
         ];
     }
 
-    public const POSTPONE_MESSAGES = [
-        'starts_at.required'     => 'Indiquez la nouvelle date de début, ou choisissez « Date à confirmer ».',
-        'starts_at.after'        => 'La nouvelle date doit être dans le futur.',
-        'starts_at.date'         => 'Date de début non valide.',
-        'ends_at.required'       => 'Indiquez la nouvelle date de fin.',
-        'ends_at.date'           => 'Date de fin non valide.',
-        'ends_at.after_or_equal' => 'La fin doit être après le début.',
-        'reason.max'             => 'Le motif ne doit pas dépasser 500 caractères.',
-    ];
+    /** Messages de validation du report et de l'annulation, dans la langue courante. */
+    public static function postponeMessages(): array
+    {
+        return [
+            'starts_at.required'     => __('events.postpone_validation.starts_at_required'),
+            'starts_at.after'        => __('events.postpone_validation.starts_at_after'),
+            'starts_at.date'         => __('events.validation.starts_at_date'),
+            'ends_at.required'       => __('events.postpone_validation.ends_at_required'),
+            'ends_at.date'           => __('events.validation.ends_at_date'),
+            'ends_at.after_or_equal' => __('events.validation.ends_after_start'),
+            'reason.max'             => __('events.postpone_validation.reason_max'),
+        ];
+    }
 
     /**
      * Reporte l'événement (gestionnaires). Avec nouvelle date : il redevient « à venir » (statut
@@ -220,11 +241,11 @@ class EventService
         $this->ensureManager($event, $user);
         if (!$event->isOpen()) {
             throw new EventActionException($event->isCancelled()
-                ? 'Un événement annulé ne peut pas être reporté.'
-                : "Publiez l'événement avant de le reporter.", 422);
+                ? __('events.errors.cancelled_cannot_postpone')
+                : __('events.errors.publish_before_postpone'), 422);
         }
         if ($event->phase() === 'past') {
-            throw new EventActionException('Cet événement est terminé.', 422);
+            throw new EventActionException(__('events.errors.finished'), 422);
         }
 
         $attrs = [
@@ -240,7 +261,7 @@ class EventService
             $start = \Illuminate\Support\Carbon::parse($startsAt);
             $end   = \Illuminate\Support\Carbon::parse($endsAt ?? $startsAt);
             if ($end->lt($start)) {
-                throw new EventActionException('La fin doit être après le début.', 422);
+                throw new EventActionException(__('events.validation.ends_after_start'), 422);
             }
             $attrs += [
                 'status' => EventStatus::Published->value, 'date_tbd' => false,
@@ -249,7 +270,7 @@ class EventService
         }
         $event->update($attrs);
         $event->refresh();
-        $this->notifyGoing($event, NotificationType::EventPostponed, $this->postponeMessage($event), $user);
+        $this->notifyGoing($event, NotificationType::EventPostponed, ...$this->postponeMessage($event), actor: $user);
 
         return $event;
     }
@@ -259,13 +280,13 @@ class EventService
     {
         $this->ensureManager($event, $user);
         if ($event->isCancelled()) {
-            throw new EventActionException('Cet événement est déjà annulé.', 422);
+            throw new EventActionException(__('events.errors.already_cancelled'), 422);
         }
         if ($event->status === EventStatus::Draft) {
-            throw new EventActionException("Un brouillon n'est pas annoncé : supprimez-le simplement.", 422);
+            throw new EventActionException(__('events.errors.draft_cannot_cancel'), 422);
         }
         if ($event->phase() === 'past') {
-            throw new EventActionException('Cet événement est terminé.', 422);
+            throw new EventActionException(__('events.errors.finished'), 422);
         }
         $event->update([
             'status'            => EventStatus::Cancelled->value,
@@ -274,35 +295,47 @@ class EventService
             'status_changed_at' => now(),
         ]);
         $event->refresh();
-        $this->notifyGoing($event, NotificationType::EventCancelled, $this->cancelMessage($event), $user);
+        $this->notifyGoing($event, NotificationType::EventCancelled, ...$this->cancelMessage($event), actor: $user);
 
         return $event;
     }
 
-    private function postponeMessage(Event $event): string
+    /**
+     * Texte de la notification de report : [clé, paramètres]. La date est écrite en français
+     * (paramètre figé à la création de la notification).
+     *
+     * @return array{0: string, 1: array<string, string>}
+     */
+    private function postponeMessage(Event $event): array
     {
-        $text = $event->isDateTbd()
-            ? "L'événement « {$event->title} » est reporté. La nouvelle date sera annoncée prochainement."
-            : "L'événement « {$event->title} » est reporté au " . $event->starts_at->translatedFormat('l j F Y à H:i') . '.';
+        $reason = filled($event->status_reason) ? '_reason' : '';
+        $params = ['title' => $event->title] + ($reason ? ['reason' => (string) $event->status_reason] : []);
+        if ($event->isDateTbd()) {
+            return ['events.notify_postponed_tbd' . $reason, $params];
+        }
+        $params['date'] = Locales::using(Locales::DEFAULT,
+            fn () => $event->starts_at->translatedFormat(__('events.formats.notify_date')));
 
-        return filled($event->status_reason) ? $text . ' Motif : ' . $event->status_reason : $text;
+        return ['events.notify_postponed_date' . $reason, $params];
     }
 
-    private function cancelMessage(Event $event): string
+    /** @return array{0: string, 1: array<string, string>} */
+    private function cancelMessage(Event $event): array
     {
-        $text = "L'événement « {$event->title} » est annulé.";
-
-        return filled($event->status_reason) ? $text . ' Motif : ' . $event->status_reason : $text;
+        return filled($event->status_reason)
+            ? ['events.notify_cancelled_reason', ['title' => $event->title, 'reason' => (string) $event->status_reason]]
+            : ['events.notify_cancelled', ['title' => $event->title]];
     }
 
     /** Notification (et push) aux personnes qui ont répondu « Je participe ». Ne bloque jamais l'action. */
-    private function notifyGoing(Event $event, NotificationType $type, string $message, ?User $actor = null): int
+    private function notifyGoing(Event $event, NotificationType $type, string $key, array $params = [], ?User $actor = null): int
     {
         return EventModeration::notify(
             $event,
             $event->participations()->where('status', EventParticipation::GOING)->pluck('user_id')->all(),
             $type,
-            $message,
+            $key,
+            $params,
             exclude: array_filter([$actor?->id]),
         );
     }
@@ -311,7 +344,7 @@ class EventService
     {
         $this->ensureActive($user);
         if (!$event->canBeDeletedBy($user)) {
-            throw new EventActionException("Seuls l'organisateur et les administrateurs peuvent supprimer cet événement.", 403);
+            throw new EventActionException(__('events.errors.delete_forbidden'), 403);
         }
         foreach ($event->images as $image) {
             $this->deleteFile($image->url);
@@ -337,6 +370,11 @@ class EventService
             $out['longitude'] = $ok ? round((float) $lng, 7) : null;
         }
 
+        // Direct YouTube : seul l'identifiant est enregistré ; lien vide ou null = retiré.
+        if (array_key_exists('youtube_live_url', $data)) {
+            $out['youtube_live_id'] = YouTube::parseId($data['youtube_live_url'] ?? null);
+        }
+
         if (array_key_exists('guests', $data)) {
             $out['guests'] = collect($data['guests'] ?? [])
                 ->map(fn ($g) => ['name' => trim($g['name'] ?? ''), 'role' => filled($g['role'] ?? null) ? trim($g['role']) : null])
@@ -348,7 +386,7 @@ class EventService
             $start = isset($out['starts_at']) ? \Illuminate\Support\Carbon::parse($out['starts_at']) : $event->starts_at;
             $end   = isset($out['ends_at']) ? \Illuminate\Support\Carbon::parse($out['ends_at']) : $event->ends_at;
             if ($end->lt($start)) {
-                throw new EventActionException('La fin doit être après le début.', 422);
+                throw new EventActionException(__('events.validation.ends_after_start'), 422);
             }
         }
 
@@ -361,7 +399,7 @@ class EventService
     {
         $this->ensureManager($event, $user);
         if ($event->images()->count() >= Event::MAX_IMAGES) {
-            throw new EventActionException('Six images au plus. Retirez-en une pour en ajouter une autre.', 422);
+            throw new EventActionException(__('events.errors.max_images'), 422);
         }
         $path = $file->store(self::IMAGE_DIRECTORY, 'public');
 
@@ -375,7 +413,7 @@ class EventService
     {
         $this->ensureManager($event, $user);
         $image = $event->images()->whereKey($imageId)->first();
-        if (!$image) throw new EventActionException('Image introuvable.', 404);
+        if (!$image) throw new EventActionException(__('events.errors.image_not_found'), 404);
         $this->deleteFile($image->url);
         $image->delete();
     }
@@ -386,7 +424,7 @@ class EventService
         $this->ensureManager($event, $user);
         $images = $event->images()->get();
         $first  = $images->firstWhere('id', $imageId);
-        if (!$first) throw new EventActionException('Image introuvable.', 404);
+        if (!$first) throw new EventActionException(__('events.errors.image_not_found'), 404);
 
         DB::transaction(function () use ($images, $first) {
             $first->update(['position' => 0]);
@@ -411,12 +449,12 @@ class EventService
     {
         $this->ensureActive($user);
         if (!in_array($status, [EventParticipation::GOING, EventParticipation::NOT_GOING], true)) {
-            throw new EventActionException('Réponse non reconnue.', 422);
+            throw new EventActionException(__('events.errors.unknown_answer'), 422);
         }
         if (!$event->acceptsParticipation()) {
             throw new EventActionException($event->isCancelled()
-                ? 'Cet événement est annulé.'
-                : 'Cet événement est terminé.', 422);
+                ? __('events.errors.cancelled')
+                : __('events.errors.finished'), 422);
         }
 
         EventParticipation::updateOrCreate(['event_id' => $event->id, 'user_id' => $user->id], ['status' => $status]);
@@ -445,13 +483,13 @@ class EventService
     {
         $this->ensureActive($user);
         if (!$event->comments_enabled && !$event->canBeManagedBy($user)) {
-            throw new EventActionException('Les commentaires sont fermés pour cet événement.', 403);
+            throw new EventActionException(__('events.errors.comments_closed'), 403);
         }
         if ($event->status === EventStatus::Draft) {
-            throw new EventActionException("Publiez l'événement avant de recevoir des commentaires.", 422);
+            throw new EventActionException(__('events.errors.publish_before_comments'), 422);
         }
         $this->throttle("event-comment:{$event->id}:{$user->id}", 5, 60,
-            'Vous commentez trop vite. Patientez un instant.');
+            __('events.errors.comment_too_fast'));
 
         // Mentions « @ » (docs/fonctionnalites/mentions.md) : jetons validés avant l'enregistrement.
         $mentions = Mentions::prepare(trim($body));
@@ -474,7 +512,7 @@ class EventService
         $event = $comment->event;
         // Auteur, gestionnaires de l'événement, administrateurs ; jamais un modérateur.
         if ($comment->user_id !== $user->id && !$event->canBeManagedBy($user) && !$user->isAdmin()) {
-            throw new EventActionException('Vous ne pouvez pas supprimer ce commentaire.', 403);
+            throw new EventActionException(__('events.errors.cannot_delete_comment'), 403);
         }
         $comment->delete();
         $event->decrement('comment_count');
@@ -492,7 +530,7 @@ class EventService
         $event = $comment->event;
         $this->ensureManager($event, $actor);
         if ($comment->testimony_id && $comment->testimony) {
-            throw new EventActionException('Ce commentaire est déjà enregistré comme témoignage.', 409);
+            throw new EventActionException(__('events.errors.already_promoted'), 409);
         }
 
         $slug     = $data['category'] ?? 'autre';
@@ -529,7 +567,7 @@ class EventService
     {
         if (!$eventId) return null;
         $event = Event::find($eventId);
-        if (!$event) throw new EventActionException('Événement introuvable.', 404);
+        if (!$event) throw new EventActionException(__('events.errors.not_found'), 404);
         $this->ensureManager($event, $user);
 
         return $event;
@@ -542,13 +580,13 @@ class EventService
         $this->ensureAdministrator($event, $actor);
         $target = $this->activeUser($userId);
         if ($target->id === $event->organizer_id) {
-            throw new EventActionException("L'organisateur gère déjà l'événement.", 422);
+            throw new EventActionException(__('events.errors.organizer_already_manages'), 422);
         }
         if ($event->managers()->whereKey($target->id)->exists()) {
-            throw new EventActionException('Cette personne est déjà co-gestionnaire.', 409);
+            throw new EventActionException(__('events.errors.already_manager'), 409);
         }
         if ($event->managers()->count() >= Event::MAX_MANAGERS) {
-            throw new EventActionException('Deux co-gestionnaires au plus par événement. Retirez-en un pour en ajouter un autre.', 422);
+            throw new EventActionException(__('events.errors.max_managers'), 422);
         }
         $event->managers()->attach($target->id);
 
@@ -582,7 +620,7 @@ class EventService
     {
         $user = User::find($userId);
         if (!$user || $user->status !== UserAccountStatus::Active) {
-            throw new EventActionException('Compte introuvable ou inactif.', 404);
+            throw new EventActionException(__('events.errors.account_not_found'), 404);
         }
 
         return $user;
@@ -595,7 +633,7 @@ class EventService
     {
         $this->ensureActive($user);
         if (!$event->canBeAdministeredBy($user)) {
-            throw new EventActionException("Seuls l'organisateur et les administrateurs peuvent faire cette action.", 403);
+            throw new EventActionException(__('events.errors.administrators_only'), 403);
         }
     }
 
@@ -603,14 +641,14 @@ class EventService
     {
         $this->ensureActive($user);
         if (!$event->canBeManagedBy($user)) {
-            throw new EventActionException("Seuls l'organisateur, ses gestionnaires, les co-gestionnaires et les administrateurs peuvent gérer cet événement.", 403);
+            throw new EventActionException(__('events.errors.managers_only'), 403);
         }
     }
 
     private function ensureActive(User $user): void
     {
         if ($user->status !== UserAccountStatus::Active) {
-            throw new EventActionException('Votre compte ne permet pas cette action.', 403);
+            throw new EventActionException(__('events.errors.account_inactive'), 403);
         }
     }
 

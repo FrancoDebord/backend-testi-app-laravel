@@ -42,13 +42,13 @@ class AuthController extends Controller
             $user = Auth::user();
             if ($user->status->value === 'banned') {
                 Auth::logout();
-                return back()->withErrors(['email' => 'Votre compte a été banni.']);
+                return back()->withErrors(['email' => __('account.banned')]);
             }
 
             return redirect()->intended(route('home'));
         }
 
-        return back()->withErrors(['email' => 'Identifiants incorrects.'])->onlyInput('email');
+        return back()->withErrors(['email' => __('account.invalid_credentials')])->onlyInput('email');
     }
 
     /**
@@ -57,7 +57,7 @@ class AuthController extends Controller
      */
     public function google(Request $request, GoogleSignIn $google): RedirectResponse
     {
-        $request->validate(['credential' => 'required|string|max:4096'], ['credential.required' => 'Connexion Google interrompue. Réessayez.']);
+        $request->validate(['credential' => 'required|string|max:4096'], ['credential.required' => __('account.google.interrupted')]);
 
         try {
             [$user] = $google->authenticate((string) $request->input('credential'));
@@ -66,7 +66,7 @@ class AuthController extends Controller
         }
 
         if ($user->status->value === 'banned') {
-            return redirect()->route('login')->withErrors(['email' => 'Votre compte a été banni.']);
+            return redirect()->route('login')->withErrors(['email' => __('account.banned')]);
         }
 
         Auth::login($user, $request->boolean('remember'));
@@ -95,15 +95,15 @@ class AuthController extends Controller
             'password'              => 'required|string|min:8|confirmed',
             'country'               => ['nullable', 'string', 'max:100', Rule::in(Countries::all())],
         ] + PhoneNumber::rules('required_if:account_type,organization') + OrganizationAccounts::registerRules(), PhoneNumber::MESSAGES + [
-            'country.in'                    => 'Choisissez un pays dans la liste.',
-            'display_name.required_unless'  => 'Le champ nom complet est obligatoire.',
-            'organization_name.required_if' => 'Le champ nom de l’organisation est obligatoire.',
+            'country.in'                    => __('account.register.country_in'),
+            'display_name.required_unless'  => __('account.register.display_name_required'),
+            'organization_name.required_if' => __('account.register.organization_name_required'),
         ], [
-            'display_name'         => 'nom complet',
-            'organization_name'    => 'nom de l’organisation',
-            'organization_type'    => 'type d’organisation',
-            'organization_city'    => 'ville',
-            'organization_website' => 'site internet',
+            'display_name'         => __('account.attributes.display_name'),
+            'organization_name'    => __('account.attributes.organization_name'),
+            'organization_type'    => __('account.attributes.organization_type'),
+            'organization_city'    => __('account.attributes.organization_city'),
+            'organization_website' => __('account.attributes.organization_website'),
         ]);
 
         $organization   = OrganizationAccounts::registrationAttributes($data);
@@ -131,7 +131,7 @@ class AuthController extends Controller
 
         if ($isOrganization) {
             return redirect()->route('profiles.show', $user->id)
-                ->with('success', 'Compte créé. Votre organisation sera vérifiée par notre équipe.');
+                ->with('success', __('account.register.organization_created'));
         }
 
         return redirect()->route('home');
@@ -155,6 +155,6 @@ class AuthController extends Controller
     {
         $request->validate(['email' => 'required|email']);
         // In production: dispatch password reset email
-        return back()->with('status', 'Si l\'adresse email existe, un lien sera envoyé.');
+        return back()->with('status', __('account.forgot.sent'));
     }
 }

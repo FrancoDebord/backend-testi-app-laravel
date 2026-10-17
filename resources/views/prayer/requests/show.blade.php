@@ -49,7 +49,7 @@
                             @include('components.verified-badge', ['user' => $author])
                         @else Anonyme @endif
                     </p>
-                    <p class="text-xs text-slate-500">{{ $prayer->created_at?->diffForHumans() }} · {{ \App\Models\PrayerRequest::VISIBILITY_LABELS[$prayer->visibility] }}@if($prayer->is_anonymous) · anonyme @endif</p>
+                    <p class="text-xs text-slate-500">{{ $prayer->created_at?->diffForHumans() }} · {{ \App\Models\PrayerRequest::visibilityLabels()[$prayer->visibility] }}@if($prayer->is_anonymous) · anonyme @endif</p>
                 </div>
                 @if($prayer->isAnswered())
                 <span class="badge-validated shrink-0"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>Exaucée</span>

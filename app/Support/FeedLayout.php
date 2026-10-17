@@ -19,6 +19,15 @@ final class FeedLayout
         self::COMPACT => 'Liste compacte',
     ];
 
+    /** Libellés affichés, dans la langue courante (les clés de LABELS sont les valeurs acceptées). */
+    public static function labels(): array
+    {
+        return [
+            self::CARDS   => __('support.feed_layout.cards'),
+            self::COMPACT => __('support.feed_layout.compact'),
+        ];
+    }
+
     /** Durée de conservation du choix, en minutes (un an). */
     public const LIFETIME = 60 * 24 * 365;
 

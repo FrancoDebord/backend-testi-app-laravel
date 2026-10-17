@@ -32,7 +32,7 @@ class VideoUploadController extends Controller
     public function init(InitVideoUploadRequest $request, TestimonyCreator $creator, BunnyStream $bunny): JsonResponse
     {
         if (!$bunny->isConfigured()) {
-            return $this->error("L'envoi de vidéos est momentanément indisponible.", 503);
+            return $this->error(__('videos.upload.unavailable'), 503);
         }
 
         try {
@@ -44,10 +44,10 @@ class VideoUploadController extends Controller
             return $this->error($e->getMessage(), $e->status(), $e->errors());
         } catch (Throwable $e) {
             Log::error('Bunny Stream : création de la vidéo impossible.', ['user_id' => $request->user()->id, 'error' => $e->getMessage()]);
-            return $this->error("L'envoi de la vidéo n'a pas pu être préparé. Réessayez dans un instant.", 502);
+            return $this->error(__('videos.upload.init_failed'), 502);
         }
 
-        return $this->created($payload, 'Vidéo prête à être envoyée');
+        return $this->created($payload, __('videos.upload.ready'));
     }
 
     /** POST /videos/{id}/upload-signature : nouvelle autorisation TUS pour la même vidéo Bunny. */
@@ -59,7 +59,7 @@ class VideoUploadController extends Controller
         }
 
         if ($testimony->video_status !== Testimony::VIDEO_UPLOADING || !$testimony->bunny_video_id) {
-            return $this->error("Cette vidéo n'est plus en cours d'envoi.", 409);
+            return $this->error(__('videos.upload.not_uploading'), 409);
         }
 
         return $this->success(app(BunnyStream::class)->uploadSignature($testimony->bunny_video_id));
@@ -78,7 +78,7 @@ class VideoUploadController extends Controller
             $testimony->forceFill(['video_status' => Testimony::VIDEO_PROCESSING, 'video_processing_at' => now()])->save();
         }
 
-        return $this->success(new TestimonyResource($testimony->load('user')), 'Vidéo en cours de traitement');
+        return $this->success(new TestimonyResource($testimony->load('user')), __('videos.upload.processing'));
     }
 
     /** Témoignage vidéo Bunny de l'utilisateur connecté, sinon la réponse d'erreur. */
@@ -86,7 +86,7 @@ class VideoUploadController extends Controller
     {
         $testimony = Testimony::whereNotNull('video_status')->find($id);
         if (!$testimony) {
-            return $this->notFound('Vidéo introuvable');
+            return $this->notFound(__('videos.upload.not_found'));
         }
 
         if ($testimony->user_id !== $request->user()->id) {

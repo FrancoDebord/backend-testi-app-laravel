@@ -33,7 +33,7 @@
             <p class="text-xs text-slate-500">
                 <i class="fa-solid fa-hands-praying mr-1" aria-hidden="true"></i>Requête de prière · {{ $prayerItem->created_at?->diffForHumans() }}
                 @if($prayerItem->visibility !== \App\Models\PrayerRequest::PUBLIC)
-                · <i class="fa-solid {{ $prayerItem->visibility === 'private' ? 'fa-lock' : 'fa-user-group' }}" aria-hidden="true"></i> {{ \App\Models\PrayerRequest::VISIBILITY_LABELS[$prayerItem->visibility] }}
+                · <i class="fa-solid {{ $prayerItem->visibility === 'private' ? 'fa-lock' : 'fa-user-group' }}" aria-hidden="true"></i> {{ \App\Models\PrayerRequest::visibilityLabels()[$prayerItem->visibility] }}
                 @endif
             </p>
         </div>

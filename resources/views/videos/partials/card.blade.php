@@ -25,7 +25,7 @@
     $preview = $type === 'video' ? $testimony->mp4PlaybackUrl() : null; // MP4 seulement (pas de HLS en aperçu)
 @endphp
 <article class="group relative flex min-w-0 flex-col" @if($preview) data-preview="{{ $preview }}" @endif>
-    <div class="{{ $thumbBg }} {{ $short ? 'aspect-[9/16]' : 'aspect-video' }} relative overflow-hidden rounded-xl" data-preview-frame>
+    <div class="{{ $thumbBg }} {{ $short ? 'aspect-[9/16]' : 'aspect-video' }} {{ $testimony->isConversion() ? 'ring-2 ring-sun-400' : '' }} relative overflow-hidden rounded-xl" data-preview-frame>
         @if($testimony->cover_url)
             <img src="{{ $testimony->cover_url }}" alt="" loading="lazy" decoding="async"
                  class="h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03]">
@@ -45,9 +45,11 @@
         @endif
 
         @if($testimony->isInJournal())
-        <span class="badge-neutral absolute top-2 left-2">Carnet privé</span>
+        <span class="badge-neutral absolute top-2 left-2">{{ __('videos.common.journal') }}</span>
         @elseif($status)
         <span class="{{ $status->badgeClass() }} absolute top-2 left-2">{{ $status->label() }}</span>
+        @elseif($testimony->isConversion())
+        <span class="badge-yellow absolute top-2 left-2"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>
         @elseif($pill)
         <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold text-slate-800">
             <i class="fa-solid {{ $pill[0] }} text-[10px]" aria-hidden="true"></i>{{ $pill[1] }}
@@ -55,7 +57,7 @@
         @endif
         @if($duration)
         <span class="absolute right-2 bottom-2 rounded-md bg-slate-900/85 px-1.5 py-0.5 text-[11px] font-semibold text-white tabular-nums">
-            <span class="sr-only">Durée : </span>{{ $duration }}
+            <span class="sr-only">{{ __('videos.common.duration') }}</span>{{ $duration }}
         </span>
         @endif
     </div>
@@ -92,7 +94,7 @@
                 <time datetime="{{ $testimony->publishedAt()?->toIso8601String() }}">{{ $testimony->publishedAt()?->diffForHumans() }}</time>
                 @if($testimony->comment_count)
                 <span aria-hidden="true">·</span>
-                <span><i class="fa-regular fa-comment mr-0.5 text-slate-400" aria-hidden="true"></i>{{ number_format($testimony->comment_count, 0, ',', ' ') }}<span class="sr-only"> commentaires</span></span>
+                <span><i class="fa-regular fa-comment mr-0.5 text-slate-400" aria-hidden="true"></i>{{ \App\Support\Locales::number($testimony->comment_count) }}<span class="sr-only"> {{ __('videos.common.comments_sr') }}</span></span>
                 @endif
                 @endunless
             </p>

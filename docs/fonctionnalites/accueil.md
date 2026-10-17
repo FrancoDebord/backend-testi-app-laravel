@@ -44,7 +44,7 @@ Avec un filtre (`?type=`, `?category=`) ou à partir de la page 2 : seulement la
 
 | Élément | Fichier |
 |---|---|
-| Données | `app/Http/Controllers/Web/HomeController.php` (`CONTENT_TABS`) |
+| Données | `app/Http/Controllers/Web/HomeController.php` (`contentTabs()`) |
 | Activité des 7 jours | `app/Support/WeeklyActivity.php` (aussi pour le tableau de bord de l'administration) |
 | Présentation d'une catégorie | `Category::presentation()` |
 | Page | `resources/views/home/index.blade.php` |

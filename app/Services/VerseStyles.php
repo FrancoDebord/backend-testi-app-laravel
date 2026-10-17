@@ -52,13 +52,31 @@ class VerseStyles
         ];
     }
 
-    public const MESSAGES = [
-        'design_id.in'                 => 'Design inconnu.',
-        'font.in'                      => 'Police inconnue.',
-        'text_size.in'                 => 'Taille de texte inconnue.',
-        'text_align.in'                => 'Alignement inconnu.',
-        'design_chosen_on.date_format' => 'Date au format AAAA-MM-JJ attendue.',
-    ];
+    public static function messages(): array
+    {
+        return [
+            'design_id.in'                 => __('api.verse_style.unknown_design'),
+            'font.in'                      => __('api.verse_style.unknown_font'),
+            'text_size.in'                 => __('api.verse_style.unknown_size'),
+            'text_align.in'                => __('api.verse_style.unknown_align'),
+            'design_chosen_on.date_format' => __('api.verse_style.date_format'),
+        ];
+    }
+
+    /**
+     * Préférences + design du jour et design affiché (GET / PUT /me/verse-style) : effective_design_id vaut le
+     * design choisi s'il est « toujours » (design_always) ou choisi aujourd'hui, quel que soit le jour.
+     */
+    public static function withEffectiveDesign(array $style, ?string $date = null): array
+    {
+        $date ??= VerseDesignOfTheDay::todayDate();
+        $ofTheDay = VerseDesignOfTheDay::forDate($date);
+
+        return $style + [
+            'design_of_the_day'   => $ofTheDay,
+            'effective_design_id' => self::effectiveDesignId($style, $ofTheDay),
+        ];
+    }
 
     /** Enregistre les champs validés ($data) et renvoie les valeurs complètes. */
     public function update(User $user, array $data): array

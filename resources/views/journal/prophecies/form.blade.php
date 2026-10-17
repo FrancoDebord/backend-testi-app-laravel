@@ -10,7 +10,7 @@
         $editing ? ['label' => Str::limit($prophecy->title ?: 'La parole', 40), 'url' => route('prophecies.show', $prophecy->id)] : null,
         ['label' => $editing ? 'Modifier' : 'Nouvelle'],
     ]));
-    $weekdays    = \App\Http\Controllers\Web\ProphecyController::WEEKDAYS;
+    $weekdays    = \App\Http\Controllers\Web\ProphecyController::weekdays();
     $frequency   = old('reminder_frequency', $prophecy->reminder_frequency);
     $audioLength = $prophecy->audio_duration ? sprintf('%d:%02d', intdiv($prophecy->audio_duration, 60), $prophecy->audio_duration % 60) : null;
 @endphp

@@ -25,7 +25,7 @@ class CommunityController extends Controller
 
     public function index(Request $request): View
     {
-        $tab = array_key_exists((string) $request->query('tab'), CommunityDirectory::TABS) ? $request->query('tab') : 'all';
+        $tab = array_key_exists((string) $request->query('tab'), CommunityDirectory::tabs()) ? $request->query('tab') : 'all';
         $q   = mb_substr(trim((string) $request->query('q', '')), 0, 100);
 
         return view('community.index', [
@@ -69,7 +69,7 @@ class CommunityController extends Controller
                 : back()->with('error', $e->getMessage());
         }
 
-        return $this->answer($request, $target, true, "Vous suivez {$target->display_name}.");
+        return $this->answer($request, $target, true, __('community.follow.following', ['name' => $target->display_name]));
     }
 
     public function unfollow(Request $request, string $id): JsonResponse|RedirectResponse
@@ -77,7 +77,7 @@ class CommunityController extends Controller
         $target = User::findOrFail($id);
         $this->follows->unfollow($request->user(), $target);
 
-        return $this->answer($request, $target, false, "Vous ne suivez plus {$target->display_name}.");
+        return $this->answer($request, $target, false, __('community.follow.unfollowed', ['name' => $target->display_name]));
     }
 
     private function answer(Request $request, User $target, bool $following, string $message): JsonResponse|RedirectResponse

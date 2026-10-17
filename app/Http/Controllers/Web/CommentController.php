@@ -31,8 +31,8 @@ class CommentController extends Controller
         $user      = $request->user();
         if (!$testimony->acceptsCommentsFrom($user)) {
             return $request->expectsJson()
-                ? response()->json(['message' => \App\Models\Testimony::COMMENTS_CLOSED_MESSAGE], 403)
-                : back()->with('error', \App\Models\Testimony::COMMENTS_CLOSED_MESSAGE);
+                ? response()->json(['message' => \App\Models\Testimony::commentsClosedMessage()], 403)
+                : back()->with('error', \App\Models\Testimony::commentsClosedMessage());
         }
         $parent    = $this->resolveParent($testimony, $request->validated('parent_id'));
 
@@ -72,7 +72,7 @@ class CommentController extends Controller
         }
 
         return redirect(route('videos.show', $testimony->id) . '#comment-' . $comment->id)
-            ->with('success', $parent ? 'Réponse publiée.' : 'Commentaire publié.');
+            ->with('success', $parent ? __('comments.reply_published') : __('comments.published'));
     }
 
     public function update(CommentRequest $request, Comment $comment): JsonResponse|RedirectResponse
@@ -99,7 +99,7 @@ class CommentController extends Controller
         }
 
         return redirect(route('videos.show', $comment->testimony_id) . '#comment-' . $comment->id)
-            ->with('success', 'Commentaire modifié.');
+            ->with('success', __('comments.updated'));
     }
 
     public function destroy(Request $request, Comment $comment): JsonResponse|RedirectResponse
@@ -140,7 +140,7 @@ class CommentController extends Controller
             ]);
         }
 
-        return redirect()->route('videos.show', $comment->testimony_id)->with('success', 'Commentaire supprimé.');
+        return redirect()->route('videos.show', $comment->testimony_id)->with('success', __('comments.deleted'));
     }
 
     /** Réponses d'un commentaire principal, de la plus ancienne à la plus récente. */
@@ -175,7 +175,7 @@ class CommentController extends Controller
         }
 
         if (!$parent) {
-            throw ValidationException::withMessages(['parent_id' => "Ce commentaire n'existe plus."]);
+            throw ValidationException::withMessages(['parent_id' => __('comments.parent_gone')]);
         }
 
         return $parent;
@@ -198,13 +198,13 @@ class CommentController extends Controller
     {
         $recipients = [];
         if ($testimony->user_id !== $actor->id) {
-            $recipients[$testimony->user_id] = $actor->display_name . ' a commenté votre témoignage';
+            $recipients[$testimony->user_id] = 'comments.notify_comment';
         }
         if ($parent && $parent->user_id !== $actor->id) {
-            $recipients[$parent->user_id] = $actor->display_name . ' a répondu à votre commentaire';
+            $recipients[$parent->user_id] = 'comments.notify_reply';
         }
 
-        foreach ($recipients as $recipientId => $message) {
+        foreach ($recipients as $recipientId => $messageKey) {
             AppNotification::create([
                 'recipient_id'    => $recipientId,
                 'actor_id'        => $actor->id,
@@ -214,7 +214,7 @@ class CommentController extends Controller
                 'testimony_id'    => $testimony->id,
                 'testimony_title' => $testimony->title,
                 'comment_id'      => $comment->id,
-                'message'         => $message,
+                ...\App\Support\NotificationText::fields($messageKey, ['actor' => $actor->display_name]),
                 'created_at'      => now(),
             ]);
         }

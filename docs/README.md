@@ -44,7 +44,9 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Téléphone de contact](fonctionnalites/telephone.md) | Numéro avec indicatif (drapeau, suit le pays) à l'inscription et dans le profil, format international, numéro vérifié ou non, confidentialité de l'API |
 | [Comptes organisation](fonctionnalites/comptes-organisation.md) | Comptes église / ministère / association / ONG / média, vérification par un administrateur, coche « vérifiée » (API et site) |
 | [Vérification des comptes personnels](fonctionnalites/verification-des-comptes.md) | Badge « Compte vérifié » pour les personnes (pasteurs, chantres…) : demande avec pièces justificatives privées, examen par un administrateur (approuver, refuser avec motif, retirer), aucun droit supplémentaire (site, API, application) |
-| [Notifications push](fonctionnalites/notifications-push.md) | Envoi FCM (API HTTP v1) de chaque notification de l'application, préférences push, suppression des jetons périmés, file `push` et cron LWS, commande `push:test` |
+| [Notifications push](fonctionnalites/notifications-push.md) | Envoi FCM (API HTTP v1) de chaque notification de l'application, préférences push, suppression des jetons périmés et à la déconnexion, file `push` et cron LWS, commande `push:test`, `POST /me/push-test` et bouton de test des super-administrateurs |
+| [Français et anglais](fonctionnalites/langues.md) | Site, API, validation, notifications et push en français ou en anglais : `Accept-Language`, `users.locale` (`PUT /me`), sélecteur de langue, fichiers `lang/fr` et `lang/en` (test de parité des clés) |
+| [Témoignage de conversion](fonctionnalites/temoignage-de-conversion.md) | Un témoignage de conversion par compte personnel (année, lieu, verset), même modération ; `GET /testimonies?kind=conversion`, `/users/{id}/conversion-testimony`, `/me/conversion-testimony` ; section « Témoignages de conversion », mise en avant sur le profil |
 | [Documentation en ligne](fonctionnalites/documentation-en-ligne.md) | Lecture de cette documentation dans la plateforme (`/admin/documentation`) |
 | [Journal des modifications](journal-des-modifications.md) | Historique daté de chaque ajout, modification et correction |
 
@@ -248,6 +250,16 @@ Le fichier `storage/app/firebase-credentials.json` (chemin proposé par `.env.ex
 - `storage/app/public/verse-images/` accessible en écriture (créé automatiquement).
 
 Aucune variable d'environnement. Après une régénération des couleurs (`php scripts/generate-verse-colors.php`) : recompiler et vider `storage/app/public/verse-images/`.
+
+### Langues, témoignage de conversion, événements passés, push (2026-10-15)
+
+[langues.md](fonctionnalites/langues.md), [temoignage-de-conversion.md](fonctionnalites/temoignage-de-conversion.md), [evenements.md](fonctionnalites/evenements.md), [notifications-push.md](fonctionnalites/notifications-push.md) :
+
+- migration `2026_10_15_200001_add_locale_conversion_and_push_device_fields` (`users.locale`, `testimonies.kind` et champs de conversion, `device_tokens.access_token_id`) ;
+- nouveau dossier `lang/` à déployer avec le code ;
+- **recompilation des assets** (`resources/js` lit ses textes dans `window.I18N`), puis copie de `public/build/` sur le serveur ;
+- `php artisan optimize:clear` puis `php artisan view:cache` (les traductions sont lues à chaque requête ; avec `config:cache`, rien de plus) ;
+- `APP_LOCALE` peut rester tel quel : le français est imposé par défaut. Aucune nouvelle variable d'environnement.
 
 ### Dépendances PHP
 

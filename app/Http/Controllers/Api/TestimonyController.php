@@ -22,7 +22,7 @@ class TestimonyController extends Controller
     {
         // Fil « Pour vous » (docs/fonctionnalites/recommandations.md) : classement selon la personne,
         // les plus récents et les plus vus pour un nouveau venu.
-        if ($request->query('sort') === 'for_you' && !$request->query('after') && !$request->query('q')) {
+        if ($request->query('sort') === 'for_you' && !$request->query('after') && !$request->query('q') && !$request->query('kind')) {
             $viewer = $request->user() ?? $request->user('sanctum');
             $limit  = min((int) $request->query('limit', 20), 50);
             $page   = max(1, (int) $request->query('page', 1));
@@ -47,10 +47,10 @@ class TestimonyController extends Controller
         $viewer = $request->user() ?? $request->user('sanctum');
         $status = (string) $request->query('status', 'approved');
         if (!in_array($status, ['approved', 'pending', 'rejected'], true)) {
-            return $this->error('Statut inconnu.', 422, ['status' => ['Valeurs possibles : approved, pending, rejected.']]);
+            return $this->error(__('testimonies.api.unknown_status'), 422, ['status' => [__('testimonies.api.status_values')]]);
         }
         if ($status !== 'approved' && !$viewer?->canModerate()) {
-            return $this->forbidden('Seule l\'équipe de modération peut lister les témoignages non publiés.');
+            return $this->forbidden(__('testimonies.api.moderators_only'));
         }
 
         $query = Testimony::with('user');
@@ -64,6 +64,10 @@ class TestimonyController extends Controller
         }
         if ($request->boolean('featured')) {
             $query->manuallyFeatured();
+        }
+        // ?kind=conversion | standard (docs/fonctionnalites/temoignage-de-conversion.md)
+        if ($kind = \App\Enums\TestimonyKind::tryFrom((string) $request->query('kind'))) {
+            $query->where('kind', $kind->value);
         }
 
         // Delta sync: return only records updated after cursor
@@ -237,9 +241,9 @@ class TestimonyController extends Controller
         app(\App\Services\TestimonyModeration::class)->submitted($testimony);
 
         return $this->created(new TestimonyResource($testimony->fresh(['user'])), match (true) {
-            $testimony->isInJournal()                                    => 'Témoignage enregistré dans votre carnet privé',
-            $testimony->status === TestimonyStatus::Approved             => 'Témoignage publié',
-            default                                                      => 'Témoignage soumis pour modération',
+            $testimony->isInJournal()                                    => __('testimonies.api.saved_in_journal'),
+            $testimony->status === TestimonyStatus::Approved             => __('testimonies.api.published'),
+            default                                                      => __('testimonies.api.submitted'),
         });
     }
 
@@ -294,7 +298,15 @@ class TestimonyController extends Controller
             }
         }
 
+        // Sorte et champs du témoignage de conversion (règles vérifiées pour l'auteur du témoignage).
+        try {
+            $kindFields = app(\App\Services\ConversionTestimonies::class)->attributesForUpdate($testimony->loadMissing('user'), $request);
+        } catch (\App\Services\ContentActionException $e) {
+            return $this->error($e->getMessage(), $e->status(), $e->errors());
+        }
+
         $testimony->update([
+            ...$kindFields,
             'title'        => $request->title ?? $testimony->title,
             // Mentions déjà présentes reconnues ; les nouvelles seront prévenues à la prochaine approbation.
             'body_text'    => \App\Services\TestimonyCreator::bodyWithMentions($request, $testimony->body_text) ?? $testimony->body_text,
@@ -356,16 +368,16 @@ class TestimonyController extends Controller
     {
         $request->validate(
             ['category' => ['nullable', 'string', 'exists:categories,slug']],
-            ['category.exists' => "Cette catégorie n'existe pas. Choisissez-en une autre."]
+            ['category.exists' => __('testimonies.api.category_missing')]
         );
 
         $testimony = Testimony::find($id);
         if (!$testimony || $testimony->user_id !== $request->user()->id) return $this->notFound();
         if (!$request->user()->canPublish()) {
-            return $this->forbidden('Vous n\'avez pas la permission de publier');
+            return $this->forbidden(__('testimonies.api.cannot_publish'));
         }
         if (!$testimony->isInJournal()) {
-            return $this->error('Ce témoignage est déjà partagé.', 409);
+            return $this->error(__('testimonies.api.already_shared'), 409);
         }
 
         $slug     = $request->input('category') ?: $testimony->category_slug;
@@ -381,7 +393,7 @@ class TestimonyController extends Controller
         app(\App\Services\TestimonyModeration::class)->submitted($testimony->refresh());
 
         return $this->success(new TestimonyResource($testimony->fresh(['user'])), $testimony->status === TestimonyStatus::Approved
-            ? 'Témoignage publié' : 'Témoignage soumis pour modération');
+            ? __('testimonies.api.published') : __('testimonies.api.submitted'));
     }
 
     /** Retire un témoignage du public et le range dans le carnet privé. */
@@ -390,7 +402,7 @@ class TestimonyController extends Controller
         $testimony = Testimony::find($id);
         if (!$testimony || $testimony->user_id !== $request->user()->id) return $this->notFound();
         if ($testimony->isInJournal()) {
-            return $this->success(new TestimonyResource($testimony->load('user')), 'Déjà dans votre carnet privé');
+            return $this->success(new TestimonyResource($testimony->load('user')), __('testimonies.api.already_in_journal'));
         }
 
         $wasCounted = $testimony->status !== TestimonyStatus::Draft;
@@ -403,7 +415,7 @@ class TestimonyController extends Controller
             Category::where('slug', $testimony->category_slug)->where('testimony_count', '>', 0)->decrement('testimony_count');
         }
 
-        return $this->success(new TestimonyResource($testimony->fresh(['user'])), 'Témoignage rangé dans votre carnet privé');
+        return $this->success(new TestimonyResource($testimony->fresh(['user'])), __('testimonies.api.moved_to_journal'));
     }
 
     public function destroy(Request $request, string $id): JsonResponse
@@ -419,7 +431,7 @@ class TestimonyController extends Controller
 
         $testimony->delete();
 
-        return $this->success(null, 'Témoignage supprimé');
+        return $this->success(null, __('testimonies.api.deleted'));
     }
 
     public function recordShare(Request $request, string $id): JsonResponse
@@ -434,7 +446,7 @@ class TestimonyController extends Controller
         $testimony->increment('share_count');
         app(\App\Services\TestimonyStats::class)->recordShare($testimony, $request);
 
-        return $this->success(['shareUrl' => $testimony->share_url ?? Testimony::shareUrlFor($testimony->id)], 'Partage enregistré');
+        return $this->success(['shareUrl' => $testimony->share_url ?? Testimony::shareUrlFor($testimony->id)], __('testimonies.api.share_recorded'));
     }
 
     public function save(Request $request, string $id): JsonResponse
@@ -448,7 +460,7 @@ class TestimonyController extends Controller
 
         $testimony->increment('bookmark_count');
 
-        return $this->success(null, 'Témoignage sauvegardé');
+        return $this->success(null, __('testimonies.api.saved'));
     }
 
     public function unsave(Request $request, string $id): JsonResponse
@@ -459,7 +471,7 @@ class TestimonyController extends Controller
         $request->user()->savedTestimonies()->detach($id);
         $testimony->decrement('bookmark_count');
 
-        return $this->success(null, 'Témoignage retiré des sauvegardes');
+        return $this->success(null, __('testimonies.api.unsaved'));
     }
 
     public function saved(Request $request): JsonResponse

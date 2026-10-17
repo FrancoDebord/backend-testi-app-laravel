@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\NotificationType;
+use App\Support\NotificationText;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,6 +31,19 @@ class AppNotification extends Model
             'created_at' => 'datetime',
             'read_at'    => 'datetime',
         ];
+    }
+
+    /**
+     * Texte dans la langue courante (docs/fonctionnalites/langues.md) : rendu depuis payload.i18n quand la
+     * notification a été créée avec App\Support\NotificationText::fields(), sinon le texte enregistré.
+     */
+    protected function message(): Attribute
+    {
+        return Attribute::get(function (?string $value, array $attributes) {
+            $payload = $attributes['payload'] ?? null;
+
+            return NotificationText::render(is_string($payload) ? json_decode($payload, true) : $payload, $value);
+        });
     }
 
     public function recipient(): BelongsTo

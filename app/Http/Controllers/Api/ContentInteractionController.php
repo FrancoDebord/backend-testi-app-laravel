@@ -37,7 +37,7 @@ class ContentInteractionController extends Controller
         return $this->run($request, $id, function ($subject) use ($request, $data) {
             $created = $this->interactions->react($request->user(), $subject, ReactionType::from($data['type']));
 
-            return [$created ? 201 : 200, $created ? 'Réaction ajoutée' : 'Réaction enregistrée'];
+            return [$created ? 201 : 200, $created ? __('reactions.api.added') : __('reactions.api.saved')];
         });
     }
 
@@ -52,7 +52,7 @@ class ContentInteractionController extends Controller
         return $this->run($request, $id, function ($subject) use ($request, $group) {
             $this->interactions->unreact($request->user(), $subject, $group);
 
-            return [200, 'Réaction retirée'];
+            return [200, __('reactions.api.removed')];
         });
     }
 
@@ -60,13 +60,13 @@ class ContentInteractionController extends Controller
     {
         $data = $request->validate(
             ['comment' => ['nullable', 'string', 'max:' . ContentRepost::COMMENT_MAX]],
-            ['comment.max' => 'Votre commentaire : 500 caractères au plus.'],
+            ['comment.max' => __('reactions.content.comment_max')],
         );
 
         return $this->run($request, $id, function ($subject) use ($request, $data) {
             [, $created] = $this->interactions->repost($request->user(), $subject, $data['comment'] ?? null);
 
-            return [$created ? 201 : 200, $created ? 'Partagé avec vos abonnés.' : 'Partage mis à jour.'];
+            return [$created ? 201 : 200, $created ? __('reactions.content.reposted') : __('testimonies.repost.updated')];
         });
     }
 
@@ -74,10 +74,10 @@ class ContentInteractionController extends Controller
     {
         return $this->run($request, $id, function ($subject) use ($request) {
             if (!$this->interactions->unrepost($request->user(), $subject)) {
-                throw new ContentActionException("Vous n'avez pas partagé cette publication.", 404);
+                throw new ContentActionException(__('reactions.content.not_reposted'), 404);
             }
 
-            return [200, 'Partage annulé.'];
+            return [200, __('testimonies.repost.removed')];
         });
     }
 

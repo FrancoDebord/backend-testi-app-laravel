@@ -7,6 +7,8 @@ use App\Enums\UserRole;
 use App\Models\AppNotification;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Support\Locales;
+use App\Support\NotificationText;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -104,8 +106,9 @@ class BunnyVideoSync
                     'type'            => 'video_stuck',
                     'testimony_id'    => $t->id,
                     'testimony_title' => $t->title,
-                    'message'         => mb_substr("La vidéo « {$t->title} » est en traitement chez Bunny depuis plus de " . self::STUCK_MINUTES . " minutes ({$t->bunny_video_id}).", 0, 255),
-                    'payload'         => ['bunny_video_id' => $t->bunny_video_id],
+                    ...NotificationText::fields('admin.bunny.notify_stuck', [
+                        'title' => $t->title, 'minutes' => self::STUCK_MINUTES, 'guid' => $t->bunny_video_id,
+                    ], ['bunny_video_id' => $t->bunny_video_id]),
                     'created_at'      => now(),
                 ]);
             }
@@ -157,12 +160,9 @@ class BunnyVideoSync
         app(TestimonyModeration::class)->submitted($testimony);
 
         if (!$wasMigration) {
-            PushNotifications::dispatch(
-                $testimony->user_id,
-                'Vidéo prête',
-                "Votre vidéo « {$testimony->title} » est prête.",
-                ['type' => 'video_ready', 'testimony_id' => $testimony->id],
-            );
+            [$title, $body] = $this->pushText($testimony, 'ready');
+            PushNotifications::dispatch($testimony->user_id, $title, $body,
+                ['type' => 'video_ready', 'testimony_id' => $testimony->id]);
         }
 
         return true;
@@ -179,14 +179,22 @@ class BunnyVideoSync
         }
         $testimony->refresh();
 
-        PushNotifications::dispatch(
-            $testimony->user_id,
-            'Vidéo non traitée',
-            "Votre vidéo « {$testimony->title} » n'a pas pu être traitée. Merci de l'envoyer de nouveau.",
-            ['type' => 'video_failed', 'testimony_id' => $testimony->id],
-        );
+        [$title, $body] = $this->pushText($testimony, 'failed');
+        PushNotifications::dispatch($testimony->user_id, $title, $body,
+            ['type' => 'video_failed', 'testimony_id' => $testimony->id]);
 
         return true;
+    }
+
+    /** Titre et texte du push « vidéo prête / non traitée » dans la langue de l'auteur. */
+    private function pushText(Testimony $testimony, string $state): array
+    {
+        $locale = Locales::forUser(User::select(['id', 'locale'])->find($testimony->user_id));
+
+        return Locales::using($locale, fn () => [
+            __("admin.bunny.push_{$state}_title"),
+            __("admin.bunny.push_{$state}_body", ['title' => $testimony->title]),
+        ]);
     }
 
     private function markProcessing(Testimony $testimony): bool

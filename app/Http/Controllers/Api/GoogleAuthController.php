@@ -28,7 +28,7 @@ class GoogleAuthController extends Controller
         $request->validate([
             'id_token' => ['required', 'string', 'max:4096'],
             'provider' => ['sometimes', 'string', 'in:google'],
-        ], ['id_token.required' => 'Jeton Google manquant.']);
+        ], ['id_token.required' => __('account.google.missing_token')]);
 
         try {
             [$user, $isNewUser] = $google->authenticate((string) $request->input('id_token'));
@@ -37,7 +37,7 @@ class GoogleAuthController extends Controller
         }
 
         if ($user->status->value === 'banned') {
-            return $this->error('Votre compte a été banni', 403);
+            return $this->error(__('account.api.banned'), 403);
         }
 
         $token = $user->createToken('mobile-google')->plainTextToken;
@@ -47,6 +47,6 @@ class GoogleAuthController extends Controller
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'is_new_user'  => $isNewUser,
-        ], 'Connexion réussie');
+        ], __('account.api.login_success'));
     }
 }

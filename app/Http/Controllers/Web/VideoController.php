@@ -19,20 +19,20 @@ use Illuminate\View\View;
  */
 class VideoController extends Controller
 {
-    public const TABS = [
-        'all'    => 'Tout',
-        'videos' => 'Vidéos',
-        'shorts' => 'Shorts',
-        'lives'  => 'Directs',
-        'audio'  => 'Audios',
-        'text'   => 'Textes',
-    ];
+    private const TAB_KEYS  = ['all', 'videos', 'shorts', 'lives', 'audio', 'text'];
+    private const SORT_KEYS = ['recent', 'views', 'popular'];
 
-    public const SORTS = [
-        'recent'  => 'Plus récentes',
-        'views'   => 'Plus vues',
-        'popular' => 'Plus aimées',
-    ];
+    /** Onglets de la page (clé => libellé traduit). */
+    public static function tabs(): array
+    {
+        return array_combine(self::TAB_KEYS, array_map(fn ($k) => __('videos.tabs.' . $k), self::TAB_KEYS));
+    }
+
+    /** Tris proposés (clé => libellé traduit). */
+    public static function sorts(): array
+    {
+        return array_combine(self::SORT_KEYS, array_map(fn ($k) => __('videos.sorts.' . $k), self::SORT_KEYS));
+    }
 
     private const PER_PAGE          = 24;
 
@@ -45,8 +45,8 @@ class VideoController extends Controller
 
     public function index(Request $request): View|JsonResponse
     {
-        $tab  = array_key_exists((string) $request->query('tab'), self::TABS) ? $request->query('tab') : 'all';
-        $sort = array_key_exists((string) $request->query('sort'), self::SORTS) ? $request->query('sort') : 'recent';
+        $tab  = in_array((string) $request->query('tab'), self::TAB_KEYS, true) ? $request->query('tab') : 'all';
+        $sort = in_array((string) $request->query('sort'), self::SORT_KEYS, true) ? $request->query('sort') : 'recent';
         $q    = mb_substr(trim((string) $request->query('q', '')), 0, 100);
 
         $categories = Category::active()->get(['id', 'name', 'slug']);

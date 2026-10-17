@@ -25,12 +25,15 @@ use Illuminate\View\View;
 class HomeController extends Controller
 {
     /** Onglets du bloc « Gestion des contenus » (modération). */
-    public const CONTENT_TABS = [
-        ''         => 'Tous',
-        'pending'  => 'En attente',
-        'approved' => 'Approuvés',
-        'rejected' => 'Rejetés',
-    ];
+    public static function contentTabs(): array
+    {
+        return [
+            ''         => __('discover.home.content_tabs.all'),
+            'pending'  => __('discover.home.content_tabs.pending'),
+            'approved' => __('discover.home.content_tabs.approved'),
+            'rejected' => __('discover.home.content_tabs.rejected'),
+        ];
+    }
 
     public function index(Request $request): View
     {
@@ -73,6 +76,8 @@ class HomeController extends Controller
             // Sessions de prière programmées (bandeau masqué s'il n'y en a pas) : docs/fonctionnalites/sessions-de-priere.md
             'prayerSessions' => app(\App\Services\PrayerSessions::class)->list($viewer, 'upcoming')->limit(6)->get(),
             'shorts'   => Testimony::with('user')->published()->shorts()->latestPublished()->limit(12)->get(),
+            // Témoignages de conversion (bloc masqué s'il n'y en a pas) : docs/fonctionnalites/temoignage-de-conversion.md
+            'conversions' => Testimony::with('user')->published()->conversion()->latestPublished()->limit(3)->get(),
             // Chiffres publics, relus au plus toutes les 5 minutes.
             'stats'    => Cache::remember('home.stats', 300, fn () => [
                 'testimonies' => Testimony::published()->count(),
@@ -90,7 +95,7 @@ class HomeController extends Controller
 
         // Équipe de modération : file d'attente et gestion des contenus.
         if ($viewer?->canModerate()) {
-            $tab = array_key_exists((string) $request->query('gestion'), self::CONTENT_TABS) ? (string) $request->query('gestion') : '';
+            $tab = array_key_exists((string) $request->query('gestion'), self::contentTabs()) ? (string) $request->query('gestion') : '';
             $data += [
                 'pendingCount' => Testimony::pending()->count(),
                 'pendingItems' => Testimony::with('user')->pending()->oldest()->limit(4)->get(),

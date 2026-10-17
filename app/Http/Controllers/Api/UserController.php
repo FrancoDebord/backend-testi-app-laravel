@@ -27,7 +27,7 @@ class UserController extends Controller
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $user = User::withFollowState($request->user('sanctum'))->withPublishedTestimonyCount()->find($id);
+        $user = User::withFollowState($request->user('sanctum'))->withPublishedTestimonyCount()->withConversionTestimonyState()->find($id);
         if (!$user) return $this->notFound();
 
         return $this->success(new UserResource($user));
@@ -49,8 +49,10 @@ class UserController extends Controller
             'country'      => ['nullable', 'string', 'max:100'],
             'bio'          => ['nullable', 'string', 'max:500'],
             'avatar_url'   => ['nullable', 'string'],
+            // Langue des push et des e-mails (docs/fonctionnalites/langues.md)
+            'locale'       => ['sometimes', 'string', Rule::in(\App\Support\Locales::SUPPORTED)],
         ] + $phoneRules + OrganizationAccounts::updateRules($user), PhoneNumber::MESSAGES + [
-            'phone.unique' => 'Ce numéro est déjà associé à un autre compte.',
+            'phone.unique' => __('profile.api.phone_taken'),
         ]);
 
         // Un numéro modifié n'est plus vérifié par SMS : il ne sert plus à la connexion.
@@ -60,13 +62,13 @@ class UserController extends Controller
                 ? $user->setContactPhone(PhoneNumber::toE164($validated['phone_country'], $validated['phone'] ?? null), strtolower($validated['phone_country']))
                 : $user->setContactPhone($request->input('phone') ?: null, null);
         }
-        $user->update($request->only(['display_name', 'country', 'bio', 'avatar_url']));
+        $user->update($request->only(['display_name', 'country', 'bio', 'avatar_url', 'locale']));
 
         // Champs organisation : account_type, verification_status et verified_*
         // ne sont jamais modifiables ici (docs/fonctionnalites/comptes-organisation.md).
         OrganizationAccounts::updateProfile($user, $validated);
 
-        return $this->success(UserResource::owner($request->user()->fresh()), 'Profil mis à jour');
+        return $this->success(UserResource::owner($request->user()->fresh()), __('profile.api.updated'));
     }
 
     public function uploadAvatar(Request $request): JsonResponse
@@ -78,24 +80,24 @@ class UserController extends Controller
 
         $request->user()->update(['avatar_url' => $url]);
 
-        return $this->success(['avatar_url' => $url], 'Avatar mis à jour');
+        return $this->success(['avatar_url' => $url], __('profile.api.avatar_updated'));
     }
 
     /** Photo de couverture du profil (multipart « cover »). Voir docs/fonctionnalites/photo-de-couverture.md */
     public function uploadCover(Request $request): JsonResponse
     {
-        $request->validate(['cover' => ProfileCover::rules(required: true)], ProfileCover::MESSAGES);
+        $request->validate(['cover' => ProfileCover::rules(required: true)], ProfileCover::messages());
 
         $url = ProfileCover::store($request->user(), $request->file('cover'));
 
-        return $this->success(['cover_url' => $url], 'Photo de couverture mise à jour');
+        return $this->success(['cover_url' => $url], __('profile.api.cover_updated'));
     }
 
     public function deleteCover(Request $request): JsonResponse
     {
         ProfileCover::remove($request->user());
 
-        return $this->success(['cover_url' => null], 'Photo de couverture retirée');
+        return $this->success(['cover_url' => null], __('profile.api.cover_removed'));
     }
 
     public function testimonies(Request $request, string $id): JsonResponse
@@ -169,7 +171,7 @@ class UserController extends Controller
             return $this->error($e->getMessage(), $e->status());
         }
 
-        return $this->success(['following' => true, 'followerCount' => $target->fresh()->follower_count], 'Abonnement effectué');
+        return $this->success(['following' => true, 'followerCount' => $target->fresh()->follower_count], __('community.api.followed'));
     }
 
     public function unfollow(Request $request, string $id, FollowService $follows): JsonResponse
@@ -179,7 +181,7 @@ class UserController extends Controller
 
         $follows->unfollow($request->user(), $target);
 
-        return $this->success(['following' => false, 'followerCount' => $target->fresh()->follower_count], 'Abonnement annulé');
+        return $this->success(['following' => false, 'followerCount' => $target->fresh()->follower_count], __('community.api.unfollowed'));
     }
 
     // GET /users/me/settings : réglages enregistrés (valeurs par défaut si jamais modifiés).
@@ -215,7 +217,7 @@ class UserController extends Controller
             'last_bible_book', 'last_bible_chapter', 'last_bible_translation',
         ]));
 
-        return $this->success($settings->fresh(), 'Paramètres mis à jour');
+        return $this->success($settings->fresh(), __('profile.api.settings_updated'));
     }
 
     public function deleteAccount(Request $request): JsonResponse
@@ -223,17 +225,19 @@ class UserController extends Controller
         $user = $request->user();
         // Compte créé par téléphone ou Google/Facebook : pas de mot de passe, confirmation explicite.
         if (empty($user->password)) {
-            $request->validate(['confirm' => 'accepted'], ['confirm.accepted' => 'Confirmez la suppression du compte.']);
+            $request->validate(['confirm' => 'accepted'], ['confirm.accepted' => __('profile.api.confirm_delete')]);
         } else {
             $request->validate(['password' => 'required|string']);
             if (!password_verify($request->password, $user->password)) {
-                return $this->error('Mot de passe incorrect', 403);
+                return $this->error(__('profile.api.wrong_password'), 403);
             }
         }
 
         $request->user()->tokens()->delete();
+        // Plus aucun push vers les appareils d'un compte supprimé (suppression douce : pas de cascade).
+        $request->user()->deviceTokens()->delete();
         $request->user()->delete();
 
-        return $this->success(null, 'Compte supprimé');
+        return $this->success(null, __('profile.api.deleted'));
     }
 }

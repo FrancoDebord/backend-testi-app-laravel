@@ -20,12 +20,11 @@ class VerificationRequest extends Model
     public const REJECTED = 'rejected';
     public const REVOKED  = 'revoked';
 
-    public const STATUS_LABELS = [
-        self::PENDING  => 'En attente',
-        self::APPROVED => 'Approuvée',
-        self::REJECTED => 'Refusée',
-        self::REVOKED  => 'Vérification retirée',
-    ];
+    /** États d'une demande [pending|approved|rejected|revoked => libellé] (lang/{fr,en}/models.php › verification_request_status). */
+    public static function statusLabels(): array
+    {
+        return __('models.verification_request_status');
+    }
 
     protected $fillable = [
         'user_id', 'full_name', 'role', 'role_other', 'church', 'links', 'message',
@@ -59,7 +58,7 @@ class VerificationRequest extends Model
 
     public function statusLabel(): string
     {
-        return self::STATUS_LABELS[$this->status] ?? $this->status;
+        return self::statusLabels()[$this->status] ?? $this->status;
     }
 
     public function statusBadgeClass(): string

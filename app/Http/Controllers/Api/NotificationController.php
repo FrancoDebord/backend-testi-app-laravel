@@ -43,7 +43,7 @@ class NotificationController extends Controller
 
         $notification->update(['is_read' => true, 'read_at' => now()]);
 
-        return $this->success(null, 'Notification marquée comme lue');
+        return $this->success(null, __('inbox.api.marked_read'));
     }
 
     public function markAllRead(Request $request): JsonResponse
@@ -52,6 +52,6 @@ class NotificationController extends Controller
                        ->where('is_read', false)
                        ->update(['is_read' => true, 'read_at' => now()]);
 
-        return $this->success(null, 'Toutes les notifications marquées comme lues');
+        return $this->success(null, __('inbox.api.all_marked_read'));
     }
 }

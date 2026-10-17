@@ -11,12 +11,7 @@ enum TestimonyStatus: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Draft    => 'Brouillon',
-            self::Pending  => 'En attente',
-            self::Approved => 'Approuvé',
-            self::Rejected => 'Rejeté',
-        };
+        return __('enums.testimony_status.' . $this->value);
     }
 
     public function badgeClass(): string

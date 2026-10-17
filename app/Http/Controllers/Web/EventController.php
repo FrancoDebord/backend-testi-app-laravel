@@ -33,16 +33,20 @@ class EventController extends Controller
     // ─── Pages ───────────────────────────────────────────────────────────────
 
     /** Liste : onglets à venir / passés / mes événements / j'y participe, filtre par type, recherche. */
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $user      = Auth::user();
         $canCreate = Event::canBeCreatedBy($user);
-        $tabs      = ['upcoming' => 'À venir', 'past' => 'Passés'];
+        $tabs      = ['upcoming' => __('events.tabs.upcoming'), 'past' => __('events.tabs.past')];
         // « Mes événements » : ceux que la personne gère (organisateur, organisation gérée, co-gestionnaire).
-        if ($canCreate || ($user && Event::query()->managedBy($user)->exists())) $tabs['mine'] = 'Mes événements';
-        if ($user) $tabs['going'] = "J'y participe";
+        if ($canCreate || ($user && Event::query()->managedBy($user)->exists())) $tabs['mine'] = __('events.tabs.mine');
+        if ($user) $tabs['going'] = __('events.tabs.going');
 
         $tab  = array_key_exists($request->query('onglet'), $tabs) ? $request->query('onglet') : 'upcoming';
+        // Onglet « Passés » : page dédiée (filtres conservés).
+        if ($tab === 'past') {
+            return redirect()->route('events.past', array_filter($request->only(['type', 'q'])));
+        }
         $type = EventType::tryFrom((string) $request->query('type'));
         $q    = trim((string) $request->query('q'));
 
@@ -80,6 +84,30 @@ class EventController extends Controller
         ]);
     }
 
+    /**
+     * Événements passés : terminés (annulés exclus), du plus récent au plus ancien, avec le nombre de témoignages
+     * publiés et la vignette ; chaque carte ouvre l'événement sur ses témoignages. Même liste que GET /events?when=past.
+     */
+    public function past(Request $request): View
+    {
+        $type = EventType::tryFrom((string) $request->query('type'));
+        $q    = trim((string) $request->query('q'));
+
+        $query = Event::query()->with(['organizer', 'images'])->withPublishedTestimonyCount()->finished();
+        if ($type) $query->where('type', $type->value);
+        if ($q !== '') {
+            $query->where(fn ($w) => $w->where('title', 'like', "%{$q}%")
+                ->orWhere('city', 'like', "%{$q}%")
+                ->orWhere('location', 'like', "%{$q}%"));
+        }
+
+        return view('events.past', [
+            'events' => $query->paginate(12)->withQueryString(),
+            'type'   => $type?->value,
+            'q'      => $q,
+        ]);
+    }
+
     public function show(Request $request, string $id): View
     {
         $user    = Auth::user();
@@ -114,7 +142,7 @@ class EventController extends Controller
             'hasReported'   => $moderation->hasReported($event, $user),
             'moderator'     => $moderator,
             'reliability'   => Event::reliabilityOf($event->organizer_id),
-            'reportReasons' => Event::REPORT_REASONS,
+            'reportReasons' => Event::reportReasons(),
             'event'         => $event,
             'manager'       => $manager,
             'participation' => $event->participationOf($user),
@@ -175,8 +203,8 @@ class EventController extends Controller
         }
 
         return redirect()->route('events.show', $event->id)->with('success', $event->status === EventStatus::Draft
-            ? 'Événement enregistré comme brouillon : il reste visible de vous seul.'
-            : 'Événement publié.');
+            ? __('events.flash.saved_draft')
+            : __('events.flash.published'));
     }
 
     public function edit(string $id): View
@@ -203,7 +231,7 @@ class EventController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('events.show', $event->id)->with('success', 'Événement mis à jour.');
+        return redirect()->route('events.show', $event->id)->with('success', __('events.flash.updated'));
     }
 
     public function destroy(Request $request, string $id): RedirectResponse
@@ -213,7 +241,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event) {
             $this->events->delete($event, $request->user());
 
-            return redirect()->route('events.index')->with('success', 'Événement supprimé.');
+            return redirect()->route('events.index')->with('success', __('events.flash.deleted'));
         });
     }
 
@@ -239,15 +267,15 @@ class EventController extends Controller
     {
         $event = $this->find($id);
         $request->validate(['user_id' => 'required|uuid'], [
-            'user_id.required' => 'Choisissez une personne.',
-            'user_id.uuid'     => 'Choisissez une personne dans la liste.',
+            'user_id.required' => __('events.validation.user_required'),
+            'user_id.uuid'     => __('events.validation.user_uuid'),
         ]);
 
         return $this->attempt(function () use ($request, $event) {
             $target = $this->events->addManager($event, $request->user(), $request->input('user_id'));
 
             return redirect()->to(route('events.show', $event->id) . '#co-gestionnaires')
-                ->with('success', "{$target->display_name} peut maintenant gérer cet événement.");
+                ->with('success', __('events.flash.manager_added', ['name' => $target->display_name]));
         });
     }
 
@@ -261,11 +289,11 @@ class EventController extends Controller
 
             // Après s'être retiré d'un brouillon, la page n'est plus visible : retour à la liste.
             if ($self && !$event->fresh()->isVisibleTo($request->user())) {
-                return redirect()->route('events.index')->with('success', "Vous ne gérez plus cet événement.");
+                return redirect()->route('events.index')->with('success', __('events.flash.manager_self_removed'));
             }
 
             return redirect()->to(route('events.show', $event->id) . ($self ? '' : '#co-gestionnaires'))
-                ->with('success', $self ? 'Vous ne gérez plus cet événement.' : 'Co-gestionnaire retiré.');
+                ->with('success', $self ? __('events.flash.manager_self_removed') : __('events.flash.manager_removed'));
         });
     }
 
@@ -274,12 +302,12 @@ class EventController extends Controller
     public function storeImage(Request $request, string $id): RedirectResponse
     {
         $event = $this->find($id);
-        $request->validate(['image' => EventService::imageRules()], EventService::IMAGE_MESSAGES);
+        $request->validate(['image' => EventService::imageRules()], EventService::imageMessages());
 
         return $this->attempt(function () use ($request, $event) {
             $this->events->addImage($event, $request->user(), $request->file('image'));
 
-            return back()->with('success', 'Image ajoutée.');
+            return back()->with('success', __('events.flash.image_added'));
         });
     }
 
@@ -290,7 +318,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event, $image) {
             $this->events->removeImage($event, $request->user(), $image);
 
-            return back()->with('success', 'Image retirée.');
+            return back()->with('success', __('events.flash.image_removed'));
         });
     }
 
@@ -301,7 +329,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event, $image) {
             $this->events->makeCover($event, $request->user(), $image);
 
-            return back()->with('success', 'Image placée en premier.');
+            return back()->with('success', __('events.flash.image_cover'));
         });
     }
 
@@ -316,8 +344,8 @@ class EventController extends Controller
             $status = $this->events->participate($event, $request->user(), $request->input('status'));
 
             return back()->with('success', $status === EventParticipation::GOING
-                ? 'Votre participation est enregistrée.'
-                : 'Réponse enregistrée.');
+                ? __('events.flash.going')
+                : __('events.flash.answered'));
         });
     }
 
@@ -326,7 +354,7 @@ class EventController extends Controller
         $event = $this->find($id);
         $this->events->cancelParticipation($event, $request->user());
 
-        return back()->with('success', 'Réponse retirée.');
+        return back()->with('success', __('events.flash.answer_removed'));
     }
 
     // ─── Commentaires ────────────────────────────────────────────────────────
@@ -335,16 +363,16 @@ class EventController extends Controller
     {
         $event = $this->find($id);
         $request->validate(['body' => 'required|string|min:2|max:3000'], [
-            'body.required' => 'Écrivez votre message.',
-            'body.min'      => 'Votre message est trop court.',
-            'body.max'      => '3 000 caractères au plus.',
+            'body.required' => __('events.validation.comment_required'),
+            'body.min'      => __('events.validation.comment_min'),
+            'body.max'      => __('events.validation.comment_max'),
         ]);
 
         return $this->attempt(function () use ($request, $event) {
             $this->events->comment($event, $request->user(), $request->input('body'));
 
             return redirect()->route('events.show', [$event->id, 'section' => 'commentaires'])
-                ->with('success', 'Merci pour votre témoignage !');
+                ->with('success', __('events.flash.comment_added'));
         }, withInput: true);
     }
 
@@ -355,7 +383,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $item) {
             $this->events->deleteComment($item, $request->user());
 
-            return back()->with('success', 'Commentaire supprimé.');
+            return back()->with('success', __('events.flash.comment_deleted'));
         });
     }
 
@@ -366,14 +394,14 @@ class EventController extends Controller
         $data = $request->validate([
             'title'    => 'nullable|string|max:200',
             'category' => 'nullable|string|exists:categories,slug',
-        ], ['category.exists' => "La catégorie choisie n'existe plus."]);
+        ], ['category.exists' => __('events.validation.category_exists')]);
 
         return $this->attempt(function () use ($request, $item, $data) {
             $this->events->promote($item, $request->user(), array_filter($data));
 
             return back()->with('success', $request->user()->canModerate()
-                ? 'Témoignage enregistré et publié.'
-                : 'Témoignage enregistré. Il sera publié après relecture par la modération.');
+                ? __('events.flash.promoted')
+                : __('events.flash.promoted_pending'));
         });
     }
 
@@ -381,7 +409,7 @@ class EventController extends Controller
 
     public function layout(Request $request): RedirectResponse
     {
-        $data = $request->validate(['layout' => ['required', Rule::in(array_keys(EventLayout::LABELS))]]);
+        $data = $request->validate(['layout' => ['required', Rule::in(array_keys(EventLayout::labels()))]]);
 
         return redirect()->back(fallback: route('events.index'))
             ->withCookie(cookie(EventLayout::COOKIE, $data['layout'], EventLayout::LIFETIME));
@@ -393,27 +421,27 @@ class EventController extends Controller
     {
         $event = $this->find($id);
         $tbd   = $request->boolean('date_tbd');
-        $data  = $request->validate(EventService::postponeRules($tbd), EventService::POSTPONE_MESSAGES);
+        $data  = $request->validate(EventService::postponeRules($tbd), EventService::postponeMessages());
 
         return $this->attempt(function () use ($request, $event, $data, $tbd) {
             $this->events->postpone($event, $request->user(),
                 $tbd ? null : $data['starts_at'], $tbd ? null : $data['ends_at'], $data['reason'] ?? null);
 
             return redirect()->route('events.show', $event->id)->with('success', $tbd
-                ? 'Événement reporté : date à confirmer. Les participants sont prévenus.'
-                : 'Événement reporté. Les participants sont prévenus.');
+                ? __('events.flash.postponed_tbd')
+                : __('events.flash.postponed'));
         }, withInput: true);
     }
 
     public function cancel(Request $request, string $id): RedirectResponse
     {
         $event = $this->find($id);
-        $data  = $request->validate(['reason' => 'nullable|string|max:500'], EventService::POSTPONE_MESSAGES);
+        $data  = $request->validate(['reason' => 'nullable|string|max:500'], EventService::postponeMessages());
 
         return $this->attempt(function () use ($request, $event, $data) {
             $this->events->cancel($event, $request->user(), $data['reason'] ?? null);
 
-            return redirect()->route('events.show', $event->id)->with('success', 'Événement annulé. Les participants sont prévenus.');
+            return redirect()->route('events.show', $event->id)->with('success', __('events.flash.cancelled'));
         });
     }
 
@@ -422,7 +450,7 @@ class EventController extends Controller
     public function report(Request $request, string $id): RedirectResponse
     {
         $event = $this->find($id);
-        $data  = $request->validate(EventModeration::reportRules(), EventModeration::MESSAGES);
+        $data  = $request->validate(EventModeration::reportRules(), EventModeration::messages());
 
         return $this->attempt(function () use ($request, $event, $data) {
             app(EventModeration::class)->report($event, $request->user(), $data['reason'], $data['comment'] ?? null);
@@ -430,8 +458,8 @@ class EventController extends Controller
 
             // Masqué automatiquement : la page n'est plus visible pour la personne.
             return $event->isVisibleTo($request->user())
-                ? back()->with('success', 'Merci. Votre signalement sera examiné par la modération.')
-                : redirect()->route('events.index')->with('success', 'Merci. Votre signalement sera examiné par la modération.');
+                ? back()->with('success', __('events.flash.reported'))
+                : redirect()->route('events.index')->with('success', __('events.flash.reported'));
         });
     }
 
@@ -440,12 +468,12 @@ class EventController extends Controller
     public function review(Request $request, string $id): RedirectResponse
     {
         $event = $this->find($id);
-        $data  = $request->validate(EventModeration::reviewRules(), EventModeration::MESSAGES);
+        $data  = $request->validate(EventModeration::reviewRules(), EventModeration::messages());
 
         return $this->attempt(function () use ($request, $event, $data) {
             app(EventModeration::class)->review($event, $request->user(), $data);
 
-            return redirect()->to(route('events.show', $event->id) . '#votre-avis')->with('success', 'Merci pour votre avis !');
+            return redirect()->to(route('events.show', $event->id) . '#votre-avis')->with('success', __('events.flash.reviewed'));
         }, withInput: true);
     }
 
@@ -464,7 +492,7 @@ class EventController extends Controller
         return view('events.moderation', [
             'filter'      => $filter,
             'items'       => $items,
-            'reasons'     => Event::REPORT_REASONS,
+            'reasons'     => Event::reportReasons(),
             'reliability' => $items->getCollection()->pluck('organizer_id')->unique()
                 ->mapWithKeys(fn ($id) => [$id => Event::reliabilityOf($id)]),
         ]);
@@ -478,7 +506,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event, $data) {
             app(EventModeration::class)->hide($event, $request->user(), $data['reason'] ?? null);
 
-            return back()->with('success', 'Événement masqué.');
+            return back()->with('success', __('events.flash.hidden'));
         });
     }
 
@@ -489,7 +517,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event) {
             app(EventModeration::class)->restore($event, $request->user());
 
-            return back()->with('success', 'Événement rétabli.');
+            return back()->with('success', __('events.flash.restored'));
         });
     }
 
@@ -500,7 +528,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event) {
             app(EventModeration::class)->dismiss($event, $request->user());
 
-            return back()->with('success', 'Signalements classés : l’événement reste en ligne.');
+            return back()->with('success', __('events.flash.dismissed'));
         });
     }
 
@@ -509,16 +537,16 @@ class EventController extends Controller
     /** « sam. 12 oct. 2026 · 18:00 – 22:00 », ou deux dates complètes si l'événement dure plusieurs jours. */
     public static function dateRange(Event $event, bool $original = false): string
     {
-        if (!$original && $event->isDateTbd()) return 'Date à confirmer';
+        if (!$original && $event->isDateTbd()) return __('events.date_tbd');
         $start = $original ? $event->original_starts_at : $event->starts_at;
         $end   = $original ? $event->original_ends_at : $event->ends_at;
         if (!$start) return '';
-        $text = $start->translatedFormat('D j M Y · H:i');
+        $text = $start->translatedFormat(__('events.formats.short_datetime'));
         if (!$end || $end->equalTo($start)) return $text;
 
         return $start->isSameDay($end)
-            ? $text . ' – ' . $end->format('H:i')
-            : $text . ' → ' . $end->translatedFormat('D j M Y · H:i');
+            ? $text . ' – ' . $end->format(__('events.formats.time'))
+            : $text . ' → ' . $end->translatedFormat(__('events.formats.short_datetime'));
     }
 
     /** Lieu lisible : « Stade de l'Amitié, Cotonou, Bénin ». */
@@ -541,7 +569,7 @@ class EventController extends Controller
             : [EventStatus::Draft->value, EventStatus::Published->value, EventStatus::Postponed->value, EventStatus::Cancelled->value];
         $freeImages = max(Event::MAX_IMAGES - $existingImages, 0);
 
-        $imageMessages = collect(EventService::IMAGE_MESSAGES)
+        $imageMessages = collect(EventService::imageMessages())
             ->mapWithKeys(fn ($m, $k) => [str_replace('image.', 'images.*.', $k) => $m])->all();
 
         $data = $request->validate([
@@ -550,13 +578,13 @@ class EventController extends Controller
             'images'   => ['nullable', 'array', 'max:' . $freeImages],
             'images.*' => EventService::imageRules(),
         ], [
-            ...EventService::MESSAGES,
+            ...EventService::messages(),
             ...$imageMessages,
             'images.max'       => $creating
-                ? 'Six images au plus.'
-                : "Vous pouvez encore ajouter {$freeImages} image(s) au plus.",
-            'starts_at.date'   => 'Date de début non valide.',
-            'ends_at.date'     => 'Date de fin non valide.',
+                ? __('events.validation.images_max')
+                : __('events.validation.images_left', ['count' => $freeImages]),
+            'starts_at.date'   => __('events.validation.starts_at_date'),
+            'ends_at.date'     => __('events.validation.ends_at_date'),
         ]);
         unset($data['images']);
         $data['comments_enabled'] = $request->boolean('comments_enabled');

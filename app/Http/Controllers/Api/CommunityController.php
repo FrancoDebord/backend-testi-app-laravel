@@ -23,7 +23,7 @@ class CommunityController extends Controller
     public function index(Request $request, CommunityDirectory $directory): JsonResponse
     {
         $request->validate([
-            'tab' => 'nullable|in:' . implode(',', array_keys(CommunityDirectory::TABS)),
+            'tab' => 'nullable|in:' . implode(',', array_keys(CommunityDirectory::tabs())),
             'q'   => 'nullable|string|max:100',
         ]);
 

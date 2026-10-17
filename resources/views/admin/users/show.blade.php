@@ -220,6 +220,43 @@
             </form>
         </section>
 
+        {{-- Notification push de test (super-administrateurs) ─ docs/fonctionnalites/notifications-push.md --}}
+        @if(auth()->user()?->isSuperAdmin())
+        @php($pushTest = (session('push_test')['user_id'] ?? null) === $user->id ? session('push_test')['result'] : null)
+        <section class="card p-5 sm:p-6" aria-labelledby="push-test-title">
+            <h2 id="push-test-title" class="card-title">{{ __('layout.nav.notifications') }}</h2>
+            <p class="mt-1 text-sm text-slate-600">{{ __('notifications.test.help') }}</p>
+            <p class="mt-1 text-sm text-slate-500">{{ __('notifications.test.devices', ['count' => $user->deviceTokens()->count()]) }}</p>
+            <form method="POST" action="{{ route('admin.users.push-test', $user->id) }}" class="mt-4" data-loading-label="{{ __('notifications.test.sending') }}">
+                @csrf
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>{{ __('notifications.test.button') }}</button>
+            </form>
+            @if($pushTest)
+            <div class="mt-5 border-t border-slate-100 pt-4">
+                <h3 class="text-sm font-semibold text-slate-900">{{ __('notifications.test.result_title') }}</h3>
+                @if($pushTest['devices'] === [])
+                <p class="mt-1 text-sm text-slate-600">{{ $pushTest['disabled'] ? __('notifications.test.disabled') : __('notifications.test.no_device') }}</p>
+                @else
+                <ul class="mt-2 divide-y divide-slate-100 text-sm">
+                    @foreach($pushTest['devices'] as $device)
+                    <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2">
+                        <span class="min-w-0">
+                            <span class="font-medium text-slate-900">{{ $device['platform'] ?? '—' }}</span>
+                            <span class="ml-1 font-mono text-xs break-all text-slate-500">{{ $device['token'] }}</span>
+                        </span>
+                        <span class="{{ $device['result'] === 'sent' ? 'badge-validated' : 'badge-rejected' }}">{{ __('notifications.test.results.' . $device['result']) }}</span>
+                        @if($device['error'])
+                        <span class="w-full text-xs break-words text-error-700">{{ $device['error'] }}</span>
+                        @endif
+                    </li>
+                    @endforeach
+                </ul>
+                @endif
+            </div>
+            @endif
+        </section>
+        @endif
+
         <section class="card">
             <h2 class="card-title border-b border-slate-100 px-5 py-4">Derniers témoignages</h2>
             <ul class="divide-y divide-slate-100">

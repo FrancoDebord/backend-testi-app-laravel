@@ -32,6 +32,11 @@ class TestimonyResource extends JsonResource
             'user'         => new UserResource($this->whenLoaded('user')),
             'title'        => $this->title,
             'type'         => $this->type->value,
+            // standard | conversion ; détails (année, lieu, verset) d'un témoignage de conversion, sinon null
+            // (docs/fonctionnalites/temoignage-de-conversion.md).
+            'kind'         => $this->kind?->value ?? \App\Enums\TestimonyKind::Standard->value,
+            'isConversion' => $this->resource->isConversion(),
+            'conversion'   => $this->resource->conversionDetails(),
             'category'     => $this->category_slug,
             // Événement auquel le témoignage est rattaché (docs/fonctionnalites/evenements.md).
             'eventId'      => $this->event_id,

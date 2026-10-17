@@ -11,5 +11,8 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         $this->withoutVite();
+        // Requêtes sans Accept-Language, comme l'application mobile (Symfony ajouterait « en-us » par défaut) :
+        // l'API répond alors en français (docs/fonctionnalites/langues.md).
+        $this->withServerVariables(['HTTP_ACCEPT_LANGUAGE' => '']);
     }
 }

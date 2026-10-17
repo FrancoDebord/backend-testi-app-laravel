@@ -2,7 +2,7 @@
 @php
     $type     = $testimony->type->value;
     $url      = $url ?? route('videos.show', $testimony->id);
-    $duration = $type === 'text' ? $testimony->readingMinutes() . ' min' : ($testimony->duration_sec > 0 ? $testimony->formattedDuration() : null);
+    $duration = $type === 'text' ? __('videos.common.minutes', ['minutes' => $testimony->readingMinutes()]) : ($testimony->duration_sec > 0 ? $testimony->formattedDuration() : null);
     $icon     = ['text' => 'fa-file-lines', 'audio' => 'fa-microphone', 'video' => 'fa-play'][$type] ?? 'fa-play';
 @endphp
 <article class="group relative flex gap-3">
@@ -13,7 +13,7 @@
             <i class="fa-solid {{ $icon }} text-xl" aria-hidden="true"></i>
         @endif
         @if($duration)
-        <span class="absolute right-1 bottom-1 rounded bg-slate-900/85 px-1 py-px text-[10px] font-semibold text-white tabular-nums"><span class="sr-only">Durée : </span>{{ $duration }}</span>
+        <span class="absolute right-1 bottom-1 rounded bg-slate-900/85 px-1 py-px text-[10px] font-semibold text-white tabular-nums"><span class="sr-only">{{ __('videos.common.duration') }}</span>{{ $duration }}</span>
         @endif
     </div>
     <div class="min-w-0 flex-1">

@@ -1,28 +1,28 @@
 @extends('layouts.app')
-@section('title', 'Mes témoignages')
+@section('title', __('testimonies.mine.title'))
 @php
-    $header      = 'Mes témoignages';
-    $subheader   = 'Suivez l’état de vos témoignages : publiés, en relecture ou refusés.';
+    $header      = __('testimonies.mine.title');
+    $subheader   = __('testimonies.mine.subheader');
     $breadcrumbs = [
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Mes témoignages'],
+        ['label' => __('testimonies.common.home'), 'url' => route('home')],
+        ['label' => __('testimonies.mine.title')],
     ];
     $tabs = [
-        'all'      => ['Tous', null],
-        'approved' => ['Publiés', 'bg-emerald-500'],
-        'pending'  => ['En attente', 'bg-amber-500'],
-        'rejected' => ['Refusés', 'bg-red-500'],
-        'draft'    => ['Brouillons', 'bg-slate-400'],
+        'all'      => [__('testimonies.mine.tab_all'), null],
+        'approved' => [__('testimonies.mine.tab_approved'), 'bg-emerald-500'],
+        'pending'  => [__('testimonies.mine.tab_pending'), 'bg-amber-500'],
+        'rejected' => [__('testimonies.mine.tab_rejected'), 'bg-red-500'],
+        'draft'    => [__('testimonies.mine.tab_draft'), 'bg-slate-400'],
     ];
     $currentStatus = $status ?: 'all';
 @endphp
 
 @section('headerActions')
-    <a href="{{ route('publish') }}" class="btn-cta"><i class="fa-solid fa-plus"></i>Nouveau témoignage</a>
+    <a href="{{ route('publish') }}" class="btn-cta"><i class="fa-solid fa-plus"></i>{{ __('testimonies.mine.new') }}</a>
 @endsection
 
 @section('content')
-<nav class="mb-6 overflow-x-auto border-b border-slate-200" aria-label="Filtrer par statut">
+<nav class="mb-6 overflow-x-auto border-b border-slate-200" aria-label="{{ __('testimonies.mine.filter') }}">
     <ul class="flex gap-6">
         @foreach($tabs as $val => [$label, $dot])
         <li>
@@ -39,10 +39,10 @@
 
 @if($testimonies->isEmpty())
     @include('components.empty-state', [
-        'title' => 'Aucun témoignage ici',
-        'text' => $currentStatus === 'all' ? "Vous n'avez pas encore publié de témoignage." : "Aucun de vos témoignages n'a ce statut.",
+        'title' => __('testimonies.mine.empty_title'),
+        'text' => $currentStatus === 'all' ? __('testimonies.mine.empty_all') : __('testimonies.mine.empty_status'),
         'actionUrl' => route('publish'),
-        'actionLabel' => 'Publier un témoignage',
+        'actionLabel' => __('testimonies.create.title'),
     ])
     @if($currentStatus === 'all')
     {{-- Encouragement (le bouton « Publier » est déjà au-dessus) --}}

@@ -6,12 +6,15 @@ use App\Enums\NotificationType;
 use App\Jobs\SendPushNotificationJob;
 use App\Models\AppNotification;
 use App\Models\DeviceToken;
+use App\Models\User;
 use App\Models\UserSetting;
+use App\Support\Locales;
+use Illuminate\Support\Facades\Lang;
 use Throwable;
 
 /**
  * Transforme une notification de l'application (AppNotification) en notification push
- * (docs/fonctionnalites/notifications-push.md) : titre et texte en français, données de
+ * (docs/fonctionnalites/notifications-push.md) : titre et texte dans la langue du destinataire (users.locale), données de
  * navigation lues par l'application mobile (lib/services/fcm_service.dart), respect des
  * préférences push de l'utilisateur (user_settings.push_*).
  */
@@ -33,36 +36,7 @@ class PushNotifications
         'prayer_request_prayed'  => 'push_prayers',
     ];
 
-    private const TITLES = [
-        'like'                   => 'Nouvelle réaction',
-        'prayer'                 => 'Nouvelle prière',
-        'comment'                => 'Nouveau commentaire',
-        'reply'                  => 'Nouvelle réponse',
-        'mention'                => 'Vous avez été mentionné',
-        'follow'                 => 'Nouvel abonné',
-        'share'                  => 'Témoignage partagé',
-        'testimony_approved'     => 'Témoignage approuvé',
-        'testimony_rejected'     => 'Témoignage non publié',
-        'new_followed_testimony' => 'Nouveau témoignage',
-        'pending_correction'     => 'Correction demandée',
-        'testimony_resubmitted'  => 'Témoignage à relire',
-        'video_stuck'            => 'Vidéo bloquée chez Bunny',
-        'organization_verified'  => 'Organisation vérifiée',
-        'organization_rejected'  => 'Vérification refusée',
-        'account_verified'       => 'Compte vérifié',
-        'account_verification_rejected' => 'Vérification du compte',
-        'account_approval_revoked' => 'Badge « Approuvé » retiré',
-        'live_started'           => 'En direct',
-        'prayer_encouragement'   => 'Encouragement reçu',
-        'prayer_request_prayed'  => 'Nouvelle prière',
-        'prayer_session_started' => 'Session de prière',
-        'prayer_session_reminder' => 'Session de prière bientôt',
-        'event_postponed'        => 'Événement reporté',
-        'event_cancelled'        => 'Événement annulé',
-        'event_survey'           => 'Votre avis sur l’événement',
-    ];
-
-    public const DEFAULT_TITLE = 'Témoignages';
+    // Titres et textes de secours : lang/{fr,en}/notifications.php (titles.*, fallback.*), dans la langue du destinataire.
 
     private const BODY_MAX = 200;
 
@@ -91,7 +65,9 @@ class PushNotifications
                 return;
             }
 
-            $message = self::message($notification);
+            // Titre et texte dans la langue du destinataire (docs/fonctionnalites/langues.md).
+            $locale  = Locales::forUser(User::select(['id', 'locale'])->find($recipientId));
+            $message = Locales::using($locale, fn () => self::message($notification));
             self::dispatch($recipientId, $message['title'], $message['body'], $message['data']);
         } catch (Throwable $e) {
             report($e);
@@ -138,9 +114,9 @@ class PushNotifications
         $type = self::rawType($notification);
         $payload = is_array($notification->payload) ? $notification->payload : [];
 
-        $title = self::TITLES[$type] ?? null;
+        $title = Lang::has('notifications.titles.' . $type) ? __('notifications.titles.' . $type) : null;
         if (!$title) {
-            $title = trim((string) ($payload['title'] ?? '')) ?: self::DEFAULT_TITLE;
+            $title = trim((string) ($payload['title'] ?? '')) ?: __('notifications.titles.default');
         }
 
         $body = trim((string) ($notification->message ?? ''));
@@ -181,31 +157,12 @@ class PushNotifications
 
     private static function fallbackBody(?string $type, AppNotification $notification): string
     {
-        $actor = $notification->actor_name ?: "Quelqu'un";
-        $title = $notification->testimony_title ? ' « ' . $notification->testimony_title . ' »' : '';
+        $key = 'notifications.fallback.' . $type;
 
-        return match ($type) {
-            'like'                   => "{$actor} a réagi à votre témoignage{$title}",
-            'prayer'                 => "{$actor} prie pour votre témoignage{$title}",
-            'comment'                => "{$actor} a commenté votre témoignage{$title}",
-            'reply'                  => "{$actor} a répondu à votre commentaire",
-            'mention'                => "{$actor} vous a mentionné",
-            'follow'                 => "{$actor} vous suit maintenant",
-            'share'                  => "{$actor} a partagé votre témoignage{$title}",
-            'testimony_approved'     => "Votre témoignage{$title} a été approuvé",
-            'testimony_rejected'     => "Votre témoignage{$title} n'a pas été publié",
-            'new_followed_testimony' => "{$actor} a partagé un nouveau témoignage{$title}",
-            'pending_correction'     => "Votre témoignage{$title} doit être corrigé",
-            'testimony_resubmitted'  => "{$actor} a modifié son témoignage{$title} : à relire",
-            'organization_verified'  => 'Votre organisation a été vérifiée',
-            'organization_rejected'  => 'La vérification de votre organisation a été refusée',
-            'account_verified'       => 'Votre compte a été vérifié',
-            'account_verification_rejected' => 'La vérification de votre compte a été refusée',
-            'account_approval_revoked' => 'Le badge « Approuvé » a été retiré de votre compte',
-            'live_started'           => "{$actor} est en direct",
-            'prayer_request_prayed'  => "{$actor} prie pour votre requête de prière",
-            default                  => 'Vous avez une nouvelle notification',
-        };
+        return __(Lang::has($key) ? $key : 'notifications.fallback.default', [
+            'actor' => $notification->actor_name ?: __('notifications.someone'),
+            'title' => $notification->testimony_title ? __('notifications.quoted_title', ['title' => $notification->testimony_title]) : '',
+        ]);
     }
 
     /** Type brut (chaîne), sans passer par le cast enum qui échoue sur une valeur inconnue. */

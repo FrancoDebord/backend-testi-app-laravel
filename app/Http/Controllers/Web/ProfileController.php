@@ -49,7 +49,15 @@ class ProfileController extends Controller
         $upcomingEvents = $events()->upcoming()->limit(6)->get();
         $pastEvents     = $events()->past()->limit(6)->get();
 
-        return view('profile.show', compact('profile', 'isOwner', 'isFollowing', 'testimonies', 'reposts', 'upcomingEvents', 'pastEvents'));
+        // Témoignage de conversion mis en avant (publié ; l'auteur voit aussi le sien en attente) :
+        // docs/fonctionnalites/temoignage-de-conversion.md
+        $conversions = app(\App\Services\ConversionTestimonies::class);
+        $conversionTestimony = ($isOwner ? $conversions->of($profile) : $conversions->publishedOf($profile->id))?->load('user');
+        if ($conversionTestimony?->isInJournal()) {
+            $conversionTestimony = null;
+        }
+
+        return view('profile.show', compact('profile', 'isOwner', 'isFollowing', 'testimonies', 'reposts', 'upcomingEvents', 'pastEvents', 'conversionTestimony'));
     }
 
     public function edit(): View
@@ -80,8 +88,8 @@ class ProfileController extends Controller
         ]
         // Numéro vérifié par SMS : non modifiable ici (il sert à la connexion par téléphone, depuis l'application).
         + ($user->hasVerifiedPhone() ? [] : PhoneNumber::rules($isOrg, $user))
-        + OrganizationAccounts::updateRules($user), PhoneNumber::MESSAGES + ProfileCover::MESSAGES + [
-            'country.in' => 'Choisissez un pays dans la liste.',
+        + OrganizationAccounts::updateRules($user), PhoneNumber::MESSAGES + ProfileCover::messages() + [
+            'country.in' => __('account.register.country_in'),
         ]);
 
         if (!$user->hasVerifiedPhone()) {
@@ -108,7 +116,7 @@ class ProfileController extends Controller
         ]);
 
         if (!$isOrg) {
-            return back()->with('success', 'Profil mis à jour.');
+            return back()->with('success', __('profile.updated'));
         }
 
         // Organisation vérifiée renommée, ou refusée puis modifiée : repasse
@@ -123,8 +131,8 @@ class ProfileController extends Controller
             && $user->verification_status === VerificationStatus::Pending;
 
         return back()->with('success', $resent
-            ? 'Profil mis à jour. Votre organisation sera de nouveau vérifiée par notre équipe.'
-            : 'Profil mis à jour.');
+            ? __('profile.updated_reverify')
+            : __('profile.updated'));
     }
 
     public function savedTestimonies(): View
@@ -164,8 +172,8 @@ class ProfileController extends Controller
     public function addOrganizationManager(Request $request, EventService $events): RedirectResponse
     {
         $request->validate(['user_id' => 'required|uuid'], [
-            'user_id.required' => 'Choisissez une personne.',
-            'user_id.uuid'     => 'Choisissez une personne dans la liste.',
+            'user_id.required' => __('account.managers.choose_person'),
+            'user_id.uuid'     => __('account.managers.choose_person_in_list'),
         ]);
         $org = $request->user();
 
@@ -176,7 +184,7 @@ class ProfileController extends Controller
         }
 
         return redirect()->to(route('profile.settings') . '#administrateurs')
-            ->with('success', "{$target->display_name} peut maintenant administrer votre compte.");
+            ->with('success', __('account.managers.added', ['name' => $target->display_name]));
     }
 
     public function removeOrganizationManager(Request $request, EventService $events, string $user): RedirectResponse
@@ -189,7 +197,7 @@ class ProfileController extends Controller
             return redirect()->to(route('profile.settings') . '#administrateurs')->with('error', $e->getMessage());
         }
 
-        return redirect()->to(route('profile.settings') . '#administrateurs')->with('success', 'Administrateur retiré.');
+        return redirect()->to(route('profile.settings') . '#administrateurs')->with('success', __('account.managers.removed'));
     }
 
     /** Ne plus administrer un compte qu'on m'a confié. */
@@ -205,7 +213,7 @@ class ProfileController extends Controller
         }
 
         return redirect()->to(route('profile.settings') . '#comptes-administres')
-            ->with('success', "Vous n'administrez plus le compte de " . ($org->organization_name ?: $org->display_name) . '.');
+            ->with('success', __('account.managers.left_account', ['name' => $org->organization_name ?: $org->display_name]));
     }
 
     public function updateSettings(Request $request): RedirectResponse
@@ -225,6 +233,6 @@ class ProfileController extends Controller
         $settings = Auth::user()->settings ?? \App\Models\UserSetting::create(['user_id' => Auth::id()]);
         $settings->update($data);
 
-        return back()->with('success', 'Paramètres enregistrés.');
+        return back()->with('success', __('profile.settings_saved'));
     }
 }

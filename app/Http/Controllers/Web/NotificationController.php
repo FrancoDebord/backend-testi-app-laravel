@@ -46,6 +46,6 @@ class NotificationController extends Controller
                        ->where('is_read', false)
                        ->update(['is_read' => true, 'read_at' => now()]);
 
-        return back()->with('success', 'Toutes les notifications marquées comme lues.');
+        return back()->with('success', __('inbox.all_marked_read'));
     }
 }

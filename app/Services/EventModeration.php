@@ -11,6 +11,7 @@ use App\Models\EventParticipation;
 use App\Models\EventReport;
 use App\Models\EventReview;
 use App\Models\User;
+use App\Support\NotificationText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ class EventModeration
     public static function reportRules(): array
     {
         return [
-            'reason'  => ['required', Rule::in(array_keys(Event::REPORT_REASONS))],
+            'reason'  => ['required', Rule::in(array_keys(Event::reportReasons()))],
             'comment' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -35,22 +36,26 @@ class EventModeration
     public static function reviewRules(): array
     {
         return [
-            'attended' => ['required', Rule::in(array_keys(EventReview::ATTENDED))],
+            'attended' => ['required', Rule::in(array_keys(EventReview::attendedLabels()))],
             'rating'   => ['nullable', 'integer', 'between:1,5', 'required_if:attended,' . EventReview::YES],
             'body'     => ['nullable', 'string', 'max:2000'],
         ];
     }
 
-    public const MESSAGES = [
-        'reason.required'      => 'Choisissez la raison du signalement.',
-        'reason.in'            => 'Raison non reconnue.',
-        'comment.max'          => '500 caractères au plus.',
-        'attended.required'    => "Dites-nous si l'événement a eu lieu.",
-        'attended.in'          => 'Réponse non reconnue.',
-        'rating.required_if'   => "Donnez une note de 1 à 5.",
-        'rating.between'       => 'La note va de 1 à 5.',
-        'body.max'             => '2 000 caractères au plus.',
-    ];
+    /** Messages de validation (signalement et sondage), dans la langue courante. */
+    public static function messages(): array
+    {
+        return [
+            'reason.required'      => __('events.moderation_validation.reason_required'),
+            'reason.in'            => __('events.moderation_validation.reason_in'),
+            'comment.max'          => __('events.moderation_validation.comment_max'),
+            'attended.required'    => __('events.moderation_validation.attended_required'),
+            'attended.in'          => __('events.moderation_validation.attended_in'),
+            'rating.required_if'   => __('events.moderation_validation.rating_required_if'),
+            'rating.between'       => __('events.moderation_validation.rating_between'),
+            'body.max'             => __('events.moderation_validation.body_max'),
+        ];
+    }
 
     // ─── Signalements ────────────────────────────────────────────────────────
 
@@ -62,13 +67,13 @@ class EventModeration
     {
         $this->ensureActive($user);
         if ($event->canBeManagedBy($user)) {
-            throw new EventActionException('Vous ne pouvez pas signaler votre propre événement.', 422);
+            throw new EventActionException(__('events.errors.report_own'), 422);
         }
         if ($event->status === EventStatus::Draft) {
-            throw new EventActionException('Événement introuvable.', 404);
+            throw new EventActionException(__('events.errors.not_found'), 404);
         }
         if ($event->reports()->where('reporter_id', $user->id)->exists()) {
-            throw new EventActionException('Vous avez déjà signalé cet événement. Merci, la modération va l’examiner.', 409);
+            throw new EventActionException(__('events.errors.already_reported'), 409);
         }
 
         return DB::transaction(function () use ($event, $user, $reason, $comment) {
@@ -191,16 +196,16 @@ class EventModeration
     {
         $this->ensureActive($user);
         if ($event->canBeManagedBy($user)) {
-            throw new EventActionException("Les organisateurs et gestionnaires ne répondent pas au sondage de leur propre événement.", 403);
+            throw new EventActionException(__('events.errors.review_own'), 403);
         }
         if (!$event->acceptsReviews()) {
             throw new EventActionException($event->phase() === 'past'
-                ? "Le sondage n'est pas ouvert pour cet événement."
-                : "Le sondage s'ouvre à la fin de l'événement.", 422);
+                ? __('events.errors.survey_not_open')
+                : __('events.errors.survey_opens_at_end'), 422);
         }
         $review = $event->reviews()->firstOrNew(['user_id' => $user->id]);
         if ($review->exists && !$review->isEditable()) {
-            throw new EventActionException('Votre réponse ne peut plus être modifiée (30 jours après votre premier avis).', 422);
+            throw new EventActionException(__('events.errors.review_locked'), 422);
         }
 
         $attended = $data['attended'];
@@ -273,7 +278,7 @@ class EventModeration
                     ...($event->organizer?->organizationManagers()->pluck('users.id') ?? []),
                 ];
                 $sent += self::notify($event, $recipients, NotificationType::EventSurvey,
-                    "L'événement « {$event->title} » est terminé. A-t-il bien eu lieu ? Donnez votre avis.", $exclude);
+                    'events.notify_survey', ['title' => $event->title], $exclude);
             });
 
         return $sent;
@@ -283,12 +288,14 @@ class EventModeration
 
     /**
      * Notification dans l'application (et push via AppNotificationObserver) à chaque destinataire.
-     * Ne bloque jamais l'action qui la déclenche.
+     * Ne bloque jamais l'action qui la déclenche. Texte : clé de traduction et paramètres
+     * (NotificationText), rendu dans la langue du lecteur.
      *
      * @param  list<string>  $recipientIds
+     * @param  array<string, scalar|null>  $params
      * @param  list<string>  $exclude
      */
-    public static function notify(Event $event, array $recipientIds, NotificationType $type, string $message, array $exclude = []): int
+    public static function notify(Event $event, array $recipientIds, NotificationType $type, string $key, array $params = [], array $exclude = []): int
     {
         $count = 0;
         try {
@@ -300,8 +307,7 @@ class EventModeration
                     'actor_name'   => null,
                     'actor_avatar' => $organizer?->avatar_url,
                     'type'         => $type->value,
-                    'message'      => $message,
-                    'payload'      => ['event_id' => $event->id],
+                    ...NotificationText::fields($key, $params, ['event_id' => $event->id]),
                     'created_at'   => now(),
                 ]);
                 $count++;
@@ -318,14 +324,14 @@ class EventModeration
     private function ensureModerator(User $user): void
     {
         if (!$user->canModerate()) {
-            throw new EventActionException('Réservé aux modérateurs et aux administrateurs.', 403);
+            throw new EventActionException(__('events.errors.moderators_only'), 403);
         }
     }
 
     private function ensureActive(User $user): void
     {
         if ($user->status !== UserAccountStatus::Active) {
-            throw new EventActionException('Votre compte ne permet pas cette action.', 403);
+            throw new EventActionException(__('events.errors.account_inactive'), 403);
         }
     }
 }

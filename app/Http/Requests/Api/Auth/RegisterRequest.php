@@ -36,10 +36,10 @@ class RegisterRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'organization_name'    => 'nom de l’organisation',
-            'organization_type'    => 'type d’organisation',
-            'organization_city'    => 'ville',
-            'organization_website' => 'site internet',
+            'organization_name'    => __('account.attributes.organization_name'),
+            'organization_type'    => __('account.attributes.organization_type'),
+            'organization_city'    => __('account.attributes.organization_city'),
+            'organization_website' => __('account.attributes.organization_website'),
         ];
     }
 }

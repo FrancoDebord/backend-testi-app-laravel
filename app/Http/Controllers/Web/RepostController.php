@@ -18,7 +18,7 @@ class RepostController extends Controller
 
     public function store(Request $request, string $id): RedirectResponse
     {
-        $data = $request->validate(Reposts::rules(), Reposts::MESSAGES);
+        $data = $request->validate(Reposts::rules(), Reposts::messages());
 
         try {
             [, $created] = $this->reposts->repost($request->user(), $id, $data['comment'] ?? null);
@@ -26,13 +26,13 @@ class RepostController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', $created ? 'Témoignage partagé avec vos abonnés.' : 'Partage mis à jour.');
+        return back()->with('success', $created ? __('testimonies.repost.created') : __('testimonies.repost.updated'));
     }
 
     public function destroy(Request $request, string $id): RedirectResponse
     {
         $this->reposts->remove($request->user(), $id);
 
-        return back()->with('success', 'Partage annulé.');
+        return back()->with('success', __('testimonies.repost.removed'));
     }
 }

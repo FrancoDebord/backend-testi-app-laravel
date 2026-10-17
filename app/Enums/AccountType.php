@@ -10,9 +10,6 @@ enum AccountType: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Individual   => 'Personne',
-            self::Organization => 'Organisation',
-        };
+        return __('enums.account_type.' . $this->value);
     }
 }

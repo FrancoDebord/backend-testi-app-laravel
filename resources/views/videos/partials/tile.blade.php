@@ -16,14 +16,15 @@
     $isYouTube = $testimony->isYouTube();
     $typeIcon = $isYouTube ? 'fa-brands fa-youtube' : 'fa-solid ' . (['video' => 'fa-video', 'audio' => 'fa-microphone', 'text' => 'fa-quote-left'][$type] ?? 'fa-play');
     $preview  = $type === 'video' && !$isYouTube ? $testimony->mp4PlaybackUrl() : null; // MP4 seulement (pas de HLS en aperçu)
-    $n = fn ($v) => $v >= 1000 ? rtrim(rtrim(number_format($v / 1000, 1, ',', ' '), '0'), ',') . 'k' : (string) (int) $v;
+    $n = fn ($v) => $v >= 1000 ? rtrim(rtrim(\App\Support\Locales::number($v / 1000, 1), '0'), ',.') . 'k' : (string) (int) $v;
     $thumbBg = match (true) {
         $type === 'text'  => 'bg-sun-50',
         $type === 'audio' => 'bg-primary-50',
         default           => 'bg-slate-900',
     };
 @endphp
-<article class="card group relative flex min-w-0 flex-col transition-shadow hover:shadow-lg" @if($preview) data-preview="{{ $preview }}" @endif>
+{{-- Témoignage de conversion : liseré jaune et badge (docs/fonctionnalites/temoignage-de-conversion.md) --}}
+<article class="{{ $testimony->isConversion() ? 'card ring-2 ring-sun-400' : 'card' }} group relative flex min-w-0 flex-col transition-shadow hover:shadow-lg" @if($preview) data-preview="{{ $preview }}" @endif>
     <div class="relative">
         <div class="{{ $thumbBg }} relative aspect-video overflow-hidden rounded-t-xl" data-preview-frame>
             @if($testimony->cover_url)
@@ -54,17 +55,19 @@
 
             {{-- Statut (ses propres témoignages) ou carnet privé --}}
             @if($testimony->isInJournal())
-            <span class="badge-neutral absolute top-2 left-2">Carnet privé</span>
+            <span class="badge-neutral absolute top-2 left-2">{{ __('videos.common.journal') }}</span>
             @elseif($status)
             <span class="{{ $status->badgeClass() }} absolute top-2 left-2">{{ $status->label() }}</span>
+            @elseif($testimony->isConversion())
+            <span class="badge-yellow absolute top-2 left-2"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>
             @endif
 
             <span class="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-xs {{ $isYouTube ? 'text-error-500' : 'text-primary-600' }} shadow-soft" title="{{ $isYouTube ? 'YouTube' : $testimony->type->label() }}">
-                <i class="{{ $typeIcon }}" aria-hidden="true"></i><span class="sr-only">{{ $isYouTube ? 'Vidéo YouTube' : $testimony->type->label() }}</span>
+                <i class="{{ $typeIcon }}" aria-hidden="true"></i><span class="sr-only">{{ $isYouTube ? __('videos.tile.youtube_video') : $testimony->type->label() }}</span>
             </span>
             @if($duration)
             <span class="absolute right-2 bottom-2 rounded-md bg-slate-900/85 px-1.5 py-0.5 text-[11px] font-semibold text-white tabular-nums">
-                <span class="sr-only">Durée : </span>{{ $duration }}
+                <span class="sr-only">{{ __('videos.common.duration') }}</span>{{ $duration }}
             </span>
             @endif
         </div>
@@ -82,7 +85,7 @@
         @if($testimony->body_text && $type !== 'text')
         <p class="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{{ $testimony->body_plain }}</p>
         @elseif($testimony->body_text)
-        <p class="mt-1 line-clamp-1 text-xs text-slate-500">{{ $testimony->readingMinutes() }} min de lecture</p>
+        <p class="mt-1 line-clamp-1 text-xs text-slate-500">{{ __('videos.common.reading', ['minutes' => $testimony->readingMinutes()]) }}</p>
         @endif
 
         <p class="mt-auto flex min-w-0 items-center gap-1.5 pt-3 text-[11px] text-slate-500">
@@ -92,7 +95,7 @@
             </a>
             @include('components.verified-badge', ['user' => $testimony->user])
             <span class="shrink-0" aria-hidden="true">·</span>
-            <span class="shrink-0 whitespace-nowrap">{{ $n($testimony->views_count ?? 0) }} {{ ($testimony->views_count ?? 0) > 1 ? 'vues' : 'vue' }}</span>
+            <span class="shrink-0 whitespace-nowrap">{{ trans_choice('videos.tile.views', (int) ($testimony->views_count ?? 0), ['count' => $n($testimony->views_count ?? 0)]) }}</span>
             @if($testimony->publishedAt())
             <span class="shrink-0" aria-hidden="true">·</span>
             <time class="min-w-0 truncate" datetime="{{ $testimony->publishedAt()->toIso8601String() }}">{{ $testimony->publishedAt()->diffForHumans() }}</time>
@@ -101,8 +104,8 @@
     </div>
 
     <p class="flex items-center gap-5 px-4 pb-4 text-xs font-semibold text-slate-600">
-        <span title="J'aime"><i class="fa-solid fa-heart mr-1.5 text-error-500" aria-hidden="true"></i>{{ $n($testimony->like_count ?? 0) }}<span class="sr-only"> j'aime</span></span>
-        <span title="Commentaires"><i class="fa-regular fa-comment-dots mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $n($testimony->comment_count ?? 0) }}<span class="sr-only"> commentaires</span></span>
-        <span title="Partages"><i class="fa-solid fa-share mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $n($testimony->share_count ?? 0) }}<span class="sr-only"> partages</span></span>
+        <span title="{{ __('videos.tile.likes') }}"><i class="fa-solid fa-heart mr-1.5 text-error-500" aria-hidden="true"></i>{{ $n($testimony->like_count ?? 0) }}<span class="sr-only"> {{ __('videos.tile.likes_sr') }}</span></span>
+        <span title="{{ __('videos.tile.comments') }}"><i class="fa-regular fa-comment-dots mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $n($testimony->comment_count ?? 0) }}<span class="sr-only"> {{ __('videos.common.comments_sr') }}</span></span>
+        <span title="{{ __('videos.tile.shares') }}"><i class="fa-solid fa-share mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $n($testimony->share_count ?? 0) }}<span class="sr-only"> {{ __('videos.tile.shares_sr') }}</span></span>
     </p>
 </article>

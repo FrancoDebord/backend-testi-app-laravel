@@ -28,10 +28,10 @@ class TestimonyProofs
     public static function messages(string $field): array
     {
         return [
-            "$field.required" => 'Choisissez un fichier.',
-            "$field.file"     => 'La preuve doit être un fichier.',
-            "$field.mimes"    => 'La preuve doit être une image (JPG, PNG, WebP) ou un PDF.',
-            "$field.max"      => 'La preuve ne doit pas dépasser 10 Mo.',
+            "$field.required" => __('testimonies.proofs_api.required'),
+            "$field.file"     => __('testimonies.proofs_api.file'),
+            "$field.mimes"    => __('testimonies.proofs_api.mimes'),
+            "$field.max"      => __('testimonies.proofs_api.max'),
         ];
     }
 
@@ -64,7 +64,7 @@ class TestimonyProofs
         $position ??= collect(range(1, self::MAX))->first(fn ($p) => !in_array($p, $taken, true));
 
         if ($position === null || $position < 1 || $position > self::MAX) {
-            throw ValidationException::withMessages(['file' => 'Deux preuves au plus par témoignage : retirez-en une pour en ajouter une autre.']);
+            throw ValidationException::withMessages(['file' => __('testimonies.proofs_api.limit')]);
         }
 
         $testimony->proofs()->where('position', $position)->get()->each(fn (TestimonyProof $old) => $this->delete($old));

@@ -10,6 +10,7 @@ use App\Models\AppNotification;
 use App\Models\ModerationLog;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Support\NotificationText;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -58,7 +59,7 @@ class TestimonyModeration
             'type'            => 'testimony_approved',
             'testimony_id'    => $testimony->id,
             'testimony_title' => $testimony->title,
-            'message'         => 'Votre témoignage "' . $testimony->title . '" a été approuvé',
+            ...NotificationText::fields('notifications.testimony_approved_message', ['title' => $testimony->title]),
             'created_at'      => now(),
         ]);
     }
@@ -71,7 +72,7 @@ class TestimonyModeration
     {
         $reason = trim((string) $reasonText) !== '' ? trim((string) $reasonText) : $code?->label();
         if ($reason === null || $reason === '') {
-            throw new ContentActionException('Indiquez le motif du refus.', 422, ['rejection_reason' => ['Indiquez le motif du refus.']]);
+            throw new ContentActionException(__('testimonies.moderation.reason_required'), 422, ['rejection_reason' => [__('testimonies.moderation.reason_required')]]);
         }
 
         $before = AdminAudit::snapshot($testimony, self::AUDITED);
@@ -102,8 +103,8 @@ class TestimonyModeration
             'type'            => 'testimony_rejected',
             'testimony_id'    => $testimony->id,
             'testimony_title' => $testimony->title,
-            'message'         => mb_substr('Votre témoignage "' . $testimony->title . '" a été rejeté : ' . $reason, 0, 255),
-            'payload'         => ['rejection_reason' => $reason, 'reason' => $code?->value],
+            ...NotificationText::fields('notifications.testimony_rejected_message', ['title' => $testimony->title, 'reason' => $reason],
+                ['rejection_reason' => $reason, 'reason' => $code?->value]),
             'created_at'      => now(),
         ]);
         self::forgetFeatured();
@@ -163,7 +164,7 @@ class TestimonyModeration
     public function setVerified(Testimony $testimony, User $admin, bool $verified, ?string $reason = null): void
     {
         if ($verified && $testimony->status !== TestimonyStatus::Approved) {
-            throw new ContentActionException('Seul un témoignage approuvé (publié) peut recevoir le label.', 422);
+            throw new ContentActionException(__('testimonies.moderation.verify_approved_only'), 422);
         }
         $before = AdminAudit::snapshot($testimony, self::AUDITED);
         $testimony->update($verified
@@ -177,10 +178,10 @@ class TestimonyModeration
     public function setFeatured(Testimony $testimony, User $actor, bool $featured, ?int $order = null, ?Carbon $from = null, ?Carbon $until = null): void
     {
         if ($featured && ($testimony->status !== TestimonyStatus::Approved || $testimony->isInJournal())) {
-            throw new ContentActionException('Seul un témoignage approuvé et public peut être mis à la une.', 422);
+            throw new ContentActionException(__('testimonies.moderation.feature_approved_only'), 422);
         }
         if ($featured && $from && $until && $until->lt($from)) {
-            throw new ContentActionException('La date de fin doit suivre la date de début.', 422, ['featured_until' => ['La date de fin doit suivre la date de début.']]);
+            throw new ContentActionException(__('testimonies.moderation.feature_dates'), 422, ['featured_until' => [__('testimonies.moderation.feature_dates')]]);
         }
         $before = AdminAudit::snapshot($testimony, self::AUDITED);
         $testimony->update($featured
@@ -207,7 +208,7 @@ class TestimonyModeration
             return;
         }
         if (!self::restorable($testimony)) {
-            throw new ContentActionException('Ce témoignage est dans la corbeille depuis plus de ' . config('testimonies.trash_days', 30) . ' jours : il ne peut plus être restauré.', 422);
+            throw new ContentActionException(__('testimonies.moderation.not_restorable', ['days' => config('testimonies.trash_days', 30)]), 422);
         }
         $before = AdminAudit::snapshot($testimony, self::AUDITED);
         $testimony->restore();
@@ -277,14 +278,16 @@ class TestimonyModeration
     /** Modérateurs et administrateurs actifs prévenus d'un témoignage renvoyé (notification + push). */
     private function notifyModerators(Testimony $testimony, User $author, TestimonyStatus $previous): void
     {
-        $message = $previous === TestimonyStatus::Rejected
-            ? $author->display_name . ' a modifié son témoignage refusé « ' . $testimony->title . ' » : à relire'
-            : $author->display_name . ' a modifié son témoignage « ' . $testimony->title . ' » : à relire';
+        $text = NotificationText::fields(
+            $previous === TestimonyStatus::Rejected ? 'notifications.testimony_resubmitted_rejected_message' : 'notifications.testimony_resubmitted_message',
+            ['actor' => $author->display_name, 'title' => $testimony->title],
+            ['previous_status' => $previous->value],
+        );
 
         User::whereIn('role', [UserRole::Moderateur->value, UserRole::Administrateur->value])
             ->where('status', UserAccountStatus::Active->value)
             ->whereKeyNot($author->id)
-            ->select('id')->chunkById(100, function ($moderators) use ($testimony, $author, $message, $previous) {
+            ->select('id')->chunkById(100, function ($moderators) use ($testimony, $author, $text) {
                 foreach ($moderators as $m) {
                     AppNotification::create([
                         'recipient_id'    => $m->id,
@@ -293,8 +296,7 @@ class TestimonyModeration
                         'type'            => 'testimony_resubmitted',
                         'testimony_id'    => $testimony->id,
                         'testimony_title' => $testimony->title,
-                        'message'         => mb_substr($message, 0, 255),
-                        'payload'         => ['previous_status' => $previous->value],
+                        ...$text,
                         'created_at'      => now(),
                     ]);
                 }

@@ -76,7 +76,9 @@ class SearchSuggestions
             return $empty;
         }
 
-        $key = 'search:suggest:' . self::CACHE_VERSION . ":{$scope}:{$limit}:" . md5($needle);
+        // Sous-titres dans la langue de la requête : une entrée par langue (français : clé d'origine).
+        $locale = app()->getLocale() === \App\Support\Locales::DEFAULT ? '' : app()->getLocale() . ':';
+        $key = 'search:suggest:' . self::CACHE_VERSION . ':' . $locale . "{$scope}:{$limit}:" . md5($needle);
 
         return ['query' => $q] + Cache::remember($key, self::RESULT_CACHE_SECONDS, fn () => $this->compute($needle, $scope, $limit));
     }
@@ -231,6 +233,17 @@ class SearchSuggestions
         return $out;
     }
 
+    /** Sous-titre : texte, ou [clé, paramètres, nombre?] gardé dans le lexique en cache et traduit ici. */
+    private static function subText(string|array|null $sub): ?string
+    {
+        if (!is_array($sub)) {
+            return $sub;
+        }
+        [$key, $params, $count] = $sub + [1 => [], 2 => null];
+
+        return $count !== null ? trans_choice($key, $count, $params) : __($key, $params);
+    }
+
     private function result(array $m, string $needle): array
     {
         $x = $m['x'] ?? [];
@@ -238,7 +251,7 @@ class SearchSuggestions
             'type'      => $m['t'],
             'id'        => (string) $m['id'],
             'label'     => $m['l'],
-            'sublabel'  => $x['sub'] ?? null,
+            'sublabel'  => self::subText($x['sub'] ?? null),
             'avatar'    => $x['avatar'] ?? null,
             'verified'  => (bool) ($x['verified'] ?? false),
             'highlight' => self::highlight($m['l'], $needle),
@@ -274,7 +287,9 @@ class SearchSuggestions
             foreach ($this->visibleUsers()->whereIn('id', $ids['user'])
                 ->get(['id', 'display_name', 'avatar_url', 'account_type', 'organization_name', 'organization_city', 'country', 'verification_status']) as $u) {
                 $ok['user:' . $u->id] = [
-                    'sub'      => $u->isOrganization() ? trim('Organisation' . ($u->organization_city ? ' · ' . $u->organization_city : '')) : 'Compte',
+                    'sub'      => $u->isOrganization()
+                        ? ($u->organization_city ? __('search.sub.organization_in', ['city' => $u->organization_city]) : __('search.sub.organization'))
+                        : __('search.sub.account'),
                     'avatar'   => $u->avatar_url,
                     'verified' => $u->isVerified(),
                     ...\App\Models\User::approvalFieldsFor($u), // badge-approuve.md
@@ -286,20 +301,20 @@ class SearchSuggestions
                 ->whereIn('user_id', $this->visibleUsers()->select('id'))
                 ->with('user:id,display_name')->get(['id', 'user_id', 'title', 'type', 'cover_url']) as $t) {
                 $ok['testimony:' . $t->id] = [
-                    'sub'    => 'Témoignage' . ($t->user?->display_name ? ' · ' . $t->user->display_name : ''),
+                    'sub'    => $t->user?->display_name ? __('search.sub.testimony_by', ['name' => $t->user->display_name]) : __('search.sub.testimony'),
                     'avatar' => $t->cover_url,
                 ];
             }
         }
         if (!empty($ids['event'])) {
             foreach (Event::published()->whereIn('id', $ids['event'])->get(['id', 'title', 'starts_at', 'city', 'date_tbd']) as $e) {
-                $when = $e->date_tbd ? 'Date à confirmer' : $e->starts_at?->translatedFormat('j M Y');
-                $ok['event:' . $e->id] = ['sub' => implode(' · ', array_filter(['Événement', $when, $e->city]))];
+                $when = $e->date_tbd ? __('search.sub.date_tbd') : $e->starts_at?->translatedFormat(__('search.sub.event_date_format'));
+                $ok['event:' . $e->id] = ['sub' => implode(' · ', array_filter([__('search.sub.event'), $when, $e->city]))];
             }
         }
         if (!empty($ids['prayer_session'])) {
             foreach ($this->visibleSessions()->whereIn('id', $ids['prayer_session'])->get(['id', 'starts_at']) as $s) {
-                $ok['prayer_session:' . $s->id] = ['sub' => 'Session de prière · ' . $s->starts_at?->translatedFormat('j M Y, H\hi')];
+                $ok['prayer_session:' . $s->id] = ['sub' => __('search.sub.prayer_session', ['date' => (string) $s->starts_at?->translatedFormat(__('search.sub.session_date_format'))])];
             }
         }
 
@@ -349,7 +364,7 @@ class SearchSuggestions
                     ->get(['id', 'title', 'going_count', 'ends_at'])
                     ->map(fn ($e) => self::entry('event', $e->id, $e->title, 1 + min(30, (int) $e->going_count) + ($e->ends_at && $e->ends_at->isFuture() ? 10 : 0))),
                 'category' => Category::active()->get(['slug', 'name', 'testimony_count'])
-                    ->map(fn ($c) => self::entry('category', $c->slug, $c->name, 20 + min(60, (int) $c->testimony_count), ['sub' => 'Catégorie'])),
+                    ->map(fn ($c) => self::entry('category', $c->slug, $c->name, 20 + min(60, (int) $c->testimony_count), ['sub' => ['search.sub.category']])),
                 'bible' => $this->bibleBooks(),
                 'prayer_session' => $this->visibleSessions()->orderBy('starts_at')->limit(500)
                     ->get(['id', 'title', 'participant_count'])
@@ -376,7 +391,7 @@ class SearchSuggestions
         return BibleBook::where('translation', $translation)->orderBy('number')
             ->get(['number', 'name', 'abbreviation', 'chapters_count', 'testament'])
             ->map(fn ($b) => self::entry('bible', (string) $b->number, $b->name, 15, [
-                'sub'         => 'Bible · ' . $b->chapters_count . ' chapitre' . ($b->chapters_count > 1 ? 's' : ''),
+                'sub'         => ['search.sub.bible', ['count' => (int) $b->chapters_count], (int) $b->chapters_count], // traduit à la lecture (lexique en cache)
                 'book'        => (int) $b->number,
                 'translation' => $translation,
             ]));

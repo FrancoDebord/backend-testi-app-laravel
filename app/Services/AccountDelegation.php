@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Models\AccountDelegateAction;
 use App\Models\AppNotification;
 use App\Models\User;
+use App\Support\NotificationText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -44,6 +45,7 @@ class AccountDelegation
         'users/me/settings*',
         'devices/*',
         'device-tokens*',
+        'me/push-test',
         'admin/*',
         'moderation/*',
         // Carnet privé et paroles prophétiques : intimes, jamais partagés.
@@ -107,7 +109,8 @@ class AccountDelegation
     }
 
     /** Champs de connexion ignorés dans une modification de profil faite au nom du compte. */
-    public const OWNER_FIELDS = ['email', 'phone', 'phone_country', 'password', 'password_confirmation', 'current_password'];
+    // locale : langue des push et e-mails de la personne (docs/fonctionnalites/langues.md).
+    public const OWNER_FIELDS = ['email', 'phone', 'phone_country', 'password', 'password_confirmation', 'current_password', 'locale'];
 
     public static function isOwnerOnly(Request $request): bool
     {
@@ -149,23 +152,23 @@ class AccountDelegation
         self::ensureCanDelegate($account, $by);
         $target = User::find($userId);
         if (!$target || $target->status !== UserAccountStatus::Active) {
-            throw new EventActionException('Compte introuvable ou inactif.', 404);
+            throw new EventActionException(__('account.managers.target_not_found'), 404);
         }
         if ($target->id === $account->id) {
-            throw new EventActionException('Vous administrez déjà votre propre compte.', 422);
+            throw new EventActionException(__('account.managers.self'), 422);
         }
         if ($target->isOrganization()) {
-            throw new EventActionException('Choisissez le compte personnel de la personne, pas un compte organisation.', 422);
+            throw new EventActionException(__('account.managers.not_organization'), 422);
         }
         if ($account->organizationManagers()->whereKey($target->id)->exists()) {
-            throw new EventActionException('Cette personne administre déjà ce compte.', 409);
+            throw new EventActionException(__('account.managers.already'), 409);
         }
         if ($account->organizationManagers()->count() >= self::MAX_MANAGERS) {
-            throw new EventActionException('Deux administrateurs au plus en plus de vous. Retirez-en un pour en nommer un autre.', 422);
+            throw new EventActionException(__('account.managers.limit'), 422);
         }
         $account->organizationManagers()->attach($target->id);
         self::notify($target, $account, NotificationType::AccountManagerAdded,
-            "{$account->display_name} vous a nommé administrateur de son compte : vous pouvez publier et agir en son nom.");
+            'account.notify_manager_added', ['name' => $account->display_name]);
 
         return $target;
     }
@@ -180,31 +183,31 @@ class AccountDelegation
         $account->organizationManagers()->detach($userId);
         if ($by->id !== $userId && ($target = User::find($userId))) {
             self::notify($target, $account, NotificationType::AccountManagerRemoved,
-                "Vous n'administrez plus le compte de {$account->display_name}.");
+                'account.notify_manager_removed', ['name' => $account->display_name]);
         }
     }
 
     private static function ensureCanDelegate(User $account, User $by): void
     {
         if ($by->status !== UserAccountStatus::Active) {
-            throw new EventActionException('Votre compte ne permet pas cette action.', 403);
+            throw new EventActionException(__('account.managers.not_allowed'), 403);
         }
         if ($by->id !== $account->id && !$by->isAdmin()) {
-            throw new EventActionException('Seul le titulaire du compte choisit ses administrateurs.', 403);
+            throw new EventActionException(__('account.managers.owner_only'), 403);
         }
         if (self::isStaff($account)) {
-            throw new EventActionException("Les comptes de l'équipe (modération, administration) ne peuvent pas être confiés à d'autres personnes.", 422);
+            throw new EventActionException(__('account.managers.staff'), 422);
         }
     }
 
-    private static function notify(User $recipient, User $account, NotificationType $type, string $message): void
+    private static function notify(User $recipient, User $account, NotificationType $type, string $key, array $params): void
     {
         AppNotification::create([
             'recipient_id' => $recipient->id,
             'actor_id'     => $account->id,
             'actor_name'   => $account->display_name,
             'type'         => $type->value,
-            'message'      => mb_substr($message, 0, 255),
+            ...NotificationText::fields($key, $params),
             'created_at'   => now(),
         ]);
     }

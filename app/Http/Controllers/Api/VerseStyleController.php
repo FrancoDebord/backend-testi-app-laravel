@@ -29,17 +29,17 @@ class VerseStyleController extends Controller
         return $this->success($catalogue)->header('Cache-Control', 'public, max-age=86400');
     }
 
-    // GET /me/verse-style
+    // GET /me/verse-style : préférences + design_of_the_day et effective_design_id (design affiché aujourd'hui)
     public function show(Request $request): JsonResponse
     {
-        return $this->success($this->styles->forUser($request->user()));
+        return $this->success(VerseStyles::withEffectiveDesign($this->styles->forUser($request->user())));
     }
 
     // PUT /me/verse-style  { design_id?, design_chosen_on?, design_always?, font?, text_size?, text_align? }
     public function update(Request $request): JsonResponse
     {
-        $data = $request->validate(VerseStyles::rules(), VerseStyles::MESSAGES);
+        $data = $request->validate(VerseStyles::rules(), VerseStyles::messages());
 
-        return $this->success($this->styles->update($request->user(), $data), 'Préférences enregistrées.');
+        return $this->success(VerseStyles::withEffectiveDesign($this->styles->update($request->user(), $data)), __('api.preferences_saved'));
     }
 }

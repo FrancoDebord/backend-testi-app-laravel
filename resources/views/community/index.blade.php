@@ -33,7 +33,7 @@
 
 <nav aria-label="Type de compte" class="mb-6 border-b border-slate-200">
     <ul class="-mb-px flex gap-5 overflow-x-auto">
-        @foreach(\App\Services\CommunityDirectory::TABS as $key => $label)
+        @foreach(\App\Services\CommunityDirectory::tabs() as $key => $label)
         <li>
             <a href="{{ route('community.index', array_filter(['tab' => $key === 'all' ? null : $key, 'q' => $q ?: null])) }}"
                class="{{ $tab === $key ? 'tab-active' : 'tab' }}" @if($tab === $key) aria-current="page" @endif>

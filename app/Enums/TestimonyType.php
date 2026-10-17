@@ -10,11 +10,7 @@ enum TestimonyType: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Text  => 'Texte',
-            self::Audio => 'Audio',
-            self::Video => 'Vidéo',
-        };
+        return __('enums.testimony_type.' . $this->value);
     }
 
     public function icon(): string

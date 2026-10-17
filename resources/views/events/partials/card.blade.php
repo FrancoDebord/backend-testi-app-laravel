@@ -21,17 +21,17 @@
     <div class="flex flex-1 flex-col gap-1.5 p-4">
         <p><span class="badge-blue"><i class="fa-solid {{ $event->type->icon() }}" aria-hidden="true"></i>{{ $event->type->label() }}</span></p>
         <h3 class="line-clamp-2 text-base leading-snug font-semibold text-primary-700">
-            <a href="{{ route('events.show', $event->id) }}" class="rounded-sm after:absolute after:inset-0 after:content-[''] group-hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">{{ $event->title }}</a>
+            <a href="{{ ($showTestimonies ?? false) ? route('events.show', ['id' => $event->id, 'section' => 'temoignages']) . '#temoignages' : route('events.show', $event->id) }}" class="rounded-sm after:absolute after:inset-0 after:content-[''] group-hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">{{ $event->title }}</a>
         </h3>
         <p class="text-sm text-slate-700">
             <i class="fa-regular fa-calendar mr-1 w-4 text-center text-slate-400" aria-hidden="true"></i>
             @if($event->isDateTbd())
-                <span class="font-semibold text-amber-600">Date à confirmer</span>
+                <span class="font-semibold text-amber-600">{{ __('events.date_tbd') }}</span>
             @else
-                <time datetime="{{ $event->starts_at?->toIso8601String() }}">{{ $event->starts_at?->translatedFormat('D j M Y · H:i') }}</time>
+                <time datetime="{{ $event->starts_at?->toIso8601String() }}">{{ $event->starts_at?->translatedFormat(__('events.formats.short_datetime')) }}</time>
             @endif
             @if($event->isPostponed() && $event->original_starts_at)
-                <del class="ml-1 text-xs text-slate-400"><span class="sr-only">Date initiale : </span>{{ $event->original_starts_at->translatedFormat('j M Y') }}</del>
+                <del class="ml-1 text-xs text-slate-400"><span class="sr-only">{{ __('events.card.original_date') }} </span>{{ $event->original_starts_at->translatedFormat(__('events.formats.short_date')) }}</del>
             @endif
         </p>
         @if($place)
@@ -42,7 +42,12 @@
                 <span class="truncate">{{ $event->organizer?->display_name }}</span>
                 @include('components.verified-badge', ['user' => $event->organizer])
             </span>
-            <span class="whitespace-nowrap"><i class="fa-solid fa-user-check mr-1 text-slate-400" aria-hidden="true"></i>{{ number_format($event->going_count, 0, ',', ' ') }} participant{{ $event->going_count > 1 ? 's' : '' }}</span>
+            {{-- Événements passés (testimonies_count chargé) : témoignages publiés à la place des participants --}}
+            @if(isset($event->testimonies_count) && ($showTestimonies ?? false))
+            <span class="whitespace-nowrap"><i class="fa-solid fa-comment-dots mr-1 text-slate-400" aria-hidden="true"></i>{{ trans_choice('events_past.testimonies_count', $event->testimonies_count, ['count' => \App\Support\Locales::number($event->testimonies_count)]) }}</span>
+            @else
+            <span class="whitespace-nowrap"><i class="fa-solid fa-user-check mr-1 text-slate-400" aria-hidden="true"></i>{{ trans_choice('events.participants_count', $event->going_count, ['count' => \App\Support\Locales::number($event->going_count)]) }}</span>
+            @endif
         </div>
     </div>
 </article>

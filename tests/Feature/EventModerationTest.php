@@ -313,7 +313,7 @@ class EventModerationTest extends TestCase
     {
         $event = $this->event();
         $this->going($event, $this->user);
-        $this->actingAs($this->org)->get("/evenements/{$event->id}")->assertOk()->assertSee('Reporter')->assertSee("Annuler l'événement", false);
+        $this->actingAs($this->org)->get("/evenements/{$event->id}")->assertOk()->assertSee('Reporter')->assertSee("Annuler l'événement");
         $this->actingAs($this->org)->post("/evenements/{$event->id}/reporter", ['date_tbd' => '1', 'reason' => 'Pluies'])
             ->assertRedirect("/evenements/{$event->id}");
         $this->actingAs($this->user)->get("/evenements/{$event->id}")->assertOk()
@@ -323,7 +323,7 @@ class EventModerationTest extends TestCase
         $this->assertSame(1, $event->fresh()->report_count);
 
         $past = $this->pastEvent(['title' => 'Concert passé']);
-        $this->actingAs($this->user)->get("/evenements/{$past->id}")->assertOk()->assertSee('Votre avis')->assertSee("L'événement a-t-il eu lieu ?", false);
+        $this->actingAs($this->user)->get("/evenements/{$past->id}")->assertOk()->assertSee('Votre avis')->assertSee("L'événement a-t-il eu lieu ?");
         $this->actingAs($this->user)->post("/evenements/{$past->id}/avis", ['attended' => 'yes', 'rating' => 5, 'body' => 'Béni !'])
             ->assertRedirect();
         $this->actingAs($this->user)->get("/evenements/{$past->id}")->assertOk()->assertSee('100 %')->assertSee('Béni !');

@@ -16,7 +16,7 @@
     window.testiOsmLayer = function () {
         return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contributeurs OpenStreetMap</a>',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">' + @js(__('events.map.osm_contributors')) + '</a>',
         });
     };
 </script>

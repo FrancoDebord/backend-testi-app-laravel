@@ -59,7 +59,12 @@ class TestimonyController extends Controller
         // Vidéo envoyée directement à Bunny Stream par le navigateur (docs/fonctionnalites/videos-bunny-stream.md).
         $bunnyVideos = app(\App\Services\BunnyStream::class)->isConfigured();
 
-        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos'));
+        // Témoignage de conversion (docs/fonctionnalites/temoignage-de-conversion.md) : compte personnel, un seul.
+        $conversionTestimony = app(\App\Services\ConversionTestimonies::class)->of($request->user());
+        $canConversion = !$conversionTestimony && \App\Services\ConversionTestimonies::canPublish($request->user());
+        $kind = $canConversion && $request->query('kind') === 'conversion' ? 'conversion' : 'standard';
+
+        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos', 'conversionTestimony', 'canConversion', 'kind'));
     }
 
     /** Événement auquel rattacher le témoignage ; refuse si la personne n'en est pas gestionnaire. */
@@ -86,7 +91,8 @@ class TestimonyController extends Controller
         $data = $request->validate([
             'title'         => 'required|string|max:200',
             'type'          => 'required|in:text,audio,video,youtube',
-            'category'      => 'required|string|exists:categories,slug',
+            // Témoignage de conversion : catégorie « conversion » par défaut.
+            'category'      => 'nullable|required_unless:kind,conversion|string|exists:categories,slug',
             'body_text'     => 'nullable|required_if:type,text|string',
             'bible_verse'   => 'nullable|string|max:500',
             'bible_ref'     => 'nullable|string|max:100',
@@ -110,17 +116,20 @@ class TestimonyController extends Controller
             'mention_ids.*'   => 'nullable|string',
             // Vidéo envoyée directement à Bunny Stream par le navigateur (resources/js/bunny-upload.js)
             'bunny_upload'    => 'nullable|boolean',
-        ], TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
-            'title.required'         => 'Merci de donner un titre à votre témoignage.',
-            'youtube_url.required_if' => 'Collez le lien de la vidéo YouTube.',
-            'category.required'      => 'Merci de choisir une catégorie.',
-            'category.exists'        => "La catégorie choisie n'existe plus. Merci d'en choisir une autre.",
-            'body_text.required_if'  => 'Merci de rédiger votre témoignage.',
-            'cover.image'            => "L'image de couverture doit être une image (JPG, PNG…).",
-            'cover.max'              => "L'image de couverture ne doit pas dépasser 5 Mo.",
-            'media_file.max'         => 'Le fichier ne doit pas dépasser 100 Mo.',
-            'media_file.mimetypes'   => 'Le fichier doit être un enregistrement audio ou vidéo.',
-            'consent_given.accepted' => 'Merci de confirmer votre engagement avant l\'envoi.',
+            // Témoignage de conversion : kind, conversion_year, conversion_place, conversion_verse
+            ...\App\Services\ConversionTestimonies::rules(),
+        ], \App\Services\ConversionTestimonies::messages() + TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
+            'title.required'         => __('testimonies.validation.title_required'),
+            'youtube_url.required_if' => __('testimonies.validation.youtube_required'),
+            'category.required'      => __('testimonies.validation.category_required'),
+            'category.required_unless' => __('testimonies.validation.category_required'),
+            'category.exists'        => __('testimonies.validation.category_exists'),
+            'body_text.required_if'  => __('testimonies.create.body_required'),
+            'cover.image'            => __('testimonies.validation.cover_image'),
+            'cover.max'              => __('testimonies.validation.cover_max'),
+            'media_file.max'         => __('testimonies.validation.media_max'),
+            'media_file.mimetypes'   => __('testimonies.validation.media_mimetypes'),
+            'consent_given.accepted' => __('testimonies.validation.consent'),
         ]);
 
         $event     = $this->attachableEvent($data['event_id'] ?? null, $request);
@@ -135,7 +144,7 @@ class TestimonyController extends Controller
         }
         $bunnyUpload = !$youtubeId && $data['type'] === 'video' && $request->boolean('bunny_upload');
         if ($bunnyUpload && !app(\App\Services\BunnyStream::class)->isConfigured()) {
-            return response()->json(['message' => "L'envoi de vidéos est momentanément indisponible."], 503);
+            return response()->json(['message' => __('videos.upload.unavailable')], 503);
         }
 
         if ($request->hasFile('cover')) {
@@ -161,11 +170,15 @@ class TestimonyController extends Controller
             ]);
         }
 
+        $kindFields   = \App\Services\ConversionTestimonies::attributesFor($request);
+        $isConversion = $kindFields['kind'] === \App\Enums\TestimonyKind::Conversion->value;
+        $data['category'] = ($data['category'] ?? null) ?: ($isConversion && Category::where('slug', 'conversion')->exists() ? 'conversion' : 'autre');
         $category  = Category::where('slug', $data['category'])->first();
         $isJournal = ($data['visibility'] ?? 'public') === 'private';
         $tags     = !empty($data['tags']) ? array_map('trim', explode(',', $data['tags'])) : [];
 
-        $testimony = Testimony::create([
+        $create = fn () => Testimony::create([
+            ...$kindFields,
             'user_id'       => Auth::id(),
             'category_id'   => $category?->id,
             'event_id'      => $event?->id,
@@ -188,6 +201,14 @@ class TestimonyController extends Controller
             // Vidéo Bunny : en cours d'envoi, hors des listes jusqu'à ce qu'elle soit lisible.
             'video_status'  => $bunnyUpload ? Testimony::VIDEO_UPLOADING : null,
         ]);
+        // Conversion : compte personnel, un seul par compte, vérifié sous verrou (même règle que l'API).
+        try {
+            $testimony = app(\App\Services\ConversionTestimonies::class)->create($request->user(), $isConversion, $create);
+        } catch (\App\Services\ContentActionException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], $e->status())
+                : back()->withInput()->withErrors(['kind' => $e->getMessage()]);
+        }
 
         // Vidéo Bunny : création chez Bunny et autorisation d'envoi ; échec → rien n'est gardé.
         $upload = null;
@@ -198,7 +219,7 @@ class TestimonyController extends Controller
                 \Illuminate\Support\Facades\Log::error('Bunny Stream : création de la vidéo impossible (site).', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
                 $testimony->forceDelete();
 
-                return response()->json(['message' => "L'envoi de la vidéo n'a pas pu être préparé. Réessayez dans un instant."], 502);
+                return response()->json(['message' => __('videos.upload.init_failed')], 502);
             }
         }
 
@@ -235,9 +256,9 @@ class TestimonyController extends Controller
 
         return redirect()->route('testimonies.show', $testimony->id)
                          ->with('success', match (true) {
-                             $isJournal => 'Témoignage enregistré dans votre carnet privé.',
-                             $testimony->status === TestimonyStatus::Approved => 'Témoignage publié.',
-                             default => 'Témoignage soumis pour modération.',
+                             $isJournal => __('testimonies.flash.saved_in_journal'),
+                             $testimony->status === TestimonyStatus::Approved => __('testimonies.flash.published'),
+                             default => __('testimonies.flash.submitted'),
                          });
     }
 
@@ -248,11 +269,11 @@ class TestimonyController extends Controller
             return null;
         }
         if (!$request->user()->isAdmin()) {
-            throw ValidationException::withMessages(['youtube_url' => 'Seuls les administrateurs peuvent publier une vidéo YouTube.']);
+            throw ValidationException::withMessages(['youtube_url' => __('testimonies.validation.youtube_admin_only')]);
         }
 
         return YouTube::parseId($data['youtube_url'])
-            ?? throw ValidationException::withMessages(['youtube_url' => "Ce lien YouTube n'est pas reconnu (exemple : https://www.youtube.com/watch?v=…)."]);
+            ?? throw ValidationException::withMessages(['youtube_url' => __('testimonies.validation.youtube_invalid')]);
     }
 
     /** Preuve d'un témoignage (affichée dans le navigateur) : auteur et équipe de modération seulement. */
@@ -289,7 +310,7 @@ class TestimonyController extends Controller
         $mine = $testimony->user_id === Auth::id();
         $testimony->delete();
 
-        return redirect()->route($mine ? 'testimonies.mine' : 'home')->with('success', 'Témoignage supprimé.');
+        return redirect()->route($mine ? 'testimonies.mine' : 'home')->with('success', __('testimonies.flash.deleted'));
     }
 
     public function report(Request $request, string $id): RedirectResponse
@@ -306,7 +327,7 @@ class TestimonyController extends Controller
             ['reason' => $request->reason, 'details' => $request->details]
         );
 
-        return back()->with('success', 'Signalement envoyé.');
+        return back()->with('success', __('testimonies.flash.reported'));
     }
 
     public function storeReaction(Request $request, string $id): JsonResponse|RedirectResponse
@@ -371,8 +392,8 @@ class TestimonyController extends Controller
         $testimony = Testimony::findOrFail($id);
         if (!$testimony->acceptsCommentsFrom(Auth::user())) {
             return $request->expectsJson()
-                ? response()->json(['message' => Testimony::COMMENTS_CLOSED_MESSAGE], 403)
-                : back()->with('error', Testimony::COMMENTS_CLOSED_MESSAGE);
+                ? response()->json(['message' => Testimony::commentsClosedMessage()], 403)
+                : back()->with('error', Testimony::commentsClosedMessage());
         }
 
         // Mentions « @ » (docs/fonctionnalites/mentions.md)
@@ -401,6 +422,6 @@ class TestimonyController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Commentaire ajouté.');
+        return back()->with('success', __('comments.added'));
     }
 }

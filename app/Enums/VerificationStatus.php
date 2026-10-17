@@ -11,11 +11,7 @@ enum VerificationStatus: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Pending  => 'En attente de vérification',
-            self::Verified => 'Vérifiée',
-            self::Rejected => 'Vérification refusée',
-        };
+        return __('enums.verification_status.' . $this->value);
     }
 
     public function badgeClass(): string

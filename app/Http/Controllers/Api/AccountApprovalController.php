@@ -25,20 +25,20 @@ class AccountApprovalController extends Controller
     // POST /admin/users/{id}/approval  { reason }
     public function grant(Request $request, string $id): JsonResponse
     {
-        return $this->act($request, $id, fn (User $u, string $reason) => $this->approval->grant($u, $request->user(), $reason), 'Badge « Approuvé » attribué.');
+        return $this->act($request, $id, fn (User $u, string $reason) => $this->approval->grant($u, $request->user(), $reason), __('verification.flash.badge_granted'));
     }
 
     // DELETE /admin/users/{id}/approval  { reason }
     public function revoke(Request $request, string $id): JsonResponse
     {
-        return $this->act($request, $id, fn (User $u, string $reason) => $this->approval->revoke($u, $request->user(), $reason), 'Badge « Approuvé » retiré.');
+        return $this->act($request, $id, fn (User $u, string $reason) => $this->approval->revoke($u, $request->user(), $reason), __('verification.flash.badge_revoked'));
     }
 
     private function act(Request $request, string $id, callable $action, string $message): JsonResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:500']], [
-            'reason.required' => 'Indiquez le motif.',
-            'reason.min'      => 'Indiquez le motif.',
+            'reason.required' => __('verification.reason_required'),
+            'reason.min'      => __('verification.reason_required'),
         ]);
         $user = User::find($id);
         if (!$user) {

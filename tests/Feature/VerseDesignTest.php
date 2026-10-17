@@ -143,9 +143,10 @@ class VerseDesignTest extends TestCase
 
         $payload = ['design_id' => 'vitrail', 'design_chosen_on' => '2026-10-13', 'design_always' => true,
             'font' => 'sourceSerif', 'text_size' => 'large', 'text_align' => 'center'];
+        // Réponse : préférences + design du jour et design affiché (effective_design_id).
         $this->actingAs($this->member)->putJson('/api/v1/me/verse-style', $payload)->assertOk()
-            ->assertJsonPath('data', $payload);
-        $this->actingAs($this->member)->getJson('/api/v1/me/verse-style')->assertJsonPath('data', $payload);
+            ->assertJson(['data' => $payload + ['effective_design_id' => 'vitrail']]);
+        $this->actingAs($this->member)->getJson('/api/v1/me/verse-style')->assertJson(['data' => $payload + ['effective_design_id' => 'vitrail']]);
 
         // Mise à jour partielle.
         $this->actingAs($this->member)->putJson('/api/v1/me/verse-style', ['text_size' => 'small'])->assertOk()

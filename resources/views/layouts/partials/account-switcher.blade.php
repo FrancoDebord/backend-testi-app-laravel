@@ -4,8 +4,8 @@
     accounts.switch ; le compte actif est coché.
     @include('layouts.partials.account-switcher', ['accounts' => $myAccounts, 'activeId' => $activeAccountId])
 --}}
-<p class="section-title px-3 pb-1">Mes comptes</p>
-<ul class="space-y-0.5" aria-label="Mes comptes">
+<p class="section-title px-3 pb-1">{{ __('layout.accounts.title') }}</p>
+<ul class="space-y-0.5" aria-label="{{ __('layout.accounts.title') }}">
     @foreach($accounts as $account)
     @php
         $isActive  = $account['id'] === $activeId;
@@ -13,7 +13,7 @@
         $avatarObj = (object) ['avatar_url' => $account['avatarUrl'], 'initials' => $account['initials']];
     @endphp
     <li>
-        <form method="POST" action="{{ route('accounts.switch', $account['id']) }}" data-loading-label="Changement de compte…">
+        <form method="POST" action="{{ route('accounts.switch', $account['id']) }}" data-loading-label="{{ __('layout.accounts.switching') }}">
             @csrf
             <button type="submit"
                     @if($isActive) aria-current="true" @endif
@@ -22,15 +22,15 @@
                 <span class="flex min-w-0 flex-1 items-center gap-1.5">
                     <span class="truncate font-semibold">{{ $account['displayName'] }}</span>
                     @if($account['isVerified'])
-                    <i class="fa-solid fa-circle-check shrink-0 text-slate-500" title="{{ $account['isOrganization'] ? 'Organisation vérifiée' : 'Compte vérifié' }}" aria-label="{{ $account['isOrganization'] ? 'Organisation vérifiée' : 'Compte vérifié' }}" role="img"></i>
+                    <i class="fa-solid fa-circle-check shrink-0 text-slate-500" title="{{ $account['isOrganization'] ? __('layout.accounts.verified_org') : __('layout.accounts.verified_account') }}" aria-label="{{ $account['isOrganization'] ? __('layout.accounts.verified_org') : __('layout.accounts.verified_account') }}" role="img"></i>
                     @endif
                     @if($isOwnAcc)
-                    <span class="badge-neutral shrink-0">Vous</span>
+                    <span class="badge-neutral shrink-0">{{ __('layout.accounts.you') }}</span>
                     @endif
                 </span>
                 @if($isActive)
                 <i class="fa-solid fa-check shrink-0 text-primary-600" aria-hidden="true"></i>
-                <span class="sr-only">(compte actif)</span>
+                <span class="sr-only">{{ __('layout.accounts.active') }}</span>
                 @endif
             </button>
         </form>

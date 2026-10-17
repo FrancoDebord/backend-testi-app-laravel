@@ -17,6 +17,7 @@ import {
     createLocalAudioTrack,
     createLocalVideoTrack,
 } from 'livekit-client';
+import { t, tn, dateLocale } from './i18n';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -44,7 +45,7 @@ async function api(url, { method = 'GET', body } = {}) {
         /* réponse vide */
     }
     if (!res.ok || json?.success === false) {
-        const error = new Error(json?.message || firstError(json) || 'Une erreur est survenue. Réessayez.');
+        const error = new Error(json?.message || firstError(json) || t('live.error'));
         error.status = res.status;
         throw error;
     }
@@ -68,16 +69,16 @@ function formatDuration(ms) {
 }
 
 const STATUS = {
-    preparing: ['En préparation', 'badge-pending'],
-    live: ['En direct', 'badge-live'],
-    ended: ['Terminé', 'badge-draft'],
+    preparing: ['live.status.preparing', 'badge-pending'],
+    live: ['live.status.live', 'badge-live'],
+    ended: ['live.status.ended', 'badge-draft'],
 };
 
 function renderStatus(status) {
     const el = $('[data-live-status]');
     if (!el || !STATUS[status]) return;
     el.className = STATUS[status][1];
-    el.textContent = STATUS[status][0];
+    el.textContent = t(STATUS[status][0]);
     if (status === 'ended') {
         const rec = $('[data-live-rec]');
         if (rec) rec.hidden = true;
@@ -112,19 +113,20 @@ function initPreflight(root) {
         audioCtx = null;
     };
 
-    const mediaError = (err, what) => {
+    // kind : « camera » ou « micro ».
+    const mediaError = (err, kind) => {
         switch (err?.name) {
             case 'NotAllowedError':
             case 'SecurityError':
-                return `Accès refusé. Autorisez ${what} dans les réglages du navigateur (icône à gauche de l'adresse), puis relancez.`;
+                return t(`live.media.denied_${kind}`);
             case 'NotFoundError':
             case 'OverconstrainedError':
-                return `Aucun${what === 'la caméra' ? 'e caméra' : ' micro'} détecté${what === 'la caméra' ? 'e' : ''} sur cet appareil.`;
+                return t(`live.media.not_found_${kind}`);
             case 'NotReadableError':
             case 'AbortError':
-                return `${what === 'la caméra' ? 'La caméra' : 'Le micro'} est déjà utilisé${what === 'la caméra' ? 'e' : ''} par une autre application. Fermez-la puis relancez.`;
+                return t(`live.media.busy_${kind}`);
             default:
-                return `Impossible d'accéder à ${what}${err?.message ? ` (${err.message})` : ''}.`;
+                return t(`live.media.failed_${kind}`, { detail: err?.message ? ` (${err.message})` : '' });
         }
     };
 
@@ -153,22 +155,22 @@ function initPreflight(root) {
         stop();
         okBox.checked = false;
         okBox.dispatchEvent(new Event('change', { bubbles: true }));
-        ['secure', 'browser', 'network', 'camera', 'micro'].forEach((k) => setCheck(k, 'idle', 'Vérification…'));
+        ['secure', 'browser', 'network', 'camera', 'micro'].forEach((k) => setCheck(k, 'idle', t('live.check.checking')));
 
         const secure = window.isSecureContext;
-        setCheck('secure', secure ? 'ok' : 'bad', secure ? 'Connexion chiffrée.' : 'La caméra ne fonctionne qu\'en HTTPS. Ouvrez le site avec une adresse https://.');
+        setCheck('secure', secure ? 'ok' : 'bad', secure ? t('live.check.secure') : t('live.check.insecure'));
 
         const browser = 'RTCPeerConnection' in window && !!navigator.mediaDevices?.getUserMedia;
-        setCheck('browser', browser ? 'ok' : 'bad', browser ? 'Navigateur compatible.' : 'Utilisez une version récente de Chrome, Safari, Edge ou Firefox.');
+        setCheck('browser', browser ? 'ok' : 'bad', browser ? t('live.check.browser') : t('live.check.browser_old'));
 
         const online = navigator.onLine;
         const type = navigator.connection?.effectiveType;
         setCheck('network', online ? (type && ['slow-2g', '2g'].includes(type) ? 'warn' : 'ok') : 'bad',
-            online ? (type ? `Connecté (${type.toUpperCase()}).${['slow-2g', '2g', '3g'].includes(type) ? ' Connexion lente : la vidéo pourra être de qualité réduite.' : ''}` : 'Connecté.') : 'Aucune connexion Internet.');
+            online ? (type ? t(['slow-2g', '2g', '3g'].includes(type) ? 'live.check.connected_type_slow' : 'live.check.connected_type', { type: type.toUpperCase() }) : t('live.check.connected')) : t('live.check.offline'));
 
         if (!secure || !browser) {
-            setCheck('camera', 'bad', 'Non vérifiable (voir ci-dessus).');
-            setCheck('micro', 'bad', 'Non vérifiable (voir ci-dessus).');
+            setCheck('camera', 'bad', t('live.check.unverifiable'));
+            setCheck('micro', 'bad', t('live.check.unverifiable'));
             return finish();
         }
 
@@ -178,17 +180,17 @@ function initPreflight(root) {
             const v = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } } });
             videoTrack = v.getVideoTracks()[0];
             const s = videoTrack.getSettings();
-            setCheck('camera', 'ok', `${videoTrack.label || 'Caméra'}${s.width ? ` · ${s.width}×${s.height}` : ''}`);
+            setCheck('camera', 'ok', `${videoTrack.label || t('live.check.camera')}${s.width ? ` · ${s.width}×${s.height}` : ''}`);
         } catch (err) {
-            setCheck('camera', 'bad', mediaError(err, 'la caméra'));
+            setCheck('camera', 'bad', mediaError(err, 'camera'));
         }
         try {
             const a = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
             audioTrack = a.getAudioTracks()[0];
-            setCheck('micro', 'ok', audioTrack.label || 'Micro disponible.');
+            setCheck('micro', 'ok', audioTrack.label || t('live.check.micro'));
             meter(audioTrack);
         } catch (err) {
-            setCheck('micro', 'bad', mediaError(err, 'le micro'));
+            setCheck('micro', 'bad', mediaError(err, 'micro'));
         }
 
         stream = new MediaStream([videoTrack, audioTrack].filter(Boolean));
@@ -214,7 +216,7 @@ function initPreflight(root) {
             if (battery) {
                 const pct = Math.round(battery.level * 100);
                 const low = pct < 20 && !battery.charging;
-                setCheck('battery', low ? 'warn' : 'ok', `${pct} %${battery.charging ? ', en charge' : ''}.${low ? ' Branchez le téléphone avant de commencer.' : ''}`);
+                setCheck('battery', low ? 'warn' : 'ok', t(battery.charging ? 'live.check.battery_charging' : low ? 'live.check.battery_low' : 'live.check.battery', { pct }));
             }
         } catch {
             /* information facultative */
@@ -278,17 +280,17 @@ function initInteractions() {
         meta.className = 'flex flex-wrap items-center gap-x-1.5 text-xs';
         const name = document.createElement('span');
         name.className = 'font-semibold text-slate-900';
-        name.textContent = c.user?.displayName || 'Utilisateur';
+        name.textContent = c.user?.displayName || t('live.user');
         meta.append(name);
         if (byHost) {
             const badge = document.createElement('span');
             badge.className = 'badge-neutral py-0 text-[10px]';
-            badge.textContent = 'Diffuseur';
+            badge.textContent = t('live.host');
             meta.append(badge);
         }
         const time = document.createElement('span');
         time.className = 'text-slate-400';
-        time.textContent = c.createdAt ? new Date(c.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+        time.textContent = c.createdAt ? new Date(c.createdAt).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' }) : '';
         meta.append(time);
         const text = document.createElement('p');
         text.className = 'mt-0.5 text-sm leading-snug break-words whitespace-pre-line text-slate-700';
@@ -303,17 +305,17 @@ function initInteractions() {
         if (config.canModerate) actions.append(pinButton(c));
         if (config.canModerate && c.user?.id !== config.currentUserId && !isStaff) {
             actions.append(
-                modButton('fa-eye-slash', 'Masquer ce commentaire', () => ({
-                    message: 'Ce commentaire ne sera plus visible par personne.',
-                    title: 'Masquer le commentaire',
-                    label: 'Masquer',
+                modButton('fa-eye-slash', t('live.moderation.hide_aria'), () => ({
+                    message: t('live.moderation.hide_message'),
+                    title: t('live.moderation.hide_title'),
+                    label: t('live.moderation.hide'),
                     icon: 'fa-eye-slash',
                     run: () => api(config.urls.commentHide.replace('__COMMENT__', c.id), { method: 'DELETE' }).then(() => removeComment(c.id)),
                 })),
-                modButton('fa-user-slash', 'Exclure cette personne du direct', () => ({
-                    message: `${c.user?.displayName || 'Cette personne'} ne pourra plus commenter ni réagir pendant ce direct, et ses commentaires seront masqués.`,
-                    title: 'Exclure du direct',
-                    label: 'Exclure',
+                modButton('fa-user-slash', t('live.moderation.ban_aria'), () => ({
+                    message: t('live.moderation.ban_message', { name: c.user?.displayName || t('live.this_person') }),
+                    title: t('live.moderation.ban_title'),
+                    label: t('live.moderation.ban'),
                     icon: 'fa-user-slash',
                     run: () => api(config.urls.bans, { method: 'POST', body: { user_id: c.user.id } }).then(() => removeUserComments(c.user.id)),
                 })),
@@ -361,7 +363,7 @@ function initInteractions() {
             const label = option.closest('label');
             label.classList.toggle('opacity-50', !allowed);
             label.classList.toggle('pointer-events-none', !allowed);
-            label.title = allowed ? 'Épingler ce message en haut du direct' : 'Le diffuseur a épinglé un message : lui seul peut le remplacer.';
+            label.title = allowed ? t('live.pin.option') : t('live.pin.host_only');
         }
     }
 
@@ -378,10 +380,10 @@ function initInteractions() {
                 if (pinned?.id === c.id) {
                     await api(config.urls.unpin, { method: 'DELETE' });
                     renderPinned(null);
-                    flash('Commentaire désépinglé.');
+                    flash(t('live.pin.unpinned'));
                 } else {
                     renderPinned(await api(config.urls.commentPin.replace('__COMMENT__', c.id), { method: 'POST' }));
-                    flash('Commentaire épinglé.');
+                    flash(t('live.pin.pinned'));
                 }
             } catch (err) {
                 flash(err.message, 'error');
@@ -397,7 +399,7 @@ function initInteractions() {
         li.classList.toggle('ring-amber-200', isPinned);
         const btn = li.querySelector('[data-live-pin-btn]');
         if (btn) {
-            const label = isPinned ? 'Désépingler ce commentaire' : 'Épingler ce commentaire en haut du direct';
+            const label = isPinned ? t('live.pin.unpin_aria') : t('live.pin.pin_aria');
             btn.title = label;
             btn.setAttribute('aria-label', label);
             btn.classList.toggle('text-amber-600', isPinned);
@@ -414,7 +416,7 @@ function initInteractions() {
         if (!pinned) return;
         const byHost = pinned.user?.id === config.hostId;
         $('[data-live-pinned-meta]', pinnedBox).textContent =
-            `Épinglé · ${pinned.user?.displayName || 'Utilisateur'}${byHost ? ' (diffuseur)' : ''}`;
+            t(byHost ? 'live.pin.meta_host' : 'live.pin.meta', { name: pinned.user?.displayName || t('live.user') });
         $('[data-live-pinned-body]', pinnedBox).textContent = pinned.body;
     }
 
@@ -424,7 +426,7 @@ function initInteractions() {
         try {
             await api(config.urls.unpin, { method: 'DELETE' });
             renderPinned(null);
-            flash('Commentaire désépinglé.');
+            flash(t('live.pin.unpinned'));
         } catch (err) {
             flash(err.message, 'error');
         } finally {
@@ -440,7 +442,7 @@ function initInteractions() {
         pendingModeration = null;
         try {
             await action?.run();
-            flash('Action de modération effectuée.');
+            flash(t('live.moderation.done'));
         } catch (err) {
             flash(err.message, 'error');
         }
@@ -474,7 +476,7 @@ function initInteractions() {
         const body = textarea.value.trim();
         if (!body) return;
         if (!navigator.onLine) {
-            flash('Vous êtes hors connexion. Votre commentaire est conservé.', 'warning');
+            flash(t('live.comment_offline'), 'warning');
             return;
         }
         const btn = form.querySelector('button[type="submit"]');
@@ -523,8 +525,7 @@ function initInteractions() {
         });
         const summary = $('[data-live-reaction-summary]');
         if (summary) {
-            const labels = { like: "J'aime", pray: 'Prière', amen: 'Amen', worship: 'Adorer Dieu', fire: 'Feu' };
-            summary.textContent = Object.entries(counts).map(([t, n]) => `${labels[t]} ${n}`).join(' · ');
+            summary.textContent = Object.entries(counts).map(([type, n]) => `${t(`live.reactions.${type}`)} ${n}`).join(' · ');
         }
     };
     renderReactions(config.reactions);
@@ -561,7 +562,7 @@ function initInteractions() {
                     removeUserComments(msg.userId);
                     if (msg.userId === config.currentUserId) {
                         form?.remove();
-                        flash('Un modérateur vous a exclu des commentaires de ce direct.', 'warning');
+                        flash(t('live.banned'), 'warning');
                     }
                     break;
                 case 'reaction':
@@ -623,11 +624,11 @@ const initialsOf = (name) =>
         .map((w) => w.charAt(0).toUpperCase())
         .join('') || '?';
 
-const ENDED_MESSAGES = {
-    removed: 'Le diffuseur a terminé votre intervention. Merci pour votre témoignage !',
-    banned: 'Un modérateur vous a retiré de l\'antenne.',
-    disconnected: 'Votre connexion a été perdue : vous n\'êtes plus à l\'antenne.',
-    left: 'Votre intervention est terminée. Merci pour votre témoignage !',
+const ENDED_KEYS = {
+    removed: 'live.stage.ended.removed',
+    banned: 'live.stage.ended.banned',
+    disconnected: 'live.stage.ended.disconnected',
+    left: 'live.stage.ended.left',
 };
 
 /**
@@ -669,7 +670,7 @@ function initStage(room) {
             return;
         }
 
-        const name = onStage ? 'Vous' : current?.user?.displayName || remote?.name || 'Intervenant';
+        const name = onStage ? t('live.stage.you') : current?.user?.displayName || remote?.name || t('live.stage.speaker');
         $('[data-stage-pip-name]', pip).textContent = name;
         $('[data-stage-pip-initials]', pip).textContent = onStage ? current?.user?.initials || initialsOf(config.currentUserName) : current?.user?.initials || initialsOf(name);
 
@@ -731,15 +732,16 @@ function initStage(room) {
 
         const isMe = cur.user?.id === config.currentUserId;
         $('[data-stage-current-initials]', box).textContent = cur.user?.initials || '?';
-        $('[data-stage-current-name]', box).textContent = (cur.user?.displayName || 'Intervenant') + (isMe ? ' (vous)' : '');
+        const curName = cur.user?.displayName || t('live.stage.speaker');
+        $('[data-stage-current-name]', box).textContent = isMe ? t('live.stage.name_me', { name: curName }) : curName;
         $('[data-stage-current-status]', box).textContent = cur.status === 'on_stage'
-            ? `À l'antenne${cur.camera ? ' · caméra' : ' · micro seulement'}`
-            : 'Invité · en attente de sa réponse';
+            ? t(cur.camera ? 'live.stage.on_air_camera' : 'live.stage.on_air_micro')
+            : t('live.stage.invited_waiting');
         setDot($('[data-stage-current-dot]', box), cur.status === 'on_stage' ? 'bad' : 'warn');
 
         const message = $('[data-stage-current-message]', box);
         if (message) {
-            message.textContent = cur.message ? `« ${cur.message} »` : '';
+            message.textContent = cur.message ? t('live.stage.quote', { message: cur.message }) : '';
             message.hidden = !cur.message;
         }
         const action = $('[data-stage-current-action]', box);
@@ -748,9 +750,10 @@ function initStage(room) {
             action.dataset.speakerId = cur.id;
             action.dataset.kind = cur.status === 'on_stage' ? 'remove' : 'cancel';
             action.innerHTML = cur.status === 'on_stage'
-                ? '<i class="fa-solid fa-phone-slash" aria-hidden="true"></i>Terminer'
-                : '<i class="fa-solid fa-xmark" aria-hidden="true"></i>Annuler l\'invitation';
-            action.dataset.name = cur.user?.displayName || 'Cette personne';
+                ? '<i class="fa-solid fa-phone-slash" aria-hidden="true"></i>'
+                : '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+            action.append(t(cur.status === 'on_stage' ? 'live.stage.end' : 'live.stage.cancel_invite'));
+            action.dataset.name = cur.user?.displayName || t('live.this_person');
         }
     }
 
@@ -775,15 +778,15 @@ function initStage(room) {
                 body.className = 'min-w-0 flex-1';
                 const name = document.createElement('p');
                 name.className = 'truncate text-sm font-semibold text-slate-900';
-                name.textContent = `${s.position}. ${s.user?.displayName || 'Utilisateur'}`;
+                name.textContent = `${s.position}. ${s.user?.displayName || t('live.user')}`;
                 const meta = document.createElement('p');
                 meta.className = 'text-xs text-slate-500';
-                meta.textContent = s.createdAt ? `Demande à ${new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : '';
+                meta.textContent = s.createdAt ? t('live.stage.requested_at', { time: new Date(s.createdAt).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' }) }) : '';
                 body.append(name, meta);
                 if (s.message) {
                     const msg = document.createElement('p');
                     msg.className = 'mt-1 text-xs break-words text-slate-600';
-                    msg.textContent = `« ${s.message} »`;
+                    msg.textContent = t('live.stage.quote', { message: s.message });
                     body.append(msg);
                 }
 
@@ -794,14 +797,15 @@ function initStage(room) {
                 invite.className = 'btn-secondary btn-sm';
                 invite.dataset.stageInvite = s.id;
                 invite.disabled = !!state.current;
-                invite.title = state.current ? 'Une personne est déjà à l\'antenne' : `Inviter ${s.user?.displayName || ''} à l'antenne`;
-                invite.innerHTML = '<i class="fa-solid fa-microphone" aria-hidden="true"></i><span>Inviter</span>';
+                invite.title = state.current ? t('live.stage.busy') : t('live.stage.invite_name', { name: s.user?.displayName || '' });
+                invite.innerHTML = '<i class="fa-solid fa-microphone" aria-hidden="true"></i><span></span>';
+                invite.querySelector('span').textContent = t('live.stage.invite');
                 const decline = document.createElement('button');
                 decline.type = 'button';
                 decline.className = 'action-btn-delete h-8 min-w-8';
                 decline.dataset.stageDecline = s.id;
-                decline.title = 'Retirer de la file';
-                decline.setAttribute('aria-label', `Retirer ${s.user?.displayName || 'cette personne'} de la file`);
+                decline.title = t('live.stage.decline');
+                decline.setAttribute('aria-label', t('live.stage.decline_name', { name: s.user?.displayName || t('live.this_person_lower') }));
                 decline.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
                 actions.append(invite, decline);
 
@@ -817,7 +821,7 @@ function initStage(room) {
         const count = $('[data-stage-queue-count]', panel);
         if (count) {
             count.hidden = !state.queueCount;
-            count.textContent = state.queueCount > 1 ? `${state.queueCount} personnes attendent` : '1 personne attend';
+            count.textContent = tn('live.stage.queue_count', state.queueCount);
         }
 
         const form = $('[data-stage-request-form]', panel);
@@ -838,11 +842,11 @@ function initStage(room) {
                 const withdraw = $('[data-stage-withdraw]', mineBox);
                 openBtn.hidden = mine.status !== 'invited';
                 withdraw.hidden = mine.status === 'on_stage';
-                withdraw.textContent = mine.status === 'invited' ? 'Refuser' : 'Annuler ma demande';
+                withdraw.textContent = mine.status === 'invited' ? t('live.stage.refuse') : t('live.stage.cancel_request');
                 text.textContent = {
-                    waiting: `Votre demande est enregistrée : vous êtes n°${mine.position} dans la file. Gardez cette page ouverte, vous serez prévenu à votre tour.`,
-                    invited: 'C\'est votre tour ! Le diffuseur vous invite à l\'antenne.',
-                    on_stage: 'Vous êtes à l\'antenne.',
+                    waiting: t('live.stage.mine.waiting', { position: mine.position }),
+                    invited: t('live.stage.mine.invited'),
+                    on_stage: t('live.stage.mine.on_stage'),
                 }[mine.status] || '';
             }
         }
@@ -851,7 +855,7 @@ function initStage(room) {
         if (mine?.status === 'invited' && !onStage) {
             if (invitedFor !== mine.id) openInvite(mine);
         } else if (invitedFor && !accepting) {
-            closeInvite(mine ? null : 'L\'invitation n\'est plus valable.');
+            closeInvite(mine ? null : t('live.stage.invite_invalid'));
         }
         if (onStage && mine?.status !== 'on_stage') stopGuest(leaving ? 'left' : undefined);
     }
@@ -866,8 +870,8 @@ function initStage(room) {
 
         if (action?.dataset.kind === 'remove') {
             pendingRemove = action.dataset.speakerId;
-            window.openConfirmModal('stage-confirm-form', `${action.dataset.name} quittera l'antenne : son micro et sa caméra seront coupés pour tous.`,
-                'Terminer l\'intervention', 'Terminer', 'fa-phone-slash');
+            window.openConfirmModal('stage-confirm-form', t('live.stage.remove_message', { name: action.dataset.name }),
+                t('live.stage.remove_title'), t('live.stage.end'), 'fa-phone-slash');
             return;
         }
 
@@ -875,10 +879,10 @@ function initStage(room) {
         try {
             if (invite) {
                 setState(await api(url('stageInvite', invite.dataset.stageInvite), { method: 'POST' }));
-                flash('Invitation envoyée : la personne a quelques secondes pour accepter.');
+                flash(t('live.stage.invite_sent'));
             } else {
                 setState(await api(url('stageDecline', (decline || action).dataset.stageDecline || action.dataset.speakerId), { method: 'POST' }));
-                flash(decline ? 'Demande retirée de la file.' : 'Invitation annulée.');
+                flash(decline ? t('live.stage.request_removed') : t('live.stage.invite_cancelled'));
             }
         } catch (err) {
             flash(err.message, 'error');
@@ -895,7 +899,7 @@ function initStage(room) {
         if (!speakerId) return;
         try {
             setState(await api(url('stageRemove', speakerId), { method: 'POST' }));
-            flash('Intervention terminée.');
+            flash(t('live.stage.removed'));
         } catch (err) {
             flash(err.message, 'error');
             load();
@@ -907,7 +911,7 @@ function initStage(room) {
         toggle.disabled = true;
         try {
             setState(await api(config.urls.stageSettings, { method: 'POST', body: { enabled: toggle.checked } }));
-            flash(toggle.checked ? 'Demandes d\'intervention ouvertes.' : 'Demandes d\'intervention fermées. La file et l\'intervenant en cours sont conservés.');
+            flash(toggle.checked ? t('live.stage.opened') : t('live.stage.closed'));
         } catch (err) {
             toggle.checked = !toggle.checked;
             flash(err.message, 'error');
@@ -926,7 +930,7 @@ function initStage(room) {
         try {
             setState(await api(config.urls.stageRequest, { method: 'POST', body: { message } }));
             form.reset();
-            flash('Demande envoyée : le diffuseur vous invitera à votre tour.');
+            flash(t('live.stage.request_sent'));
         } catch (err) {
             flash(err.message, 'error');
         } finally {
@@ -945,7 +949,7 @@ function initStage(room) {
     $('[data-stage-withdraw]', panel || document)?.addEventListener('click', async () => {
         await withdraw();
         closeInvite();
-        flash('Votre demande est retirée.');
+        flash(t('live.stage.request_withdrawn'));
     });
     $('[data-stage-open-invite]', panel || document)?.addEventListener('click', () => state?.mine && openInvite(state.mine, true));
 
@@ -980,7 +984,7 @@ function initStage(room) {
                 $('[data-stage-preview-off]', modal).hidden = true;
             } catch {
                 cameraSwitch.checked = false;
-                flash('Caméra inaccessible. Autorisez-la dans le navigateur, ou intervenez avec le micro seulement.', 'error');
+                flash(t('live.stage.camera_denied'), 'error');
             }
         } else {
             local.video?.detach(preview);
@@ -1003,14 +1007,14 @@ function initStage(room) {
             const left = Math.max(0, Math.round((expires - Date.now()) / 1000));
             counter.textContent = left;
             if (left <= 0) {
-                closeInvite('L\'invitation a expiré. Vous pouvez refaire une demande.');
+                closeInvite(t('live.stage.invite_expired'));
                 load();
             }
         };
         tick();
         countdown = setInterval(tick, 1000);
         if (force) return;
-        flash('C\'est votre tour : le diffuseur vous invite à l\'antenne.', 'info');
+        flash(t('live.stage.your_turn'), 'info');
         try {
             navigator.vibrate?.(200);
         } catch {
@@ -1038,7 +1042,7 @@ function initStage(room) {
     $('[data-stage-invite-decline]', modal || document)?.addEventListener('click', async () => {
         closeInvite();
         await withdraw();
-        flash('Invitation refusée.');
+        flash(t('live.stage.invite_refused'));
     });
 
     const waitForPublishPermission = async () => {
@@ -1053,23 +1057,23 @@ function initStage(room) {
         const btn = e.currentTarget;
         const label = btn.querySelector('span');
         if (room.state !== ConnectionState.Connected) {
-            flash('Vous n\'êtes pas connecté au direct. Rechargez la page.', 'error');
+            flash(t('live.stage.not_connected'), 'error');
             return;
         }
         btn.disabled = true;
         accepting = true;
-        label.textContent = 'Connexion…';
+        label.textContent = t('live.connecting');
         try {
             try {
                 local.audio ??= await createLocalAudioTrack({ echoCancellation: true, noiseSuppression: true, autoGainControl: true });
             } catch {
-                throw new Error('Micro inaccessible. Autorisez-le dans le navigateur (icône à gauche de l\'adresse), puis réessayez.');
+                throw new Error(t('live.stage.micro_denied'));
             }
             setState(await api(config.urls.stageAccept, {
                 method: 'POST',
                 body: { identity: room.localParticipant.identity, camera: !!local.video },
             }));
-            if (!(await waitForPublishPermission())) throw new Error('Le service vidéo n\'a pas encore ouvert votre micro. Réessayez.');
+            if (!(await waitForPublishPermission())) throw new Error(t('live.stage.no_permission'));
 
             await room.localParticipant.publishTrack(local.audio, { source: Track.Source.Microphone });
             if (local.video) {
@@ -1084,9 +1088,9 @@ function initStage(room) {
             closeInvite();
             showSelfBar();
             refreshPip();
-            flash('Vous êtes à l\'antenne. Parlez librement : tout le monde vous entend.');
+            flash(t('live.stage.on_air'));
         } catch (err) {
-            flash(err.message || 'Impossible de rejoindre l\'antenne.', 'error');
+            flash(err.message || t('live.stage.join_failed'), 'error');
             if (!onStage) {
                 local.audio?.stop();
                 local.audio = null;
@@ -1095,7 +1099,7 @@ function initStage(room) {
         } finally {
             accepting = false;
             btn.disabled = false;
-            label.textContent = 'Rejoindre l\'antenne';
+            label.textContent = t('live.stage.join');
         }
     });
 
@@ -1115,7 +1119,7 @@ function initStage(room) {
         btn.classList.toggle('chip', !on);
         const icons = kind === 'camera' ? ['fa-video', 'fa-video-slash'] : ['fa-microphone', 'fa-microphone-slash'];
         btn.querySelector('i').className = `fa-solid ${on ? icons[0] : icons[1]}`;
-        btn.title = kind === 'camera' ? (on ? 'Couper ma caméra' : 'Activer ma caméra') : on ? 'Couper mon micro' : 'Rétablir mon micro';
+        btn.title = kind === 'camera' ? (on ? t('live.stage.camera_off') : t('live.stage.camera_on')) : on ? t('live.stage.micro_off') : t('live.stage.micro_on');
     }
 
     selfBar?.addEventListener('click', async (e) => {
@@ -1135,7 +1139,7 @@ function initStage(room) {
                     syncSelfToggle('camera', true);
                 }
             } catch {
-                flash('Action impossible sur cet appareil.', 'error');
+                flash(t('live.stage.device_action_failed'), 'error');
             } finally {
                 toggle.disabled = false;
                 refreshPip();
@@ -1158,7 +1162,7 @@ function initStage(room) {
         if (selfBar) selfBar.hidden = true;
         refreshPip();
         const why = reason || state?.lastEndReason;
-        flash(ENDED_MESSAGES[why] || ENDED_MESSAGES.left, why === 'banned' || why === 'disconnected' ? 'warning' : 'success');
+        flash(t(ENDED_KEYS[why] || ENDED_KEYS.left), why === 'banned' || why === 'disconnected' ? 'warning' : 'success');
     }
 
     // Droits retirés par le serveur (fin décidée par le diffuseur) : on libère aussitôt la caméra.
@@ -1187,7 +1191,7 @@ function initStage(room) {
                 state = { ...(state || {}), lastEndReason: msg.reason };
                 if (onStage) stopGuest(msg.reason);
             }
-            if (staff && msg.event === 'requested') flash(`${msg.speaker?.user?.displayName || 'Quelqu\'un'} demande à intervenir.`, 'info');
+            if (staff && msg.event === 'requested') flash(t('live.stage.requested', { name: msg.speaker?.user?.displayName || t('live.someone') }), 'info');
             load();
         },
         async stop() {
@@ -1242,31 +1246,31 @@ function initStudio() {
 
     room.on(RoomEvent.ConnectionStateChanged, (state) => {
         const map = {
-            [ConnectionState.Connecting]: ['Connexion…', 'warn'],
-            [ConnectionState.Connected]: ['Connecté', 'ok'],
-            [ConnectionState.Reconnecting]: ['Reconnexion…', 'warn'],
-            [ConnectionState.SignalReconnecting]: ['Reconnexion…', 'warn'],
-            [ConnectionState.Disconnected]: ['Déconnecté', 'bad'],
+            [ConnectionState.Connecting]: [t('live.connecting'), 'warn'],
+            [ConnectionState.Connected]: [t('live.conn.connected'), 'ok'],
+            [ConnectionState.Reconnecting]: [t('live.conn.reconnecting'), 'warn'],
+            [ConnectionState.SignalReconnecting]: [t('live.conn.reconnecting'), 'warn'],
+            [ConnectionState.Disconnected]: [t('live.conn.disconnected'), 'bad'],
         };
         setConn(...(map[state] || ['—', 'idle']));
     });
-    room.on(RoomEvent.Reconnecting, () => flash('Connexion instable : reconnexion en cours…', 'warning'));
-    room.on(RoomEvent.Reconnected, () => flash('Connexion rétablie.'));
+    room.on(RoomEvent.Reconnecting, () => flash(t('live.conn.unstable'), 'warning'));
+    room.on(RoomEvent.Reconnected, () => flash(t('live.conn.restored')));
     room.on(RoomEvent.Disconnected, () => {
         if (status === 'live') {
-            flash('Vous avez été déconnecté. Rechargez la page pour reprendre le direct.', 'error');
+            flash(t('live.conn.lost_host'), 'error');
             startBtn.hidden = false;
             startBtn.disabled = false;
-            startBtn.querySelector('span').textContent = 'Reprendre le direct';
+            startBtn.querySelector('span').textContent = t('live.studio.resume');
         }
     });
     room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
         if (!participant.isLocal) return;
         const map = {
-            [ConnectionQuality.Excellent]: ['Excellente', 'ok'],
-            [ConnectionQuality.Good]: ['Bonne', 'ok'],
-            [ConnectionQuality.Poor]: ['Faible : la vidéo est réduite', 'warn'],
-            [ConnectionQuality.Lost]: ['Connexion perdue', 'bad'],
+            [ConnectionQuality.Excellent]: [t('live.quality.excellent'), 'ok'],
+            [ConnectionQuality.Good]: [t('live.quality.good'), 'ok'],
+            [ConnectionQuality.Poor]: [t('live.quality.poor'), 'warn'],
+            [ConnectionQuality.Lost]: [t('live.quality.lost'), 'bad'],
         };
         const [text, tone] = map[quality] || ['—', 'idle'];
         $('[data-live-quality]').textContent = text;
@@ -1309,23 +1313,23 @@ function initStudio() {
         const badge = $('[data-live-camera-state]');
         if (badge) {
             badge.className = receiving ? 'badge-active' : 'badge-pending';
-            badge.textContent = receiving ? 'Flux reçu' : 'En attente du flux';
+            badge.textContent = receiving ? t('live.studio.feed_received') : t('live.studio.feed_waiting');
         }
         if (!external) return;
         if (receiving) {
-            setOverlay(status === 'live' ? '' : 'Aperçu de la caméra : vous n\'êtes pas encore à l\'antenne.');
+            setOverlay(status === 'live' ? '' : t('live.studio.camera_preview'));
             if (status !== 'live') startBtn.disabled = false;
         } else {
             setOverlay(status === 'live'
-                ? 'Le flux de la caméra est interrompu : les spectateurs voient un écran noir.'
-                : 'En attente du flux de la caméra…');
+                ? t('live.studio.feed_interrupted')
+                : t('live.studio.feed_waiting_long'));
             if (status !== 'live') startBtn.disabled = true;
         }
     }
 
     /** Caméra IP : connexion à la salle sans rien publier, pour recevoir l'aperçu. */
     async function connectForPreview() {
-        setOverlay('En attente du flux de la caméra…');
+        setOverlay(t('live.studio.feed_waiting_long'));
         try {
             const creds = await api(config.urls.hostToken, { method: 'POST' });
             if (room.state !== ConnectionState.Connected) await room.connect(creds.url, creds.token);
@@ -1336,7 +1340,7 @@ function initStudio() {
                 setCameraState(true);
             }
         } catch (err) {
-            flash(err.message || 'Connexion au service vidéo impossible.', 'error');
+            flash(err.message || t('live.studio.service_failed'), 'error');
         }
     }
 
@@ -1350,22 +1354,22 @@ function initStudio() {
             const cam = tracks.find((t) => t.kind === Track.Kind.Video);
             cam?.attach(video);
             video.classList.toggle('-scale-x-100', facing === 'user');
-            setOverlay(status === 'live' ? '' : 'Aperçu : vous n\'êtes pas encore à l\'antenne.');
+            setOverlay(status === 'live' ? '' : t('live.studio.preview'));
             startBtn.disabled = false;
         } catch (err) {
-            setOverlay('Caméra ou micro inaccessible. Autorisez-les dans le navigateur puis rechargez la page.');
-            flash(err.message || 'Caméra ou micro inaccessible.', 'error');
+            setOverlay(t('live.studio.devices_denied_long'));
+            flash(err.message || t('live.studio.devices_denied'), 'error');
         }
     }
 
     async function goLive() {
         if (!navigator.onLine) {
-            flash('Aucune connexion Internet.', 'error');
+            flash(t('live.check.offline'), 'error');
             return;
         }
         startBtn.disabled = true;
         const label = startBtn.querySelector('span');
-        label.textContent = 'Connexion…';
+        label.textContent = t('live.connecting');
         try {
             const creds = await api(config.urls.hostToken, { method: 'POST' });
             if (room.state !== ConnectionState.Connected) {
@@ -1384,11 +1388,11 @@ function initStudio() {
             clearInterval(timer);
             timer = startTimer(live.startedAt || config.startedAt || new Date().toISOString());
             keepAwake();
-            flash('Vous êtes en direct.');
+            flash(t('live.studio.on_air'));
         } catch (err) {
             startBtn.disabled = false;
-            label.textContent = status === 'live' ? 'Reprendre le direct' : 'Passer à l\'antenne';
-            flash(err.message || 'Connexion au service vidéo impossible.', 'error');
+            label.textContent = status === 'live' ? t('live.studio.resume') : t('live.studio.go_live');
+            flash(err.message || t('live.studio.service_failed'), 'error');
         }
     }
 
@@ -1411,7 +1415,7 @@ function initStudio() {
         room.disconnect();
         wakeLock?.release?.();
         stage.stop();
-        setOverlay(reason === 'moderator' ? 'Un modérateur a mis fin au direct.' : 'Le direct est terminé.');
+        setOverlay(reason === 'moderator' ? t('live.ended_by_moderator') : t('live.ended'));
         $$('[data-live-toggle], [data-live-switch-camera], [data-live-start]').forEach((b) => (b.disabled = true));
         setTimeout(() => (window.location = config.urls.show), 2500);
     }
@@ -1431,7 +1435,7 @@ function initStudio() {
             const icon = btn.querySelector('i');
             if (kind === Track.Kind.Video) {
                 icon.className = on ? 'fa-solid fa-video-slash' : 'fa-solid fa-video';
-                setOverlay(on ? 'Caméra coupée : les spectateurs voient un écran noir.' : (status === 'live' ? '' : 'Aperçu : vous n\'êtes pas encore à l\'antenne.'));
+                setOverlay(on ? t('live.studio.camera_muted') : (status === 'live' ? '' : t('live.studio.preview')));
             } else {
                 icon.className = on ? 'fa-solid fa-microphone-slash' : 'fa-solid fa-microphone';
             }
@@ -1447,7 +1451,7 @@ function initStudio() {
             video.classList.toggle('-scale-x-100', facing === 'user');
         } catch {
             facing = facing === 'user' ? 'environment' : 'user';
-            flash('Impossible de changer de caméra sur cet appareil.', 'error');
+            flash(t('live.studio.switch_failed'), 'error');
         }
     });
 
@@ -1487,7 +1491,7 @@ function initStudio() {
         $$('[data-live-toggle], [data-live-switch-camera]').forEach((b) => (b.hidden = true));
         connectForPreview().then(() => {
             if (config.status === 'live') {
-                startBtn.querySelector('span').textContent = 'Reprendre le direct';
+                startBtn.querySelector('span').textContent = t('live.studio.resume');
                 goLive();
             }
         });
@@ -1496,7 +1500,7 @@ function initStudio() {
     prepareTracks().then(() => {
         // Direct déjà à l'antenne (page rechargée) : reprise automatique.
         if (config.status === 'live') {
-            startBtn.querySelector('span').textContent = 'Reprendre le direct';
+            startBtn.querySelector('span').textContent = t('live.studio.resume');
             goLive();
         }
     });
@@ -1527,7 +1531,7 @@ function initViewer() {
         stage?.stop();
         room?.disconnect();
         video.srcObject = null;
-        setOverlay('Ce direct est terminé. Merci de l\'avoir suivi.');
+        setOverlay(t('live.viewer.ended'));
         $$('[data-live-react]').forEach((b) => (b.disabled = true));
         $('[data-live-comment-form]')?.remove();
         $('#live-end-form')?.closest('div')?.remove();
@@ -1535,7 +1539,7 @@ function initViewer() {
 
     async function connect() {
         if (status === 'ended') return onEnded();
-        setOverlay('Connexion au direct…');
+        setOverlay(t('live.viewer.connecting'));
         room = new Room({ adaptiveStream: true, dynacast: true });
         stage = initStage(room);
 
@@ -1553,19 +1557,19 @@ function initViewer() {
         });
         room.on(RoomEvent.TrackUnsubscribed, (track, _pub, participant) => {
             track.detach().forEach((el) => el !== video && !el.hasAttribute('data-stage-pip-video') && el.remove());
-            if (track.kind === Track.Kind.Video && isHostIdentity(participant.identity) && status !== 'ended') setOverlay('Le diffuseur a coupé sa caméra.');
+            if (track.kind === Track.Kind.Video && isHostIdentity(participant.identity) && status !== 'ended') setOverlay(t('live.viewer.host_camera_off'));
         });
         room.on(RoomEvent.TrackMuted, (pub, participant) => {
-            if (pub.kind === Track.Kind.Video && isHostIdentity(participant.identity)) setOverlay('Le diffuseur a coupé sa caméra.');
+            if (pub.kind === Track.Kind.Video && isHostIdentity(participant.identity)) setOverlay(t('live.viewer.host_camera_off'));
         });
         room.on(RoomEvent.TrackUnmuted, (pub, participant) => {
             if (pub.kind === Track.Kind.Video && isHostIdentity(participant.identity)) setOverlay('');
         });
         room.on(RoomEvent.AudioPlaybackStatusChanged, () => (unmute.hidden = room.canPlaybackAudio));
-        room.on(RoomEvent.Reconnecting, () => setOverlay('Connexion instable : reconnexion…'));
+        room.on(RoomEvent.Reconnecting, () => setOverlay(t('live.viewer.unstable')));
         room.on(RoomEvent.Reconnected, () => setOverlay(''));
         room.on(RoomEvent.Disconnected, () => {
-            if (status !== 'ended') setOverlay('Connexion perdue. Rechargez la page pour revenir au direct.');
+            if (status !== 'ended') setOverlay(t('live.viewer.lost'));
         });
         room.on(RoomEvent.DataReceived, (payload) => {
             const msg = decode(payload);
@@ -1587,10 +1591,10 @@ function initViewer() {
             const hasVideo = [...room.remoteParticipants.values()].some(
                 (p) => isHostIdentity(p.identity) && p.getTrackPublication(Track.Source.Camera)?.isSubscribed,
             );
-            if (!hasVideo) setOverlay(status === 'live' ? 'En attente de la vidéo du diffuseur…' : 'Le direct va bientôt commencer.');
+            if (!hasVideo) setOverlay(status === 'live' ? t('live.viewer.waiting_video') : t('live.viewer.starting_soon'));
         } catch (err) {
             if (err.status === 410) return onEnded();
-            setOverlay(err.message || 'Connexion au direct impossible. Rechargez la page.');
+            setOverlay(err.message || t('live.viewer.connect_failed'));
         }
     }
 
@@ -1604,7 +1608,7 @@ function initViewer() {
         try {
             await api(config.urls.end, { method: 'POST' });
             onEnded();
-            flash('Le direct a été coupé.');
+            flash(t('live.viewer.cut'));
         } catch (err) {
             flash(err.message, 'error');
         }
@@ -1645,7 +1649,7 @@ function initViewersList() {
     };
 
     async function load() {
-        list.replaceChildren(row('Chargement…'));
+        list.replaceChildren(row(t('live.loading')));
         try {
             const data = await api(config.urls.viewers);
             $('[data-live-viewers-total]', modal).textContent = `· ${data.total}`;
@@ -1671,25 +1675,25 @@ function initViewersList() {
                           const name = document.createElement('a');
                           name.href = `/profiles/${encodeURIComponent(p.id)}`;
                           name.className = 'min-w-0 truncate text-sm font-medium text-slate-900 hover:underline';
-                          name.textContent = p.displayName || 'Utilisateur';
+                          name.textContent = p.displayName || t('live.user');
                           li.append(avatar, name);
                           if (p.isVerified) {
                               const badge = document.createElement('i');
                               badge.className = 'fa-solid fa-circle-check text-xs text-slate-500';
-                              badge.title = 'Organisation vérifiée';
+                              badge.title = t('live.verified_org');
                               li.append(badge);
                           }
                           return li;
                       })
-                    : [row(data.anonymous ? 'Aucun compte connecté ne regarde pour le moment.' : 'Personne ne regarde pour le moment.')]),
+                    : [row(data.anonymous ? t('live.viewers.none_signed_in') : t('live.viewers.none'))]),
             );
             const anon = $('[data-live-viewers-anonymous]', modal);
             anon.hidden = !data.anonymous;
             anon.textContent = data.anonymous > 1
-                ? `+ ${data.anonymous} visiteurs non connectés`
-                : `+ ${data.anonymous} visiteur non connecté`;
+                ? t('live.viewers.anonymous.other', { count: data.anonymous })
+                : t('live.viewers.anonymous.one', { count: data.anonymous });
         } catch (err) {
-            list.replaceChildren(row(err.message || 'La liste n\'a pas pu être chargée.'));
+            list.replaceChildren(row(err.message || t('live.viewers.failed')));
         }
     }
 

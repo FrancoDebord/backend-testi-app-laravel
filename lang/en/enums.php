@@ -1,0 +1,112 @@
+<?php
+
+// Enum labels (app/Enums/*::label()), keyed by stored value.
+return [
+    'account_type' => [
+        'individual' => 'Individual',
+        'organization' => 'Organization',
+    ],
+    'event_status' => [
+        'draft' => 'Draft',
+        'published' => 'Published',
+        'postponed' => 'Postponed — date to be confirmed',
+        'cancelled' => 'Cancelled',
+    ],
+    'event_type' => [
+        'crusade' => 'Evangelistic crusade',
+        'conference' => 'Conference',
+        'seminar' => 'Seminar',
+        'camp' => 'Camp',
+        'tour' => 'Tour',
+        'worship' => 'Worship concert',
+        'retreat' => 'Spiritual retreat',
+        'other' => 'Other event',
+    ],
+    'live_status' => [
+        'preparing' => 'Getting ready',
+        'live' => 'Live',
+        'ended' => 'Ended',
+    ],
+    'organization_type' => [
+        'church' => 'Church',
+        'ministry' => 'Ministry',
+        'association' => 'Association',
+        'ngo' => 'NGO',
+        'media' => 'Christian media',
+        'other' => 'Other',
+    ],
+    'personal_verification_role' => [
+        'pastor' => 'Pastor',
+        'evangelist' => 'Evangelist',
+        'singer' => 'Worship leader',
+        'ministry_leader' => 'Ministry leader',
+        'public_figure' => 'Public figure',
+        'other' => 'Other',
+    ],
+    'reaction_type' => [
+        'like' => 'Like',
+        'love' => 'I love God',
+        'pray' => 'Prayer',
+        'amen' => 'Amen',
+        'worship' => 'Worship God',
+        'fire' => 'Fire',
+        'glory' => 'Glory to God!',
+        'strong' => 'Inspiring',
+        'touched' => 'Touched',
+    ],
+    'rejection_reason' => [
+        'inappropriateContent' => 'Inappropriate content',
+        'falseTestimony' => 'False testimony',
+        'hateSpeech' => 'Hate speech',
+        'spam' => 'Spam',
+        'other' => 'Other',
+    ],
+    'testimony_category' => [
+        'guerison' => 'Healing',
+        'delivrance' => 'Deliverance',
+        'conversion' => 'Conversion',
+        'mariage' => 'Marriage',
+        'famille' => 'Family',
+        'finances' => 'Finances',
+        'miracles' => 'Miracles',
+        'protection_divine' => 'Divine protection',
+        'ministere' => 'Ministry',
+        'salut' => 'Salvation',
+    ],
+    'testimony_status' => [
+        'draft' => 'Draft',
+        'pending' => 'Pending',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
+    ],
+    'testimony_type' => [
+        'text' => 'Text',
+        'audio' => 'Audio',
+        'video' => 'Video',
+    ],
+    'testimony_visibility' => [
+        'public' => 'Public',
+        'private' => 'Private',
+        'followers' => 'Followers',
+    ],
+    'user_account_status' => [
+        'active' => 'Active',
+        'suspended' => 'Suspended',
+        'banned' => 'Banned',
+    ],
+    'user_role' => [
+        'visiteur' => 'Visitor',
+        'utilisateur' => 'User',
+        'moderateur' => 'Moderator',
+        'administrateur' => 'Administrator',
+    ],
+    'verification_status' => [
+        'pending' => 'Awaiting verification',
+        'verified' => 'Verified',
+        'rejected' => 'Verification declined',
+    ],
+    'testimony_kind' => [
+        'standard' => 'Testimony',
+        'conversion' => 'Conversion story',
+    ],
+];

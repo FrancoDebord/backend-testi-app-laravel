@@ -15,10 +15,14 @@ final class EventLayout
     public const CARDS   = 'cards';
     public const COMPACT = 'compact';
 
-    public const LABELS = [
-        self::CARDS   => 'Cartes',
-        self::COMPACT => 'Liste compacte',
-    ];
+    /** Libellés des deux affichages, dans la langue courante. */
+    public static function labels(): array
+    {
+        return [
+            self::CARDS   => __('events.layout.cards'),
+            self::COMPACT => __('events.layout.compact'),
+        ];
+    }
 
     /** Durée de conservation du choix, en minutes (un an). */
     public const LIFETIME = 60 * 24 * 365;

@@ -96,12 +96,8 @@ class DailyVerse extends Model
 
     public function themeLabel(): string
     {
-        return match($this->theme) {
-            'faithfulness'  => 'Fidélité de Dieu',
-            'testimonies'   => 'Importance des témoignages',
-            'promises'      => 'Promesses de Dieu',
-            'obedience'     => 'Vie d\'obéissance',
-            default         => 'Méditation du jour',
-        };
+        $themes = __('models.daily_verse_theme');
+
+        return $themes[$this->theme] ?? $themes['default'];
     }
 }

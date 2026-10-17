@@ -30,7 +30,7 @@ class SearchController extends Controller
             (string) ($data['q'] ?? ''),
             $data['scope'] ?? 'all',
             (int) ($data['limit'] ?? SearchSuggestions::DEFAULT_LIMIT),
-        ))->header('Cache-Control', 'public, max-age=60');
+        ))->header('Cache-Control', 'public, max-age=60')->setVary('Accept-Language', false);
     }
 
     public function log(Request $request): JsonResponse
@@ -38,6 +38,6 @@ class SearchController extends Controller
         $data = $request->validate(['q' => 'required|string|max:200']);
         SearchSuggestions::record($data['q'], $request->ip());
 
-        return $this->success(null, 'Recherche enregistrée.');
+        return $this->success(null, __('search.api.recorded'));
     }
 }

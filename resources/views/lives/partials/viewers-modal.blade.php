@@ -5,12 +5,12 @@
     <div class="card relative flex max-h-[80vh] w-full max-w-md flex-col shadow-xl">
         <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
             <h2 id="live-viewers-title" class="text-base font-semibold text-primary-600">
-                Qui regarde <span class="font-normal text-slate-500" data-live-viewers-total></span>
+                {{ __('lives.viewers.title') }} <span class="font-normal text-slate-500" data-live-viewers-total></span>
             </h2>
-            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="{{ __('lives.close') }}"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <ul class="min-h-24 flex-1 divide-y divide-slate-100 overflow-y-auto" data-live-viewers-list aria-live="polite">
-            <li class="px-5 py-6 text-center text-sm text-slate-500">Chargement…</li>
+            <li class="px-5 py-6 text-center text-sm text-slate-500">{{ __('lives.viewers.loading') }}</li>
         </ul>
         <p class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500" data-live-viewers-anonymous hidden></p>
     </div>

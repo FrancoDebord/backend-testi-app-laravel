@@ -197,7 +197,7 @@
                 <div class="flex flex-wrap items-center gap-3 text-sm">
                     <label for="verse-prayer-visibility" class="sr-only">Qui peut la voir ?</label>
                     <select id="verse-prayer-visibility" name="visibility" class="form-input w-auto">
-                        @foreach(\App\Models\PrayerRequest::VISIBILITY_LABELS as $value => $label)
+                        @foreach(\App\Models\PrayerRequest::visibilityLabels() as $value => $label)
                         <option value="{{ $value }}" @selected(old('visibility', 'public') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>

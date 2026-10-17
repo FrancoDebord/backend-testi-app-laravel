@@ -27,7 +27,7 @@ class TestimonyCreator
     {
         $user = $request->user();
         if (!$user->canPublish()) {
-            throw new ContentActionException('Vous n\'avez pas la permission de publier', 403);
+            throw new ContentActionException(__('testimonies.api.cannot_publish'), 403);
         }
 
         $isBunny = $videoStatus !== null;
@@ -36,11 +36,11 @@ class TestimonyCreator
         $youtubeId = null;
         if (!$isBunny && filled($request->youtube_url)) {
             if (!$user->isAdmin()) {
-                throw new ContentActionException('Seuls les administrateurs peuvent publier une vidéo YouTube.', 403);
+                throw new ContentActionException(__('testimonies.validation.youtube_admin_only'), 403);
             }
             $youtubeId = YouTube::parseId($request->youtube_url);
             if (!$youtubeId) {
-                throw new ContentActionException("Ce lien YouTube n'est pas reconnu.", 422, ['youtube_url' => ["Ce lien YouTube n'est pas reconnu."]]);
+                throw new ContentActionException(__('testimonies.validation.youtube_unrecognized'), 422, ['youtube_url' => [__('testimonies.validation.youtube_unrecognized')]]);
             }
         }
 
@@ -56,19 +56,24 @@ class TestimonyCreator
         if (filled($request->prophecy_id)) {
             $prophecy = $user->prophecies()->find($request->prophecy_id);
             if (!$prophecy) {
-                throw new ContentActionException('Parole prophétique introuvable.', 404);
+                throw new ContentActionException(__('testimonies.api.prophecy_not_found'), 404);
             }
         }
 
+        // Témoignage de conversion : compte personnel, un seul par compte (docs/fonctionnalites/temoignage-de-conversion.md).
+        $kindFields   = ConversionTestimonies::attributesFor($request);
+        $isConversion = $kindFields['kind'] === \App\Enums\TestimonyKind::Conversion->value;
+
         $isJournal    = $request->visibility === TestimonyVisibility::Private->value;
-        $categorySlug = $request->category ?: 'autre';
+        $categorySlug = $request->category ?: ($isConversion && Category::where('slug', 'conversion')->exists() ? 'conversion' : 'autre');
         $category     = Category::where('slug', $categorySlug)->first();
         $mediaUrl     = ($isBunny || $youtubeId) ? null : $request->media_url;
 
         // Versions déjà produites pour ce fichier (docs/fonctionnalites/qualites-media.md).
         $media = self::processedMediaFor($mediaUrl);
 
-        $testimony = Testimony::create([
+        $create = fn () => Testimony::create([
+            ...$kindFields,
             'user_id'      => $user->id,
             'category_id'  => $category?->id,
             'event_id'     => $event?->id,
@@ -91,6 +96,9 @@ class TestimonyCreator
             // Carnet privé : brouillon, jamais soumis à la modération.
             'status'       => ($isJournal ? TestimonyStatus::Draft : TestimonyStatus::Pending)->value,
         ]);
+
+        // Conversion : vérification et création sous verrou du compte (deux envois simultanés n'en créent qu'un).
+        $testimony = app(ConversionTestimonies::class)->create($user, $isConversion, $create);
 
         $testimony->load('user');
 

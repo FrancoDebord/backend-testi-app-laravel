@@ -44,7 +44,7 @@ class MediaController extends Controller
             'id'  => $media->id,
             'url' => $url,
             'type' => $type,
-        ], 'Fichier uploadé');
+        ], __('videos.upload.file_uploaded'));
     }
 
     public function presignedUrl(Request $request): JsonResponse

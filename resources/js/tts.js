@@ -11,6 +11,8 @@
 | donc la phrase en cours et « Reprendre » la relit depuis son début.
 */
 
+import { t } from './i18n';
+
 const synth = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window ? window.speechSynthesis : null;
 const MAX_CHUNK = 220;
 const WORDS_PER_MINUTE = 160;
@@ -125,11 +127,11 @@ function initTts(box) {
 
     const durationText = () => {
         const minutes = Math.max(1, Math.round(words / (WORDS_PER_MINUTE * Number(rateSelect.value))));
-        return `Environ ${minutes} min d'écoute`;
+        return t('tts.duration', { minutes });
     };
 
     const render = () => {
-        const labels = { idle: 'Écouter le témoignage', playing: 'Pause', paused: 'Reprendre' };
+        const labels = { idle: t('tts.listen'), playing: t('tts.pause'), paused: t('tts.resume') };
         const icons = { idle: 'fa-solid fa-volume-high', playing: 'fa-solid fa-pause', paused: 'fa-solid fa-play' };
         playLabel.textContent = labels[state];
         playIcon.className = icons[state];
@@ -139,7 +141,7 @@ function initTts(box) {
         progress.style.width = `${Math.round((index / chunks.length) * 100)}%`;
         current.hidden = state === 'idle';
         current.textContent = state === 'idle' ? '' : chunks[index] ?? '';
-        status.textContent = state === 'idle' ? durationText() : state === 'paused' ? 'En pause' : 'Lecture en cours…';
+        status.textContent = state === 'idle' ? durationText() : state === 'paused' ? t('tts.paused') : t('tts.playing');
     };
 
     // Voix de la langue choisie : chargées de façon asynchrone par certains navigateurs (événement voiceschanged).
@@ -173,7 +175,7 @@ function initTts(box) {
             index += 1;
             if (index >= chunks.length) {
                 stop();
-                status.textContent = 'Lecture terminée';
+                status.textContent = t('tts.finished');
                 return;
             }
             render();
@@ -183,7 +185,7 @@ function initTts(box) {
             if (myToken !== token || e.error === 'interrupted' || e.error === 'canceled') return;
             state = 'paused';
             render();
-            window.flash?.('La lecture à voix haute a été interrompue. Appuyez sur « Reprendre ».', 'warning');
+            window.flash?.(t('tts.interrupted'), 'warning');
         };
         synth.speak(utterance);
     };

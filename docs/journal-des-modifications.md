@@ -4,6 +4,33 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-17 — Témoignage de conversion : module terminé, corrections après interruption
+
+- **Utilisateurs** : bloc « Témoignages de conversion » sur l'accueil ; invitation à se connecter pour les visiteurs ; modérateurs : filtre « Témoignages de conversion », badge et détails (année, lieu, verset) dans la liste et la fiche. [temoignage-de-conversion.md](fonctionnalites/temoignage-de-conversion.md)
+- **Corrections** : erreurs de syntaxe PHP (`lang/*/` dans un commentaire fermait le commentaire : `Continents`, `Countries`, `PhoneNumber`), textes manquants (`lang/*/prophecies.php`, `journal.php`, `support.php`, compléments de `admin.php` et `verification.php`, textes français d'origine), erreurs 500 (`EventLayout::LABELS` supprimée, `Locales::number(null)`), versets d'encouragement remis en français (la Bible n'est jamais traduite).
+- **Déploiement** : migration `2026_10_15_200001_…` (erreur 500 sur `/temoignages-de-conversion` sans elle), recompilation des assets.
+
+---
+
+## 2026-10-15 — Anglais, témoignage de conversion, événements passés, design « toujours », push fiables
+
+- **Utilisateurs** :
+  - le site, l'API, les messages d'erreur, les notifications et les push existent en anglais ; sélecteur `FR | EN` sur le site, langue du compte enregistrée [langues.md](fonctionnalites/langues.md) ;
+  - témoignage de conversion (un par compte personnel, année, lieu, verset), section « Témoignages de conversion » et mise en avant sur le profil [temoignage-de-conversion.md](fonctionnalites/temoignage-de-conversion.md) ;
+  - page « Événements passés » avec le nombre de témoignages de chaque événement [evenements.md](fonctionnalites/evenements.md) ;
+  - super-administrateurs : bouton « Envoyer une notification de test » sur la fiche d'un membre.
+- **API** :
+  - langue selon `Accept-Language` (français par défaut), `Content-Language` dans la réponse ;
+  - `GET`/`PUT /me` (`locale`), `GET /me/conversion-testimony`, `GET /users/{id}/conversion-testimony`, `GET /testimonies?kind=conversion`, `POST /me/push-test` ;
+  - `TestimonyResource` : `kind`, `isConversion`, `conversion` ; profil : `has_conversion_testimony`, `locale` ;
+  - `GET /events?when=past` (`testimonies_count`, `thumbnail_url`) ;
+  - `GET`/`PUT /me/verse-style` renvoient `design_of_the_day` et `effective_design_id` ; « toujours utiliser mon design » vérifié et testé.
+- **Corrections (push)** : les jetons d'un appareil sont supprimés à la déconnexion (session rattachée au jeton) et à la suppression du compte ; chaque échec d'envoi est journalisé avec le compte.
+- **Développeurs** : `App\Support\Locales`, `NotificationText`, middleware `SetLocale`, fichiers `lang/fr|en/*.php`, test de parité `tests/Unit/TranslationKeysTest.php` ; libellés des énumérations et des modèles traduits (constantes remplacées par des méthodes : `Event::reportReasons()`…) ; `ConversionTestimonies`, `TestimonyKind`, `Event::finished()`, `PushNotifier::sendTest()` ; `tests/TestCase.php` envoie les requêtes sans `Accept-Language` ; tests `LocaleTest`, `ConversionTestimonyTest`, `PastEventsTest`, `VerseDesignAlwaysTest`, `PushReliabilityTest`.
+- **Déploiement** : migration `2026_10_15_200001_add_locale_conversion_and_push_device_fields`, dossier `lang/`, recompilation des assets et copie de `public/build/`. Application mobile : envoyer `Accept-Language` et `PUT /me { locale }`, et `device_token` à la déconnexion.
+
+---
+
 ## 2026-10-15 — Vidéos Bunny Stream lisibles sur le site et dans l'application
 
 - **Utilisateurs** :

@@ -10,11 +10,7 @@ enum LiveStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Preparing => 'En préparation',
-            self::Live      => 'En direct',
-            self::Ended     => 'Terminé',
-        };
+        return __('enums.live_status.' . $this->value);
     }
 
     public function badgeClass(): string

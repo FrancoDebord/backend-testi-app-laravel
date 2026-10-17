@@ -49,6 +49,15 @@ Page de l'événement : carrousel, dates, lieu (adresse, mini-carte, **Itinérai
 - **Cartes** : tuiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, attribution « © contributeurs OpenStreetMap » toujours affichée ; application : `userAgentPackageName` = `com.airid.testi_app` ; site : Leaflet 1.9.4 depuis cdnjs (avec SRI), partiel `events/partials/leaflet.blade.php`. Nominatim : en-tête `User-Agent: TestiApp/1.0 (com.airid.testi_app)` dans l'application (le navigateur envoie le sien sur le web).
 - **Permissions** : Android `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` ; iOS `NSLocationWhenInUseUsageDescription` ; navigateur : autorisation de localisation du site (HTTPS requis).
 
+## Direct YouTube
+
+Depuis le 2026-10-17, le direct d'un événement se diffuse **sur YouTube** : l'organisateur colle simplement le lien de son direct (l'application n'utilise plus les directs LiveKit pour les événements ; l'API `live` est conservée telle quelle).
+
+- **Saisie** : champ **Lien YouTube du direct** du formulaire (site et application), modifiable par toute personne qui peut modifier l'événement (`Event::canBeManagedBy`). Formats acceptés (`App\Support\YouTube::parseId`) : `youtube.com/watch?v=…`, `youtu.be/…`, `/live/…`, `/shorts/…`, `/embed/…`, `m.youtube.com`, ou l'identifiant de 11 caractères. Seul l'identifiant est enregistré (`events.youtube_live_id`).
+- **API** : `POST /events` et `PUT /events/{id}` acceptent `youtube_live_url` (chaîne, 300 caractères au plus, facultative). Absent : inchangé ; `""` ou `null` : retiré ; lien non reconnu : **422** (`events.validation.youtube_live_invalid`). `EventResource.youtubeLive` = `{ id, url, embedUrl, thumbnailUrl }` ou `null` (`url` : `https://www.youtube.com/watch?v=…`, `embedUrl` : lecteur `youtube-nocookie.com`, `thumbnailUrl` : `i.ytimg.com/vi/…/hqdefault.jpg`).
+- **Site** : bloc **Direct sur YouTube** sur la page de l'événement (lecteur intégré `youtube-nocookie`, lien **Ouvrir sur YouTube**), comme les vidéos YouTube des témoignages ([videos-youtube.md](videos-youtube.md)).
+- Pas de notification aux participants. Tests : `tests/Feature/EventYouTubeLiveTest.php`.
+
 ## Liste compacte
 
 Bascule **Cartes / Liste compacte** sur la liste des événements (site `/evenements`, application écran Événements). Liste compacte : une ligne par événement (vignette date, titre, lieu / ville, organisateur, pastilles d'état). Choix mémorisé : site → cookie `event_layout` (aussi sans compte, `App\Support\EventLayout`, route `events.layout`) ; application → stockage local `event_layout` (`eventLayoutProvider`, `EventCompactTile`).
@@ -84,7 +93,7 @@ Commentaires d'événements avec mentions « @ » (site `<x-mention-input>`, app
 
 | Table | Contenu |
 |---|---|
-| `events` | `organizer_id`, `title`, `description`, `type`, `status`, `starts_at`, `ends_at`, `location`, `address` (300), `city`, `country`, `latitude` / `longitude` (decimal 10,7, nullables), `guests` (JSON), `comments_enabled`, compteurs `going_count`, `not_going_count`, `comment_count` ; suppression douce |
+| `events` | `organizer_id`, `title`, `description`, `type`, `status`, `starts_at`, `ends_at`, `location`, `address` (300), `city`, `country`, `latitude` / `longitude` (decimal 10,7, nullables), `youtube_live_id` (20, nullable : direct YouTube), `guests` (JSON), `comments_enabled`, compteurs `going_count`, `not_going_count`, `comment_count` ; suppression douce |
 | `event_images` | `event_id`, `url`, `position` |
 | `event_participations` | `event_id`, `user_id` (unique), `status` |
 | `event_comments` | `event_id`, `user_id`, `body`, `testimony_id` (promu) ; suppression douce |
@@ -123,16 +132,34 @@ Supprimer un événement efface ses images, réponses et commentaires ; les tém
 | GET | `events/moderation?filter=reported\|unconfirmed\|hidden` | modérateurs | File de modération |
 | POST | `events/{id}/hide` · `restore` · `dismiss` | modérateurs | Masquer · rétablir · classer les signalements |
 | GET | `events?scope=following` | connecté | À venir, organisés par les comptes suivis (Mon fil) |
+| GET | `events?when=past&page=&limit=&type=&q=` | public | **Événements passés** : terminés (publiés ou reportés, annulés et masqués exclus), du plus récent au plus ancien, paginés ; chaque élément porte `testimonies_count` (témoignages publiés) et `thumbnail_url` (première image ou `null`) |
 
 `GET events` renvoie aussi `meta.organizations` : au nom de qui la personne peut créer (elle-même, les organisations vérifiées qu'elle gère) ; `scope=mine` = événements gérés (organisateur, organisation gérée, co-gestionnaire). `POST events` accepte `organization_id`.
 
 `POST` / `PUT events` acceptent `address` (≤ 300), `latitude` (-90 à 90) et `longitude` (-180 à 180), facultatifs mais **ensemble** (422 sinon : `errors.latitude` / `errors.longitude`) ; envoyer `latitude: null, longitude: null` efface le repère. Valeurs arrondies à 7 décimales.
 
-`EventResource` : `id`, `title`, `description`, `type`, `typeLabel`, `status`, `statusLabel`, `phase`, `phaseLabel`, `startsAt`, `endsAt`, `location`, `city`, `country`, `address`, `latitude`, `longitude` (nombres ou `null`), `directionsUrl` (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`, ou l'adresse encodée à défaut de repère, `null` sans lieu), `guests[]`, `commentsEnabled`, `images[{id,url}]`, `coverUrl`, `organizer{id,displayName,initials,avatarUrl,isOrganization,isVerified}`, `stats{going,notGoing,comments,testimonies}`, `myParticipation`, `acceptsParticipation`, `canManage`, `canAdministrate`, `managers[{id,displayName,initials,avatarUrl}]` (aux gestionnaires), `live{id,status,title}|null`, `webUrl`, `createdAt`. `TestimonyResource` gagne `eventId` ; `LiveSessionResource` gagne `event{id,title}`. Depuis le 2026-10-06 (rétrocompatible) : `isPostponed`, `dateTbd`, `originalStartsAt`, `originalEndsAt`, `statusReason`, `statusChangedAt`, `isHidden`, `hiddenReason`, `isUnconfirmed`, `canReport`, `hasReported`, `survey{…}`, `organizer.isReliable`, `moderation{…}` (modérateurs) ; `EventCommentResource` : `body` lisible + `mentions`.
+`EventResource` : `id`, `title`, `description`, `type`, `typeLabel`, `status`, `statusLabel`, `phase`, `phaseLabel`, `startsAt`, `endsAt`, `location`, `city`, `country`, `address`, `latitude`, `longitude` (nombres ou `null`), `directionsUrl` (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`, ou l'adresse encodée à défaut de repère, `null` sans lieu), `guests[]`, `commentsEnabled`, `images[{id,url}]`, `coverUrl`, `organizer{id,displayName,initials,avatarUrl,isOrganization,isVerified}`, `stats{going,notGoing,comments,testimonies}`, `myParticipation`, `acceptsParticipation`, `canManage`, `canAdministrate`, `managers[{id,displayName,initials,avatarUrl}]` (aux gestionnaires), `live{id,status,title}|null`, `youtubeLive{id,url,embedUrl,thumbnailUrl}|null` (2026-10-17), `webUrl`, `createdAt`. `TestimonyResource` gagne `eventId` ; `LiveSessionResource` gagne `event{id,title}`. Depuis le 2026-10-06 (rétrocompatible) : `isPostponed`, `dateTbd`, `originalStartsAt`, `originalEndsAt`, `statusReason`, `statusChangedAt`, `isHidden`, `hiddenReason`, `isUnconfirmed`, `canReport`, `hasReported`, `survey{…}`, `organizer.isReliable`, `moderation{…}` (modérateurs) ; `EventCommentResource` : `body` lisible + `mentions`.
+
+`GET events/{id}/testimonies` : témoignages approuvés et publics de l'événement (les gestionnaires voient aussi ceux en attente), paginés. Un témoignage est rattaché par `testimonies.event_id` (gestionnaires de l'événement, ou commentaire promu).
+
+Exemple `GET /api/v1/events?when=past&limit=1` :
+
+```json
+{
+  "success": true,
+  "data": [{ "id": "7f3e…", "title": "Grande conférence de Parakou", "phase": "past",
+             "startsAt": "2026-10-12T18:00:00+01:00", "endsAt": "2026-10-13T22:00:00+01:00",
+             "thumbnail_url": "https://…/events/conf.jpg", "testimonies_count": 2, … }],
+  "meta": { "currentPage": 1, "lastPage": 4, "total": 4, "perPage": 1, "canCreate": false, … },
+  "message": ""
+}
+```
 
 Erreurs : message lisible dans `message` ; 403 droits, 404 introuvable ou brouillon, 409 commentaire déjà promu, 422 validation / événement annulé ou terminé, 429 trop de commentaires.
 
 ## Site
+
+**Événements passés** (`/evenements/passes`, menu « Découvrir ») : même liste que `GET events?when=past`, recherche et filtre par type ; chaque carte affiche le nombre de témoignages publiés et ouvre l'événement sur son onglet « Témoignages » (`?section=temoignages#temoignages`). L'ancien onglet « Passés » de `/evenements` y redirige (`Web\EventController::past`, scope `Event::finished()`, `Event::withPublishedTestimonyCount()`, vue `events/past.blade.php`).
 
 | Nom | Méthode | Chemin |
 |---|---|---|

@@ -94,9 +94,9 @@ class DailyVerseController extends Controller
     /** PUT /verset-du-jour/style  Design et réglages du texte du membre (mêmes règles que PUT /api/v1/me/verse-style). */
     public function updateStyle(Request $request, VerseStyles $styles): JsonResponse
     {
-        $data = $request->validate(VerseStyles::rules(), VerseStyles::MESSAGES);
+        $data = $request->validate(VerseStyles::rules(), VerseStyles::messages());
 
-        return response()->json(['success' => true, 'data' => $styles->update(Auth::user(), $data), 'message' => 'Préférences enregistrées.']);
+        return response()->json(['success' => true, 'data' => $styles->update(Auth::user(), $data), 'message' => __('api.preferences_saved')]);
     }
 
     public function react(Request $request, int $id): RedirectResponse

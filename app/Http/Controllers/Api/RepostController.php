@@ -28,7 +28,7 @@ class RepostController extends Controller
     /** POST /testimonies/{id}/repost { comment? } → 201 (nouveau) ou 200 (commentaire modifié). */
     public function store(Request $request, string $id): JsonResponse
     {
-        $data = $request->validate(Reposts::rules(), Reposts::MESSAGES);
+        $data = $request->validate(Reposts::rules(), Reposts::messages());
 
         try {
             [$repost, $created] = $this->reposts->repost($request->user(), $id, $data['comment'] ?? null);
@@ -38,8 +38,8 @@ class RepostController extends Controller
         $payload = $this->payload($request, $repost);
 
         return $created
-            ? $this->created($payload, 'Témoignage partagé avec vos abonnés.')
-            : $this->success($payload, 'Partage mis à jour.');
+            ? $this->created($payload, __('testimonies.repost.created'))
+            : $this->success($payload, __('testimonies.repost.updated'));
     }
 
     /** DELETE /testimonies/{id}/repost : annuler son partage. */
@@ -47,10 +47,10 @@ class RepostController extends Controller
     {
         $removed = $this->reposts->remove($request->user(), $id);
         if (!$removed) {
-            return $this->notFound('Vous n\'avez pas partagé ce témoignage.');
+            return $this->notFound(__('testimonies.repost.not_reposted'));
         }
 
-        return $this->success(['repostsCount' => (int) Testimony::withTrashed()->whereKey($id)->value('repost_count')], 'Partage annulé.');
+        return $this->success(['repostsCount' => (int) Testimony::withTrashed()->whereKey($id)->value('repost_count')], __('testimonies.repost.removed'));
     }
 
     /** GET /users/{id}/reposts : partages d'un compte (profil, onglet « Partages »), paginés. */

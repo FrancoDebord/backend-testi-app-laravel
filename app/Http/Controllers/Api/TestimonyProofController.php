@@ -27,7 +27,7 @@ class TestimonyProofController extends Controller
         $testimony = Testimony::find($id);
         if (!$testimony) return $this->notFound();
         if ($testimony->user_id !== $request->user()->id) {
-            return $this->forbidden('Seul l\'auteur peut ajouter une preuve à ce témoignage.');
+            return $this->forbidden(__('testimonies.proofs_api.author_only_add'));
         }
 
         $request->validate([
@@ -37,7 +37,7 @@ class TestimonyProofController extends Controller
 
         $proof = $this->proofs->add($testimony, $request->file('file'), $request->user(), $request->integer('position') ?: null);
 
-        return $this->created($this->present($testimony, $proof), 'Preuve ajoutée');
+        return $this->created($this->present($testimony, $proof), __('testimonies.proofs_api.added'));
     }
 
     public function destroy(Request $request, string $id, string $proofId): JsonResponse
@@ -45,14 +45,14 @@ class TestimonyProofController extends Controller
         $testimony = Testimony::find($id);
         if (!$testimony) return $this->notFound();
         if ($testimony->user_id !== $request->user()->id) {
-            return $this->forbidden('Seul l\'auteur peut retirer une preuve.');
+            return $this->forbidden(__('testimonies.proofs_api.author_only_remove'));
         }
         $proof = $testimony->proofs()->whereKey($proofId)->first();
         if (!$proof) return $this->notFound();
 
         $this->proofs->delete($proof);
 
-        return $this->success(null, 'Preuve retirée');
+        return $this->success(null, __('testimonies.proofs_api.removed'));
     }
 
     public function show(Request $request, string $id, string $proofId): StreamedResponse|JsonResponse
@@ -60,7 +60,7 @@ class TestimonyProofController extends Controller
         $testimony = Testimony::withTrashed()->find($id);
         if (!$testimony) return $this->notFound();
         if (!TestimonyProofs::canView($request->user() ?? $request->user('sanctum'), $testimony)) {
-            return $this->forbidden('Les preuves ne sont visibles que de l\'auteur et de l\'équipe de modération.');
+            return $this->forbidden(__('testimonies.proofs_api.private'));
         }
         $proof = $testimony->proofs()->whereKey($proofId)->first();
         if (!$proof) return $this->notFound();

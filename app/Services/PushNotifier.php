@@ -4,15 +4,18 @@ namespace App\Services;
 
 use App\Models\DeviceToken;
 use App\Models\User;
+use App\Support\Locales;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
  * Envoi immédiat d'une notification push à tous les appareils d'un utilisateur
- * (docs/fonctionnalites/notifications-push.md). Utilisé par SendPushNotificationJob et push:test.
+ * (docs/fonctionnalites/notifications-push.md). Utilisé par SendPushNotificationJob, push:test,
+ * POST /me/push-test et le bouton de test du back-office (sendTest).
  *
  * Ne lève jamais d'exception : un échec (FCM non joignable, jeton OAuth2 indisponible…) est
- * journalisé et compté dans le résumé, il ne fait jamais échouer la requête API.
+ * journalisé (un message par appareil non servi, avec l'utilisateur) et compté dans le résumé,
+ * il ne fait jamais échouer la requête API.
  */
 class PushNotifier
 {
@@ -50,6 +53,7 @@ class PushNotifier
             }
 
             $summary['results'] = $results;
+            $this->logFailures($userId, $results, $summary['error']);
             foreach ($results as $result) {
                 match ($result) {
                     FcmClient::SENT          => $summary['sent']++,
@@ -70,5 +74,63 @@ class PushNotifier
         }
 
         return $summary;
+    }
+
+    /**
+     * Notification de test, envoyée tout de suite (sans file) à tous les appareils du membre, dans sa langue.
+     * Résultat par appareil : sent | invalid_token (jeton périmé, supprimé) | retry | failed | disabled.
+     *
+     * @return array{total: int, sent: int, disabled: bool, error: ?string, devices: list<array{id: int, platform: ?string, token: string, result: string, error: ?string, last_used_at: ?string}>}
+     */
+    public function sendTest(User $user): array
+    {
+        $devices = DeviceToken::where('user_id', $user->id)->orderByDesc('updated_at')->get(['id', 'token', 'platform', 'last_used_at']);
+        [$title, $body] = Locales::using(Locales::forUser($user), fn () => [__('notifications.test.title'), __('notifications.test.body')]);
+
+        $summary = $devices->isEmpty()
+            ? ['sent' => 0, 'disabled' => !$this->fcm->isConfigured(), 'error' => null, 'results' => []]
+            : $this->sendToUser($user, $title, $body, ['type' => 'test', 'id' => $user->id]);
+
+        return [
+            'total'    => $devices->count(),
+            'sent'     => $summary['sent'],
+            'disabled' => $summary['disabled'],
+            'error'    => $summary['error'],
+            'devices'  => $devices->map(function (DeviceToken $device) use ($summary) {
+                $result = $summary['results'][$device->token]
+                    ?? ($summary['disabled'] ? FcmClient::DISABLED : FcmClient::FAILED);
+
+                return [
+                    'id'           => $device->id,
+                    'platform'     => $device->platform,
+                    'token'        => self::mask($device->token),
+                    'result'       => $result,
+                    'error'        => $result === FcmClient::SENT ? null : ($this->fcm->lastError($device->token) ?? $summary['error']),
+                    'last_used_at' => $device->last_used_at?->toIso8601String(),
+                ];
+            })->values()->all(),
+        ];
+    }
+
+    /** Début du jeton seulement (journaux, réponses) : un jeton FCM complet permet d'écrire à l'appareil. */
+    public static function mask(string $token): string
+    {
+        return mb_substr($token, 0, 12) . '…';
+    }
+
+    /** Un message par appareil non servi, avec l'utilisateur et l'erreur FCM. */
+    private function logFailures(string $userId, array $results, ?string $error): void
+    {
+        foreach ($results as $token => $result) {
+            if ($result === FcmClient::SENT || $result === FcmClient::DISABLED) {
+                continue;
+            }
+            Log::warning('FCM : notification non délivrée.', [
+                'user_id' => $userId,
+                'token'   => self::mask((string) $token),
+                'result'  => $result,
+                'error'   => $this->fcm->lastError((string) $token) ?? $error,
+            ]);
+        }
     }
 }

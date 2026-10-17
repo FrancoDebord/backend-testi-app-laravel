@@ -36,7 +36,7 @@ class PrayerSessionResource extends JsonResource
             'endsAt'          => $this->endsAt()->toIso8601String(),
             'durationMinutes' => $this->duration_minutes,
             'visibility'      => $this->visibility,
-            'visibilityLabel' => PrayerSession::VISIBILITY_LABELS[$this->visibility] ?? $this->visibility,
+            'visibilityLabel' => PrayerSession::visibilityLabels()[$this->visibility] ?? $this->visibility,
             'status'          => $this->status,      // scheduled | cancelled
             'phase'           => $this->phase(),     // upcoming | live | ended | cancelled
             'phaseLabel'      => $this->phaseLabel(),

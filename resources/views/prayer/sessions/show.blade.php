@@ -45,7 +45,7 @@
             <div class="flex flex-wrap items-center gap-2">
                 <h2 id="session-about" class="card-title mr-auto">La session</h2>
                 <span class="{{ $badge }}">{{ $session->phaseLabel() }}</span>
-                <span class="badge-neutral">{{ \App\Models\PrayerSession::VISIBILITY_LABELS[$session->visibility] }}</span>
+                <span class="badge-neutral">{{ \App\Models\PrayerSession::visibilityLabels()[$session->visibility] }}</span>
             </div>
             @if(filled($session->description))
             <p class="mt-4 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ $session->description }}</p>

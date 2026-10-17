@@ -40,7 +40,7 @@ class ActAsAccount
             return response()->json([
                 'success' => false,
                 'code'    => 'acting_as_forbidden',
-                'message' => "Vous n'administrez plus ce compte.",
+                'message' => __('api.acting_as_forbidden'),
             ], 403);
         }
 
@@ -53,7 +53,7 @@ class ActAsAccount
             return response()->json([
                 'success' => false,
                 'code'    => 'owner_only',
-                'message' => "Réservé au titulaire du compte. Revenez sur votre propre compte pour cette action.",
+                'message' => __('api.owner_only'),
             ], 403);
         }
 

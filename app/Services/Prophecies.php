@@ -21,14 +21,18 @@ class Prophecies
     /** Champs dont dépend le rappel programmé sur le téléphone (réglage, état, texte de la notification). */
     private const REMINDER_FIELDS = ['status', 'reminder_frequency', 'reminder_time', 'reminder_weekday', 'title', 'body_text', 'received_on'];
 
-    public const MESSAGES = [
-        'body_text.required_without'   => 'Écrivez la parole ou enregistrez-la en audio.',
-        'reminder_time.required_with'  => "Choisissez l'heure du rappel.",
-        'reminder_time.regex'          => 'Heure du rappel au format HH:MM.',
-        'received_time.regex'          => 'Heure de la parole au format HH:MM.',
-        'reminder_weekday.required_if' => 'Choisissez le jour du rappel.',
-        'due_on.after_or_equal'        => "L'échéance ne peut pas précéder la date de la parole.",
-    ];
+    /** Messages de validation personnalisés (langue courante). */
+    public static function messages(): array
+    {
+        return [
+            'body_text.required_without'   => __('prophecies.rules.body_text_required'),
+            'reminder_time.required_with'  => __('prophecies.rules.reminder_time_required'),
+            'reminder_time.regex'          => __('prophecies.rules.reminder_time_format'),
+            'received_time.regex'          => __('prophecies.rules.received_time_format'),
+            'reminder_weekday.required_if' => __('prophecies.rules.reminder_weekday_required'),
+            'due_on.after_or_equal'        => __('prophecies.rules.due_on_after_received'),
+        ];
+    }
 
     /** Mes paroles : en attente d'abord, puis les plus récentes (`$status` = waiting | fulfilled | null). */
     public function list(User $user, ?string $status = null): Builder
@@ -52,7 +56,7 @@ class Prophecies
     public function find(User $user, ?string $id): Prophecy
     {
         $prophecy = filled($id) ? $user->prophecies()->find($id) : null;
-        abort_if(!$prophecy, 404, 'Parole introuvable.');
+        abort_if(!$prophecy, 404, __('prophecies.not_found'));
 
         return $prophecy;
     }
@@ -111,7 +115,7 @@ class Prophecies
         }
         if (($data['status'] ?? null) === Prophecy::WAITING) {
             if ($prophecy->testimony_id) {
-                throw ValidationException::withMessages(['status' => 'Un témoignage est déjà publié pour cette parole : elle reste accomplie.']);
+                throw ValidationException::withMessages(['status' => __('prophecies.stays_fulfilled')]);
             }
             $data['fulfilled_on'] = null;
         }
@@ -119,7 +123,7 @@ class Prophecies
         $receivedOn = $data['received_on'] ?? $prophecy->received_on?->toDateString();
         $dueOn      = array_key_exists('due_on', $data) ? $data['due_on'] : $prophecy->due_on?->toDateString();
         if ($receivedOn && $dueOn && strtotime($dueOn) < strtotime($receivedOn)) {
-            throw ValidationException::withMessages(['due_on' => self::MESSAGES['due_on.after_or_equal']]);
+            throw ValidationException::withMessages(['due_on' => __('prophecies.rules.due_on_after_received')]);
         }
         $prophecy->update($data);
         if ($prophecy->wasChanged(self::REMINDER_FIELDS)) {

@@ -79,7 +79,7 @@ class ModerationController extends Controller
         // Statut, journal, audit, notification de l'auteur, abonnés et mentions à la première publication.
         app(TestimonyModeration::class)->approve($testimony, $request->user());
 
-        return $this->success(null, 'Témoignage approuvé');
+        return $this->success(null, __('moderation.api.approved'));
     }
 
     /**
@@ -99,6 +99,6 @@ class ModerationController extends Controller
             return $this->error($e->getMessage(), $e->status(), $e->errors());
         }
 
-        return $this->success(null, 'Témoignage rejeté');
+        return $this->success(null, __('moderation.api.rejected'));
     }
 }

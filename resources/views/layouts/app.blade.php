@@ -4,59 +4,61 @@
     // Menu latéral : chaque entrée précise qui peut la voir.
     $navGroups = [
         [
-            'label' => 'Découvrir',
+            'label' => __('layout.nav.discover'),
             'visible' => true,
             'items' => [
-                ['label' => 'Accueil',  'icon' => 'fa-house',               'url' => route('home'),         'active' => request()->routeIs('home')],
-                ['label' => 'Explorer', 'icon' => 'fa-magnifying-glass',    'url' => route('explore'),      'active' => request()->routeIs('explore')],
-                ['label' => 'Vidéos',   'icon' => 'fa-circle-play',         'url' => route('videos.index'), 'active' => request()->routeIs('videos.*')],
-                ['label' => 'Bible',    'icon' => 'fa-book-bible',          'url' => route('bible.reader'), 'active' => request()->routeIs('bible.*')],
-                ['label' => 'Directs',  'icon' => 'fa-tower-broadcast',     'url' => route('lives.index'),  'active' => request()->routeIs('lives.index', 'lives.show')],
-                ['label' => 'Événements', 'icon' => 'fa-calendar-days',     'url' => route('events.index'), 'active' => request()->routeIs('events.*')],
-                ['label' => 'Requêtes de prière', 'icon' => 'fa-hands-praying', 'url' => route('prayer.requests.index'), 'active' => request()->routeIs('prayer.requests.*')],
-                ['label' => 'Sessions de prière', 'icon' => 'fa-person-praying', 'url' => route('prayer.sessions.index'), 'active' => request()->routeIs('prayer.sessions.*')],
-                ['label' => 'Communauté', 'icon' => 'fa-people-group',      'url' => route('community.index'), 'active' => request()->routeIs('community.*')],
+                ['label' => __('layout.nav.home'),  'icon' => 'fa-house',               'url' => route('home'),         'active' => request()->routeIs('home')],
+                ['label' => __('layout.nav.explore'), 'icon' => 'fa-magnifying-glass',    'url' => route('explore'),      'active' => request()->routeIs('explore')],
+                ['label' => __('layout.nav.videos'),   'icon' => 'fa-circle-play',         'url' => route('videos.index'), 'active' => request()->routeIs('videos.*')],
+                ['label' => __('layout.nav.bible'),    'icon' => 'fa-book-bible',          'url' => route('bible.reader'), 'active' => request()->routeIs('bible.*')],
+                ['label' => __('layout.nav.lives'),  'icon' => 'fa-tower-broadcast',     'url' => route('lives.index'),  'active' => request()->routeIs('lives.index', 'lives.show')],
+                ['label' => __('layout.nav.events'), 'icon' => 'fa-calendar-days',     'url' => route('events.index'), 'active' => request()->routeIs('events.*') && !request()->routeIs('events.past')],
+                ['label' => __('layout.nav.past_events'), 'icon' => 'fa-clock-rotate-left', 'url' => route('events.past'), 'active' => request()->routeIs('events.past')],
+                ['label' => __('layout.nav.conversions'), 'icon' => 'fa-dove', 'url' => route('testimonies.conversions'), 'active' => request()->routeIs('testimonies.conversions')],
+                ['label' => __('layout.nav.prayer_requests'), 'icon' => 'fa-hands-praying', 'url' => route('prayer.requests.index'), 'active' => request()->routeIs('prayer.requests.*')],
+                ['label' => __('layout.nav.prayer_sessions'), 'icon' => 'fa-person-praying', 'url' => route('prayer.sessions.index'), 'active' => request()->routeIs('prayer.sessions.*')],
+                ['label' => __('layout.nav.community'), 'icon' => 'fa-people-group',      'url' => route('community.index'), 'active' => request()->routeIs('community.*')],
             ],
         ],
         [
-            'label' => 'Mon espace',
+            'label' => __('layout.nav.my_space'),
             'visible' => (bool) $authUser,
             'items' => $authUser ? [
-                ['label' => 'Mon fil',               'icon' => 'fa-house-user',    'url' => route('feed.personal'),               'active' => request()->routeIs('feed.personal')],
-                ['label' => 'Publier un témoignage', 'icon' => 'fa-pen-to-square', 'url' => route('publish'),                     'active' => request()->routeIs('publish')],
-                ['label' => 'Mes témoignages',       'icon' => 'fa-list',          'url' => route('testimonies.mine'),            'active' => request()->routeIs('testimonies.mine')],
-                ['label' => 'Carnet privé',          'icon' => 'fa-book-open',     'url' => route('journal.index'),               'active' => request()->routeIs('journal.*')],
-                ['label' => 'Paroles prophétiques',  'icon' => 'fa-scroll',        'url' => route('prophecies.index'),            'active' => request()->routeIs('prophecies.*')],
-                ['label' => 'Mes abonnements',       'icon' => 'fa-user-check',    'url' => route('profile.following'),           'active' => request()->routeIs('profile.following')],
-                ['label' => 'Sauvegardes',           'icon' => 'fa-bookmark',      'url' => route('profile.saved'),               'active' => request()->routeIs('profile.saved')],
-                ['label' => 'Notifications',         'icon' => 'fa-bell',          'url' => route('notifications.index'),         'active' => request()->routeIs('notifications.*')],
-                ['label' => 'Mon profil',            'icon' => 'fa-user',          'url' => route('profiles.show', $authUser->id), 'active' => request()->routeIs('profiles.show', 'profile.edit') && (int) request()->route('id', $authUser->id) === (int) $authUser->id],
-                ['label' => 'Paramètres',            'icon' => 'fa-gear',          'url' => route('profile.settings'),            'active' => request()->routeIs('profile.settings')],
+                ['label' => __('layout.nav.my_feed'),               'icon' => 'fa-house-user',    'url' => route('feed.personal'),               'active' => request()->routeIs('feed.personal')],
+                ['label' => __('layout.nav.publish'), 'icon' => 'fa-pen-to-square', 'url' => route('publish'),                     'active' => request()->routeIs('publish')],
+                ['label' => __('layout.nav.my_testimonies'),       'icon' => 'fa-list',          'url' => route('testimonies.mine'),            'active' => request()->routeIs('testimonies.mine')],
+                ['label' => __('layout.nav.journal'),          'icon' => 'fa-book-open',     'url' => route('journal.index'),               'active' => request()->routeIs('journal.*')],
+                ['label' => __('layout.nav.prophecies'),  'icon' => 'fa-scroll',        'url' => route('prophecies.index'),            'active' => request()->routeIs('prophecies.*')],
+                ['label' => __('layout.nav.following'),       'icon' => 'fa-user-check',    'url' => route('profile.following'),           'active' => request()->routeIs('profile.following')],
+                ['label' => __('layout.nav.saved'),           'icon' => 'fa-bookmark',      'url' => route('profile.saved'),               'active' => request()->routeIs('profile.saved')],
+                ['label' => __('layout.nav.notifications'),         'icon' => 'fa-bell',          'url' => route('notifications.index'),         'active' => request()->routeIs('notifications.*')],
+                ['label' => __('layout.nav.my_profile'),            'icon' => 'fa-user',          'url' => route('profiles.show', $authUser->id), 'active' => request()->routeIs('profiles.show', 'profile.edit') && (int) request()->route('id', $authUser->id) === (int) $authUser->id],
+                ['label' => __('layout.nav.settings'),            'icon' => 'fa-gear',          'url' => route('profile.settings'),            'active' => request()->routeIs('profile.settings')],
             ] : [],
         ],
         [
-            'label' => 'Modération',
+            'label' => __('layout.nav.moderation'),
             'visible' => $authUser?->canModerate() ?? false,
             'items' => [
                 // Back-office des témoignages (docs/fonctionnalites/gestion-des-temoignages.md)
-                ['label' => 'Témoignages', 'icon' => 'fa-shield-halved', 'url' => route('moderation.index'), 'active' => request()->routeIs('moderation.*') && !request()->routeIs('moderation.dashboard')],
-                ['label' => 'Statistiques des témoignages', 'icon' => 'fa-chart-line', 'url' => route('moderation.dashboard'), 'active' => request()->routeIs('moderation.dashboard')],
-                ['label' => 'Requêtes de prière signalées', 'icon' => 'fa-flag', 'url' => route('prayer.moderation.index'), 'active' => request()->routeIs('prayer.moderation.*')],
-                ['label' => 'Événements signalés', 'icon' => 'fa-calendar-xmark', 'url' => route('events.moderation.index'), 'active' => request()->routeIs('events.moderation.*')],
-                ['label' => 'Lancer un direct',   'icon' => 'fa-video',         'url' => route('lives.create'),     'active' => request()->routeIs('lives.create', 'lives.studio')],
+                ['label' => __('layout.nav.mod_testimonies'), 'icon' => 'fa-shield-halved', 'url' => route('moderation.index'), 'active' => request()->routeIs('moderation.*') && !request()->routeIs('moderation.dashboard')],
+                ['label' => __('layout.nav.mod_stats'), 'icon' => 'fa-chart-line', 'url' => route('moderation.dashboard'), 'active' => request()->routeIs('moderation.dashboard')],
+                ['label' => __('layout.nav.mod_prayer'), 'icon' => 'fa-flag', 'url' => route('prayer.moderation.index'), 'active' => request()->routeIs('prayer.moderation.*')],
+                ['label' => __('layout.nav.mod_events'), 'icon' => 'fa-calendar-xmark', 'url' => route('events.moderation.index'), 'active' => request()->routeIs('events.moderation.*')],
+                ['label' => __('layout.nav.start_live'),   'icon' => 'fa-video',         'url' => route('lives.create'),     'active' => request()->routeIs('lives.create', 'lives.studio')],
             ],
         ],
         [
-            'label' => 'Administration',
+            'label' => __('layout.nav.administration'),
             'visible' => $authUser?->isAdmin() ?? false,
             'items' => [
-                ['label' => 'Tableau de bord', 'icon' => 'fa-chart-simple', 'url' => route('admin.dashboard'),        'active' => request()->routeIs('admin.dashboard')],
-                ['label' => 'Utilisateurs',    'icon' => 'fa-users',        'url' => route('admin.users.index'),      'active' => request()->routeIs('admin.users.*')],
-                ['label' => 'Vérification des comptes', 'icon' => 'fa-user-check', 'url' => route('admin.verifications.index'), 'active' => request()->routeIs('admin.verifications.*')],
-                ['label' => 'Contenu',         'icon' => 'fa-file-lines',   'url' => route('admin.content.index'),    'active' => request()->routeIs('admin.content.*')],
-                ['label' => 'Catégories',      'icon' => 'fa-tags',         'url' => route('admin.categories.index'), 'active' => request()->routeIs('admin.categories.*')],
-                ['label' => 'Paramètres',      'icon' => 'fa-sliders',      'url' => route('admin.settings'),         'active' => request()->routeIs('admin.settings')],
-                ['label' => 'Documentation',   'icon' => 'fa-book',         'url' => route('admin.documentation'),    'active' => request()->routeIs('admin.documentation')],
+                ['label' => __('layout.nav.dashboard'), 'icon' => 'fa-chart-simple', 'url' => route('admin.dashboard'),        'active' => request()->routeIs('admin.dashboard')],
+                ['label' => __('layout.nav.users'),    'icon' => 'fa-users',        'url' => route('admin.users.index'),      'active' => request()->routeIs('admin.users.*')],
+                ['label' => __('layout.nav.verifications'), 'icon' => 'fa-user-check', 'url' => route('admin.verifications.index'), 'active' => request()->routeIs('admin.verifications.*')],
+                ['label' => __('layout.nav.content'),         'icon' => 'fa-file-lines',   'url' => route('admin.content.index'),    'active' => request()->routeIs('admin.content.*')],
+                ['label' => __('layout.nav.categories'),      'icon' => 'fa-tags',         'url' => route('admin.categories.index'), 'active' => request()->routeIs('admin.categories.*')],
+                ['label' => __('layout.nav.admin_settings'),      'icon' => 'fa-sliders',      'url' => route('admin.settings'),         'active' => request()->routeIs('admin.settings')],
+                ['label' => __('layout.nav.documentation'),   'icon' => 'fa-book',         'url' => route('admin.documentation'),    'active' => request()->routeIs('admin.documentation')],
             ],
         ],
     ];
@@ -81,7 +83,7 @@
     $fullBleed   = $fullBleed ?? false;
 @endphp
 <!DOCTYPE html>
-<html lang="fr" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -95,6 +97,7 @@
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700|caveat:600,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
+    <script>window.I18N = @json(__('js'));</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
@@ -105,13 +108,13 @@
 
 <aside id="app-sidebar"
        class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:translate-x-0"
-       aria-label="Menu principal">
+       aria-label="{{ __('layout.main_menu') }}">
     <div class="flex h-20 shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-5">
         <a href="{{ route('home') }}" class="flex min-w-0 items-center gap-3">
             <img src="{{ asset('icons/arise-shine-krea.png') }}" alt="ARISE &amp; SHINE Krea" class="h-14 w-auto" width="477" height="493">
             <span class="border-l border-slate-200 pl-3 text-sm font-bold text-primary-600">TestiApp</span>
         </a>
-        <button type="button" class="btn-ghost btn-sm lg:hidden" data-sidebar-close aria-label="Fermer le menu">
+        <button type="button" class="btn-ghost btn-sm lg:hidden" data-sidebar-close aria-label="{{ __('layout.close_menu') }}">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
@@ -151,22 +154,22 @@
             <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-semibold text-slate-900">{{ $authUser->display_name }}</p>
                 @if($actingActor)
-                <p class="truncate text-xs text-slate-500">Par {{ $realUser->display_name }}</p>
+                <p class="truncate text-xs text-slate-500">{{ __('layout.by', ['name' => $realUser->display_name]) }}</p>
                 @else
                 <p class="truncate text-xs text-slate-500">{{ $authUser->role->label() }}</p>
                 @endif
             </div>
-            <form method="POST" action="{{ route('logout') }}" data-loading-label="Déconnexion…">
+            <form method="POST" action="{{ route('logout') }}" data-loading-label="{{ __('layout.logging_out') }}">
                 @csrf
-                <button type="submit" class="btn-ghost btn-sm" title="Déconnexion" aria-label="Déconnexion">
+                <button type="submit" class="btn-ghost btn-sm" title="{{ __('layout.logout') }}" aria-label="{{ __('layout.logout') }}">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                 </button>
             </form>
         </div>
         @else
         <div class="grid gap-2">
-            <a href="{{ route('login') }}" class="btn-primary w-full">Se connecter</a>
-            <a href="{{ route('register') }}" class="btn-cta w-full">Créer un compte</a>
+            <a href="{{ route('login') }}" class="btn-primary w-full">{{ __('layout.sign_in') }}</a>
+            <a href="{{ route('register') }}" class="btn-cta w-full">{{ __('layout.create_account') }}</a>
         </div>
         @endauth
     </div>
@@ -176,7 +179,7 @@
     <div class="pointer-events-none relative hidden shrink-0 overflow-hidden [@media(min-height:860px)]:block" aria-hidden="true">
         <p class="font-script relative z-10 flex gap-2 px-6 pt-3 text-[22px] leading-tight text-primary-600">
             <i class="fa-solid fa-sun mt-1 text-lg text-sun-400"></i>
-            <span>“Gloire à Dieu<br>pour chaque vie<br>transformée !”</span>
+            <span>{!! __('layout.quote') !!}</span>
         </p>
         <svg class="-mt-4 block h-36 w-full" viewBox="0 0 256 128" preserveAspectRatio="none" focusable="false">
             <path d="M0 40 C80 20 160 18 256 30 V128 H0Z" fill="#FFF8D9"/>
@@ -196,7 +199,7 @@
 <div class="flex min-h-screen min-w-0 flex-col lg:pl-64">
 
     <header class="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
-        <button type="button" class="btn-ghost btn-sm lg:hidden" data-sidebar-toggle aria-controls="app-sidebar" aria-expanded="false" aria-label="Ouvrir le menu">
+        <button type="button" class="btn-ghost btn-sm lg:hidden" data-sidebar-toggle aria-controls="app-sidebar" aria-expanded="false" aria-label="{{ __('layout.open_menu') }}">
             <i class="fa-solid fa-bars text-base"></i>
         </button>
         <a href="{{ route('home') }}" class="flex items-center lg:hidden">
@@ -205,11 +208,11 @@
 
         {{-- Recherche globale (page Explorer) --}}
         <form method="GET" action="{{ route('explore') }}" role="search" class="mx-auto hidden w-full max-w-xl md:flex" data-loading-inline>
-            <label for="global-search" class="sr-only">Rechercher un témoignage</label>
+            <label for="global-search" class="sr-only">{{ __('layout.search_label') }}</label>
             <div class="relative min-w-0 flex-1">
                 <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
                 <input id="global-search" type="search" name="q" value="{{ request()->routeIs('explore') ? request('q') : '' }}"
-                       class="form-input min-h-10 rounded-full bg-slate-50 pl-9" placeholder="Rechercher un témoignage, un auteur…"
+                       class="form-input min-h-10 rounded-full bg-slate-50 pl-9" placeholder="{{ __('layout.search_placeholder') }}"
                        data-search-autocomplete="all" data-search-recent-key="explore">
             </div>
             {{-- Autocomplétion de toutes les barres [data-search-autocomplete] ─ docs/fonctionnalites/recherche.md --}}
@@ -217,25 +220,26 @@
         </form>
 
         <div class="ml-auto flex items-center gap-2 md:ml-0">
-            <a href="{{ route('explore') }}" class="btn-ghost btn-sm md:hidden" title="Rechercher" aria-label="Rechercher">
+            <div class="hidden sm:block">@include('components.locale-switcher')</div>
+            <a href="{{ route('explore') }}" class="btn-ghost btn-sm md:hidden" title="{{ __('layout.search') }}" aria-label="{{ __('layout.search') }}">
                 <i class="fa-solid fa-magnifying-glass text-base"></i>
             </a>
             @auth
-            <a href="{{ route('notifications.index') }}" class="btn-ghost btn-sm" title="Notifications" aria-label="Notifications">
+            <a href="{{ route('notifications.index') }}" class="btn-ghost btn-sm" title="{{ __('layout.nav.notifications') }}" aria-label="{{ __('layout.nav.notifications') }}">
                 <i class="fa-regular fa-bell text-base"></i>
             </a>
             @if($hasAccountSwitcher)
             {{-- Menu utilisateur avec « Mes comptes » (administrateurs de compte) --}}
             <details class="relative" data-account-menu>
                 <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
-                         aria-label="Menu du compte">
+                         aria-label="{{ __('layout.account_menu') }}">
                     @include('components.avatar', ['user' => $authUser, 'size' => 'sm'])
                     <span class="hidden max-w-40 truncate text-sm font-medium text-slate-700 sm:inline">{{ $authUser->display_name }}</span>
                     <i class="fa-solid fa-chevron-down text-xs text-slate-500" aria-hidden="true"></i>
                 </summary>
                 <div class="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-2 shadow-card">
                     <a href="{{ route('profiles.show', $authUser->id) }}" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-primary-50 hover:text-primary-600">
-                        <i class="fa-solid fa-user w-4 text-center text-primary-600" aria-hidden="true"></i>Voir le profil
+                        <i class="fa-solid fa-user w-4 text-center text-primary-600" aria-hidden="true"></i>{{ __('layout.view_profile') }}
                     </a>
                     <div class="mt-2 border-t border-slate-100 pt-2">
                         @include('layouts.partials.account-switcher', ['accounts' => $myAccounts, 'activeId' => $activeAccountId])
@@ -249,8 +253,8 @@
             </a>
             @endif
             @else
-            <a href="{{ route('login') }}" class="btn-ghost btn-sm">Connexion</a>
-            <a href="{{ route('register') }}" class="btn-cta btn-sm">S'inscrire</a>
+            <a href="{{ route('login') }}" class="btn-ghost btn-sm">{{ __('layout.login') }}</a>
+            <a href="{{ route('register') }}" class="btn-cta btn-sm">{{ __('layout.register') }}</a>
             @endauth
         </div>
     </header>
@@ -261,14 +265,14 @@
         <div class="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-x-4 gap-y-2">
             <i class="fa-solid fa-user-shield text-sun-400" aria-hidden="true"></i>
             <p class="min-w-0 flex-1 text-sm">
-                Vous agissez au nom de <strong class="font-bold">{{ $actingAccount['displayName'] }}</strong> — vos publications, commentaires et réactions apparaissent sous ce nom.
+                {!! __('layout.acting_as', ['name' => e($actingAccount['displayName'])]) !!}
                 @unless($actingActor)
-                <span class="block">Cette page concerne votre propre compte ({{ $realUser->display_name }}).</span>
+                <span class="block">{{ __('layout.acting_own_page', ['name' => $realUser->display_name]) }}</span>
                 @endunless
             </p>
-            <form method="POST" action="{{ route('accounts.switch', $realUser->id) }}" data-loading-label="Retour à votre compte…">
+            <form method="POST" action="{{ route('accounts.switch', $realUser->id) }}" data-loading-label="{{ __('layout.back_to_account_loading') }}">
                 @csrf
-                <button type="submit" class="btn-accent btn-sm"><i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>Revenir à mon compte</button>
+                <button type="submit" class="btn-accent btn-sm"><i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>{{ __('layout.back_to_account') }}</button>
             </form>
         </div>
     </div>
@@ -281,7 +285,7 @@
         <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div class="min-w-0">
                 @if(count($breadcrumbs))
-                <nav aria-label="Fil d'Ariane" class="mb-2">
+                <nav aria-label="{{ __('layout.breadcrumb') }}" class="mb-2">
                     <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                         @foreach($breadcrumbs as $crumb)
                         <li class="flex min-w-0 items-center gap-2">
@@ -319,7 +323,7 @@
             <div class="{{ $alertClass }}" role="{{ $alertClass === 'alert-error' ? 'alert' : 'status' }}">
                 <i class="fa-solid {{ $icon }} mt-0.5"></i>
                 <p class="min-w-0 flex-1">{{ $message }}</p>
-                <button type="button" class="opacity-60 hover:opacity-100" data-dismiss-alert aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" class="opacity-60 hover:opacity-100" data-dismiss-alert aria-label="{{ __('layout.close') }}"><i class="fa-solid fa-xmark"></i></button>
             </div>
             @endforeach
         </div>
@@ -332,12 +336,15 @@
     <footer class="border-t border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
             <p>© {{ date('Y') }} TestiApp — ARISE &amp; SHINE Krea</p>
-            <p class="flex gap-4">
-                <a href="{{ route('home') }}" class="hover:text-slate-900">Accueil</a>
-                <a href="{{ route('explore') }}" class="hover:text-slate-900">Explorer</a>
-                <a href="{{ route('videos.index') }}" class="hover:text-slate-900">Vidéos</a>
-                <a href="{{ route('bible.reader') }}" class="hover:text-slate-900">Bible</a>
-            </p>
+            <div class="flex flex-wrap items-center gap-4">
+                <p class="flex flex-wrap gap-4">
+                    <a href="{{ route('home') }}" class="hover:text-slate-900">{{ __('layout.nav.home') }}</a>
+                    <a href="{{ route('explore') }}" class="hover:text-slate-900">{{ __('layout.nav.explore') }}</a>
+                    <a href="{{ route('videos.index') }}" class="hover:text-slate-900">{{ __('layout.nav.videos') }}</a>
+                    <a href="{{ route('bible.reader') }}" class="hover:text-slate-900">{{ __('layout.nav.bible') }}</a>
+                </p>
+                <div class="sm:hidden">@include('components.locale-switcher')</div>
+            </div>
         </div>
     </footer>
 </div>

@@ -42,8 +42,8 @@ class ReactionController extends Controller
         $payload = [...(new ReactionResource($reaction))->toArray($request), ...$reactions->state($request->user(), $testimony)];
 
         return $created
-            ? $this->created($payload, 'Réaction ajoutée')
-            : $this->success($payload, 'Réaction enregistrée');
+            ? $this->created($payload, __('reactions.api.added'))
+            : $this->success($payload, __('reactions.api.saved'));
     }
 
     /**
@@ -72,6 +72,6 @@ class ReactionController extends Controller
 
         $reactions->remove($request->user(), $testimony, $group);
 
-        return $this->success($reactions->state($request->user(), $testimony), 'Réaction retirée');
+        return $this->success($reactions->state($request->user(), $testimony), __('reactions.api.removed'));
     }
 }

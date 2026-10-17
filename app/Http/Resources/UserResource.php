@@ -38,6 +38,8 @@ class UserResource extends JsonResource
             'avatar_url'       => $this->avatar_url,
             'cover_url'        => $this->cover_url, // photo de couverture (docs/fonctionnalites/photo-de-couverture.md)
             'country'          => $this->country,
+            // Langue du compte (fr | en) : push et e-mails ; modifiable par PUT /me (docs/fonctionnalites/langues.md).
+            'locale'           => $private ? \App\Support\Locales::forUser($this->resource) : null,
             'bio'              => $this->bio,
             'role'             => $this->role->value,
             'status'           => $this->status->value,
@@ -62,6 +64,9 @@ class UserResource extends JsonResource
             'approval_badge'       => $this->approvalBadge(),
             // Date d'attribution du badge (verified_at) ; null sans badge.
             'approved_at'          => $this->approvedAt(),
+            // Témoignage de conversion publié (profil public : User::withConversionTestimonyState) ; absent s'il n'a pas été chargé.
+            // Voir docs/fonctionnalites/temoignage-de-conversion.md
+            'has_conversion_testimony' => $this->when(array_key_exists('has_conversion_testimony', $this->resource->getAttributes()), fn () => (bool) $this->has_conversion_testimony),
             // Abonnement de la personne connectée (profil, page Communauté) : présent seulement s'il a été chargé.
             'is_following'         => $this->when(array_key_exists('is_followed', $this->resource->getAttributes()), fn () => (bool) $this->is_followed),
             // Personne : une demande en cours ou refusée reste privée (docs/fonctionnalites/verification-des-comptes.md).

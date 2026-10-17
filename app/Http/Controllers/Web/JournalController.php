@@ -18,14 +18,20 @@ use Illuminate\View\View;
  */
 class JournalController extends Controller
 {
-    public const TYPES = ['text' => 'Texte', 'audio' => 'Audio', 'video' => 'Vidéo'];
+    public const TYPE_KEYS = ['text', 'audio', 'video'];
+
+    /** Filtres par type : clé => libellé traduit. */
+    public static function types(): array
+    {
+        return collect(self::TYPE_KEYS)->mapWithKeys(fn ($k) => [$k => __('journal.types.' . $k)])->all();
+    }
 
     public function __construct(private readonly Journal $journal) {}
 
     /** Mes entrées, les plus récentes d'abord (?type, ?q). */
     public function index(Request $request, Prophecies $prophecies): View
     {
-        $type = array_key_exists($request->query('type'), self::TYPES) ? $request->query('type') : null;
+        $type = in_array($request->query('type'), self::TYPE_KEYS, true) ? $request->query('type') : null;
         $q    = trim((string) $request->query('q', ''));
 
         $entries = $this->journal->entries($request->user()->id, $type, $q)->paginate(12)->withQueryString();
@@ -40,17 +46,17 @@ class JournalController extends Controller
         $data = $request->validate(
             ['category' => ['required', 'string', 'exists:categories,slug']],
             [
-                'category.required' => 'Choisissez une catégorie pour partager ce témoignage.',
-                'category.exists'   => "Cette catégorie n'existe pas. Choisissez-en une autre.",
+                'category.required' => __('journal.share.category_required'),
+                'category.exists'   => __('journal.share.category_exists'),
             ]
         );
         $testimony = $this->entry($request, $id);
-        abort_unless($request->user()->canPublish(), 403, "Vous n'avez pas la permission de publier.");
+        abort_unless($request->user()->canPublish(), 403, __('journal.share.forbidden'));
 
         $this->journal->share($testimony, $data['category']);
 
         return redirect()->route('testimonies.show', $testimony->id)
-            ->with('success', 'Témoignage partagé : il sera publié après relecture par la modération.');
+            ->with('success', __('journal.flash.shared'));
     }
 
     /** Retirer un de ses témoignages du public et le ranger dans le carnet. */
@@ -64,7 +70,7 @@ class JournalController extends Controller
         Prophecy::where('testimony_id', $testimony->id)->update(['is_public' => false]);
 
         return redirect()->route('testimonies.show', $testimony->id)
-            ->with('success', 'Témoignage rangé dans votre carnet privé : vous seul pouvez le voir.');
+            ->with('success', __('journal.flash.stored'));
     }
 
     /** Supprimer une entrée du carnet (les témoignages publics ne se suppriment pas ici). */
@@ -75,7 +81,7 @@ class JournalController extends Controller
         Prophecy::where('testimony_id', $testimony->id)->update(['testimony_id' => null, 'is_public' => false]);
         $testimony->delete();
 
-        return redirect()->route('journal.index')->with('success', 'Entrée supprimée de votre carnet.');
+        return redirect()->route('journal.index')->with('success', __('journal.flash.deleted'));
     }
 
     /** Entrée du carnet de l'utilisateur ; 404 pour toute autre (son existence n'est pas révélée). */

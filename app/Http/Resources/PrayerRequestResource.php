@@ -30,7 +30,7 @@ class PrayerRequestResource extends JsonResource
             'body'        => \App\Services\Mentions::plain($this->body),
             'mentions'    => \App\Services\Mentions::of($this->body),
             'visibility'  => $this->visibility,
-            'visibilityLabel' => PrayerRequest::VISIBILITY_LABELS[$this->visibility] ?? $this->visibility,
+            'visibilityLabel' => PrayerRequest::visibilityLabels()[$this->visibility] ?? $this->visibility,
             'isAnonymous' => $this->is_anonymous,
             // null si la requête est anonyme (sauf pour son auteur et la modération).
             'author'      => $author ? [

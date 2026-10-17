@@ -57,15 +57,15 @@ class LiveService
         if (!empty($data['event_id'])) {
             $event = \App\Models\Event::find($data['event_id']);
             if (!$event || !$event->canBeManagedBy($host)) {
-                throw new LiveActionException("Seuls l'organisateur et les administrateurs peuvent diffuser cet événement.", 403);
+                throw new LiveActionException(__('lives.errors.event_not_manager'), 403);
             }
             if ($event->status !== \App\Enums\EventStatus::Published) {
-                throw new LiveActionException("L'événement doit être publié (et non annulé) pour être diffusé.", 422);
+                throw new LiveActionException(__('lives.errors.event_not_published'), 422);
             }
             // L'événement doit appartenir à une organisation encore vérifiée (ou à un administrateur).
             $organizer = $event->organizer;
             if (!$host->canModerate() && !($organizer?->isVerifiedOrganization() || $organizer?->isAdmin())) {
-                throw new LiveActionException("Seules les organisations vérifiées peuvent diffuser leurs événements.", 403);
+                throw new LiveActionException(__('lives.errors.event_not_verified'), 403);
             }
         } elseif (!empty($data['prayer_session_id'])) {
             // Salle d'une session de prière : ouverte par son hôte, même simple utilisateur.
@@ -73,22 +73,22 @@ class LiveService
             // Voir docs/fonctionnalites/sessions-de-priere.md
             $prayer = \App\Models\PrayerSession::find($data['prayer_session_id']);
             if (!$prayer || !$prayer->isHost($host)) {
-                throw new LiveActionException("Seul l'hôte peut ouvrir la salle de cette session de prière.", 403);
+                throw new LiveActionException(__('lives.errors.prayer_not_host'), 403);
             }
         } elseif (!$host->canModerate()) {
-            throw new LiveActionException('Seuls les modérateurs et les administrateurs peuvent diffuser en direct.', 403);
+            throw new LiveActionException(__('lives.errors.not_moderator'), 403);
         }
 
         $existing = LiveSession::active()->where('host_id', $host->id)->first();
         if ($existing) {
-            throw new LiveActionException('Vous avez déjà un direct en cours. Terminez-le avant d\'en lancer un autre.', 409, $existing);
+            throw new LiveActionException(__('lives.errors.already_live'), 409, $existing);
         }
 
         $room = 'live-' . Str::uuid();
         try {
             $this->livekit->createRoom($room, (int) config('livekit.empty_timeout'), (int) config('livekit.max_participants'));
         } catch (LiveKitException $e) {
-            throw new LiveActionException('Le service vidéo est injoignable pour le moment. Réessayez dans quelques instants.', 503);
+            throw new LiveActionException(__('lives.errors.service_unreachable'), 503);
         }
 
         $source = $data['source'] ?? 'browser';
@@ -133,8 +133,8 @@ class LiveService
             $live->update(['status' => LiveStatus::Ended, 'ended_at' => now(), 'end_reason' => 'camera']);
             try { $this->livekit->deleteRoom($live->room_name); } catch (\Throwable) {}
             throw new LiveActionException($live->source === 'url'
-                ? "Le service vidéo n'accepte pas cette adresse de flux. Vérifiez-la (HLS, HTTP, SRT, RTMP) ou utilisez le mode RTMP."
-                : "Le point d'entrée de la caméra n'a pas pu être créé. Réessayez dans quelques instants.", 503);
+                ? __('lives.errors.ingress_url')
+                : __('lives.errors.ingress_rtmp'), 503);
         }
 
         $live->update([
@@ -159,10 +159,10 @@ class LiveService
     public function goLive(LiveSession $live, User $user): LiveSession
     {
         if (!$live->isHost($user)) {
-            throw new LiveActionException('Seul le diffuseur peut lancer ce direct.', 403);
+            throw new LiveActionException(__('lives.errors.host_only_start'), 403);
         }
         if ($live->status === LiveStatus::Ended) {
-            throw new LiveActionException('Ce direct est terminé.', 410);
+            throw new LiveActionException(__('lives.errors.ended'), 410);
         }
         if ($live->status === LiveStatus::Preparing) {
             // Passage conditionnel : l'appel « go-live » de l'application et le webhook LiveKit
@@ -193,12 +193,28 @@ class LiveService
             FollowerNotifications::notify(
                 $host,
                 NotificationType::LiveStarted->value,
-                ['live_id' => $live->id, 'live_title' => $live->title],
-                "{$host->display_name} est en direct : {$live->title}",
+                ...$this->startedNotification($host, $live),
             );
         } catch (\Throwable $e) {
             report($e);
         }
+    }
+
+    /**
+     * Payload et message de la notification « live_started » : texte traduit dans la langue du
+     * destinataire (payload.i18n, voir App\Support\NotificationText).
+     *
+     * @return array{payload: array<string, mixed>, message: string}
+     */
+    private function startedNotification(User $host, LiveSession $live): array
+    {
+        $text = \App\Support\NotificationText::fields(
+            'lives.notify_started',
+            ['name' => $host->display_name, 'title' => $live->title],
+            ['live_id' => $live->id, 'live_title' => $live->title],
+        );
+
+        return ['payload' => $text['payload'], 'message' => $text['message']];
     }
 
     // ─── Enregistrement → témoignage vidéo ───────────────────────────────────
@@ -296,7 +312,7 @@ class LiveService
     {
         // Le diffuseur ou un administrateur (jamais un modérateur) ; sans acteur : arrêt automatique.
         if ($actor && !$live->canBeEndedBy($actor)) {
-            throw new LiveActionException('Seuls le diffuseur et les administrateurs peuvent couper ce direct.', 403);
+            throw new LiveActionException(__('lives.errors.cannot_end'), 403);
         }
         if ($live->status === LiveStatus::Ended) {
             return $live;
@@ -341,10 +357,10 @@ class LiveService
         $this->ensureConfigured();
         $this->ensureActiveAccount($user);
         if (!$live->isHost($user)) {
-            throw new LiveActionException('Seul le diffuseur peut ouvrir le studio de ce direct.', 403);
+            throw new LiveActionException(__('lives.errors.host_only_studio'), 403);
         }
         if ($live->status === LiveStatus::Ended) {
-            throw new LiveActionException('Ce direct est terminé.', 410);
+            throw new LiveActionException(__('lives.errors.ended'), 410);
         }
 
         $identity = 'host-' . $user->id;
@@ -366,10 +382,10 @@ class LiveService
     {
         $this->ensureConfigured();
         if (!$live->isVisibleTo($user)) {
-            throw new LiveActionException('Ce direct n\'a pas encore commencé.', 404);
+            throw new LiveActionException(__('lives.errors.not_started'), 404);
         }
         if ($live->status === LiveStatus::Ended) {
-            throw new LiveActionException('Ce direct est terminé.', 410);
+            throw new LiveActionException(__('lives.errors.ended'), 410);
         }
 
         $identity = ($user ? 'user-' . $user->id : 'guest') . '-' . Str::lower(Str::random(8));
@@ -377,7 +393,7 @@ class LiveService
         return [
             'url'      => $this->livekit->url(),
             'identity' => $identity,
-            'token'    => $this->livekit->accessToken($identity, $user?->display_name ?? 'Invité', $live->room_name, [
+            'token'    => $this->livekit->accessToken($identity, $user?->display_name ?? __('lives.errors.guest'), $live->room_name, [
                 'canPublish'     => false,
                 'canSubscribe'   => true,
                 'canPublishData' => false,
@@ -394,22 +410,22 @@ class LiveService
         // Le diffuseur et les modérateurs peuvent toujours écrire (annonces,
         // messages à épingler), même si le public ne peut pas commenter.
         if (!$live->comments_enabled && !$live->canBeModeratedBy($user)) {
-            throw new LiveActionException('Les commentaires sont désactivés pour ce direct.', 403);
+            throw new LiveActionException(__('lives.errors.comments_disabled'), 403);
         }
 
         $body = trim(preg_replace('/\s+/u', ' ', $body));
         if ($body === '') {
-            throw new LiveActionException('Le commentaire est vide.', 422);
+            throw new LiveActionException(__('lives.errors.comment_empty'), 422);
         }
         // Mentions « @ » (docs/fonctionnalites/mentions.md) : la longueur se mesure sur le texte affiché.
         $mentions = Mentions::prepare($body);
         $body = $mentions['text'];
         if (mb_strlen(Mentions::plain($body)) > config('livekit.comment_max_length')) {
-            throw new LiveActionException('Le commentaire ne doit pas dépasser ' . config('livekit.comment_max_length') . ' caractères.', 422);
+            throw new LiveActionException(__('lives.errors.comment_max', ['max' => config('livekit.comment_max_length')]), 422);
         }
 
         $this->throttle("live-comment:{$live->id}:{$user->id}", config('livekit.comments_per_window'), config('livekit.comments_window'),
-            'Vous commentez trop vite. Patientez quelques secondes.');
+            __('lives.errors.comment_throttle'));
 
         $comment = DB::transaction(function () use ($live, $user, $body) {
             $comment = LiveComment::create(['live_session_id' => $live->id, 'user_id' => $user->id, 'body' => $body]);
@@ -431,13 +447,13 @@ class LiveService
     {
         $live = $comment->liveSession;
         if (!$live->canBeModeratedBy($actor)) {
-            throw new LiveActionException('Vous ne pouvez pas modérer ce direct.', 403);
+            throw new LiveActionException(__('lives.errors.cannot_moderate'), 403);
         }
         if ($comment->is_hidden) {
             return;
         }
         if ($comment->user_id === $live->host_id && !$live->isHost($actor)) {
-            throw new LiveActionException('Les messages du diffuseur ne peuvent pas être masqués.', 403);
+            throw new LiveActionException(__('lives.errors.host_comment_hidden'), 403);
         }
 
         $comment->update(['is_hidden' => true, 'hidden_by' => $actor->id]);
@@ -456,13 +472,13 @@ class LiveService
     {
         $live = $comment->liveSession;
         if (!$live->canBeModeratedBy($actor)) {
-            throw new LiveActionException('Seuls le diffuseur et les modérateurs peuvent épingler un commentaire.', 403);
+            throw new LiveActionException(__('lives.errors.pin_staff_only'), 403);
         }
         if ($live->status === LiveStatus::Ended) {
-            throw new LiveActionException('Ce direct est terminé.', 410);
+            throw new LiveActionException(__('lives.errors.ended'), 410);
         }
         if ($comment->is_hidden) {
-            throw new LiveActionException('Ce commentaire a été masqué.', 422);
+            throw new LiveActionException(__('lives.errors.comment_was_hidden'), 422);
         }
         $this->ensureCanReplacePin($live, $actor);
 
@@ -476,7 +492,7 @@ class LiveService
     public function unpinComment(LiveSession $live, User $actor): void
     {
         if (!$live->canBeModeratedBy($actor)) {
-            throw new LiveActionException('Seuls le diffuseur et les modérateurs peuvent désépingler un commentaire.', 403);
+            throw new LiveActionException(__('lives.errors.unpin_staff_only'), 403);
         }
         if ($live->pinned_comment_id) {
             $this->ensureCanReplacePin($live, $actor);
@@ -495,7 +511,7 @@ class LiveService
         }
         $pinnedAuthor = LiveComment::whereKey($live->pinned_comment_id)->value('user_id');
         if ($pinnedAuthor === $live->host_id) {
-            throw new LiveActionException('Seul le diffuseur peut retirer ou remplacer son message épinglé.', 403);
+            throw new LiveActionException(__('lives.errors.host_pin_only'), 403);
         }
     }
 
@@ -509,10 +525,10 @@ class LiveService
     public function ban(LiveSession $live, User $target, User $actor): void
     {
         if (!$live->canBeModeratedBy($actor)) {
-            throw new LiveActionException('Vous ne pouvez pas modérer ce direct.', 403);
+            throw new LiveActionException(__('lives.errors.cannot_moderate'), 403);
         }
         if ($live->isHost($target) || $target->canModerate()) {
-            throw new LiveActionException('Le diffuseur et les modérateurs ne peuvent pas être exclus.', 422);
+            throw new LiveActionException(__('lives.errors.cannot_ban_staff'), 422);
         }
 
         LiveBan::firstOrCreate(['live_session_id' => $live->id, 'user_id' => $target->id], ['banned_by' => $actor->id]);
@@ -538,11 +554,11 @@ class LiveService
     public function react(LiveSession $live, User $user, string $type): array
     {
         if (!in_array($type, LiveSession::REACTIONS, true)) {
-            throw new LiveActionException('Réaction inconnue.', 422);
+            throw new LiveActionException(__('lives.errors.unknown_reaction'), 422);
         }
         $this->ensureCanInteract($live, $user);
         $this->throttle("live-reaction:{$live->id}:{$user->id}", config('livekit.reactions_per_window'), config('livekit.reactions_window'),
-            'Doucement ! Patientez quelques secondes avant de réagir à nouveau.');
+            __('lives.errors.reaction_throttle'));
 
         $live->increment("{$type}_count");
         $counts = $live->fresh()->reactionCounts();
@@ -703,24 +719,24 @@ class LiveService
     {
         $this->ensureActiveAccount($user);
         if (!$live->isOnAir() && !($live->status === LiveStatus::Preparing && $live->canBeModeratedBy($user))) {
-            throw new LiveActionException($live->status === LiveStatus::Ended ? 'Ce direct est terminé.' : 'Ce direct n\'a pas encore commencé.', 409);
+            throw new LiveActionException($live->status === LiveStatus::Ended ? __('lives.errors.ended') : __('lives.errors.not_started'), 409);
         }
         if ($live->isBanned($user)) {
-            throw new LiveActionException('Vous ne pouvez plus commenter ni réagir pendant ce direct.', 403);
+            throw new LiveActionException(__('lives.errors.banned'), 403);
         }
     }
 
     private function ensureActiveAccount(User $user): void
     {
         if ($user->status !== UserAccountStatus::Active) {
-            throw new LiveActionException('Votre compte ne permet pas cette action.', 403);
+            throw new LiveActionException(__('lives.errors.account_inactive'), 403);
         }
     }
 
     private function ensureConfigured(): void
     {
         if (!$this->isConfigured()) {
-            throw new LiveActionException('Le direct n\'est pas encore configuré sur ce serveur.', 503);
+            throw new LiveActionException(__('lives.errors.not_configured'), 503);
         }
     }
 

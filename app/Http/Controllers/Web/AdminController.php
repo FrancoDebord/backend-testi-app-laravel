@@ -84,11 +84,11 @@ class AdminController extends Controller
     public function verifyOrganization(string $id): RedirectResponse
     {
         $user = User::findOrFail($id);
-        abort_unless($user->isOrganization(), 422, 'Seul un compte organisation peut être vérifié.');
+        abort_unless($user->isOrganization(), 422, __('admin.flash.organization_only_verify'));
 
         OrganizationAccounts::verify($user, Auth::user());
 
-        return back()->with('success', 'Organisation vérifiée. Le compte a été prévenu.');
+        return back()->with('success', __('admin.flash.organization_verified'));
     }
 
     public function rejectOrganization(Request $request, string $id): RedirectResponse
@@ -96,11 +96,11 @@ class AdminController extends Controller
         $request->validate(['reason' => 'nullable|string|max:255']);
 
         $user = User::findOrFail($id);
-        abort_unless($user->isOrganization(), 422, 'Seul un compte organisation peut faire l’objet d’une vérification.');
+        abort_unless($user->isOrganization(), 422, __('admin.flash.organization_only_review'));
 
         OrganizationAccounts::reject($user, Auth::user(), $request->input('reason'));
 
-        return back()->with('success', 'Vérification refusée. Le compte a été prévenu.');
+        return back()->with('success', __('admin.flash.organization_rejected'));
     }
 
     public function showUser(string $id): View
@@ -109,6 +109,29 @@ class AdminController extends Controller
         $testimonies = Testimony::where('user_id', $id)->withoutJournal()->latest()->limit(10)->get();
 
         return view('admin.users.show', compact('user', 'testimonies'));
+    }
+
+    /**
+     * Notification push de test vers tous les appareils d'un membre (super-administrateurs), envoyée tout de
+     * suite ; résultat par appareil affiché sur la fiche. Voir docs/fonctionnalites/notifications-push.md
+     */
+    public function pushTest(string $id, \App\Services\PushNotifier $notifier): RedirectResponse
+    {
+        abort_unless(Auth::user()?->isSuperAdmin(), 403, __('notifications.test.super_admin_only'));
+        $user   = User::findOrFail($id);
+        $result = $notifier->sendTest($user);
+        \App\Services\AdminAudit::record(Auth::user(), 'user.push_test', $user, null, ['sent' => $result['sent'], 'total' => $result['total']], null, 'user');
+
+        $message = match (true) {
+            $result['disabled']    => __('notifications.test.disabled'),
+            $result['total'] === 0 => __('notifications.test.no_device'),
+            $result['sent'] === 0  => __('notifications.test.none_sent'),
+            default                => __('notifications.test.sent', ['sent' => $result['sent'], 'total' => $result['total']]),
+        };
+
+        return back()
+            ->with('push_test', ['user_id' => $user->id, 'result' => $result])
+            ->with($result['sent'] > 0 ? 'success' : 'error', $message);
     }
 
     public function updateUser(Request $request, string $id): RedirectResponse
@@ -121,7 +144,7 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
 
         if ($user->id === Auth::id()) {
-            return back()->withErrors(['error' => 'Vous ne pouvez pas modifier votre propre rôle.']);
+            return back()->withErrors(['error' => __('admin.flash.own_role')]);
         }
 
         $user->update([
@@ -134,7 +157,7 @@ class AdminController extends Controller
             $user->tokens()->delete();
         }
 
-        return back()->with('success', 'Utilisateur mis à jour.');
+        return back()->with('success', __('admin.flash.user_updated'));
     }
 
     public function content(Request $request): View
@@ -169,7 +192,7 @@ class AdminController extends Controller
         ]);
 
         Category::create($data);
-        return back()->with('success', 'Catégorie créée.');
+        return back()->with('success', __('admin.flash.category_created'));
     }
 
     public function updateCategory(Request $request, string $id): RedirectResponse
@@ -184,13 +207,13 @@ class AdminController extends Controller
         ]);
 
         $category->update($data + ['is_active' => $request->boolean('is_active')]);
-        return back()->with('success', 'Catégorie mise à jour.');
+        return back()->with('success', __('admin.flash.category_updated'));
     }
 
     public function deleteCategory(string $id): RedirectResponse
     {
         Category::findOrFail($id)->delete();
-        return back()->with('success', 'Catégorie supprimée.');
+        return back()->with('success', __('admin.flash.category_deleted'));
     }
 
     public function settings(): View
@@ -205,7 +228,7 @@ class AdminController extends Controller
             AppSetting::set($key, $value);
         }
 
-        return back()->with('success', 'Paramètres mis à jour.');
+        return back()->with('success', __('admin.flash.settings_updated'));
     }
 
     private function approvalRate(): float

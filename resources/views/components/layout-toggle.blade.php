@@ -8,9 +8,9 @@
     @csrf
     @foreach([\App\Support\FeedLayout::CARDS => 'fa-table-cells-large', \App\Support\FeedLayout::COMPACT => 'fa-list'] as $layoutKey => $layoutIcon)
     <button type="submit" name="layout" value="{{ $layoutKey }}" class="{{ $currentLayout === $layoutKey ? 'chip-active' : 'chip' }}"
-            aria-pressed="{{ $currentLayout === $layoutKey ? 'true' : 'false' }}" aria-label="{{ \App\Support\FeedLayout::LABELS[$layoutKey] }}" title="{{ \App\Support\FeedLayout::LABELS[$layoutKey] }}">
+            aria-pressed="{{ $currentLayout === $layoutKey ? 'true' : 'false' }}" aria-label="{{ \App\Support\FeedLayout::labels()[$layoutKey] }}" title="{{ \App\Support\FeedLayout::labels()[$layoutKey] }}">
         {{-- Pas de sr-only / sm:not-sr-only : la classe .sr-only de Font Awesome (hors couches Tailwind) l'emporte. --}}
-        <i class="fa-solid {{ $layoutIcon }}" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">{{ \App\Support\FeedLayout::LABELS[$layoutKey] }}</span>
+        <i class="fa-solid {{ $layoutIcon }}" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">{{ \App\Support\FeedLayout::labels()[$layoutKey] }}</span>
     </button>
     @endforeach
 </form>

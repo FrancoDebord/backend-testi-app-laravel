@@ -34,11 +34,11 @@ use Illuminate\Support\Str;
  */
 class ContentInteractions
 {
-    /** Types de publication → modèle, colonne de l'auteur, libellé (« votre … »). */
+    /** Types de publication → modèle, colonne de l'auteur (textes des notifications : lang/<langue>/reactions.php, notify.*). */
     public const KINDS = [
-        'event'          => [Event::class, 'organizer_id', 'événement'],
-        'prayer_request' => [PrayerRequest::class, 'user_id', 'requête de prière'],
-        'prayer_session' => [PrayerSession::class, 'host_id', 'session de prière'],
+        'event'          => [Event::class, 'organizer_id'],
+        'prayer_request' => [PrayerRequest::class, 'user_id'],
+        'prayer_session' => [PrayerSession::class, 'host_id'],
     ];
 
     /** Fenêtre des partages repris dans « Mon fil » des abonnés. */
@@ -65,7 +65,7 @@ class ContentInteractions
         $class = self::KINDS[$kind][0] ?? null;
         $subject = $class && Str::isUuid($id) ? $class::find($id) : null;
         if (!$subject || !$subject->isVisibleTo($viewer)) {
-            throw new ContentActionException('Publication introuvable.', 404);
+            throw new ContentActionException(__('reactions.content.not_found'), 404);
         }
 
         return $subject;
@@ -161,7 +161,7 @@ class ContentInteractions
     {
         $kind = self::kindOf($subject);
         if ($kind === 'prayer_request' && $type->group() === 'prayer') {
-            throw new ContentActionException('Utilisez « Je prie » pour prier pour cette requête.', 422);
+            throw new ContentActionException(__('reactions.content.use_pray'), 422);
         }
 
         $created = DB::transaction(function () use ($user, $subject, $kind, $type) {
@@ -230,10 +230,10 @@ class ContentInteractions
     public function repost(User $user, Model $subject, ?string $comment = null): array
     {
         if (self::ownerId($subject) === $user->id) {
-            throw new ContentActionException('Vous ne pouvez pas partager votre propre publication.', 422);
+            throw new ContentActionException(__('reactions.content.own'), 422);
         }
         if (!$this->isShareable($subject)) {
-            throw new ContentActionException('Cette publication ne peut pas être partagée.', 422);
+            throw new ContentActionException(__('reactions.content.not_shareable'), 422);
         }
         $kind = self::kindOf($subject);
         $comment = filled($comment) ? Str::limit(trim($comment), ContentRepost::COMMENT_MAX, '') : null;
@@ -281,14 +281,17 @@ class ContentInteractions
         if (!$ownerId || $ownerId === $actor->id) return;
 
         $kind = self::kindOf($subject);
-        $label = self::KINDS[$kind][2];
-        $title = $kind === 'prayer_request' ? '' : ' « ' . Str::limit((string) $subject->title, 80) . ' »';
         // Type « prayer » : l'application préfixe le nom (comme les encouragements) ; sinon le nom est inclus.
-        [$type, $message] = match ($action) {
-            'prayer' => [NotificationType::Prayer, "prie pour votre {$label}{$title}."],
-            'share'  => [NotificationType::Share, "{$actor->display_name} a partagé votre {$label}{$title}."],
-            default  => [NotificationType::Like, "{$actor->display_name} a réagi à votre {$label}{$title}."],
+        // Requête de prière : sans titre.
+        [$type, $verb] = match ($action) {
+            'prayer' => [NotificationType::Prayer, 'prayer'],
+            'share'  => [NotificationType::Share, 'share'],
+            default  => [NotificationType::Like, 'like'],
         };
+        $params = ['actor' => $actor->display_name];
+        if ($kind !== 'prayer_request') {
+            $params['title'] = Str::limit((string) $subject->title, 80);
+        }
 
         try {
             AppNotification::create([
@@ -297,8 +300,7 @@ class ContentInteractions
                 'actor_name'   => $actor->display_name,
                 'actor_avatar' => $actor->avatar_url,
                 'type'         => $type->value,
-                'message'      => $message,
-                'payload'      => [$kind . '_id' => $subject->id],
+                ...\App\Support\NotificationText::fields("reactions.notify.{$verb}_{$kind}", $params, [$kind . '_id' => $subject->id]),
                 'created_at'   => now(),
             ]);
         } catch (\Throwable $e) {

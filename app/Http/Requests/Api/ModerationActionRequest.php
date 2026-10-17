@@ -24,8 +24,8 @@ class ModerationActionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'reason.required_without'           => 'Indiquez le motif du refus.',
-            'rejection_reason.required_without' => 'Indiquez le motif du refus.',
+            'reason.required_without'           => __('moderation.reason_required'),
+            'rejection_reason.required_without' => __('moderation.reason_required'),
         ];
     }
 }

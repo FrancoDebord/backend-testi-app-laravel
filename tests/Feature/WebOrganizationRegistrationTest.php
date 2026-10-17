@@ -40,7 +40,7 @@ class WebOrganizationRegistrationTest extends TestCase
             ->assertOk()
             ->assertSee('Je suis une personne')
             ->assertSee('Je représente une organisation')
-            ->assertSee('Nom de l\'organisation', false)
+            ->assertSee('Nom de l\'organisation')
             ->assertSee('Église')
             ->assertSee('Média chrétien')
             ->assertSee('Votre organisation sera vérifiée par notre équipe.')

@@ -13,7 +13,7 @@ class RoleMiddleware
     {
         if (!$request->user()) {
             if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
+                return response()->json(['success' => false, 'message' => __('api.unauthenticated')], 401);
             }
             return redirect()->route('login');
         }
@@ -22,9 +22,9 @@ class RoleMiddleware
 
         if (!in_array($userRole, $roles)) {
             if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Accès refusé'], 403);
+                return response()->json(['success' => false, 'message' => __('api.forbidden')], 403);
             }
-            abort(403, 'Accès refusé');
+            abort(403, __('api.forbidden'));
         }
 
         return $next($request);

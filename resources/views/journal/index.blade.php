@@ -7,7 +7,7 @@
         ['label' => 'Accueil', 'url' => route('home')],
         ['label' => 'Carnet privé'],
     ];
-    $types    = \App\Http\Controllers\Web\JournalController::TYPES;
+    $types    = \App\Http\Controllers\Web\JournalController::types();
     $filtered = $type || $q !== '';
 @endphp
 

@@ -28,15 +28,21 @@ use Illuminate\View\View;
  */
 class ModerationController extends Controller
 {
-    public const TABS = ['pending' => 'En attente', 'approved' => 'Approuvés', 'rejected' => 'Refusés', 'featured' => 'À la une', 'trash' => 'Corbeille'];
+    public const TAB_KEYS = ['pending', 'approved', 'rejected', 'featured', 'trash'];
+
+    /** Onglets de la liste : clé => libellé traduit. */
+    public static function tabs(): array
+    {
+        return collect(self::TAB_KEYS)->mapWithKeys(fn ($k) => [$k => __('moderation.tabs.' . $k)])->all();
+    }
 
     public function __construct(private readonly TestimonyModeration $moderation) {}
 
-    /** GET /moderation  ?onglet=pending|approved|rejected|featured|trash  ?q=  ?type=  ?categorie=  ?label=1 */
+    /** GET /moderation  ?onglet=pending|approved|rejected|featured|trash  ?q=  ?type=  ?categorie=  ?label=1  ?conversion=1 */
     public function index(Request $request): View
     {
         Gate::authorize('viewAny', Testimony::class);
-        $tab = array_key_exists((string) $request->query('onglet', $request->query('status')), self::TABS)
+        $tab = in_array((string) $request->query('onglet', $request->query('status')), self::TAB_KEYS, true)
             ? (string) $request->query('onglet', $request->query('status')) : 'pending';
 
         $query = Testimony::with(['user', 'moderator'])->withoutJournal();
@@ -59,13 +65,17 @@ class ModerationController extends Controller
         if ($request->boolean('label')) {
             $query->where('is_verified', true);
         }
+        // Témoignages de conversion seulement (docs/fonctionnalites/temoignage-de-conversion.md)
+        if ($request->boolean('conversion')) {
+            $query->conversion();
+        }
 
         $today = now()->toDateString();
 
         return view('moderation.index', [
             'items'      => $query->paginate(20)->withQueryString(),
             'tab'        => $tab,
-            'tabs'       => self::TABS,
+            'tabs'       => self::tabs(),
             'counts'     => [
                 'pending'  => Testimony::pending()->count(),
                 'trash'    => Testimony::onlyTrashed()->withoutJournal()->count(),
@@ -145,7 +155,7 @@ class ModerationController extends Controller
         Gate::authorize('moderate', $testimony);
         $this->moderation->approve($testimony, Auth::user());
 
-        return $this->back('Témoignage approuvé.');
+        return $this->back(__('moderation.flash.approved'));
     }
 
     public function reject(Request $request, string $id): RedirectResponse
@@ -154,7 +164,7 @@ class ModerationController extends Controller
             'reason'           => ['required', Rule::enum(RejectionReason::class)],
             'rejection_reason' => ['nullable', 'string', 'max:1000'],
             'moderator_note'   => ['nullable', 'string', 'max:1000'],
-        ], ['reason.required' => 'Choisissez le motif du refus.']);
+        ], ['reason.required' => __('moderation.choose_reason')]);
         $testimony = $this->find($id);
         Gate::authorize('moderate', $testimony);
 
@@ -162,7 +172,7 @@ class ModerationController extends Controller
         $text = trim(implode(' — ', array_filter([$code->label(), trim((string) ($data['rejection_reason'] ?? $data['moderator_note'] ?? ''))])));
         $this->moderation->reject($testimony, Auth::user(), $text, $code, $data['moderator_note'] ?? $data['rejection_reason'] ?? null);
 
-        return $this->back('Témoignage refusé.');
+        return $this->back(__('moderation.flash.rejected'));
     }
 
     /**
@@ -173,7 +183,7 @@ class ModerationController extends Controller
     {
         Testimony::withoutJournal()->findOrFail($id)->update(['proofs_public' => false]);
 
-        return back()->with('success', "Les preuves ne sont plus visibles du public : seulement de l'auteur et de l'équipe de modération.");
+        return back()->with('success', __('moderation.flash.proofs_hidden'));
     }
 
     /** POST /moderation/{id}/label  { verified: 0|1, reason? } (administrateurs) */
@@ -184,7 +194,7 @@ class ModerationController extends Controller
         Gate::authorize('verify', $testimony);
 
         return $this->attempt(fn () => $this->moderation->setVerified($testimony, Auth::user(), (bool) $data['verified'], $data['reason'] ?? null),
-            $data['verified'] ? 'Label « Témoignage approuvé » attribué.' : 'Label retiré.');
+            $data['verified'] ? __('moderation.flash.label_granted') : __('moderation.flash.label_removed'));
     }
 
     /** POST /moderation/{id}/une  { featured: 0|1, featured_order?, featured_from?, featured_until? } */
@@ -203,7 +213,7 @@ class ModerationController extends Controller
             isset($data['featured_order']) ? (int) $data['featured_order'] : null,
             !empty($data['featured_from']) ? Carbon::parse($data['featured_from']) : null,
             !empty($data['featured_until']) ? Carbon::parse($data['featured_until']) : null,
-        ), $data['featured'] ? 'Témoignage mis à la une.' : 'Témoignage retiré de la une.');
+        ), $data['featured'] ? __('moderation.flash.featured') : __('moderation.flash.unfeatured'));
     }
 
     /** DELETE /moderation/{id}  Corbeille (restaurable pendant 30 jours). */
@@ -213,7 +223,7 @@ class ModerationController extends Controller
         Gate::authorize('trash', $testimony);
         $this->moderation->trash($testimony, Auth::user(), $request->input('reason'));
 
-        return redirect()->route('moderation.index', ['onglet' => 'trash'])->with('success', 'Témoignage placé dans la corbeille.');
+        return redirect()->route('moderation.index', ['onglet' => 'trash'])->with('success', __('moderation.flash.trashed'));
     }
 
     public function restore(string $id): RedirectResponse
@@ -221,7 +231,7 @@ class ModerationController extends Controller
         $testimony = Testimony::onlyTrashed()->withoutJournal()->findOrFail($id);
         Gate::authorize('restore', $testimony);
 
-        return $this->attempt(fn () => $this->moderation->restore($testimony, Auth::user()), 'Témoignage restauré.');
+        return $this->attempt(fn () => $this->moderation->restore($testimony, Auth::user()), __('moderation.flash.restored'));
     }
 
     /** DELETE /moderation/{id}/definitif  Super-administrateur seulement (vidéo Bunny comprise). */
@@ -231,7 +241,7 @@ class ModerationController extends Controller
         Gate::authorize('forceDelete', $testimony);
         $this->moderation->forceDelete($testimony, Auth::user(), $request->input('reason'));
 
-        return redirect()->route('moderation.index', ['onglet' => 'trash'])->with('success', 'Témoignage supprimé définitivement.');
+        return redirect()->route('moderation.index', ['onglet' => 'trash'])->with('success', __('moderation.flash.force_deleted'));
     }
 
     /**
@@ -247,8 +257,8 @@ class ModerationController extends Controller
             'reason'           => ['nullable', 'required_if:action,reject', Rule::enum(RejectionReason::class)],
             'rejection_reason' => ['nullable', 'string', 'max:1000'],
         ], [
-            'ids.required'       => 'Cochez au moins un témoignage.',
-            'reason.required_if' => 'Choisissez le motif du refus.',
+            'ids.required'       => __('moderation.bulk.ids_required'),
+            'reason.required_if' => __('moderation.choose_reason'),
         ]);
         $user = Auth::user();
         $done = 0;
@@ -279,9 +289,9 @@ class ModerationController extends Controller
             }
         }
 
-        $message = $done . ' témoignage' . ($done > 1 ? 's' : '') . ' traité' . ($done > 1 ? 's' : '') . '.';
+        $message = trans_choice('moderation.bulk.done', $done, ['count' => $done]);
         if ($skipped) {
-            $message .= ' ' . $skipped . ' ignoré' . ($skipped > 1 ? 's' : '') . ' (action impossible ou non autorisée).';
+            $message .= ' ' . trans_choice('moderation.bulk.skipped', $skipped, ['count' => $skipped]);
         }
 
         return back()->with($done ? 'success' : 'error', $message);

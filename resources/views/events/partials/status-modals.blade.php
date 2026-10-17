@@ -9,39 +9,39 @@
 <div id="postpone-modal" data-modal class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
      role="dialog" aria-modal="true" aria-labelledby="postpone-modal-title" @unless($postponeErrors) hidden @endunless>
     <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
-    <form method="POST" action="{{ route('events.postpone', $event->id) }}" class="card relative max-h-full w-full max-w-lg overflow-y-auto shadow-xl" data-loading-label="Enregistrement…">
+    <form method="POST" action="{{ route('events.postpone', $event->id) }}" class="card relative max-h-full w-full max-w-lg overflow-y-auto shadow-xl" data-loading-label="{{ __('events.saving') }}">
         @csrf
         <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
-            <h2 id="postpone-modal-title" class="text-base font-semibold text-primary-600">Reporter l'événement</h2>
-            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            <h2 id="postpone-modal-title" class="text-base font-semibold text-primary-600">{{ __('events.postpone_modal.title') }}</h2>
+            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="{{ __('events.close') }}"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="space-y-4 px-5 py-4">
-            <p class="text-sm text-slate-600">Les personnes qui participent sont prévenues. La date initiale reste affichée, barrée.</p>
+            <p class="text-sm text-slate-600">{{ __('events.postpone_modal.intro') }}</p>
             <label class="flex items-start gap-2 text-sm text-slate-700">
                 <input type="checkbox" name="date_tbd" value="1" class="mt-1" @checked($tbdChecked)
                        onchange="document.getElementById('postpone-dates').hidden = this.checked; document.querySelectorAll('#postpone-dates input').forEach(i => i.required = !this.checked);">
-                <span><strong>Date à confirmer</strong> — la nouvelle date sera annoncée plus tard ; les réponses « Je participe » sont conservées.</span>
+                <span><strong>{{ __('events.date_tbd') }}</strong> — {{ __('events.postpone_modal.tbd_help') }}</span>
             </label>
             <div id="postpone-dates" class="grid grid-cols-1 gap-3 sm:grid-cols-2" @if($tbdChecked) hidden @endif>
                 <div>
-                    <label for="postpone-start" class="form-label">Nouveau début</label>
+                    <label for="postpone-start" class="form-label">{{ __('events.postpone_modal.new_start') }}</label>
                     <input id="postpone-start" type="datetime-local" name="starts_at" value="{{ old('starts_at') }}" class="form-input" @unless($tbdChecked) required @endunless @error('starts_at') aria-invalid="true" @enderror>
                     @error('starts_at')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="postpone-end" class="form-label">Nouvelle fin</label>
+                    <label for="postpone-end" class="form-label">{{ __('events.postpone_modal.new_end') }}</label>
                     <input id="postpone-end" type="datetime-local" name="ends_at" value="{{ old('ends_at') }}" class="form-input" @unless($tbdChecked) required @endunless @error('ends_at') aria-invalid="true" @enderror>
                     @error('ends_at')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div>
-                <label for="postpone-reason" class="form-label">Motif (facultatif)</label>
-                <input id="postpone-reason" type="text" name="reason" maxlength="500" value="{{ old('reason') }}" class="form-input" placeholder="Ex. : travaux au stade, intempéries…">
+                <label for="postpone-reason" class="form-label">{{ __('events.reason_optional') }}</label>
+                <input id="postpone-reason" type="text" name="reason" maxlength="500" value="{{ old('reason') }}" class="form-input" placeholder="{{ __('events.postpone_modal.reason_placeholder') }}">
             </div>
         </div>
         <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4">
-            <button type="button" class="btn-secondary" data-modal-close>Fermer</button>
-            <button type="submit" class="btn-primary"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i>Reporter</button>
+            <button type="button" class="btn-secondary" data-modal-close>{{ __('events.close') }}</button>
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i>{{ __('events.postpone_modal.submit') }}</button>
         </div>
     </form>
 </div>
@@ -49,22 +49,22 @@
 <div id="cancel-modal" data-modal class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
      role="dialog" aria-modal="true" aria-labelledby="cancel-modal-title" hidden>
     <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
-    <form method="POST" action="{{ route('events.cancel', $event->id) }}" class="card relative w-full max-w-lg shadow-xl" data-loading-label="Annulation…">
+    <form method="POST" action="{{ route('events.cancel', $event->id) }}" class="card relative w-full max-w-lg shadow-xl" data-loading-label="{{ __('events.cancel_modal.loading') }}">
         @csrf
         <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
-            <h2 id="cancel-modal-title" class="text-base font-semibold text-error-700">Annuler l'événement</h2>
-            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            <h2 id="cancel-modal-title" class="text-base font-semibold text-error-700">{{ __('events.cancel_modal.title') }}</h2>
+            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="{{ __('events.close') }}"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="space-y-4 px-5 py-4">
-            <p class="text-sm text-slate-600">La page reste visible avec la mention « Annulé » ; plus de réponse possible. Les personnes qui participent sont prévenues.</p>
+            <p class="text-sm text-slate-600">{{ __('events.cancel_modal.intro') }}</p>
             <div>
-                <label for="cancel-reason" class="form-label">Motif (facultatif)</label>
-                <input id="cancel-reason" type="text" name="reason" maxlength="500" class="form-input" placeholder="Ex. : raisons de sécurité">
+                <label for="cancel-reason" class="form-label">{{ __('events.reason_optional') }}</label>
+                <input id="cancel-reason" type="text" name="reason" maxlength="500" class="form-input" placeholder="{{ __('events.cancel_modal.reason_placeholder') }}">
             </div>
         </div>
         <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4">
-            <button type="button" class="btn-secondary" data-modal-close>Fermer</button>
-            <button type="submit" class="btn-primary"><i class="fa-solid fa-ban" aria-hidden="true"></i>Annuler l'événement</button>
+            <button type="button" class="btn-secondary" data-modal-close>{{ __('events.close') }}</button>
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-ban" aria-hidden="true"></i>{{ __('events.cancel_modal.title') }}</button>
         </div>
     </form>
 </div>

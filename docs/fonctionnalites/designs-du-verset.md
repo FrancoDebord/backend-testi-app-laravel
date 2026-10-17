@@ -94,8 +94,17 @@ Table `verse_style_preferences` (une ligne par membre au plus) : `user_id` (uniq
 | Méthode | Route | Accès | Rôle |
 |---|---|---|---|
 | GET | `/verse-designs` | public | Catalogue : `designs` (actifs, triés : `id`, `name`, `mood`, `order`, `tone`), `fonts`, `text_sizes`, `text_aligns`, `text_size_range`, `line_height`, `defaults`. Cache 24 h. |
-| GET | `/me/verse-style` | connecté | Préférences, ou valeurs par défaut s'il n'y en a pas |
-| PUT | `/me/verse-style` | connecté | Mise à jour (partielle possible). Valeur inconnue du catalogue → **422**. `design_chosen_on` au format `AAAA-MM-JJ`. Un design désactivé est refusé. |
+| GET | `/me/verse-style` | connecté | Préférences (ou valeurs par défaut), plus `design_of_the_day` (aujourd'hui) et `effective_design_id` (design à afficher aujourd'hui) |
+| PUT | `/me/verse-style` | connecté | Mise à jour (partielle possible), même réponse que GET. Valeur inconnue du catalogue → **422**. `design_chosen_on` au format `AAAA-MM-JJ`. Un design désactivé est refusé. `design_always` : `true`/`false`, `1`/`0`. |
+
+« Toujours utiliser mon design » (`design_always = true`) : `effective_design_id` vaut le design choisi **quel que soit le jour** (`VerseStyles::effectiveDesignId`), sur `GET /me/verse-style` comme sur `GET /daily-verse` ; il ne revient au design du jour que si le design choisi est désactivé. Vérifié par `tests/Feature/VerseDesignAlwaysTest.php` (enregistrement, plusieurs jours, mise à jour partielle, retrait). Envoyer un autre champ seul ne retire pas `design_always`.
+
+```json
+GET /api/v1/me/verse-style
+{ "success": true, "data": { "design_id": "vitrail", "design_chosen_on": "2026-10-13", "design_always": true,
+  "font": "lora", "text_size": "medium", "text_align": "start",
+  "design_of_the_day": "ocean", "effective_design_id": "vitrail" }, "message": "" }
+```
 
 Champs ajoutés à `GET /daily-verse` et `GET /daily-verse/{id}` (les autres champs ne changent pas) :
 

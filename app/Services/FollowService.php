@@ -23,10 +23,10 @@ class FollowService
     {
         \Illuminate\Support\Facades\Cache::forget("reco:follows:{$follower->id}"); \Illuminate\Support\Facades\Cache::forget(Recommendations::personalCacheKey($follower->id)); // Mon fil
         if ($follower->id === $target->id) {
-            throw new FollowException('Vous ne pouvez pas vous suivre vous-même.', 422);
+            throw new FollowException(__('community.follow.self'), 422);
         }
         if ($target->status !== UserAccountStatus::Active || $target->trashed()) {
-            throw new FollowException('Ce compte n\'est pas disponible.', 404);
+            throw new FollowException(__('community.follow.unavailable'), 404);
         }
 
         $created = DB::transaction(function () use ($follower, $target) {
@@ -50,7 +50,7 @@ class FollowService
                 'actor_name'   => $follower->display_name,
                 'actor_avatar' => $follower->avatar_url,
                 'type'         => 'follow',
-                'message'      => $follower->display_name . ' vous suit maintenant',
+                ...\App\Support\NotificationText::fields('community.notify_follow', ['name' => $follower->display_name]),
                 'created_at'   => now(),
             ]);
         }

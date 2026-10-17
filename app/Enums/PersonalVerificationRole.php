@@ -14,14 +14,7 @@ enum PersonalVerificationRole: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Pastor         => 'Pasteur',
-            self::Evangelist     => 'Évangéliste',
-            self::Singer         => 'Chantre',
-            self::MinistryLeader => 'Responsable de ministère',
-            self::PublicFigure   => 'Personnalité publique',
-            self::Other          => 'Autre',
-        };
+        return __('enums.personal_verification_role.' . $this->value);
     }
 
     /** @return list<array{value: string, label: string}> */

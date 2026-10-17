@@ -25,7 +25,8 @@ class FollowerNotifications
      * @param  string  $type     valeur de App\Enums\NotificationType (ex. 'new_followed_testimony', 'live_started')
      * @param  array   $payload  colonnes (testimony_id, testimony_title, comment_id, actor_avatar) et
      *                           données libres (ex. live_id), stockées dans la colonne JSON `payload`
-     * @param  string|null  $message  texte de la notification (et corps du push)
+     * @param  string|array|null  $message  texte de la notification (et corps du push), ou
+     *                           NotificationText::fields(clé, paramètres) : texte traduit dans la langue du lecteur
      * @return int nombre d'abonnés notifiés
      */
     /**
@@ -41,13 +42,20 @@ class FollowerNotifications
         return self::notify($testimony->user, 'new_followed_testimony', [
             'testimony_id'    => $testimony->id,
             'testimony_title' => $testimony->title,
-        ], $testimony->user->display_name . ' a partagé un nouveau témoignage : "' . $testimony->title . '"');
+        ], \App\Support\NotificationText::fields('community.notify_new_testimony', [
+            'name'  => $testimony->user->display_name,
+            'title' => $testimony->title,
+        ]));
     }
 
-    public static function notify(User $author, string $type, array $payload, ?string $message): int
+    public static function notify(User $author, string $type, array $payload, string|array|null $message): int
     {
         $columns = array_intersect_key($payload, array_flip(self::COLUMNS));
         $extra   = array_diff_key($payload, array_flip(self::COLUMNS));
+        if (is_array($message)) { // texte traduisible : clé et paramètres gardés dans payload.i18n
+            $extra  += $message['payload'] ?? [];
+            $message = $message['message'] ?? '';
+        }
         $now     = now();
         $count   = 0;
 

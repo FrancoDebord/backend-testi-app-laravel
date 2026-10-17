@@ -10,10 +10,6 @@ enum TestimonyVisibility: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Public    => 'Public',
-            self::Private   => 'Privé',
-            self::Followers => 'Abonnés',
-        };
+        return __('enums.testimony_visibility.' . $this->value);
     }
 }

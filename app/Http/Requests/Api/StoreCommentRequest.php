@@ -12,7 +12,7 @@ class StoreCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'text'      => ['required', 'string', new VisibleLength(2000, 'Le commentaire ne doit pas dépasser 2 000 caractères.')],
+            'text'      => ['required', 'string', new VisibleLength(2000, __('comments.too_long'))],
             'parent_id' => ['nullable', 'string', 'exists:comments,id'],
             // Comptes choisis dans l'autocomplétion « @ » (docs/fonctionnalites/mentions.md)
             'mention_ids'   => ['nullable', 'array', 'max:20'],

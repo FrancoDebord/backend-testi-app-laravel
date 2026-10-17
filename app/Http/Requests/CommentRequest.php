@@ -31,8 +31,8 @@ class CommentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'body.required' => 'Le commentaire est vide.',
-            'body.max'      => 'Le commentaire ne doit pas dépasser 2 000 caractères.',
+            'body.required' => __('comments.empty'),
+            'body.max'      => __('comments.too_long'),
         ];
     }
 }

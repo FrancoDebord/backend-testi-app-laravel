@@ -39,7 +39,7 @@ class DocumentationController extends Controller
             'current' => $key,
             'title'   => $title,
             'html'    => $this->enhance($html, $key, $pages),
-            'updated' => date('d/m/Y à H:i', File::lastModified($pages[$key]['path'])),
+            'updated' => date(__('admin.documentation.updated_format'), File::lastModified($pages[$key]['path'])),
         ]);
     }
 
@@ -67,10 +67,10 @@ class DocumentationController extends Controller
                 'path'  => $file->getPathname(),
                 'title' => trim($m[1] ?? Str::headline(basename($key))),
                 'group' => match (true) {
-                    $key === 'README'                      => 'Général',
-                    str_starts_with($key, 'fonctionnalites/') => 'Fonctionnalités',
-                    $key === 'journal-des-modifications'   => 'Suivi',
-                    default                                => 'Général',
+                    $key === 'README'                      => __('admin.documentation.groups.general'),
+                    str_starts_with($key, 'fonctionnalites/') => __('admin.documentation.groups.features'),
+                    $key === 'journal-des-modifications'   => __('admin.documentation.groups.tracking'),
+                    default                                => __('admin.documentation.groups.general'),
                 },
             ];
         }

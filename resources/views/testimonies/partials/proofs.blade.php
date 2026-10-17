@@ -6,16 +6,16 @@
 --}}
 <div class="card-insight mt-4 p-4" aria-labelledby="proofs-title-{{ $testimony->id }}">
     <h3 id="proofs-title-{{ $testimony->id }}" class="flex items-center gap-2 text-sm font-bold text-sun-700">
-        <i class="fa-solid fa-file-shield" aria-hidden="true"></i>Preuves du témoignage
+        <i class="fa-solid fa-file-shield" aria-hidden="true"></i>{{ __('testimonies.proofs.title') }}
     </h3>
     @php($proofsArePublic = \App\Services\TestimonyProofs::arePublic($testimony))
     <p class="mt-0.5 text-xs text-slate-600">
         @if($proofsArePublic)
-            Documents partagés par l’auteur pour confirmer ce témoignage.
+            {{ __('testimonies.proofs.public') }}
         @elseif($testimony->proofs_public)
-            L’auteur accepte leur publication : elles seront visibles de tous une fois le témoignage publié.
+            {{ __('testimonies.proofs.public_pending') }}
         @else
-            Visibles seulement de l’auteur et de l’équipe de modération.
+            {{ __('testimonies.proofs.private') }}
         @endif
     </p>
     <ul class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -31,7 +31,7 @@
                     @endif
                 </span>
                 <span class="min-w-0">
-                    <span class="block truncate text-sm font-semibold text-primary-700">Preuve {{ $proof->position }}</span>
+                    <span class="block truncate text-sm font-semibold text-primary-700">{{ __('testimonies.proofs.item', ['position' => $proof->position]) }}</span>
                     <span class="block truncate text-xs text-slate-500">{{ $proof->original_name }} · {{ $proof->sizeLabel() }}</span>
                 </span>
                 <i class="fa-solid fa-arrow-up-right-from-square ml-auto shrink-0 text-xs text-slate-400" aria-hidden="true"></i>

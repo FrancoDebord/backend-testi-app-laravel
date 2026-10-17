@@ -83,7 +83,7 @@
             <fieldset>
                 <legend class="form-label">Qui peut la voir ?</legend>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    @foreach(\App\Models\PrayerSession::VISIBILITY_LABELS as $value => $label)
+                    @foreach(\App\Models\PrayerSession::visibilityLabels() as $value => $label)
                     <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50 has-[:checked]:text-slate-900">
                         <input type="radio" name="visibility" value="{{ $value }}" @checked($visibility === $value)>{{ $label }}
                     </label>

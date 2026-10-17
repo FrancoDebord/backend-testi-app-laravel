@@ -40,9 +40,9 @@ class ProphecyController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate($this->prophecies->rules(), Prophecies::MESSAGES);
+        $data = $request->validate($this->prophecies->rules(), Prophecies::messages());
 
-        return $this->created(new ProphecyResource($this->prophecies->create($request->user(), $data)), 'Parole enregistrée dans votre carnet.');
+        return $this->created(new ProphecyResource($this->prophecies->create($request->user(), $data)), __('prophecies.flash.created'));
     }
 
     public function show(Request $request, string $id): JsonResponse
@@ -54,7 +54,7 @@ class ProphecyController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $prophecy = $this->prophecies->find($request->user(), $id);
-        $data = $request->validate($this->prophecies->updateRules(), Prophecies::MESSAGES);
+        $data = $request->validate($this->prophecies->updateRules(), Prophecies::messages());
 
         try {
             $prophecy = $this->prophecies->update($prophecy, $data);
@@ -62,14 +62,14 @@ class ProphecyController extends Controller
             return $this->error(collect($e->errors())->flatten()->first(), 422, $e->errors());
         }
 
-        return $this->success(new ProphecyResource($prophecy), 'Parole mise à jour.');
+        return $this->success(new ProphecyResource($prophecy), __('prophecies.flash.updated'));
     }
 
     public function destroy(Request $request, string $id): JsonResponse
     {
         $this->prophecies->delete($this->prophecies->find($request->user(), $id));
 
-        return $this->success(null, 'Parole supprimée.');
+        return $this->success(null, __('prophecies.api.deleted'));
     }
 
     // ─── Journal de prière ───────────────────────────────────────────────────
@@ -95,7 +95,7 @@ class ProphecyController extends Controller
         return $this->created([
             'prayer'   => $this->prayerPayload($prayer),
             'prophecy' => new ProphecyResource($prophecy->refresh()),
-        ], 'Prière enregistrée. Dieu veille sur sa parole pour l\'accomplir.');
+        ], __('prophecies.flash.prayed'));
     }
 
     public function deletePrayer(Request $request, string $id, int $prayerId): JsonResponse
@@ -103,7 +103,7 @@ class ProphecyController extends Controller
         $prophecy = $this->prophecies->find($request->user(), $id);
         $this->prophecies->deletePrayer($prophecy, $prayerId);
 
-        return $this->success(new ProphecyResource($prophecy->refresh()), 'Prière retirée du journal.');
+        return $this->success(new ProphecyResource($prophecy->refresh()), __('prophecies.flash.prayer_deleted'));
     }
 
     private function prayerPayload(ProphecyPrayer $p): array

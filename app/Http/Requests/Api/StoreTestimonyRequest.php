@@ -22,7 +22,8 @@ class StoreTestimonyRequest extends FormRequest
             // le carnet privé (« autre » par défaut) et en modification.
             'category'     => [
                 Rule::requiredIf(fn () => $this->isMethod('post')
-                    && $this->input('visibility', 'public') !== 'private'),
+                    && $this->input('visibility', 'public') !== 'private'
+                    && $this->input('kind') !== \App\Enums\TestimonyKind::Conversion->value), // conversion : « conversion » par défaut
                 'nullable', 'string',
             ],
             'body_text'    => ['nullable', 'string'],
@@ -46,6 +47,14 @@ class StoreTestimonyRequest extends FormRequest
             // Témoignage de l'accomplissement d'une parole prophétique (docs/fonctionnalites/paroles-prophetiques.md)
             'prophecy_id'     => ['nullable', 'uuid'],
             'prophecy_public' => ['nullable', 'boolean'],
+            // Témoignage de conversion : kind, conversion_year, conversion_place, conversion_verse
+            // (docs/fonctionnalites/temoignage-de-conversion.md)
+            ...\App\Services\ConversionTestimonies::rules(),
         ];
+    }
+
+    public function messages(): array
+    {
+        return \App\Services\ConversionTestimonies::messages();
     }
 }

@@ -28,7 +28,7 @@ class OrganizationManagerController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $request->validate(['user_id' => 'required|uuid'], ['user_id.required' => 'Choisissez une personne.']);
+        $request->validate(['user_id' => 'required|uuid'], ['user_id.required' => __('account.managers.choose_person')]);
         $account = $request->user();
 
         try {
@@ -37,7 +37,7 @@ class OrganizationManagerController extends Controller
             return $this->error($e->getMessage(), $e->status());
         }
 
-        return $this->success($this->payload($account), "{$target->display_name} peut maintenant administrer votre compte.");
+        return $this->success($this->payload($account), __('account.managers.added', ['name' => $target->display_name]));
     }
 
     public function destroy(Request $request, string $userId): JsonResponse
@@ -49,7 +49,7 @@ class OrganizationManagerController extends Controller
             return $this->error($e->getMessage(), $e->status());
         }
 
-        return $this->success($this->payload($account), 'Administrateur retiré.');
+        return $this->success($this->payload($account), __('account.managers.removed'));
     }
 
     /** Personne connectée : comptes qu'on lui a confiés (organisations et personnes). */
@@ -95,14 +95,14 @@ class OrganizationManagerController extends Controller
     public function leave(Request $request, string $organizationId): JsonResponse
     {
         $account = User::find($organizationId);
-        abort_if(!$account, 404, 'Compte introuvable.');
+        abort_if(!$account, 404, __('account.managers.account_not_found'));
         try {
             AccountDelegation::remove($account, $request->user(), $request->user()->id);
         } catch (EventActionException $e) {
             return $this->error($e->getMessage(), $e->status());
         }
 
-        return $this->success(null, "Vous n'administrez plus ce compte.");
+        return $this->success(null, __('account.managers.left'));
     }
 
     /** Libellé lisible d'une action du journal (API et site). */
@@ -112,17 +112,17 @@ class OrganizationManagerController extends Controller
         $m = $a->method;
 
         return match (true) {
-            str_contains($p, 'comment')                                   => $m === 'DELETE' ? 'A supprimé un commentaire' : 'A commenté',
-            (bool) preg_match('#/(testimonies|temoignages)/?$#', $p) && $m === 'POST' => 'A publié un témoignage',
-            str_contains($p, 'testimon') || str_contains($p, 'temoignage') => $m === 'DELETE' ? 'A supprimé un témoignage' : 'Témoignage',
-            str_contains($p, 'react') || str_contains($p, 'like') || str_contains($p, 'pray') && !str_contains($p, 'prayer') => 'A réagi',
-            str_contains($p, 'prayer/sessions') || str_contains($p, 'sessions')  => 'Session de prière',
-            str_contains($p, 'prayer') || str_contains($p, 'priere')       => 'Requête de prière',
-            str_contains($p, 'events') || str_contains($p, 'evenements')   => 'Événement',
-            str_contains($p, 'follow')                                    => $m === 'DELETE' ? 'Ne suit plus un compte' : 'A suivi un compte',
-            str_contains($p, 'lives') || str_contains($p, 'directs')       => 'Direct',
-            str_contains($p, 'users/me') || str_contains($p, 'profile')    => 'A modifié le profil',
-            default                                                       => 'Action',
+            str_contains($p, 'comment')                                   => $m === 'DELETE' ? __('account.activity.comment_deleted') : __('account.activity.commented'),
+            (bool) preg_match('#/(testimonies|temoignages)/?$#', $p) && $m === 'POST' => __('account.activity.testimony_published'),
+            str_contains($p, 'testimon') || str_contains($p, 'temoignage') => $m === 'DELETE' ? __('account.activity.testimony_deleted') : __('account.activity.testimony'),
+            str_contains($p, 'react') || str_contains($p, 'like') || str_contains($p, 'pray') && !str_contains($p, 'prayer') => __('account.activity.reacted'),
+            str_contains($p, 'prayer/sessions') || str_contains($p, 'sessions')  => __('account.activity.prayer_session'),
+            str_contains($p, 'prayer') || str_contains($p, 'priere')       => __('account.activity.prayer_request'),
+            str_contains($p, 'events') || str_contains($p, 'evenements')   => __('account.activity.event'),
+            str_contains($p, 'follow')                                    => $m === 'DELETE' ? __('account.activity.unfollowed') : __('account.activity.followed'),
+            str_contains($p, 'lives') || str_contains($p, 'directs')       => __('account.activity.live'),
+            str_contains($p, 'users/me') || str_contains($p, 'profile')    => __('account.activity.profile_updated'),
+            default                                                       => __('account.activity.other'),
         };
     }
 

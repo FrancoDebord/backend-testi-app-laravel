@@ -21,13 +21,13 @@ class AccountSwitchController extends Controller
         if ($actor->id === $id) {
             $request->session()->forget(AccountDelegation::SESSION_KEY);
 
-            return redirect()->route('home')->with('success', 'Vous êtes revenu sur votre compte.');
+            return redirect()->route('home')->with('success', __('account.switch.back'));
         }
 
         $account = User::find($id);
-        abort_if(!$account || !AccountDelegation::canActFor($actor, $account), 403, "Vous n'administrez pas ce compte.");
+        abort_if(!$account || !AccountDelegation::canActFor($actor, $account), 403, __('account.switch.not_manager'));
         $request->session()->put(AccountDelegation::SESSION_KEY, $account->id);
 
-        return redirect()->route('home')->with('success', "Vous agissez maintenant au nom de {$account->display_name}.");
+        return redirect()->route('home')->with('success', __('account.switch.acting_as', ['name' => $account->display_name]));
     }
 }

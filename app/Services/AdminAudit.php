@@ -30,6 +30,12 @@ class AdminAudit
         'user.super_admin_revoked'  => 'Statut super-administrateur retiré',
     ];
 
+    /** Libellé traduit d'une action (LABELS : texte français, gardé pour compatibilité). */
+    public static function label(string $action): string
+    {
+        return array_key_exists($action, self::LABELS) ? __('admin.audit.' . $action) : $action;
+    }
+
     /**
      * @param ?User $actor null : ligne de commande ou traitement automatique
      */

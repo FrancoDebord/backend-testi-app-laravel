@@ -237,6 +237,23 @@
         </section>
         @endif
 
+        {{-- Témoignages de conversion (docs/fonctionnalites/temoignage-de-conversion.md) --}}
+        @if(($conversions ?? collect())->isNotEmpty())
+        <section class="card p-5" aria-labelledby="home-conversions">
+            <div class="mb-4 flex items-center justify-between gap-2">
+                <h2 id="home-conversions" class="card-title flex items-center gap-2"><i class="fa-solid fa-dove text-sun-700" aria-hidden="true"></i>{{ __('conversion.section_title') }}</h2>
+                <a href="{{ route('testimonies.conversions') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('conversion.see_all') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
+            </div>
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                @foreach($conversions as $conversionItem)
+                <div class="{{ $loop->index === 2 ? 'md:hidden xl:block' : '' }} min-w-0">
+                    @include('components.conversion-card', ['testimony' => $conversionItem, 'showAuthor' => true, 'large' => false])
+                </div>
+                @endforeach
+            </div>
+        </section>
+        @endif
+
         {{-- Shorts --}}
         @if($shorts->isNotEmpty())
         <section class="card p-5" aria-labelledby="home-shorts">
@@ -259,7 +276,7 @@
             @include('home.partials.content-table', [
                 'tableTitle' => 'Gestion des contenus',
                 'items'      => $contentItems,
-                'tabs'       => \App\Http\Controllers\Web\HomeController::CONTENT_TABS,
+                'tabs'       => \App\Http\Controllers\Web\HomeController::contentTabs(),
                 'moreUrl'    => $viewer->isAdmin() ? route('admin.content.index') : route('moderation.index'),
             ])
         @elseif($viewer)

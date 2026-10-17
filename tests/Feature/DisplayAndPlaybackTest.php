@@ -124,7 +124,7 @@ class DisplayAndPlaybackTest extends TestCase
             ->assertSee('data-player-quality', false)
             ->assertSee('Qualité 720p')
             ->assertSee('Qualité 240p')
-            ->assertSee("Qualité d'origine", false)
+            ->assertSee("Qualité d'origine") // texte traduit : apostrophe encodée (&#039;)
             ->assertSee('data-player-loop', false)
             ->getContent();
 

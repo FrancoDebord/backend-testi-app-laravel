@@ -28,11 +28,11 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return $this->error('Email ou mot de passe incorrect', 401);
+            return $this->error(__('account.api.invalid_credentials'), 401);
         }
 
         if ($user->status->value === 'banned') {
-            return $this->error('Votre compte a été banni', 403);
+            return $this->error(__('account.api.banned'), 403);
         }
 
         $token = $user->createToken('mobile-app')->plainTextToken;
@@ -41,7 +41,7 @@ class AuthController extends Controller
             'user'          => UserResource::owner($user),
             'access_token'  => $token,
             'token_type'    => 'Bearer',
-        ], 'Connexion réussie');
+        ], __('account.api.login_success'));
     }
 
     public function register(RegisterRequest $request): JsonResponse
@@ -70,7 +70,7 @@ class AuthController extends Controller
             'access_token'  => $token,
             'token_type'    => 'Bearer',
             'is_new_user'   => true,
-        ], 'Compte créé avec succès');
+        ], __('account.api.registered'));
     }
 
     public function phoneAuth(PhoneAuthRequest $request): JsonResponse
@@ -79,7 +79,7 @@ class AuthController extends Controller
         $firebaseData = $this->verifyFirebaseToken($request->firebase_token);
 
         if (!$firebaseData) {
-            return $this->error('Token Firebase invalide', 401);
+            return $this->error(__('account.api.invalid_firebase_token'), 401);
         }
 
         $uid   = $firebaseData['uid'];
@@ -100,7 +100,7 @@ class AuthController extends Controller
                     'is_new_user'    => true,
                     'firebase_token' => $request->firebase_token,
                     'phone'          => $phone,
-                ], 'Nouveau profil requis');
+                ], __('account.api.profile_required'));
             }
 
             // Le numéro appartient à la personne qui vient de le confirmer par SMS : il est retiré d'un
@@ -131,12 +131,14 @@ class AuthController extends Controller
             'access_token'  => $token,
             'token_type'    => 'Bearer',
             'is_new_user'   => $isNewUser,
-        ], 'Connexion réussie');
+        ], __('account.api.login_success'));
     }
 
     public function me(Request $request): JsonResponse
     {
-        $data = UserResource::owner($request->user())->resolve($request);
+        $user = $request->user();
+        $user->loadExists(['testimonies as has_conversion_testimony' => fn ($t) => $t->conversion()->published()]);
+        $data = UserResource::owner($user)->resolve($request);
         // Au nom d'un compte administré : ni e-mail ni téléphone du titulaire
         // (docs/fonctionnalites/administrateurs-de-compte.md).
         if ($actor = $request->attributes->get(\App\Services\AccountDelegation::ACTOR_ATTRIBUTE)) {
@@ -148,10 +150,27 @@ class AuthController extends Controller
         return $this->success($data, '');
     }
 
+    /**
+     * Déconnexion : jeton de session supprimé, ainsi que les jetons push de cet appareil — ceux enregistrés avec
+     * cette session, et celui envoyé dans { device_token } (ou { token }). docs/fonctionnalites/notifications-push.md
+     */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
-        return $this->success(null, 'Déconnexion réussie');
+        $user = $request->user();
+        $deviceToken = $request->input('device_token', $request->input('token'));
+        \App\Models\DeviceToken::where('user_id', $user->id)
+            ->where(function ($q) use ($request, $deviceToken) {
+                $q->whereRaw('1 = 0');
+                if ($id = DeviceTokenController::accessTokenId($request)) {
+                    $q->orWhere('access_token_id', $id);
+                }
+                if (is_string($deviceToken) && $deviceToken !== '') {
+                    $q->orWhere('token', $deviceToken);
+                }
+            })->delete();
+
+        $user->currentAccessToken()->delete();
+        return $this->success(null, __('account.api.logged_out'));
     }
 
     public function refresh(Request $request): JsonResponse
@@ -160,13 +179,17 @@ class AuthController extends Controller
 
         // Sanctum doesn't use refresh tokens by default — reuse current token logic
         $user  = $request->user();
+        $oldIds = $user->tokens()->pluck('id');
         $user->tokens()->delete();
-        $token = $user->createToken('mobile-app')->plainTextToken;
+        $newToken = $user->createToken('mobile-app');
+        $token = $newToken->plainTextToken;
+        // Jetons push de l'appareil rattachés à la nouvelle session (supprimés à sa déconnexion).
+        \App\Models\DeviceToken::whereIn('access_token_id', $oldIds)->update(['access_token_id' => $newToken->accessToken->getKey()]);
 
         return $this->success([
             'access_token' => $token,
             'token_type'   => 'Bearer',
-        ], 'Token rafraîchi');
+        ], __('account.api.token_refreshed'));
     }
 
     public function changePassword(Request $request): JsonResponse
@@ -179,7 +202,7 @@ class AuthController extends Controller
         $user = $request->user();
 
         if (!$user->password || !Hash::check($request->current_password, $user->password)) {
-            return $this->error('Mot de passe actuel incorrect', 403);
+            return $this->error(__('account.api.wrong_current_password'), 403);
         }
 
         $user->update(['password' => $request->new_password]);
@@ -187,14 +210,14 @@ class AuthController extends Controller
         // Révoquer tous les autres tokens pour forcer une reconnexion sur les autres appareils
         $user->tokens()->where('id', '!=', $request->user()->currentAccessToken()->id)->delete();
 
-        return $this->success(null, 'Mot de passe mis à jour');
+        return $this->success(null, __('account.api.password_updated'));
     }
 
     public function forgotPassword(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email']);
         // In production, dispatch a password reset email here
-        return $this->success(null, 'Si l\'adresse email existe, un lien de réinitialisation sera envoyé');
+        return $this->success(null, __('account.api.reset_link_sent'));
     }
 
     private function verifyFirebaseToken(string $token): ?array

@@ -28,11 +28,11 @@ class LiveSession extends Model
     ];
 
     /** Sources vidéo d'un direct. */
-    public const SOURCES = [
-        'browser' => "Caméra de cet appareil",
-        'rtmp'    => 'Caméra IP ou encodeur (RTMP)',
-        'url'     => 'Adresse du flux de la caméra',
-    ];
+    /** Sources vidéo [browser|rtmp|url => libellé] (lang/{fr,en}/models.php › live_sources). */
+    public static function sources(): array
+    {
+        return __('models.live_sources');
+    }
 
     protected $hidden = ['ingress_stream_key', 'camera_url'];
 
@@ -121,12 +121,9 @@ class LiveSession extends Model
         }
 
         return match ($this->recording_status) {
-            'recording'  => 'Enregistrement en cours',
-            'processing' => 'Vidéo en cours de finalisation',
-            'ready'      => $this->testimony?->status?->value === 'approved' ? 'Rediffusion disponible' : 'Vidéo en attente de relecture',
-            'too_short'  => 'Direct trop court : pas de vidéo créée',
-            'failed'     => 'Échec de l\'enregistrement',
-            default      => 'Sera enregistré au passage à l\'antenne',
+            'recording', 'processing', 'too_short', 'failed' => __('models.live_recording.' . $this->recording_status),
+            'ready'      => __($this->testimony?->status?->value === 'approved' ? 'models.live_recording.ready' : 'models.live_recording.ready_pending'),
+            default      => __('models.live_recording.default'),
         };
     }
 

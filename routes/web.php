@@ -118,6 +118,16 @@ Route::middleware(['auth', 'throttle:30,1'])->whereUuid('id')->group(function ()
     Route::delete('/profiles/{id}/follow', [CommunityController::class, 'unfollow'])->name('users.unfollow');
 });
 
+// ── Langue du site (français / anglais) ─ docs/fonctionnalites/langues.md ──
+Route::post('/langue', [\App\Http\Controllers\Web\LocaleController::class, 'update'])->middleware('throttle:30,1')->name('locale.update');
+
+// ── Témoignages de conversion ─ docs/fonctionnalites/temoignage-de-conversion.md
+Route::get('/temoignages-de-conversion', [\App\Http\Controllers\Web\ConversionTestimonyController::class, 'index'])->name('testimonies.conversions');
+Route::middleware('auth')->group(function () {
+    Route::get('/temoignages-de-conversion/le-mien/modifier', [\App\Http\Controllers\Web\ConversionTestimonyController::class, 'edit'])->name('testimonies.conversion.edit');
+    Route::put('/temoignages-de-conversion/le-mien', [\App\Http\Controllers\Web\ConversionTestimonyController::class, 'update'])->middleware('throttle:20,1')->name('testimonies.conversion.update');
+});
+
 // ── Affichage des listes ─ docs/fonctionnalites/affichage-et-lecture.md ─────
 Route::post('/affichage', [DisplayPreferenceController::class, 'layout'])->middleware('throttle:30,1')->name('preferences.layout');
 
@@ -178,6 +188,8 @@ Route::whereUuid('id')->group(function () {
 // ── Événements ─ docs/fonctionnalites/evenements.md ───────────────────────
 // Pages et actions : Web\EventController (règles métier : App\Services\EventService, partagé avec l'API).
 Route::get('/evenements', [EventController::class, 'index'])->name('events.index');
+// Événements terminés, du plus récent au plus ancien, avec leurs témoignages
+Route::get('/evenements/passes', [EventController::class, 'past'])->name('events.past');
 // Cartes / liste compacte (cookie event_layout, aussi sans compte)
 Route::post('/evenements/affichage', [EventController::class, 'layout'])->middleware('throttle:30,1')->name('events.layout');
 Route::middleware('auth')->group(function () {
@@ -374,6 +386,8 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin
     Route::post('/users/{id}/reject-verification', [AdminController::class, 'rejectOrganization'])->name('users.reject-verification');
     // Comptes personnels ─ docs/fonctionnalites/verification-des-comptes.md
     Route::post('/users/{id}/revoke-verification', [\App\Http\Controllers\Web\AccountVerificationController::class, 'revoke'])->name('users.revoke-verification');
+    // Notification push de test vers les appareils d'un membre (super-administrateurs) ─ docs/fonctionnalites/notifications-push.md
+    Route::post('/users/{id}/push-test', [AdminController::class, 'pushTest'])->whereUuid('id')->middleware('throttle:10,1')->name('users.push-test');
     // Badge « Approuvé » manuel ─ docs/fonctionnalites/badge-approuve.md
     Route::post('/users/{id}/badge',   [\App\Http\Controllers\Web\AccountApprovalController::class, 'grant'])->name('users.approval.grant');
     Route::delete('/users/{id}/badge', [\App\Http\Controllers\Web\AccountApprovalController::class, 'revoke'])->name('users.approval.revoke');

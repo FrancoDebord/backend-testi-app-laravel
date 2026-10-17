@@ -182,7 +182,7 @@ class PrayerRequestController extends Controller
             (new PrayerRequestResource($p))->toArray($request),
             ['reports' => $p->reports->map(fn ($r) => [
                 'reason'      => $r->reason,
-                'reasonLabel' => PrayerRequest::REPORT_REASONS[$r->reason] ?? $r->reason,
+                'reasonLabel' => PrayerRequest::reportReasons()[$r->reason] ?? $r->reason,
                 'comment'     => $r->comment,
                 'reporter'    => $r->reporter?->display_name,
                 'reviewed'    => $r->reviewed_at !== null,

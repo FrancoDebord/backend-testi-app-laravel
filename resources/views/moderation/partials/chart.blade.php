@@ -27,14 +27,14 @@
     <p class="mt-1 flex justify-between text-[10px] text-slate-400" aria-hidden="true">
         @foreach($chartDays as $i => $d)
             @if($i % $every === 0 || $i === $chartDays->count() - 1)
-            <span>{{ \Illuminate\Support\Carbon::parse($d['date'])->format('d/m') }}</span>
+            <span>{{ \Illuminate\Support\Carbon::parse($d['date'])->format(__('moderation.common.day_month_format')) }}</span>
             @endif
         @endforeach
     </p>
     <figcaption class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
         @foreach($lines as $line)
-        <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: {{ $line['color'] }}" aria-hidden="true"></span>{{ $line['label'] }} : <strong class="tabular-nums">{{ number_format($chartDays->sum($line['key']), 0, ',', ' ') }}</strong></span>
+        <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: {{ $line['color'] }}" aria-hidden="true"></span>{{ __('moderation.common.chart_total', ['label' => $line['label']]) }} <strong class="tabular-nums">{{ \App\Support\Locales::number($chartDays->sum($line['key'])) }}</strong></span>
         @endforeach
-        <span class="text-slate-400">Max. par jour : {{ number_format($chartMax, 0, ',', ' ') }}</span>
+        <span class="text-slate-400">{{ __('moderation.common.chart_max', ['max' => \App\Support\Locales::number($chartMax)]) }}</span>
     </figcaption>
 </figure>

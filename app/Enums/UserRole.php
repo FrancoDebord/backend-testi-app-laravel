@@ -11,12 +11,7 @@ enum UserRole: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Visiteur       => 'Visiteur',
-            self::Utilisateur    => 'Utilisateur',
-            self::Moderateur     => 'Modérateur',
-            self::Administrateur => 'Administrateur',
-        };
+        return __('enums.user_role.' . $this->value);
     }
 
     public function canPublish(): bool

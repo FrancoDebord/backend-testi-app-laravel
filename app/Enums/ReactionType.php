@@ -32,17 +32,7 @@ enum ReactionType: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Like    => 'J\'aime',
-            self::Love    => 'J\'adore Dieu',
-            self::Pray    => 'Prière',
-            self::Amen    => 'Amen',
-            self::Worship => 'Adorer Dieu',
-            self::Fire    => 'Feu',
-            self::Glory   => 'Gloire à Dieu !',
-            self::Strong  => 'Inspirant',
-            self::Touched => 'Touché',
-        };
+        return __('enums.reaction_type.' . $this->value);
     }
 
     /** Compteur du témoignage incrémenté par cette réaction (prières / j'aime). */

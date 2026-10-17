@@ -139,7 +139,7 @@ class TestimonyReactions
                 'type'            => $prayer ? 'prayer' : 'like',
                 'testimony_id'    => $testimony->id,
                 'testimony_title' => $testimony->title,
-                'message'         => $user->display_name . ($prayer ? ' prie pour votre témoignage' : ' a réagi à votre témoignage'),
+                ...\App\Support\NotificationText::fields($prayer ? 'reactions.notify_prayer' : 'reactions.notify_like', ['actor' => $user->display_name]),
                 'created_at'      => now(),
             ]);
         } catch (\Throwable $e) {

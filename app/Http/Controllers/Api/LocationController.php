@@ -52,13 +52,13 @@ class LocationController extends Controller
             $this->locations->setUseGps($user, true);
         }
 
-        return $this->success($this->locations->payload($user), 'Localisation mise à jour');
+        return $this->success($this->locations->payload($user), __('profile.location.api_updated'));
     }
 
     public function destroy(Request $request): JsonResponse
     {
         $this->locations->erase($request->user());
 
-        return $this->success($this->locations->payload($request->user()), 'Position supprimée');
+        return $this->success($this->locations->payload($request->user()), __('profile.location.api_erased'));
     }
 }

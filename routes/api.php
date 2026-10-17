@@ -134,6 +134,8 @@ Route::prefix('v1')->group(function () {
     // Communauté : organisations et personnes à suivre (docs/fonctionnalites/abonnements.md)
     Route::get('community',            [\App\Http\Controllers\Api\CommunityController::class, 'index']);
     Route::get('users/{id}/testimonies', [UserController::class, 'testimonies']);
+    // Témoignage de conversion publié d'un compte (404 s'il n'en a pas) ─ docs/fonctionnalites/temoignage-de-conversion.md
+    Route::get('users/{id}/conversion-testimony', [\App\Http\Controllers\Api\ConversionTestimonyController::class, 'ofUser']);
     Route::get('users/{id}/reposts', [\App\Http\Controllers\Api\RepostController::class, 'ofUser']); // partages internes d'un compte (profil)
 
     // ── Témoignages en direct (lecture publique) ─ docs/fonctionnalites/lives.md
@@ -171,6 +173,7 @@ Route::prefix('v1')->group(function () {
 
     // ── Authenticated routes ─────────────────────────────────────────────
     // ── Événements chrétiens ─ docs/fonctionnalites/evenements.md ──────────
+    // ?when=past : événements terminés, du plus récent au plus ancien, avec testimonies_count et thumbnail_url
     Route::get('events',                  [EventController::class, 'index']);
     Route::whereUuid('id')->group(function () {
         Route::get('events/{id}',             [EventController::class, 'show']);
@@ -323,6 +326,14 @@ Route::prefix('v1')->group(function () {
         Route::post('testimonies/{id}/comments', [CommentController::class, 'store']);
         Route::put('comments/{id}',              [CommentController::class, 'update']);
         Route::delete('comments/{id}',           [CommentController::class, 'destroy']);
+
+        // Profil connecté : /me (forme courte) ─ langue des push et e-mails : { locale: fr|en } (docs/fonctionnalites/langues.md)
+        Route::get('me',                  [AuthController::class, 'me']);
+        Route::put('me',                  [UserController::class, 'updateMe']);
+        // Mon témoignage de conversion (null s'il n'existe pas) ─ docs/fonctionnalites/temoignage-de-conversion.md
+        Route::get('me/conversion-testimony', [\App\Http\Controllers\Api\ConversionTestimonyController::class, 'mine']);
+        // Notification de test vers tous mes appareils, résultat par jeton ─ docs/fonctionnalites/notifications-push.md
+        Route::post('me/push-test',       [DeviceTokenController::class, 'test'])->middleware('throttle:5,1');
 
         // Users (self management)
         Route::get('users/me',            [AuthController::class, 'me']); // comme auth/me, mais suit X-Act-As (compte administré)

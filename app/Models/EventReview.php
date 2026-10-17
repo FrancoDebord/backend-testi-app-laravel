@@ -16,11 +16,11 @@ class EventReview extends Model
     public const NO     = 'no';
     public const ABSENT = 'absent';
 
-    public const ATTENDED = [
-        self::YES    => 'Oui, il a eu lieu',
-        self::NO     => "Non, il n'a pas eu lieu",
-        self::ABSENT => "Je n'y étais pas",
-    ];
+    /** Réponses au sondage « A-t-il eu lieu ? » [yes|no|absent => libellé] (lang/{fr,en}/models.php › event_attended). */
+    public static function attendedLabels(): array
+    {
+        return __('models.event_attended');
+    }
 
     /** Jours pendant lesquels une réponse reste modifiable. */
     public const EDITABLE_DAYS = 30;

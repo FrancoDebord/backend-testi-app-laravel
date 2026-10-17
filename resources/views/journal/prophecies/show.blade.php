@@ -6,7 +6,7 @@
     $audioLength = $prophecy->audio_duration ? sprintf('%d:%02d', intdiv($prophecy->audio_duration, 60), $prophecy->audio_duration % 60) : null;
     $testimony   = $prophecy->testimony_id ? $prophecy->testimony()->first() : null;
     $verse       = config('encouragements.prophecy_verses.0');
-    $weekdays    = \App\Http\Controllers\Web\ProphecyController::WEEKDAYS;
+    $weekdays    = \App\Http\Controllers\Web\ProphecyController::weekdays();
     $header      = $prophecy->title ?: 'Parole du ' . $fmtDate($prophecy->received_on);
     $subheader   = 'Visible de vous seul' . ($prophecy->is_public ? ', sauf avec le témoignage publié.' : '.');
     $breadcrumbs = [

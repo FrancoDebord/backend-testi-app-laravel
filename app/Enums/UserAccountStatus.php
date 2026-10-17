@@ -10,11 +10,7 @@ enum UserAccountStatus: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Active    => 'Actif',
-            self::Suspended => 'Suspendu',
-            self::Banned    => 'Banni',
-        };
+        return __('enums.user_account_status.' . $this->value);
     }
 
     public function badgeClass(): string

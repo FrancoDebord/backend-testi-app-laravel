@@ -98,12 +98,12 @@ class LiveStage
 
         $message = $message !== null ? trim(preg_replace('/\s+/u', ' ', $message)) : null;
         if ($message !== null && mb_strlen($message) > (int) config('livekit.stage_message_length')) {
-            throw new LiveActionException('Le sujet ne doit pas dépasser ' . config('livekit.stage_message_length') . ' caractères.', 422);
+            throw new LiveActionException(__('lives.errors.subject_max', ['max' => config('livekit.stage_message_length')]), 422);
         }
 
         $key = "live-stage:{$live->id}:{$user->id}";
         if (RateLimiter::tooManyAttempts($key, (int) config('livekit.stage_requests_per_window'))) {
-            throw new LiveActionException('Vous avez fait plusieurs demandes en peu de temps. Patientez quelques minutes.', 429);
+            throw new LiveActionException(__('lives.errors.stage_throttle'), 429);
         }
         RateLimiter::hit($key, (int) config('livekit.stage_requests_window'));
 
@@ -148,20 +148,20 @@ class LiveStage
         $speaker = LiveSpeaker::with('user')->where('live_session_id', $live->id)->where('user_id', $user->id)
             ->where('status', LiveSpeaker::INVITED)->first();
         if (!$speaker) {
-            throw new LiveActionException('Aucune invitation en cours : elle a peut-être été annulée.', 409);
+            throw new LiveActionException(__('lives.errors.no_invitation'), 409);
         }
         if ($speaker->isInvitationExpired()) {
             $this->expireInvitation($live);
-            throw new LiveActionException('L\'invitation a expiré. Vous pouvez refaire une demande.', 410);
+            throw new LiveActionException(__('lives.errors.invitation_expired'), 410);
         }
         if (!str_starts_with($identity, "user-{$user->id}-")) {
-            throw new LiveActionException('Connexion au direct invalide. Rechargez la page.', 422);
+            throw new LiveActionException(__('lives.errors.invalid_connection'), 422);
         }
 
         try {
             $this->livekit->updateParticipant($live->room_name, $identity, self::SPEAKER_PERMISSION);
         } catch (LiveKitException $e) {
-            throw new LiveActionException('Votre connexion au direct a été perdue. Rechargez la page, puis acceptez à nouveau.', 409);
+            throw new LiveActionException(__('lives.errors.connection_lost'), 409);
         }
 
         $speaker->update([
@@ -190,15 +190,15 @@ class LiveStage
 
             $busy = LiveSpeaker::where('live_session_id', $live->id)->whereIn('status', LiveSpeaker::STAGE)->exists();
             if ($busy) {
-                throw new LiveActionException('Une personne est déjà invitée ou à l\'antenne. Terminez son intervention avant d\'inviter la suivante.', 409);
+                throw new LiveActionException(__('lives.errors.stage_busy'), 409);
             }
 
             $speaker = LiveSpeaker::with('user')->where('live_session_id', $live->id)->findOrFail($speakerId);
             if ($speaker->status !== LiveSpeaker::WAITING) {
-                throw new LiveActionException('Cette demande n\'est plus dans la file.', 409);
+                throw new LiveActionException(__('lives.errors.request_gone'), 409);
             }
             if ($live->isBanned($speaker->user) || $speaker->user->status !== UserAccountStatus::Active) {
-                throw new LiveActionException('Cette personne ne peut plus intervenir pendant ce direct.', 422);
+                throw new LiveActionException(__('lives.errors.speaker_banned'), 422);
             }
 
             $speaker->update(['status' => LiveSpeaker::INVITED, 'invited_at' => now(), 'handled_by' => $actor->id]);
@@ -215,7 +215,7 @@ class LiveStage
 
         $speaker = LiveSpeaker::with('user')->where('live_session_id', $live->id)->findOrFail($speakerId);
         if (!in_array($speaker->status, [LiveSpeaker::WAITING, LiveSpeaker::INVITED], true)) {
-            throw new LiveActionException('Cette demande n\'est plus en attente.', 409);
+            throw new LiveActionException(__('lives.errors.request_not_pending'), 409);
         }
 
         $speaker->update(['status' => LiveSpeaker::DECLINED, 'ended_at' => now(), 'handled_by' => $actor->id]);
@@ -229,7 +229,7 @@ class LiveStage
 
         $speaker = LiveSpeaker::with('user')->where('live_session_id', $live->id)->findOrFail($speakerId);
         if ($speaker->status !== LiveSpeaker::ON_STAGE) {
-            throw new LiveActionException('Cette personne n\'est pas à l\'antenne.', 409);
+            throw new LiveActionException(__('lives.errors.not_on_stage'), 409);
         }
 
         $this->finish($live, $speaker, 'removed', $actor);
@@ -328,14 +328,14 @@ class LiveStage
     private function refusalReason(LiveSession $live, ?User $user, ?LiveSpeaker $open): ?string
     {
         return match (true) {
-            $user === null                               => 'Connectez-vous pour demander à intervenir.',
-            $live->status === LiveStatus::Ended          => 'Ce direct est terminé.',
-            !$live->isOnAir()                            => 'Ce direct n\'a pas encore commencé.',
-            $live->canBeModeratedBy($user)               => 'Le diffuseur et les modérateurs n\'ont pas besoin de demander.',
-            !$live->speakers_enabled                     => 'Les demandes d\'intervention sont fermées pour le moment.',
-            $user->status !== UserAccountStatus::Active  => 'Votre compte ne permet pas cette action.',
-            $live->isBanned($user)                       => 'Vous ne pouvez plus intervenir pendant ce direct.',
-            $open !== null                               => 'Vous avez déjà une demande en cours.',
+            $user === null                               => __('lives.errors.login_to_request'),
+            $live->status === LiveStatus::Ended          => __('lives.errors.ended'),
+            !$live->isOnAir()                            => __('lives.errors.not_started'),
+            $live->canBeModeratedBy($user)               => __('lives.errors.staff_no_request'),
+            !$live->speakers_enabled                     => __('lives.errors.requests_closed'),
+            $user->status !== UserAccountStatus::Active  => __('lives.errors.account_inactive'),
+            $live->isBanned($user)                       => __('lives.errors.stage_banned'),
+            $open !== null                               => __('lives.errors.already_requested'),
             default                                      => null,
         };
     }
@@ -343,14 +343,14 @@ class LiveStage
     private function ensureStaff(LiveSession $live, User $actor): void
     {
         if (!$live->canBeModeratedBy($actor)) {
-            throw new LiveActionException('Seuls le diffuseur et les modérateurs gèrent les intervenants.', 403);
+            throw new LiveActionException(__('lives.errors.staff_only'), 403);
         }
     }
 
     private function ensureOnAir(LiveSession $live): void
     {
         if (!$live->isOnAir()) {
-            throw new LiveActionException($live->status === LiveStatus::Ended ? 'Ce direct est terminé.' : 'Ce direct n\'a pas encore commencé.', 409);
+            throw new LiveActionException($live->status === LiveStatus::Ended ? __('lives.errors.ended') : __('lives.errors.not_started'), 409);
         }
     }
 

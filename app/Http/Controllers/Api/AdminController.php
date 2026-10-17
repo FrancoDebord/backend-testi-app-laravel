@@ -88,12 +88,12 @@ class AdminController extends Controller
         $user = User::find($id);
         if (!$user) return $this->notFound();
         if (!$user->isOrganization()) {
-            return $this->error('Seul un compte organisation peut être vérifié', 422);
+            return $this->error(__('admin.api.organization_only_verify'), 422);
         }
 
         OrganizationAccounts::verify($user, $request->user());
 
-        return $this->success(new UserResource($user->fresh()), 'Organisation vérifiée');
+        return $this->success(new UserResource($user->fresh()), __('admin.api.organization_verified'));
     }
 
     public function rejectOrganization(Request $request, string $id): JsonResponse
@@ -103,12 +103,12 @@ class AdminController extends Controller
         $user = User::find($id);
         if (!$user) return $this->notFound();
         if (!$user->isOrganization()) {
-            return $this->error('Seul un compte organisation peut faire l’objet d’une vérification', 422);
+            return $this->error(__('admin.api.organization_only_review'), 422);
         }
 
         OrganizationAccounts::reject($user, $request->user(), $request->input('reason'));
 
-        return $this->success(new UserResource($user->fresh()), 'Vérification refusée');
+        return $this->success(new UserResource($user->fresh()), __('admin.api.organization_rejected'));
     }
 
     public function showUser(string $id): JsonResponse
@@ -123,12 +123,12 @@ class AdminController extends Controller
     {
         $user = User::find($id);
         if (!$user) return $this->notFound();
-        if ($user->isAdmin()) return $this->forbidden('Impossible de bannir un administrateur');
+        if ($user->isAdmin()) return $this->forbidden(__('admin.api.cannot_ban_admin'));
 
         $user->update(['status' => 'banned', 'is_active' => false]);
         $user->tokens()->delete();
 
-        return $this->success(null, 'Utilisateur banni');
+        return $this->success(null, __('admin.api.user_banned'));
     }
 
     public function suspendUser(Request $request, string $id): JsonResponse
@@ -141,7 +141,7 @@ class AdminController extends Controller
 
         $user->update(['status' => 'suspended']);
 
-        return $this->success(null, 'Utilisateur suspendu');
+        return $this->success(null, __('admin.api.user_suspended'));
     }
 
     public function activateUser(string $id): JsonResponse
@@ -151,7 +151,7 @@ class AdminController extends Controller
 
         $user->update(['status' => 'active', 'is_active' => true]);
 
-        return $this->success(null, 'Utilisateur activé');
+        return $this->success(null, __('admin.api.user_activated'));
     }
 
     public function updateUserRole(Request $request, string $id): JsonResponse
@@ -159,7 +159,7 @@ class AdminController extends Controller
         $request->validate(['role' => 'required|in:utilisateur,moderateur,administrateur']);
 
         if ($request->user()->id === $id) {
-            return $this->forbidden('Vous ne pouvez pas modifier votre propre rôle');
+            return $this->forbidden(__('admin.api.own_role'));
         }
 
         $user = User::find($id);
@@ -167,7 +167,7 @@ class AdminController extends Controller
 
         $user->update(['role' => $request->role]);
 
-        return $this->success(null, 'Rôle mis à jour');
+        return $this->success(null, __('admin.api.role_updated'));
     }
 
     public function content(Request $request): JsonResponse
@@ -208,7 +208,7 @@ class AdminController extends Controller
         $slug = $request->slug ?? Str::slug($request->name, '_');
 
         if (Category::where('slug', $slug)->exists()) {
-            return $this->error("Le slug '{$slug}' est déjà utilisé. Fournissez un slug personnalisé.", 422);
+            return $this->error(__('admin.api.slug_taken', ['slug' => $slug]), 422);
         }
 
         $category = Category::create([
@@ -219,7 +219,7 @@ class AdminController extends Controller
             'display_order' => $request->display_order ?? (Category::max('display_order') + 1),
         ]);
 
-        return $this->created(new CategoryResource($category), 'Catégorie créée');
+        return $this->created(new CategoryResource($category), __('admin.api.category_created'));
     }
 
     public function updateCategory(Request $request, string $id): JsonResponse
@@ -237,7 +237,7 @@ class AdminController extends Controller
 
         $category->update($request->only(['name', 'icon', 'color', 'display_order', 'is_active']));
 
-        return $this->success(new CategoryResource($category), 'Catégorie mise à jour');
+        return $this->success(new CategoryResource($category), __('admin.api.category_updated'));
     }
 
     public function deleteCategory(string $id): JsonResponse
@@ -247,13 +247,13 @@ class AdminController extends Controller
 
         if ($category->testimonies()->exists()) {
             return $this->error(
-                "Impossible de supprimer : {$category->testimony_count} témoignage(s) sont liés à cette catégorie. Désactivez-la plutôt.",
+                __('admin.api.category_in_use', ['count' => $category->testimony_count]),
                 422
             );
         }
 
         $category->delete();
-        return $this->success(null, 'Catégorie supprimée');
+        return $this->success(null, __('admin.api.category_deleted'));
     }
 
     public function settings(): JsonResponse
@@ -267,7 +267,7 @@ class AdminController extends Controller
             AppSetting::set($key, $value);
         }
 
-        return $this->success(AppSetting::allGrouped(), 'Paramètres mis à jour');
+        return $this->success(AppSetting::allGrouped(), __('admin.api.settings_updated'));
     }
 
     private function approvalRate(): float

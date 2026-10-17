@@ -11,14 +11,14 @@
                 <i id="confirm-modal-icon" class="fa-solid fa-circle-question"></i>
             </span>
             <div class="min-w-0">
-                <h2 id="confirm-modal-title" class="text-base font-semibold text-primary-600">Confirmer</h2>
+                <h2 id="confirm-modal-title" class="text-base font-semibold text-primary-600">{{ __('layout.confirm.title') }}</h2>
                 <p id="confirm-modal-message" class="mt-1 text-sm text-slate-600"></p>
             </div>
         </div>
         <div class="mt-6 flex flex-wrap justify-end gap-2">
-            <button type="button" class="btn-secondary" data-modal-close>Annuler</button>
+            <button type="button" class="btn-secondary" data-modal-close>{{ __('layout.confirm.cancel') }}</button>
             <button type="button" id="confirm-modal-submit" class="btn-primary">
-                <span id="confirm-modal-label">Confirmer</span>
+                <span id="confirm-modal-label">{{ __('layout.confirm.submit') }}</span>
             </button>
         </div>
     </div>
@@ -28,6 +28,6 @@
 <div id="loading-overlay" class="fixed inset-0 z-[70] flex items-center justify-center bg-white/70 p-4" role="status" aria-live="assertive" hidden>
     <div class="card flex items-center gap-3 px-5 py-4 text-sm font-medium text-slate-700">
         <span class="spinner text-primary-600"></span>
-        <span id="loading-overlay-label">Traitement en cours…</span>
+        <span id="loading-overlay-label">{{ __('layout.processing') }}</span>
     </div>
 </div>

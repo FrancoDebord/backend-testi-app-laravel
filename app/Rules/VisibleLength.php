@@ -26,7 +26,7 @@ class VisibleLength implements ValidationRule
         }
         $rawLimit = $this->max + Mentions::MAX_PER_TEXT * self::TOKEN_OVERHEAD;
         if (mb_strlen(Mentions::plain($value)) > $this->max || mb_strlen($value) > $rawLimit) {
-            $fail($this->message ?? "Le texte ne doit pas dépasser {$this->max} caractères.");
+            $fail($this->message ?? __('comments.text_too_long', ['max' => $this->max]));
         }
     }
 }

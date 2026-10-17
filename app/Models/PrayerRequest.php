@@ -28,18 +28,17 @@ class PrayerRequest extends Model
     /** Signalements distincts qui retirent la requête en attendant la modération. */
     public const AUTO_HIDE_REPORTS = 3;
 
-    public const REPORT_REASONS = [
-        'inappropriate_content' => 'Contenu inapproprié',
-        'hate_speech'           => 'Propos haineux',
-        'spam'                  => 'Publicité ou spam',
-        'other'                 => 'Autre raison',
-    ];
+    /** Motifs de signalement [code => libellé] (lang/{fr,en}/models.php › prayer_request_report_reasons). */
+    public static function reportReasons(): array
+    {
+        return __('models.prayer_request_report_reasons');
+    }
 
-    public const VISIBILITY_LABELS = [
-        self::PUBLIC    => 'Tout le monde',
-        self::FOLLOWERS => 'Mes abonnés',
-        self::PRIVATE   => 'Moi seul',
-    ];
+    /** Visibilités [public|followers|private => libellé] (lang/{fr,en}/models.php › prayer_request_visibility). */
+    public static function visibilityLabels(): array
+    {
+        return __('models.prayer_request_visibility');
+    }
 
     protected $fillable = [
         'user_id', 'event_id', 'daily_verse_id', 'body', 'visibility', 'is_anonymous', 'status', 'answered_at', 'answer_note',

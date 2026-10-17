@@ -17,12 +17,7 @@ enum EventStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Draft     => 'Brouillon',
-            self::Published => 'Publié',
-            self::Postponed => 'Reporté — date à confirmer',
-            self::Cancelled => 'Annulé',
-        };
+        return __('enums.event_status.' . $this->value);
     }
 
     public function badgeClass(): string

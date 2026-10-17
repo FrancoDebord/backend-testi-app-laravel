@@ -35,17 +35,17 @@ class PrayerSession extends Model
 
     public const MAX_TOPICS = 10;
 
-    public const VISIBILITY_LABELS = [
-        self::PUBLIC    => 'Tout le monde',
-        self::FOLLOWERS => 'Mes abonnés',
-    ];
+    /** Visibilités [public|followers => libellé] (lang/{fr,en}/models.php › prayer_session_visibility). */
+    public static function visibilityLabels(): array
+    {
+        return __('models.prayer_session_visibility');
+    }
 
-    public const PHASE_LABELS = [
-        'upcoming'  => 'À venir',
-        'live'      => 'En cours',
-        'ended'     => 'Terminée',
-        'cancelled' => 'Annulée',
-    ];
+    /** Phases [upcoming|live|ended|cancelled => libellé] (lang/{fr,en}/models.php › prayer_session_phase). */
+    public static function phaseLabels(): array
+    {
+        return __('models.prayer_session_phase');
+    }
 
     protected $fillable = [
         'host_id', 'event_id', 'title', 'description', 'topics', 'starts_at', 'duration_minutes', 'ends_at',
@@ -117,7 +117,7 @@ class PrayerSession extends Model
 
     public function phaseLabel(): string
     {
-        return self::PHASE_LABELS[$this->phase()];
+        return self::phaseLabels()[$this->phase()];
     }
 
     public function isHost(?User $user): bool

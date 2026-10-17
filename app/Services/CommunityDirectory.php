@@ -22,11 +22,15 @@ class CommunityDirectory
 {
     public const PER_PAGE = 24;
 
-    public const TABS = [
-        'all'           => 'Tous',
-        'organizations' => 'Organisations',
-        'people'        => 'Personnes',
-    ];
+    /** Onglets de la page Communauté : clé => libellé (langue courante). */
+    public static function tabs(): array
+    {
+        return [
+            'all'           => __('community.tabs.all'),
+            'organizations' => __('community.tabs.organizations'),
+            'people'        => __('community.tabs.people'),
+        ];
+    }
 
     public function search(string $tab, ?string $q, ?User $viewer, int $perPage = self::PER_PAGE): LengthAwarePaginator
     {

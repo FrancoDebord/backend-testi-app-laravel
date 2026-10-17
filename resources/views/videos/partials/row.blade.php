@@ -13,9 +13,9 @@
     $category  = $testimony->relationLoaded('category') ? $testimony->category : null;
     $detailsId = 'row-details-' . $testimony->id;
     [$actionIcon, $actionLabel] = match ($type) {
-        'audio' => ['fa-headphones', 'Écouter'],
-        'text'  => ['fa-book-open', 'Lire'],
-        default => ['fa-play', 'Regarder'],
+        'audio' => ['fa-headphones', __('videos.row.listen')],
+        'text'  => ['fa-book-open', __('videos.row.read')],
+        default => ['fa-play', __('videos.row.watch')],
     };
     $thumbIcon = ['text' => 'fa-file-lines', 'audio' => 'fa-microphone'][$type] ?? 'fa-play';
     $summary   = $testimony->body_text ? Str::limit($testimony->body_plain, 400) : null;
@@ -46,9 +46,11 @@
             </p>
             <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 @if($testimony->isInJournal())
-                <span class="badge-neutral">Carnet privé</span>
+                <span class="badge-neutral">{{ __('videos.common.journal') }}</span>
                 @elseif($status)
                 <span class="{{ $status->badgeClass() }}">{{ $status->label() }}</span>
+                @elseif($testimony->isConversion())
+                <span class="badge-yellow"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>
                 @elseif($pill)
                 <span class="inline-flex items-center gap-1 font-medium text-slate-600"><i class="fa-solid {{ $pill[0] }} text-[10px] text-slate-400" aria-hidden="true"></i>{{ $pill[1] }}</span>
                 @endif
@@ -59,7 +61,7 @@
         </div>
 
         <button type="button" class="btn-ghost btn-sm shrink-0" data-row-toggle aria-expanded="false" aria-controls="{{ $detailsId }}"
-                aria-label="Détails : {{ $testimony->title }}" title="Afficher les détails">
+                aria-label="{{ __('videos.row.details', ['title' => $testimony->title]) }}" title="{{ __('videos.row.show_details') }}">
             <i class="fa-solid fa-chevron-down transition-transform" data-row-icon aria-hidden="true"></i>
         </button>
     </div>
@@ -68,7 +70,7 @@
         @if($summary)
         <p class="line-clamp-4 break-words whitespace-pre-line text-slate-700">{{ $summary }}</p>
         @else
-        <p class="text-slate-500">Aucune description.</p>
+        <p class="text-slate-500">{{ __('videos.common.no_description') }}</p>
         @endif
 
         @if($testimony->bible_ref)
@@ -78,9 +80,9 @@
         <p class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
             @if($category)<span><i class="fa-solid fa-tag mr-1 text-slate-400" aria-hidden="true"></i>{{ $category->name }}</span>@endif
             @if($duration)<span><i class="fa-regular fa-clock mr-1 text-slate-400" aria-hidden="true"></i>{{ $duration }}</span>@endif
-            <span><i class="fa-solid fa-thumbs-up mr-1 text-slate-400" aria-hidden="true"></i>{{ number_format($testimony->like_count, 0, ',', ' ') }}<span class="sr-only"> J'aime</span></span>
-            <span><i class="fa-solid fa-hands-praying mr-1 text-slate-400" aria-hidden="true"></i>{{ number_format($testimony->prayer_count, 0, ',', ' ') }}<span class="sr-only"> prières</span></span>
-            <span><i class="fa-regular fa-comment mr-1 text-slate-400" aria-hidden="true"></i>{{ number_format($testimony->comment_count, 0, ',', ' ') }}<span class="sr-only"> commentaires</span></span>
+            <span><i class="fa-solid fa-thumbs-up mr-1 text-slate-400" aria-hidden="true"></i>{{ \App\Support\Locales::number($testimony->like_count) }}<span class="sr-only"> {{ __('videos.row.likes_sr') }}</span></span>
+            <span><i class="fa-solid fa-hands-praying mr-1 text-slate-400" aria-hidden="true"></i>{{ \App\Support\Locales::number($testimony->prayer_count) }}<span class="sr-only"> {{ __('videos.common.prayers_sr') }}</span></span>
+            <span><i class="fa-regular fa-comment mr-1 text-slate-400" aria-hidden="true"></i>{{ \App\Support\Locales::number($testimony->comment_count) }}<span class="sr-only"> {{ __('videos.common.comments_sr') }}</span></span>
         </p>
 
         <a href="{{ $url }}" class="btn-secondary btn-sm mt-3"><i class="fa-solid {{ $actionIcon }}" aria-hidden="true"></i>{{ $actionLabel }}</a>

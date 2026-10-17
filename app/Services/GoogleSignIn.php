@@ -34,10 +34,10 @@ class GoogleSignIn
              ?? User::withTrashed()->where('email', $email)->first();
 
         if ($user?->trashed()) {
-            throw new GoogleSignInException('Ce compte a été supprimé.', 403);
+            throw new GoogleSignInException(__('account.google.deleted'), 403);
         }
         if ($user && $user->google_id && $user->google_id !== $googleId) {
-            throw new GoogleSignInException('Cette adresse e-mail est déjà liée à un autre compte Google.', 409);
+            throw new GoogleSignInException(__('account.google.email_linked'), 409);
         }
 
         if (!$user) {
@@ -78,21 +78,21 @@ class GoogleSignIn
         try {
             $response = Http::timeout(10)->get('https://oauth2.googleapis.com/tokeninfo', ['id_token' => $idToken]);
         } catch (\Throwable) {
-            throw new GoogleSignInException('Impossible de vérifier le jeton Google. Réessayez.');
+            throw new GoogleSignInException(__('account.google.verify_failed'));
         }
 
         $claims = $response->ok() ? $response->json() : null;
         if (!is_array($claims) || empty($claims['sub'])) {
-            throw new GoogleSignInException('Jeton Google invalide ou expiré.');
+            throw new GoogleSignInException(__('account.google.invalid'));
         }
         if (!in_array($claims['aud'] ?? null, self::audiences(), true)) {
-            throw new GoogleSignInException('Jeton Google non autorisé pour cette application.');
+            throw new GoogleSignInException(__('account.google.wrong_audience'));
         }
         if (!in_array($claims['iss'] ?? null, self::ISSUERS, true)) {
-            throw new GoogleSignInException('Jeton Google invalide (émetteur inconnu).');
+            throw new GoogleSignInException(__('account.google.wrong_issuer'));
         }
         if (($claims['email_verified'] ?? null) !== 'true' || empty($claims['email'])) {
-            throw new GoogleSignInException('Adresse e-mail Google non vérifiée.');
+            throw new GoogleSignInException(__('account.google.email_unverified'));
         }
 
         return $claims;

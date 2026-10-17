@@ -35,13 +35,16 @@ class EventController extends Controller
      * Liste : `scope` = upcoming (défaut : à venir et en cours) | past | mine (que je gère)
      * | going (auxquels je participe) | following (à venir, organisés par les comptes que je suis :
      * « Mon fil ») ; filtres `type`, `q`.
+     * `when=past` : événements terminés (annulés exclus), du plus récent au plus ancien, avec
+     * testimonies_count (témoignages publiés) et thumbnail_url.
      */
     public function index(Request $request): JsonResponse
     {
         $user  = $this->user($request);
-        $scope = $request->query('scope', 'upcoming');
+        $past  = $request->query('when') === 'past';
+        $scope = $past ? 'past' : $request->query('scope', 'upcoming');
 
-        $query = Event::query()->with($this->relations());
+        $query = Event::query()->with($this->relations())->withPublishedTestimonyCount();
 
         match ($scope) {
             'mine'  => $user ? $query->managedBy($user)->orderByDesc('starts_at') : $query->whereRaw('1 = 0'),
@@ -51,7 +54,7 @@ class EventController extends Controller
             'following' => $user
                 ? $query->published()->upcoming()->followedBy($user)
                 : $query->whereRaw('1 = 0'),
-            'past'    => $query->published()->past(),
+            'past'    => $past ? $query->finished() : $query->published()->past(),
             'ongoing' => $query->published()->ongoing(),
             default   => $query->published()->upcoming(),
         };
@@ -89,24 +92,24 @@ class EventController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate(EventService::rules(), EventService::MESSAGES);
+        $data = $request->validate(EventService::rules(), EventService::messages());
 
         return $this->attempt(function () use ($request, $data) {
             $event = $this->events->create($this->user($request), $data);
 
-            return $this->created(new EventResource($event->load($this->relations())), 'Événement créé.');
+            return $this->created(new EventResource($event->load($this->relations())), __('events.flash.created'));
         });
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $data  = $request->validate(EventService::rules(partial: true), EventService::MESSAGES);
+        $data  = $request->validate(EventService::rules(partial: true), EventService::messages());
 
         return $this->attempt(function () use ($request, $event, $data) {
             $event = $this->events->update($event, $this->user($request), $data);
 
-            return $this->success(new EventResource($event->load($this->relations())), 'Événement mis à jour.');
+            return $this->success(new EventResource($event->load($this->relations())), __('events.flash.updated'));
         });
     }
 
@@ -117,7 +120,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event) {
             $this->events->delete($event, $this->user($request));
 
-            return $this->success(null, 'Événement supprimé.');
+            return $this->success(null, __('events.flash.deleted'));
         });
     }
 
@@ -126,13 +129,13 @@ class EventController extends Controller
     public function addManager(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $request->validate(['user_id' => 'required|uuid'], ['user_id.required' => 'Choisissez une personne.']);
+        $request->validate(['user_id' => 'required|uuid'], ['user_id.required' => __('events.validation.user_required')]);
 
         return $this->attempt(function () use ($request, $event) {
             $target = $this->events->addManager($event, $this->user($request), $request->input('user_id'));
 
             return $this->success(new EventResource($event->refresh()->load($this->relations())),
-                "{$target->display_name} peut maintenant gérer l'événement.");
+                __('events.flash.manager_added_api', ['name' => $target->display_name]));
         });
     }
 
@@ -143,7 +146,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event, $userId) {
             $this->events->removeManager($event, $this->user($request), $userId);
 
-            return $this->success(new EventResource($event->refresh()->load($this->relations())), 'Co-gestionnaire retiré.');
+            return $this->success(new EventResource($event->refresh()->load($this->relations())), __('events.flash.manager_removed'));
         });
     }
 
@@ -152,12 +155,12 @@ class EventController extends Controller
     public function storeImage(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $request->validate(['image' => EventService::imageRules()], EventService::IMAGE_MESSAGES);
+        $request->validate(['image' => EventService::imageRules()], EventService::imageMessages());
 
         return $this->attempt(function () use ($request, $event) {
             $this->events->addImage($event, $this->user($request), $request->file('image'));
 
-            return $this->created(new EventResource($event->refresh()->load($this->relations())), 'Image ajoutée.');
+            return $this->created(new EventResource($event->refresh()->load($this->relations())), __('events.flash.image_added'));
         });
     }
 
@@ -168,7 +171,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event, $imageId) {
             $this->events->removeImage($event, $this->user($request), $imageId);
 
-            return $this->success(new EventResource($event->refresh()->load($this->relations())), 'Image retirée.');
+            return $this->success(new EventResource($event->refresh()->load($this->relations())), __('events.flash.image_removed'));
         });
     }
 
@@ -179,7 +182,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $event, $imageId) {
             $this->events->makeCover($event, $this->user($request), $imageId);
 
-            return $this->success(new EventResource($event->refresh()->load($this->relations())), 'Image placée en premier.');
+            return $this->success(new EventResource($event->refresh()->load($this->relations())), __('events.flash.image_cover'));
         });
     }
 
@@ -194,7 +197,7 @@ class EventController extends Controller
             $status = $this->events->participate($event, $this->user($request), $request->input('status'));
 
             return $this->success(new EventResource($event->refresh()->load($this->relations())),
-                $status === EventParticipation::GOING ? 'Votre participation est enregistrée.' : 'Réponse enregistrée.');
+                $status === EventParticipation::GOING ? __('events.flash.going') : __('events.flash.answered'));
         });
     }
 
@@ -203,7 +206,7 @@ class EventController extends Controller
         $event = $this->find($id, $request);
         $this->events->cancelParticipation($event, $this->user($request));
 
-        return $this->success(new EventResource($event->refresh()->load($this->relations())), 'Réponse retirée.');
+        return $this->success(new EventResource($event->refresh()->load($this->relations())), __('events.flash.answer_removed'));
     }
 
     /** Participants (gestionnaires) : `status` = going (défaut) | not_going. */
@@ -218,7 +221,7 @@ class EventController extends Controller
 
             return $this->paginated(collect($items->items())->map(fn ($p) => [
                 'id'          => $p->user_id,
-                'displayName' => $p->user?->display_name ?? 'Anonyme',
+                'displayName' => $p->user?->display_name ?? __('events.anonymous'),
                 'initials'    => $p->user?->initials,
                 'avatarUrl'   => $p->user?->avatar_url,
                 'respondedAt' => $p->updated_at?->toIso8601String(),
@@ -240,14 +243,14 @@ class EventController extends Controller
     public function storeComment(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $request->validate(['body' => ['required', 'string', 'min:2', new VisibleLength(3000, '3 000 caractères au plus.')]], [
-            'body.required' => 'Écrivez votre message.',
+        $request->validate(['body' => ['required', 'string', 'min:2', new VisibleLength(3000, __('events.validation.comment_max'))]], [
+            'body.required' => __('events.validation.comment_required'),
         ]);
 
         return $this->attempt(function () use ($request, $event) {
             $comment = $this->events->comment($event, $this->user($request), $request->input('body'));
 
-            return $this->created(new EventCommentResource($comment), 'Merci pour votre témoignage !');
+            return $this->created(new EventCommentResource($comment), __('events.flash.comment_added'));
         });
     }
 
@@ -258,7 +261,7 @@ class EventController extends Controller
         return $this->attempt(function () use ($request, $comment) {
             $this->events->deleteComment($comment, $this->user($request));
 
-            return $this->success(null, 'Commentaire supprimé.');
+            return $this->success(null, __('events.flash.comment_deleted'));
         });
     }
 
@@ -277,8 +280,8 @@ class EventController extends Controller
             $testimony = $this->events->promote($comment, $actor, $data);
 
             return $this->created(new TestimonyResource($testimony), $actor->canModerate()
-                ? 'Témoignage enregistré et publié.'
-                : 'Témoignage enregistré. Il sera publié après relecture par la modération.');
+                ? __('events.flash.promoted')
+                : __('events.flash.promoted_pending'));
         });
     }
 
@@ -300,15 +303,15 @@ class EventController extends Controller
     {
         $event = $this->find($id, $request);
         $tbd   = $request->boolean('date_tbd');
-        $data  = $request->validate(EventService::postponeRules($tbd), EventService::POSTPONE_MESSAGES);
+        $data  = $request->validate(EventService::postponeRules($tbd), EventService::postponeMessages());
 
         return $this->attempt(function () use ($request, $event, $data, $tbd) {
             $event = $this->events->postpone($event, $this->user($request),
                 $tbd ? null : $data['starts_at'], $tbd ? null : $data['ends_at'], $data['reason'] ?? null);
 
             return $this->success(new EventResource($event->load($this->relations())), $tbd
-                ? 'Événement reporté : date à confirmer. Les participants sont prévenus.'
-                : 'Événement reporté. Les participants sont prévenus.');
+                ? __('events.flash.postponed_tbd')
+                : __('events.flash.postponed'));
         });
     }
 
@@ -316,12 +319,12 @@ class EventController extends Controller
     public function cancel(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $data  = $request->validate(['reason' => 'nullable|string|max:500'], EventService::POSTPONE_MESSAGES);
+        $data  = $request->validate(['reason' => 'nullable|string|max:500'], EventService::postponeMessages());
 
         return $this->attempt(function () use ($request, $event, $data) {
             $event = $this->events->cancel($event, $this->user($request), $data['reason'] ?? null);
 
-            return $this->success(new EventResource($event->load($this->relations())), 'Événement annulé. Les participants sont prévenus.');
+            return $this->success(new EventResource($event->load($this->relations())), __('events.flash.cancelled'));
         });
     }
 
@@ -331,12 +334,12 @@ class EventController extends Controller
     public function report(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $data  = $request->validate(EventModeration::reportRules(), EventModeration::MESSAGES);
+        $data  = $request->validate(EventModeration::reportRules(), EventModeration::messages());
 
         return $this->attempt(function () use ($request, $event, $data) {
             app(EventModeration::class)->report($event, $this->user($request), $data['reason'], $data['comment'] ?? null);
 
-            return $this->created(null, 'Merci. Votre signalement sera examiné par la modération.');
+            return $this->created(null, __('events.flash.reported'));
         });
     }
 
@@ -352,7 +355,7 @@ class EventController extends Controller
             'reports'        => $e->reports->map(fn ($r) => [
                 'id'          => $r->id,
                 'reason'      => $r->reason,
-                'reasonLabel' => Event::REPORT_REASONS[$r->reason] ?? $r->reason,
+                'reasonLabel' => Event::reportReasons()[$r->reason] ?? $r->reason,
                 'comment'     => $r->comment,
                 'reporter'    => $r->reporter?->display_name,
                 'reviewed'    => $r->reviewed_at !== null,
@@ -362,7 +365,7 @@ class EventController extends Controller
         ])->values(), [
             ...$this->meta($items),
             'filter'  => $filter,
-            'reasons' => Event::REPORT_REASONS,
+            'reasons' => Event::reportReasons(),
         ]);
     }
 
@@ -373,7 +376,7 @@ class EventController extends Controller
 
         return $this->attempt(fn () => $this->success(new EventResource(
             app(EventModeration::class)->hide($event, $this->user($request), $data['reason'] ?? null)->load($this->relations())
-        ), 'Événement masqué.'));
+        ), __('events.flash.hidden')));
     }
 
     public function restore(Request $request, string $id): JsonResponse
@@ -382,7 +385,7 @@ class EventController extends Controller
 
         return $this->attempt(fn () => $this->success(new EventResource(
             app(EventModeration::class)->restore($event, $this->user($request))->load($this->relations())
-        ), 'Événement rétabli.'));
+        ), __('events.flash.restored')));
     }
 
     public function dismiss(Request $request, string $id): JsonResponse
@@ -391,7 +394,7 @@ class EventController extends Controller
 
         return $this->attempt(fn () => $this->success(new EventResource(
             app(EventModeration::class)->dismiss($event, $this->user($request))->load($this->relations())
-        ), 'Signalements classés.'));
+        ), __('events.flash.dismissed_api')));
     }
 
     // ─── Sondage d'après l'événement ─────────────────────────────────────────
@@ -417,12 +420,12 @@ class EventController extends Controller
     public function review(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $data  = $request->validate(EventModeration::reviewRules(), EventModeration::MESSAGES);
+        $data  = $request->validate(EventModeration::reviewRules(), EventModeration::messages());
 
         return $this->attempt(function () use ($request, $event, $data) {
             app(EventModeration::class)->review($event, $this->user($request), $data);
 
-            return $this->success(new EventResource($event->refresh()->load($this->relations())), 'Merci pour votre avis !');
+            return $this->success(new EventResource($event->refresh()->load($this->relations())), __('events.flash.reviewed'));
         });
     }
 
@@ -435,7 +438,7 @@ class EventController extends Controller
             'body'      => $review->body,
             'user'      => [
                 'id'          => $review->user_id,
-                'displayName' => $review->user?->display_name ?? 'Compte supprimé',
+                'displayName' => $review->user?->display_name ?? __('events.deleted_account'),
                 'initials'    => $review->user?->initials,
                 'avatarUrl'   => $review->user?->avatar_url,
             ],
@@ -487,7 +490,7 @@ class EventController extends Controller
     private function find(string $id, Request $request): Event
     {
         $event = Event::with($this->relations())->find($id);
-        abort_if(!$event || !$event->isVisibleTo($this->user($request)), 404, 'Événement introuvable.');
+        abort_if(!$event || !$event->isVisibleTo($this->user($request)), 404, __('events.errors.not_found'));
 
         return $event;
     }
@@ -496,7 +499,7 @@ class EventController extends Controller
     {
         $event   = $this->find($id, $request);
         $comment = $event->comments()->with('event')->find($commentId);
-        abort_if(!$comment, 404, 'Commentaire introuvable.');
+        abort_if(!$comment, 404, __('events.errors.comment_not_found'));
 
         return $comment;
     }

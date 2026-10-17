@@ -65,7 +65,7 @@ class Prophecy extends Model
     {
         $date = $this->received_on?->translatedFormat($dateFormat) ?? '';
 
-        return filled($this->received_time) ? trim("{$date} à {$this->received_time}") : $date;
+        return filled($this->received_time) ? trim(__('models.prophecy_received_at', ['date' => $date, 'time' => $this->received_time])) : $date;
     }
 
     /** Version publique, montrée avec le témoignage d'accomplissement. */

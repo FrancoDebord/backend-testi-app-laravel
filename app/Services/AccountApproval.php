@@ -7,6 +7,7 @@ use App\Enums\VerificationStatus;
 use App\Models\AppNotification;
 use App\Models\User;
 use App\Models\VerificationRequest;
+use App\Support\NotificationText;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,13 +27,13 @@ class AccountApproval
     {
         $reason = trim($reason);
         if ($reason === '') {
-            throw new VerificationActionException('Indiquez le motif de l’attribution.', 422);
+            throw new VerificationActionException(__('verification.approval.grant_reason_required'), 422);
         }
         if ($user->trashed()) {
-            throw new VerificationActionException('Ce compte a été supprimé.', 422);
+            throw new VerificationActionException(__('verification.account_deleted'), 422);
         }
         if ($user->isApproved()) {
-            throw new VerificationActionException('Ce compte a déjà le badge « Approuvé ».', 422);
+            throw new VerificationActionException(__('verification.approval.already_approved'), 422);
         }
 
         $before = AdminAudit::snapshot($user, self::AUDITED);
@@ -53,19 +54,17 @@ class AccountApproval
         AdminAudit::record($admin, 'user.badge_granted', $user, $before, AdminAudit::snapshot($user, self::AUDITED), $reason);
 
         self::notify($user, $admin, $user->isOrganization() ? NotificationType::OrganizationVerified : NotificationType::AccountVerified,
-            $user->isOrganization()
-                ? 'Votre organisation a reçu le badge « Approuvé ». Il apparaît désormais sur votre profil et vos publications.'
-                : 'Votre compte a reçu le badge « Approuvé ». Il apparaît désormais sur votre profil et vos publications.');
+            $user->isOrganization() ? 'verification.notify_organization_approved' : 'verification.notify_account_approved');
     }
 
     public function revoke(User $user, User $admin, string $reason): void
     {
         $reason = trim($reason);
         if ($reason === '') {
-            throw new VerificationActionException('Indiquez le motif du retrait.', 422);
+            throw new VerificationActionException(__('verification.approval.revoke_reason_required'), 422);
         }
         if (!$user->isApproved()) {
-            throw new VerificationActionException('Ce compte n’a pas le badge « Approuvé ».', 422);
+            throw new VerificationActionException(__('verification.approval.not_approved'), 422);
         }
 
         $before = AdminAudit::snapshot($user, self::AUDITED);
@@ -85,7 +84,7 @@ class AccountApproval
         AdminAudit::record($admin, 'user.badge_revoked', $user, $before, AdminAudit::snapshot($user, self::AUDITED), $reason);
 
         self::notify($user, $admin, NotificationType::AccountApprovalRevoked,
-            'Le badge « Approuvé » a été retiré de votre compte : ' . rtrim($reason, ' .') . '.');
+            'verification.notify_approval_revoked', ['reason' => rtrim($reason, ' .')]);
     }
 
     /** Badge attribué ou retiré par un autre chemin (formulaire, organisation) : audit commun. */
@@ -99,14 +98,14 @@ class AccountApproval
         return AdminAudit::snapshot($user, self::AUDITED);
     }
 
-    private static function notify(User $recipient, User $admin, NotificationType $type, string $message): void
+    private static function notify(User $recipient, User $admin, NotificationType $type, string $key, array $params = []): void
     {
         AppNotification::create([
             'recipient_id' => $recipient->id,
             'actor_id'     => $admin->id,
             'actor_name'   => $admin->display_name,
             'type'         => $type->value,
-            'message'      => mb_substr($message, 0, 255),
+            ...NotificationText::fields($key, $params),
             'created_at'   => now(),
         ]);
     }

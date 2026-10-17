@@ -8,10 +8,8 @@ namespace App\Support;
  */
 final class Continents
 {
-    public const NAMES = [
-        'AF' => 'Afrique', 'EU' => 'Europe', 'AS' => 'Asie', 'NA' => 'Amérique du Nord',
-        'SA' => 'Amérique du Sud', 'OC' => 'Océanie', 'AN' => 'Antarctique',
-    ];
+    /** Codes des continents ; noms affichés dans lang/{fr,en}/countries.php (« continents »). */
+    public const CODES = ['AF', 'EU', 'AS', 'NA', 'SA', 'OC', 'AN'];
 
     private const LISTS = [
         'AF' => 'dz ao bj bw bf bi cm cv cf td km cg cd ci dj eg gq er et ga gm gh gn gw ke ls lr ly mg mw ml mr mu yt ma mz na ne ng re rw sh st sn sc sl so za ss sd sz tz tg tn ug eh zm zw',
@@ -41,6 +39,8 @@ final class Continents
 
     public static function name(?string $continent): ?string
     {
-        return self::NAMES[strtoupper((string) $continent)] ?? null;
+        $continent = strtoupper((string) $continent);
+
+        return in_array($continent, self::CODES, true) ? __("countries.continents.{$continent}") : null;
     }
 }

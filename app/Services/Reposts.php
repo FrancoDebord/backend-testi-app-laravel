@@ -25,9 +25,11 @@ use Illuminate\Support\Str;
  */
 class Reposts
 {
-    public const MESSAGES = [
-        'comment.max' => 'Votre commentaire : 500 caractères au plus.',
-    ];
+    /** Messages de validation du commentaire de partage. */
+    public static function messages(): array
+    {
+        return ['comment.max' => __('reactions.content.comment_max')];
+    }
 
     public static function rules(): array
     {
@@ -44,7 +46,7 @@ class Reposts
     {
         $testimony = $this->shareable($testimonyId);
         if ($testimony->user_id === $user->id) {
-            throw new RepostException('Vous ne pouvez pas partager votre propre témoignage.', 422);
+            throw new RepostException(__('testimonies.repost.own'), 422);
         }
         $comment = filled($comment) ? Str::limit(trim($comment), TestimonyRepost::COMMENT_MAX, '') : null;
 
@@ -108,7 +110,7 @@ class Reposts
     {
         $testimony = Str::isUuid($testimonyId) ? Testimony::published()->find($testimonyId) : null;
         if (!$testimony) {
-            throw new RepostException('Ce témoignage ne peut pas être partagé.', 404);
+            throw new RepostException(__('testimonies.repost.not_shareable'), 404);
         }
 
         return $testimony;
@@ -124,7 +126,7 @@ class Reposts
             'type'            => 'share',
             'testimony_id'    => $testimony->id,
             'testimony_title' => $testimony->title,
-            'message'         => $user->display_name . ' a partagé votre témoignage « ' . $testimony->title . ' »',
+            ...\App\Support\NotificationText::fields('testimonies.repost.notify', ['actor' => $user->display_name, 'title' => $testimony->title]),
             'created_at'      => now(),
         ]);
     }

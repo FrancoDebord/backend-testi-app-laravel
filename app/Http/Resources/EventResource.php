@@ -88,6 +88,10 @@ class EventResource extends JsonResource
             'commentsEnabled' => $this->comments_enabled,
             'images'          => $this->images->map(fn ($i) => ['id' => $i->id, 'url' => $i->url])->values(),
             'coverUrl'        => $this->images->first()?->url,
+            // Vignette des listes (événements passés) : première image, sinon null.
+            'thumbnail_url'   => $this->images->first()?->url,
+            // Témoignages publiés (chargés par Event::withPublishedTestimonyCount dans les listes).
+            'testimonies_count' => (int) ($this->testimonies_count ?? $this->testimonies()->published()->count()),
             'organizer'       => [
                 'id'               => $this->organizer_id,
                 'displayName'      => $this->organizer?->organization_name ?: $this->organizer?->display_name,
@@ -126,6 +130,8 @@ class EventResource extends JsonResource
                 ])->values()
                 : [],
             'live'            => $live ? ['id' => $live->id, 'status' => $live->status->value, 'title' => $live->title] : null,
+            // Direct YouTube (lien collé par l'organisateur) : { id, url, embedUrl, thumbnailUrl } ou null.
+            'youtubeLive'     => $this->youtubeLive(),
             'webUrl'          => route('events.show', $this->id),
             // Réactions (j'aime, je prie…) et partage interne « X a partagé » (docs/fonctionnalites/reactions.md).
             ...app(\App\Services\ContentInteractions::class)->payload($this->resource, $user, $request),

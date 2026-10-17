@@ -65,7 +65,7 @@ class AccountSuggestions
 
         return collect($ranked)
             ->filter(fn ($r) => $users->has($r['id']))
-            ->map(fn ($r) => ['user' => $users[$r['id']], 'reason' => $r['reason'], 'score' => $r['score']])
+            ->map(fn ($r) => ['user' => $users[$r['id']], 'reason' => self::reasonText($r['reason']), 'score' => $r['score']])
             ->values();
     }
 
@@ -114,7 +114,7 @@ class AccountSuggestions
 
     // ─── Classement ──────────────────────────────────────────────────────────
 
-    /** @return array<int, array{id: string, reason: string, score: float}> */
+    /** @return array<int, array{id: string, reason: array, score: float}> */
     private function rank(?User $viewer, string $type): array
     {
         $myFollowing = $viewer
@@ -241,19 +241,38 @@ class AccountSuggestions
         return array_map(fn ($r) => ['id' => $r['id'], 'reason' => $r['reason'], 'score' => $r['score']], array_slice($rows, 0, self::RANKED));
     }
 
-    /** Raison affichée sous le nom, la plus personnelle d'abord. */
-    private function reason(User $u, bool $verified, array $followedBy, int $common, bool $followsMe, int $recent, int $total, float $interest): string
+    /**
+     * Raison affichée sous le nom, la plus personnelle d'abord. Gardée en cache sous forme de clé de
+     * traduction et de paramètres (['key', 'params', 'count']), traduite à la lecture (reasonText).
+     */
+    private function reason(User $u, bool $verified, array $followedBy, int $common, bool $followsMe, int $recent, int $total, float $interest): array
     {
+        $r = fn (string $key, array $params = [], ?int $count = null) => ['key' => 'community.reasons.' . $key, 'params' => $params, 'count' => $count];
+
         if ($followedBy !== []) {
             $others = $common - 1;
-            return 'Suivi par ' . $followedBy[0] . ($others > 0 ? ' et ' . $others . ' autre' . ($others > 1 ? 's' : '') : '') . ' que vous suivez';
+            return $others > 0
+                ? $r('followed_by_others', ['name' => $followedBy[0], 'count' => $others], $others)
+                : $r('followed_by', ['name' => $followedBy[0]]);
         }
-        if ($followsMe) return 'Vous suit';
-        if ($verified) return $u->account_type === AccountType::Organization ? 'Organisation vérifiée' : 'Compte vérifié';
-        if ($recent >= 3 || $total >= 5) return 'Publie souvent des témoignages';
-        if ($interest > 0) return 'Témoigne sur des sujets qui vous intéressent';
-        if ($u->account_type === AccountType::Organization) return 'Organisation de la communauté';
+        if ($followsMe) return $r('follows_you');
+        if ($verified) return $r($u->account_type === AccountType::Organization ? 'verified_organization' : 'verified_account');
+        if ($recent >= 3 || $total >= 5) return $r('posts_often');
+        if ($interest > 0) return $r('shared_interests');
+        if ($u->account_type === AccountType::Organization) return $r('community_organization');
 
-        return $total > 0 ? 'Partage des témoignages' : 'Membre de la communauté';
+        return $r($total > 0 ? 'shares_testimonies' : 'community_member');
+    }
+
+    /** Texte de la raison dans la langue courante (texte brut : ancienne entrée du cache). */
+    private static function reasonText(array|string $reason): string
+    {
+        if (is_string($reason)) {
+            return $reason;
+        }
+
+        return $reason['count'] !== null
+            ? trans_choice($reason['key'], $reason['count'], $reason['params'])
+            : __($reason['key'], $reason['params']);
     }
 }

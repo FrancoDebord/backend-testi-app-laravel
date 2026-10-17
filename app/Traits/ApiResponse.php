@@ -35,9 +35,9 @@ trait ApiResponse
         ]);
     }
 
-    protected function created(mixed $data = null, string $message = 'Créé avec succès'): JsonResponse
+    protected function created(mixed $data = null, ?string $message = null): JsonResponse
     {
-        return $this->success($data, $message, 201);
+        return $this->success($data, $message ?? __('api.created'), 201);
     }
 
     protected function noContent(): JsonResponse
@@ -45,27 +45,27 @@ trait ApiResponse
         return response()->json(null, 204);
     }
 
-    protected function unauthorized(string $message = 'Non autorisé'): JsonResponse
+    protected function unauthorized(?string $message = null): JsonResponse
     {
-        return $this->error($message, 401);
+        return $this->error($message ?? __('api.unauthorized'), 401);
     }
 
-    protected function forbidden(string $message = 'Accès refusé'): JsonResponse
+    protected function forbidden(?string $message = null): JsonResponse
     {
-        return $this->error($message, 403);
+        return $this->error($message ?? __('api.forbidden'), 403);
     }
 
-    protected function notFound(string $message = 'Ressource introuvable'): JsonResponse
+    protected function notFound(?string $message = null): JsonResponse
     {
-        return $this->error($message, 404);
+        return $this->error($message ?? __('api.not_found'), 404);
     }
 
-    protected function validationError(mixed $errors, string $message = 'Données invalides'): JsonResponse
+    protected function validationError(mixed $errors, ?string $message = null): JsonResponse
     {
         return response()->json([
             'success' => false,
             'data'    => null,
-            'message' => $message,
+            'message' => $message ?? __('api.invalid_data'),
             'errors'  => $errors,
         ], 422);
     }

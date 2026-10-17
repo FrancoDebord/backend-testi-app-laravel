@@ -38,13 +38,13 @@ class LocationController extends Controller
 
         if ($request->expectsJson()) return response()->json(['data' => $this->locations->payload($user)]);
 
-        return redirect()->to(route('profile.settings') . '#localisation')->with('success', 'Localisation mise à jour.');
+        return redirect()->to(route('profile.settings') . '#localisation')->with('success', __('profile.location.updated'));
     }
 
     public function destroy(Request $request): RedirectResponse
     {
         $this->locations->erase($request->user());
 
-        return redirect()->to(route('profile.settings') . '#localisation')->with('success', 'Votre position a été supprimée.');
+        return redirect()->to(route('profile.settings') . '#localisation')->with('success', __('profile.location.erased'));
     }
 }

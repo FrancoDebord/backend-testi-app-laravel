@@ -26,13 +26,17 @@ class ProfileCover
         ];
     }
 
-    public const MESSAGES = [
-        'cover.image'      => 'La photo de couverture doit être une image.',
-        'cover.mimes'      => 'La photo de couverture doit être au format JPG, PNG ou WebP.',
-        'cover.max'        => 'La photo de couverture ne doit pas dépasser 8 Mo.',
-        'cover.dimensions' => 'La photo de couverture doit mesurer au moins 600 × 150 pixels.',
-        'cover.required'   => 'Choisissez une photo de couverture.',
-    ];
+    /** Messages d'erreur de validation, dans la langue courante. */
+    public static function messages(): array
+    {
+        return [
+            'cover.image'      => __('profile.cover.image'),
+            'cover.mimes'      => __('profile.cover.mimes'),
+            'cover.max'        => __('profile.cover.max'),
+            'cover.dimensions' => __('profile.cover.dimensions'),
+            'cover.required'   => __('profile.cover.required'),
+        ];
+    }
 
     public static function store(User $user, UploadedFile $file): string
     {

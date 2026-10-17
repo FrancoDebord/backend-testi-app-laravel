@@ -14,13 +14,6 @@ enum OrganizationType: string
 
     public function label(): string
     {
-        return match($this) {
-            self::Church      => 'Église',
-            self::Ministry    => 'Ministère',
-            self::Association => 'Association',
-            self::Ngo         => 'ONG',
-            self::Media       => 'Média chrétien',
-            self::Other       => 'Autre',
-        };
+        return __('enums.organization_type.' . $this->value);
     }
 }

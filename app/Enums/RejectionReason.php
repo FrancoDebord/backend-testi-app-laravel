@@ -12,12 +12,6 @@ enum RejectionReason: string
 
     public function label(): string
     {
-        return match($this) {
-            self::InappropriateContent => 'Contenu inapproprié',
-            self::FalseTestimony       => 'Faux témoignage',
-            self::HateSpeech           => 'Discours haineux',
-            self::Spam                 => 'Spam',
-            self::Other                => 'Autre',
-        };
+        return __('enums.rejection_reason.' . $this->value);
     }
 }

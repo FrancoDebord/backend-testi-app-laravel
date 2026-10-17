@@ -96,6 +96,37 @@ Texte : le champ `message` de la notification (déjà rédigé en français par 
 
 Motif du rejet : libellé français (`RejectionReason::label()`, ex. « Spam ») sur le site web ; l'API écrit la valeur brute avec une majuscule (`ucfirst`, ex. « InappropriateContent »), « Non conforme » sans motif.
 
+### Fiabilité (audit du 2026-10-15)
+
+Le serveur utilise son propre client FCM HTTP v1 (`FcmClient`, sans `kreait/firebase-php`). Points vérifiés :
+
+| Point | État |
+|---|---|
+| Enregistrement / mise à jour du jeton | `POST devices/token` (ou `device-tokens`) `{ token, platform? }` : jeton réattribué au compte connecté, `last_used_at` mis à jour, **rattaché à la session de l'application** (`device_tokens.access_token_id`, nouveau) |
+| Jetons invalides | Supprimés sur `UNREGISTERED` (404) et `INVALID_ARGUMENT` portant sur le jeton ; jamais sur `SENDER_ID_MISMATCH` (erreur de configuration) |
+| Déconnexion | `POST auth/logout` supprime les jetons enregistrés avec cette session, et celui envoyé dans `{ device_token }` (ou `{ token }`) ; les autres appareils gardent leurs push. `auth/refresh` reporte le rattachement sur la nouvelle session. **Nouveau** : suppression du compte = suppression de ses jetons (suppression douce, pas de cascade) |
+| Données | `data.type`, `data.id` (objet principal) et les identifiants détaillés (`testimony_id`, `event_id`, `live_id`, `prayer_request_id`…), tous en chaînes |
+| Langue | Titre et texte dans la langue du destinataire (`users.locale`) : [langues.md](langues.md) |
+| Android / iOS | Canal `FCM_ANDROID_CHANNEL` (défaut `testi_notifications`), son `default`, priorité haute ; APNs son `default`, priorité 10 |
+| File d'attente | `SendPushNotificationJob`, file `push`, 3 essais ; ou `after_response` |
+| Journal | Chaque appareil non servi : `FCM : notification non délivrée.` (niveau warning) avec `user_id`, début du jeton, résultat et erreur FCM, en plus des messages de `FcmClient` |
+
+### Notification de test
+
+- **Application** : `POST /me/push-test` (connecté, 5 par minute, réservé au titulaire du compte) envoie tout de suite, sans file, une notification `type = test` à tous mes appareils et renvoie le résultat par jeton (début du jeton seulement) :
+
+```json
+{ "success": true, "message": "Notification envoyée à 1 appareil(s) sur 2.",
+  "data": { "total": 2, "sent": 1, "disabled": false, "error": null,
+    "devices": [
+      { "id": 12, "platform": "android", "token": "fK3x9Qe1abcd…", "result": "sent", "error": null, "last_used_at": "2026-10-15T09:12:00+01:00" },
+      { "id": 9, "platform": "ios", "token": "c8Pq0zLm2xyz…", "result": "invalid_token", "error": "HTTP 404 Requested entity was not found.", "last_used_at": null } ] } }
+```
+
+  `result` : `sent`, `invalid_token` (jeton supprimé), `retry`, `failed`, `disabled` (push non configurés).
+- **Back-office** : fiche d'un membre (`/admin/users/{id}`), section « Notifications », bouton « Envoyer une notification de test » visible des seuls **super-administrateurs** (`POST /admin/users/{id}/push-test`, 403 sinon) ; le résultat par appareil s'affiche sur la fiche, l'action est inscrite au journal d'audit (`user.push_test`).
+- Code commun : `PushNotifier::sendTest()`.
+
 ## Configuration
 
 `config/services.php` › `fcm` :
@@ -124,6 +155,8 @@ Motif du rejet : libellé français (`RejectionReason::label()`, ex. « Spam »)
 
 Migration `2026_10_10_000001_add_last_used_at_to_device_tokens_table` (colonne `last_used_at`, `platform` facultative). Aucune recompilation des assets.
 
+2026-10-15 : migration `2026_10_15_200001_add_locale_conversion_and_push_device_fields` (`device_tokens.access_token_id`). Les jetons enregistrés avant n'ont pas de session : ils sont supprimés à la déconnexion seulement si l'application envoie `device_token`.
+
 ## Limites connues
 
 - `POST devices/token` accepte `platform = web` (Flutter web) : le jeton est enregistré et reçoit les push comme les autres ; l'affichage dépend du service worker de l'application web.
@@ -133,6 +166,8 @@ Migration `2026_10_10_000001_add_last_used_at_to_device_tokens_table` (colonne `
 ## Tests
 
 `tests/Feature/PushNotificationTest.php` (18 tests) : compte de service factice avec une clé RSA générée à la volée (`storage/framework/testing/fcm`), requêtes FCM et OAuth2 simulées (`Http::fake`) ; vérifie le JWT signé, le corps du message, le cache du jeton d'accès, la suppression des jetons `UNREGISTERED` / mal formés, l'absence d'envoi sans configuration, la mise en file par l'observateur, les préférences, les abonnés prévenus à l'approbation, la commande `push:test` (dont l'explication d'un `SenderId mismatch`), l'envoi parallèle à plusieurs appareils (`last_used_at`, jeton périmé supprimé), l'absence d'exception quand OAuth2 échoue, l'absence de push pour sa propre action, la file `push`, le mode `after_response` et les routes `device-tokens` (réattribution, plateforme facultative). `tests/Feature/LiveStartNotificationTest.php` (4 tests) couvre `live_started`.
+
+`tests/Feature/PushReliabilityTest.php` (6 tests) : rattachement du jeton à la session, déconnexion (jetons de cet appareil seulement), `auth/refresh`, suppression du compte, `POST /me/push-test` (résultat par jeton, `UNREGISTERED` et `INVALID_ARGUMENT` supprimés, échecs journalisés, canal, son, langue), sans appareil ou sans configuration, bouton réservé aux super-administrateurs.
 
 `tests/Feature/WebModerationNotificationTest.php` (4 tests) : approbation sur le site web (auteur prévenu, abonné prévenu une seule fois, push en file via `Queue::fake`), rejet (auteur prévenu avec le motif, abonnés non prévenus), carnet privé ignoré, et même résultat par l'API.
 

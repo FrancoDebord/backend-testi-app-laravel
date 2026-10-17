@@ -101,7 +101,7 @@ final class Place
     public function label(): ?string
     {
         return $this->city ?? $this->locality ?? $this->region
-            ?? Countries::nameOf($this->countryCode) ?? Continents::name($this->continent);
+            ?? Countries::localName($this->countryCode) ?? Continents::name($this->continent);
     }
 
     /** Niveau de zone le plus précis connu : near | city | region | country | continent | null. */
@@ -165,7 +165,7 @@ final class Place
      */
     public function nearbyLabelFor(int $level): ?string
     {
-        if ($level >= self::LEVEL_CITY && $this->city) return 'À ' . $this->city;
+        if ($level >= self::LEVEL_CITY && $this->city) return __('countries.in_city', ['city' => $this->city]);
         if ($level >= self::LEVEL_COUNTRY && $this->countryCode) return Countries::inPhrase($this->countryCode);
 
         return null;

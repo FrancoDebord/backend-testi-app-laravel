@@ -8,6 +8,7 @@ use App\Enums\UserAccountStatus;
 use App\Models\AppNotification;
 use App\Models\Comment;
 use App\Models\User;
+use App\Support\NotificationText;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
@@ -151,7 +152,11 @@ class Mentions
      * @param string[] $skip
      * `anonymous` : l'auteur n'est pas révélé (« Quelqu'un vous a mentionné… », ni identifiant ni photo).
      *
-     * @param array{testimony_id?: ?string, testimony_title?: ?string, comment_id?: ?string, payload?: array, where?: string, anonymous?: bool} $context
+     * Lieu de la mention : `where_key` (clé de inbox.notify_mention : comment, testimony, prayer_request,
+     * verse_comment, event_comment, live, prayer_message) et `where_params` (ex. ['title' => …]), traduits
+     * dans la langue du destinataire ; `where` (texte français libre) reste accepté.
+     *
+     * @param array{testimony_id?: ?string, testimony_title?: ?string, comment_id?: ?string, payload?: array, where?: string, where_key?: string, where_params?: array, anonymous?: bool} $context
      */
     public static function notify(array $ids, User $actor, array $context = [], array $skip = []): int
     {
@@ -161,9 +166,16 @@ class Mentions
             return 0;
         }
 
-        $where = $context['where'] ?? 'un commentaire';
         $anonymous = (bool) ($context['anonymous'] ?? false);
-        $name = $anonymous ? "Quelqu'un" : $actor->display_name;
+        $name = $anonymous ? __('inbox.someone', [], \App\Support\Locales::DEFAULT) : $actor->display_name;
+        // Texte traduisible (clé + paramètres), sauf lieu donné en texte libre (`where`).
+        $text = isset($context['where']) && !isset($context['where_key'])
+            ? ['message' => $name . ' vous a mentionné dans ' . $context['where'], 'payload' => $context['payload'] ?? null]
+            : NotificationText::fields(
+                'inbox.' . ($anonymous ? 'notify_mention_anonymous' : 'notify_mention') . '.' . ($context['where_key'] ?? 'comment'),
+                ($anonymous ? [] : ['name' => $name]) + ($context['where_params'] ?? []),
+                $context['payload'] ?? [],
+            );
         $sent = 0;
         foreach (User::whereIn('id', $targets)->where('status', UserAccountStatus::Active->value)->pluck('id') as $recipientId) {
             try {
@@ -176,8 +188,8 @@ class Mentions
                     'testimony_id'    => $context['testimony_id'] ?? null,
                     'testimony_title' => $context['testimony_title'] ?? null,
                     'comment_id'      => $context['comment_id'] ?? null,
-                    'message'         => $name . ' vous a mentionné dans ' . $where,
-                    'payload'         => $context['payload'] ?? null,
+                    'message'         => $text['message'],
+                    'payload'         => $text['payload'],
                     'created_at'      => now(),
                 ]);
                 $sent++;
@@ -216,7 +228,8 @@ class Mentions
         return self::notify($visible, $author, [
             'testimony_id'    => $testimony->id,
             'testimony_title' => $testimony->title,
-            'where'           => 'son témoignage « ' . $testimony->title . ' »',
+            'where_key'       => 'testimony',
+            'where_params'    => ['title' => $testimony->title],
             'payload'         => ['mention_in' => 'testimony'],
         ]);
     }
@@ -245,7 +258,7 @@ class Mentions
             ->filter(fn (User $u) => $request->isVisibleTo($u))->pluck('id')->all();
 
         return self::notify($visible, $author, [
-            'where'     => 'une requête de prière',
+            'where_key' => 'prayer_request',
             'anonymous' => (bool) $request->is_anonymous,
             'payload'   => ['prayer_request_id' => $request->id, 'mention_in' => 'prayer_request'],
         ]);
