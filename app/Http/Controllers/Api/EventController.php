@@ -236,6 +236,8 @@ class EventController extends Controller
     {
         $event = $this->find($id, $request);
         $items = $event->comments()->with('user')->latest()->paginate(min((int) $request->query('limit', 30), 50));
+        // « J'aime » de la personne : une requête pour toute la page (docs/fonctionnalites/jaime-commentaires.md).
+        app(\App\Services\CommentLikes::class)->preload(\App\Services\CommentLikes::EVENT, $items->items(), $this->user($request));
 
         return $this->paginated(EventCommentResource::collection($items->items()), $this->meta($items));
     }

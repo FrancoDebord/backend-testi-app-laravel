@@ -12,6 +12,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\UserSetting;
 use App\Services\OrganizationAccounts;
+use App\Services\PhoneLogin;
 use App\Support\PhoneNumber;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -25,10 +26,15 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::where('email', $request->email)->first();
+        // E-mail ou téléphone de contact + mot de passe (docs/fonctionnalites/telephone.md). Même message pour un
+        // identifiant inconnu, un mauvais mot de passe ou un compte sans mot de passe (Google, SMS) : pas d'énumération.
+        $user = filled($request->email)
+            ? User::where('email', $request->email)->first()
+            : PhoneLogin::findUser($request->phone_country, $request->phone);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return $this->error(__('account.api.invalid_credentials'), 401);
+        if (!$user || !$user->password || !Hash::check($request->password, $user->password)) {
+            // Message selon l'identifiant saisi (toujours le même, que le compte existe ou non).
+            return $this->error(__(filled($request->email) ? 'account.api.invalid_credentials' : 'account.api.invalid_phone_credentials'), 401);
         }
 
         if ($user->status->value === 'banned') {
@@ -46,7 +52,7 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        // Téléphone de contact, non vérifié : il ne permet pas la connexion par téléphone.
+        // Téléphone de contact, non vérifié : il permet la connexion avec le mot de passe, jamais par SMS.
         $phone = PhoneNumber::toE164($request->phone_country, $request->phone);
 
         $user = User::create([
@@ -177,14 +183,19 @@ class AuthController extends Controller
     {
         $request->validate(['refresh_token' => 'required|string']);
 
-        // Sanctum doesn't use refresh tokens by default — reuse current token logic
-        $user  = $request->user();
-        $oldIds = $user->tokens()->pluck('id');
-        $user->tokens()->delete();
+        // Renouvelle la session de CET appareil seulement : supprimer toutes les sessions de la personne
+        // déconnectait ses autres appareils et rattachait tous ses jetons push à une seule session
+        // (perdus à la déconnexion de celle-ci) — docs/fonctionnalites/notifications-push.md.
+        $user    = $request->user();
+        $current = $user->currentAccessToken();
+        $oldId   = $current && method_exists($current, 'getKey') ? $current->getKey() : null;
         $newToken = $user->createToken('mobile-app');
         $token = $newToken->plainTextToken;
-        // Jetons push de l'appareil rattachés à la nouvelle session (supprimés à sa déconnexion).
-        \App\Models\DeviceToken::whereIn('access_token_id', $oldIds)->update(['access_token_id' => $newToken->accessToken->getKey()]);
+        if ($oldId !== null) {
+            // Jetons push de l'appareil rattachés à la nouvelle session (supprimés à sa déconnexion).
+            \App\Models\DeviceToken::where('access_token_id', $oldId)->update(['access_token_id' => $newToken->accessToken->getKey()]);
+            $user->tokens()->whereKey($oldId)->delete();
+        }
 
         return $this->success([
             'access_token' => $token,

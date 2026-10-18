@@ -27,6 +27,7 @@ return [
         'live_started'           => 'Live now',
         'prayer_encouragement'   => 'Encouragement received',
         'prayer_request_prayed'  => 'New prayer',
+        'comment_liked'          => 'New like',
         'prayer_session_started' => 'Prayer session',
         'prayer_session_reminder' => 'Prayer session soon',
         'event_postponed'        => 'Event postponed',
@@ -57,6 +58,7 @@ return [
         'account_approval_revoked' => 'The “Approved” badge was removed from your account',
         'live_started'           => ':actor is live',
         'prayer_request_prayed'  => ':actor is praying for your prayer request',
+        'comment_liked'          => ':actor liked your comment',
     ],
     // Messages stored by TestimonyModeration (payload.i18n).
     'testimony_approved_message'    => 'Your testimony ":title" has been approved',

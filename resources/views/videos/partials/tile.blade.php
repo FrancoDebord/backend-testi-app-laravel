@@ -105,6 +105,7 @@
 
     <p class="flex items-center gap-5 px-4 pb-4 text-xs font-semibold text-slate-600">
         <span title="{{ __('videos.tile.likes') }}"><i class="fa-solid fa-heart mr-1.5 text-error-500" aria-hidden="true"></i>{{ $n($testimony->like_count ?? 0) }}<span class="sr-only"> {{ __('videos.tile.likes_sr') }}</span></span>
+        <span title="{{ __('reactions.i_pray') }}"><i class="fa-solid fa-hands-praying mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $n($testimony->prayer_count ?? 0) }}<span class="sr-only"> {{ __('videos.tile.prayers_sr') }}</span></span>
         <span title="{{ __('videos.tile.comments') }}"><i class="fa-regular fa-comment-dots mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $n($testimony->comment_count ?? 0) }}<span class="sr-only"> {{ __('videos.common.comments_sr') }}</span></span>
         <span title="{{ __('videos.tile.shares') }}"><i class="fa-solid fa-share mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $n($testimony->share_count ?? 0) }}<span class="sr-only"> {{ __('videos.tile.shares_sr') }}</span></span>
     </p>

@@ -107,8 +107,40 @@ class AdminController extends Controller
     {
         $user        = User::with('verifier')->findOrFail($id);
         $testimonies = Testimony::where('user_id', $id)->withoutJournal()->latest()->limit(10)->get();
+        // Types de témoignages autorisés (docs/fonctionnalites/types-de-temoignages.md)
+        $typePolicy  = app(\App\Services\TestimonyTypePolicy::class);
+        $publishing  = ['global' => $typePolicy->global(), 'overrides' => $typePolicy->overrides($user), 'allowed' => $typePolicy->allowed($user)];
 
-        return view('admin.users.show', compact('user', 'testimonies'));
+        return view('admin.users.show', compact('user', 'testimonies', 'publishing'));
+    }
+
+    /**
+     * Exceptions du profil aux types de témoignages : « default » (suit le réglage global), « allow », « deny ».
+     * Voir docs/fonctionnalites/types-de-temoignages.md
+     */
+    public function updatePublishing(Request $request, string $id): RedirectResponse
+    {
+        $types = \App\Services\TestimonyTypePolicy::TYPES;
+        $request->validate(array_combine(
+            array_map(fn ($t) => "types.$t", $types),
+            array_fill(0, count($types), 'nullable|in:default,allow,deny'),
+        ));
+
+        $user   = User::findOrFail($id);
+        $policy = app(\App\Services\TestimonyTypePolicy::class);
+        $before = $policy->overrides($user);
+        $changes = [];
+        foreach ($types as $type) {
+            $choice = $request->input("types.$type", 'default');
+            $changes[$type] = match ($choice) { 'allow' => true, 'deny' => false, default => null };
+        }
+        $policy->updateOverrides($user, $changes);
+        $after = $policy->overrides($user->refresh());
+        if ($before !== $after) {
+            \App\Services\AdminAudit::record(Auth::user(), 'user.testimony_types', $user, $before, $after, null, 'user');
+        }
+
+        return back()->with('success', __('publishing.admin.saved'));
     }
 
     /**

@@ -5,6 +5,7 @@ return [
     // Boutons de la page de lecture
     'like'    => 'J\'aime',
     'pray'    => 'Prière',
+    'i_pray'  => 'Je prie',
     'amen'    => 'Amen',
     'worship' => 'Adorer Dieu',
     'fire'    => 'Feu',

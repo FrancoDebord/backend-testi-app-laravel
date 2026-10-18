@@ -9,13 +9,14 @@
     $shareUrl    = $testimony->share_url; // toujours l'adresse publique (Testimony::shareUrlFor)
     $description = $type !== 'text' ? $testimony->body_text : null;
     $longDesc    = $description && mb_strlen($testimony->body_plain) > 280;
+    // Comme l'application : réactions « j'aime » et un seul « Je prie » (allumé pour toute réaction de prière,
+    // y compris les anciennes « Amen » et « Adorer Dieu »). docs/fonctionnalites/reactions.md
     $reactionDefs = [
         ['like',    'fa-thumbs-up',      __('reactions.like')],
-        ['pray',    'fa-hands-praying',  __('reactions.pray')],
-        ['amen',    'fa-hands-clapping', __('reactions.amen')],
-        ['worship', 'fa-hands',          __('reactions.worship')],
+        ['pray',    'fa-hands-praying',  __('reactions.i_pray')],
         ['fire',    'fa-fire',           __('reactions.fire')],
     ];
+    $isPraying = array_intersect($userReactions, \App\Enums\ReactionType::valuesOfGroup('prayer')) !== [];
     // Page d'origine : /videos/{id} ou /testimonies/{id} (même présentation).
     [$backUrl, $backLabel] = $pageRoute === 'videos.show'
         ? [route('videos.index'), __('videos.index.title')]
@@ -344,10 +345,12 @@
 
             {{-- ── Réactions ────────────────────────────────────────────── --}}
             <div class="mt-4 flex flex-wrap items-center gap-2" data-reactions="{{ route('testimonies.reactions.store', $testimony->id) }}"
-                 data-login-url="{{ route('login') }}" data-authenticated="{{ Auth::check() ? '1' : '0' }}">
+                 data-login-url="{{ route('login') }}" data-authenticated="{{ Auth::check() ? '1' : '0' }}"
+                 @auth data-pray-start="{{ route('testimonies.prayer.start', $testimony->id) }}" data-pray-subject="{{ $testimony->title }}"
+                 data-pray-excerpt="{{ Str::limit(trim(preg_replace('/\s+/u', ' ', strip_tags((string) $testimony->body_text))), 220) }}" @endauth>
                 @foreach($reactionDefs as [$rType, $rIcon, $rLabel])
-                @php $pressed = in_array($rType, $userReactions, true); @endphp
-                <button type="button" class="{{ $pressed ? 'chip-active' : 'chip' }}" data-reaction="{{ $rType }}" aria-pressed="{{ $pressed ? 'true' : 'false' }}">
+                @php $pressed = $rType === 'pray' ? $isPraying : in_array($rType, $userReactions, true); @endphp
+                <button type="button" class="{{ $pressed ? 'chip-active' : 'chip' }}" data-reaction="{{ $rType }}" aria-pressed="{{ $pressed ? 'true' : 'false' }}" @if($rType === 'pray') data-pray @endif>
                     <i class="fa-solid {{ $rIcon }}" aria-hidden="true"></i>{{ $rLabel }}
                     @if($rType === 'like')<span class="tabular-nums" data-count="like_count">{{ \App\Support\Locales::number($testimony->like_count) }}</span>@endif
                     @if($rType === 'pray')<span class="tabular-nums" data-count="prayer_count">{{ \App\Support\Locales::number($testimony->prayer_count) }}</span>@endif

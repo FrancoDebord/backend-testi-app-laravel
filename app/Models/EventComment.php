@@ -17,6 +17,12 @@ class EventComment extends Model
 
     protected $fillable = ['event_id', 'user_id', 'body', 'testimony_id'];
 
+    protected function casts(): array
+    {
+        // « J'aime » (docs/fonctionnalites/jaime-commentaires.md) : tenu par App\Services\CommentLikes.
+        return ['likes_count' => 'integer'];
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);

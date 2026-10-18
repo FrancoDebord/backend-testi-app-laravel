@@ -6,6 +6,9 @@
         'number'       => old('phone', …),           // numéro national
         'required'     => false,                     // true : obligatoire ; 'organization' : obligatoire pour une organisation
         'follow'       => 'country',                 // nom du champ pays : l'indicatif suit le pays choisi
+        'phoneLabel'   => null,                      // libellé (défaut « Téléphone »)
+        'phoneHint'    => null,                      // aide sous le champ (défaut : usage du numéro de contact)
+        'phoneErrors'  => true,                      // false : erreurs affichées par la page (connexion)
     ])
 --}}
 @php
@@ -14,7 +17,7 @@
 @endphp
 <div>
     <label for="phone" class="form-label">
-        Téléphone @if($phoneRequired === true)*@endif
+        {{ $phoneLabel ?? 'Téléphone' }} @if($phoneRequired === true)*@endif
         @if($phoneRequired === 'organization')<span class="font-normal text-slate-500">(obligatoire pour une organisation)</span>@endif
     </label>
     <div class="flex gap-2">
@@ -36,7 +39,9 @@
                    @error('phone') aria-invalid="true" @enderror aria-describedby="phone-hint">
         </div>
     </div>
+    @if($phoneErrors ?? true)
     @error('phone_country')<p class="form-error">{{ $message }}</p>@enderror
     @error('phone')<p class="form-error">{{ $message }}</p>@enderror
-    <p id="phone-hint" class="form-hint">Sert uniquement à vérifier votre compte : il n'est jamais affiché publiquement.</p>
+    @endif
+    <p id="phone-hint" class="form-hint">{{ $phoneHint ?? "Sert uniquement à vérifier votre compte : il n'est jamais affiché publiquement." }}</p>
 </div>

@@ -27,6 +27,7 @@ return [
         'live_started'           => 'En direct',
         'prayer_encouragement'   => 'Encouragement reçu',
         'prayer_request_prayed'  => 'Nouvelle prière',
+        'comment_liked'          => 'Nouveau « J’aime »',
         'prayer_session_started' => 'Session de prière',
         'prayer_session_reminder' => 'Session de prière bientôt',
         'event_postponed'        => 'Événement reporté',
@@ -57,6 +58,7 @@ return [
         'account_approval_revoked' => 'Le badge « Approuvé » a été retiré de votre compte',
         'live_started'           => ':actor est en direct',
         'prayer_request_prayed'  => ':actor prie pour votre requête de prière',
+        'comment_liked'          => ':actor a aimé votre commentaire',
     ],
     // Messages enregistrés par TestimonyModeration (payload.i18n).
     'testimony_approved_message'    => 'Votre témoignage ":title" a été approuvé',

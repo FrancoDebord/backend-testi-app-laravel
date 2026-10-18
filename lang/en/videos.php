@@ -76,6 +76,7 @@ return [
         'likes'         => 'Likes',
         'likes_sr'      => 'likes',
         'comments'      => 'Comments',
+        'prayers_sr'    => 'prayers',
         'shares'        => 'Shares',
         'shares_sr'     => 'shares',
     ],

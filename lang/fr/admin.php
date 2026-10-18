@@ -53,6 +53,7 @@ return [
             'badge_revoked'       => 'Badge « Approuvé » retiré',
             'super_admin_granted' => 'Statut super-administrateur attribué',
             'super_admin_revoked' => 'Statut super-administrateur retiré',
+            'testimony_types'     => 'Types de témoignages du profil modifiés',
         ],
     ],
 

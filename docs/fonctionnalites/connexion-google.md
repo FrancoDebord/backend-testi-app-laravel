@@ -2,7 +2,7 @@
 
 ## But
 
-Se connecter, ou créer son compte, avec son compte Google, sans mot de passe : dans l'application mobile et sur la page de connexion du site (`/login`). L'application reçoit exactement la même réponse qu'avec la connexion e-mail / mot de passe et la traite de la même façon.
+Se connecter, ou créer son compte, avec son compte Google, sans mot de passe : dans l'application mobile et sur les pages de connexion (`/login`) et de création de compte (`/register`) du site. L'application reçoit exactement la même réponse qu'avec la connexion e-mail / mot de passe et la traite de la même façon.
 
 ## Parcours
 
@@ -51,13 +51,14 @@ Identique à `POST /auth/login`, avec en plus `is_new_user` (comme `/auth/phone`
 
 Le jeton Sanctum s'appelle `mobile-google`. `user.has_password` vaut `false` pour un compte créé par Google.
 
-## Site web : bouton sur `/login`
+## Site web : bouton sur `/login` et `/register`
 
 - Sous le formulaire e-mail / mot de passe, séparateur « ou » puis le **bouton officiel de Google** (Google Identity Services, script `https://accounts.google.com/gsi/client`, libellé « Continuer avec Google », en français). Son apparence est imposée par Google : ce n'est pas un bouton de la charte.
 - Affiché seulement si `GOOGLE_WEB_CLIENT_ID` est renseigné. Si le script Google ne se charge pas (bloqueur, hors ligne), le bloc disparaît et la connexion e-mail reste seule.
 - Google renvoie un jeton d'identité (`credential`) au navigateur ; un formulaire caché (avec jeton CSRF) l'envoie à `POST /login/google` (`login.google`, invités seulement, 20 par minute). « Se souvenir de moi » est repris s'il est coché.
 - Le serveur applique **exactement les mêmes règles** que l'API (`App\Services\GoogleSignIn`) : compte retrouvé, lié ou créé, puis session ouverte et retour à la page demandée (sinon l'accueil). En cas de refus ou de compte banni : retour sur `/login` avec le message d'erreur.
-- Script propre à la page (`@push('scripts')` dans `auth/login.blade.php`) : aucune recompilation des assets.
+- **Page de création de compte** (`/register`) : le même bouton, sous le formulaire, libellé « S'inscrire avec Google » (`signup_with`). Même parcours : compte créé s'il est nouveau, connexion s'il existe déjà (même `POST /login/google`). En cas de refus, retour sur `/login` avec le message.
+- Bloc et script communs aux deux pages : `resources/views/auth/partials/google-signin.blade.php` (`@include('auth.partials.google-signin', ['googleText' => 'continue_with' | 'signup_with'])`, `@push('scripts')`) : aucune recompilation des assets.
 
 **Console Google Cloud (obligatoire)** : identifiants › client OAuth **Web** (`566166419345-b78f…`) › **Origines JavaScript autorisées** : ajouter `https://testi.airid-africa.com` (et `http://localhost:8000` en développement). Sans cela, Google affiche « origin_mismatch » et le bouton ne fonctionne pas. Aucune URI de redirection n'est nécessaire.
 
@@ -78,7 +79,7 @@ Les comptes Google (comme les comptes téléphone) ont `password = null`. Le cod
 
 - `app/Services/GoogleSignIn.php` : vérification du jeton et compte retrouvé, lié ou créé (erreurs : `GoogleSignInException`, avec le code HTTP).
 - `app/Http/Controllers/Api/GoogleAuthController.php` (invokable), routes `auth/google` et `auth/social` (limite : 20 par minute).
-- Site : `Web\AuthController::google`, route `POST /login/google`, vue `resources/views/auth/login.blade.php`.
+- Site : `Web\AuthController::google`, route `POST /login/google`, vues `resources/views/auth/login.blade.php` et `register.blade.php` (`googleClientId` transmis par `showLogin` et `showRegister`), partiel `auth/partials/google-signin.blade.php`.
 - Migration `2026_10_09_200001_add_google_id_to_users_table` : `users.google_id` (unique, nullable) et reprise de `social_auth_providers`.
 - `config/services.php` › `google.web_client_id` (`GOOGLE_WEB_CLIENT_ID`) et `google.client_id` (`GOOGLE_CLIENT_ID`).
 - Tests : `tests/Feature/GoogleAuthTest.php` (tokeninfo simulé avec `Http::fake()`).

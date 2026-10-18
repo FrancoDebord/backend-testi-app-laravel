@@ -49,7 +49,21 @@ Réponse et ressources (`EventResource`, `PrayerRequestResource`, `PrayerSession
 
 ## Site
 
-Le bouton de réaction du site bascule la réaction : un second appui la retire. La réponse ajoute `my_reactions` (la liste des réactions de la personne), pour remettre à jour les boutons après un remplacement. Voir `resources/js/videos.js`.
+Le bouton de réaction du site bascule la réaction : un second appui la retire. La réponse ajoute `my_reactions` (la liste des réactions de la personne), `is_prayed` et `is_liked`, pour remettre à jour les boutons après un remplacement. Voir `resources/js/videos.js`.
+
+**« Je prie », comme dans l'application** (2026-10-18, `InteractionNotifier::togglePray` de l'app) :
+
+- un seul bouton « Je prie » (icône mains, compteur des prières) ; plus de boutons « Amen » ni « Adorer Dieu » sur la page de lecture ;
+- allumé dès que la personne a une réaction du groupe prière (`pray`, ou les anciennes `amen` / `worship`), comme `isPrayedByMe` dans l'API ;
+- un appui retire la prière si elle existe (quel que soit son type), sinon pose `pray` (`TestimonyReactions::togglePrayer`) : même résultat que `POST {type: pray}` / `DELETE ?group=prayer` de l'application ;
+- bouton et compteur changent tout de suite, puis l'état renvoyé par le serveur fait foi ; en cas d'erreur, l'état d'avant est rétabli ;
+- les cartes des listes affichent le nombre de prières à côté des « j'aime ».
+
+L'API ne change pas : `amen` et `worship` restent acceptés et comptés comme des prières.
+
+## Temps de prière
+
+Depuis le 2026-10-18, une **nouvelle** réaction du groupe « je prie » (`pray`, `amen`, `worship`) sur un témoignage n'est acceptée qu'après un temps de prière de 5 minutes commencé par `POST testimonies/{id}/pray/start` (site : `POST /testimonies/{id}/priere/commencer`). Sinon : **422** `{ success: false, message, errors: { prayer_focus: [...] }, remaining_seconds }`. Passer de `pray` à `amen`, renvoyer la même réaction, retirer sa prière et les réactions « j'aime » ne sont jamais bloqués. Sur le site, « Je prie » ouvre l'écran « Temps de prière » avant l'envoi ; un second appui (retrait) reste immédiat. `PRAYER_FOCUS_SECONDS=0` désactive la règle (transition : les anciennes versions de l'application reçoivent 422). Détails : [temps-de-priere.md](temps-de-priere.md).
 
 ## Application
 
@@ -90,11 +104,11 @@ Migrations :
 
 ## Tests
 
-- Serveur : `tests/Feature/ReactionsAndSharesTest.php`.
+- Serveur : `tests/Feature/ReactionsAndSharesTest.php`, `tests/Feature/PrayerFocusTest.php` (temps de prière).
 - Application : `test/reactions_shares_test.dart`.
 
 ## Limites connues
 
-- Les « j'aime » des **commentaires** restent locaux à l'application : ils ne sont ni enregistrés ni comptés par le serveur.
+- Les « j'aime » des **commentaires** (témoignages, événements, verset du jour) sont enregistrés par le serveur depuis le 2026-10-18 : voir [« J'aime » sur les commentaires](jaime-commentaires.md) (`comment_liked`, préférence `push_likes`).
 - Après un déploiement, lancez `php artisan optimize:clear`. Sinon la liste des routes mise en cache ignore les nouvelles routes (`…/reactions`, `…/repost`), qui répondent 404. L'application affiche alors « Le serveur ne prend pas encore en charge cette action ».
 - Le site n'a pas encore de boutons de réaction ni de partage interne pour les événements, requêtes et sessions de prière : l'API et l'application seulement.

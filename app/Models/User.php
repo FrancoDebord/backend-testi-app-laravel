@@ -64,6 +64,9 @@ class User extends Authenticatable implements \Illuminate\Contracts\Translation\
             'verified_at'         => 'datetime',
             // Jamais dans $fillable : attribué seulement par php artisan users:super-admin.
             'is_super_admin'      => 'boolean',
+            // Exceptions par profil aux types de témoignages autorisés ({ text|audio|video|youtube: bool|null }) ;
+            // jamais dans $fillable : modifié par les administrateurs seulement (App\Services\TestimonyTypePolicy).
+            'testimony_type_overrides' => 'array',
         ];
     }
 

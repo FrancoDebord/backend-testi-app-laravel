@@ -39,12 +39,13 @@
         @endif
 
         <div class="mt-1 flex flex-wrap items-center gap-1" data-comment-actions>
+            @include('components.comment-like', ['type' => 'testimony_comment', 'comment' => $comment, 'url' => route('comments.like', $comment->id), 'class' => '-ml-3'])
             @auth
-            <button type="button" class="btn-ghost btn-sm -ml-3" data-reply-toggle="{{ $rootId }}" @if($isReply) data-mention="{{ $comment->user->display_name }}" data-mention-id="{{ $comment->user_id }}" @endif>
+            <button type="button" class="btn-ghost btn-sm" data-reply-toggle="{{ $rootId }}" @if($isReply) data-mention="{{ $comment->user->display_name }}" data-mention-id="{{ $comment->user_id }}" @endif>
                 <i class="fa-regular fa-comment" aria-hidden="true"></i>{{ __('comments.item.reply') }}
             </button>
             @else
-            <a href="{{ route('login') }}" class="btn-ghost btn-sm -ml-3">{{ __('comments.item.reply') }}</a>
+            <a href="{{ route('login') }}" class="btn-ghost btn-sm">{{ __('comments.item.reply') }}</a>
             @endauth
             @if($canUpdate)
             <button type="button" class="btn-ghost btn-sm" data-edit-toggle><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i>{{ __('comments.item.edit') }}</button>

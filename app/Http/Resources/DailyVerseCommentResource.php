@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\CommentLikes;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,6 +28,9 @@ class DailyVerseCommentResource extends JsonResource
                 ...\App\Models\User::approvalFieldsFor($this->user), // badge-approuve.md
             ],
             'isMine'    => $mine,
+            // « J'aime » (docs/fonctionnalites/jaime-commentaires.md) ; isLikedByMe faux pour un visiteur.
+            'likesCount'  => (int) ($this->likes_count ?? 0),
+            'isLikedByMe' => app(CommentLikes::class)->isLikedBy(CommentLikes::VERSE, (string) $this->id, $viewer),
             'isHidden'  => $this->isHidden(),
             'canDelete' => $this->canBeDeletedBy($viewer),
             'canReport' => $viewer !== null && !$mine,

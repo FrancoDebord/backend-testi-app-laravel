@@ -11,7 +11,7 @@ Ces points du contrat de l'API servent aux écrans Profil et Paramètres de l'ap
 
 Clés :
 
-- `push_comments`, `push_likes`, `push_prayers`, `push_approval`, `push_new_followed` : booléens (voir [notifications push](notifications-push.md)) ;
+- `push_comments`, `push_likes`, `push_prayers`, `push_approval`, `push_new_followed` : booléens (voir [notifications push](notifications-push.md)) ; `push_likes` commande aussi les « j'aime » sur vos commentaires (`comment_liked`, [jaime-commentaires.md](jaime-commentaires.md)) ;
 - `comment_permission` : `everyone` \| `followers` \| `nobody` ;
 - `is_private_account`, `app_theme`, `language`, `last_bible_*`.
 
@@ -46,6 +46,10 @@ Le compte est supprimé (suppression douce) et ses jetons sont révoqués.
 - **Renommer** : `PUT testimonies/{id}` avec `{ title }` seul. En modification, seuls les champs envoyés changent ; `title` et `type` ne sont obligatoires qu'à la création.
 - **Motif du refus** : `rejectionReason` est un texte lisible (« Faux témoignage — note du modérateur »), renvoyé pour un témoignage refusé. Seuls l'auteur et la modération le voient. Il vient du dernier `moderation_logs` d'action `rejected`.
 - **Verset cité** (`bible_verse`) : jusqu'à 500 caractères. La colonne était en VARCHAR(255), ce qui provoquait une erreur 500 au-delà de 255 caractères ; elle passe en `TEXT` (migration `2026_10_06_500001_widen_bible_verse_columns`, aussi pour `drafts.bible_verse`).
+
+## Types de témoignages autorisés
+
+`GET me` (et `users/me`, `auth/me`) renvoie `allowed_testimony_types` (ex. `["text","audio","video"]`) ; `GET me/publishing` renvoie `{ allowed, global }`. L'application n'affiche que ces types sur l'écran de publication ; un type refusé répond 403 `{ errors: { type: [...] } }`. Réglages globaux et exceptions par profil : [types-de-temoignages.md](types-de-temoignages.md).
 
 ## Partages comptés sans compte
 

@@ -53,6 +53,7 @@ return [
             'badge_revoked'       => '"Approved" badge removed',
             'super_admin_granted' => 'Super administrator status granted',
             'super_admin_revoked' => 'Super administrator status removed',
+            'testimony_types'     => 'Profile testimony types changed',
         ],
     ],
 

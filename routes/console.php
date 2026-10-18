@@ -5,6 +5,11 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 // Témoignages en direct : clôture des directs abandonnés (docs/fonctionnalites/lives.md)
+// Notifications push en file (PUSH_DELIVERY=queue) : la file « push » est vidée chaque minute, y compris
+// sur l'hébergement mutualisé où seul le cron HTTP (/api/v1/_cron → schedule:run) existe. Sans ce
+// traitement, un push restait en attente et n'arrivait jamais (docs/fonctionnalites/notifications-push.md).
+Schedule::command('queue:work --queue=push --stop-when-empty --max-time=40 --tries=3')->everyMinute()->withoutOverlapping(2);
+
 Schedule::command('lives:cleanup')->everyFiveMinutes()->withoutOverlapping();
 
 // Sessions de prière : rappel aux inscrits 15 minutes avant (docs/fonctionnalites/sessions-de-priere.md)

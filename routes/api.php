@@ -37,7 +37,7 @@ Route::prefix('v1')->group(function () {
 
     // ── Auth (public) ───────────────────────────────────────────────────
     Route::prefix('auth')->group(function () {
-        Route::post('login',           [AuthController::class, 'login']);
+        Route::post('login',           [AuthController::class, 'login'])->middleware('throttle:login'); // e-mail ou téléphone + mot de passe
         Route::post('register',        [AuthController::class, 'register']);
         Route::post('phone',           [AuthController::class, 'phoneAuth']);
         // Connexion Google : { id_token } → même réponse que /auth/login (docs/fonctionnalites/connexion-google.md).
@@ -232,7 +232,8 @@ Route::prefix('v1')->group(function () {
         Route::post('prayer/requests',                              [\App\Http\Controllers\Api\PrayerRequestController::class, 'store'])->middleware('throttle:20,1');
         Route::put('prayer/requests/{id}',                          [\App\Http\Controllers\Api\PrayerRequestController::class, 'update']);
         Route::delete('prayer/requests/{id}',                       [\App\Http\Controllers\Api\PrayerRequestController::class, 'destroy']);
-        Route::post('prayer/requests/{id}/pray',                    [\App\Http\Controllers\Api\PrayerRequestController::class, 'pray'])->middleware('throttle:60,1'); // bascule « Je prie » ({ prayed? })
+        Route::post('prayer/requests/{id}/pray',                    [\App\Http\Controllers\Api\PrayerRequestController::class, 'pray'])->middleware('throttle:60,1'); // bascule « Je prie » ({ prayed? }) ; ajout après le temps de prière
+        Route::post('prayer/requests/{id}/pray/start',              [\App\Http\Controllers\Api\PrayerRequestController::class, 'startPrayer'])->middleware('throttle:30,1'); // temps de prière (docs/fonctionnalites/temps-de-priere.md)
         Route::post('prayer/requests/{id}/answered',                [\App\Http\Controllers\Api\PrayerRequestController::class, 'answered']);
         Route::delete('prayer/requests/{id}/answered',              [\App\Http\Controllers\Api\PrayerRequestController::class, 'reopen']);
         Route::post('prayer/requests/{id}/messages',                [\App\Http\Controllers\Api\PrayerRequestController::class, 'storeMessage'])->middleware('throttle:20,1');
@@ -319,6 +320,7 @@ Route::prefix('v1')->group(function () {
 
         // Reactions
         Route::post('testimonies/{id}/reactions', [ReactionController::class, 'store']);
+        Route::post('testimonies/{id}/pray/start', [ReactionController::class, 'startPrayer'])->middleware('throttle:30,1'); // temps de prière (docs/fonctionnalites/temps-de-priere.md)
         Route::delete('testimonies/{id}/reactions/{reactionId}', [ReactionController::class, 'destroy']);
         Route::delete('testimonies/{id}/reactions', [ReactionController::class, 'destroy']);
 
@@ -327,6 +329,18 @@ Route::prefix('v1')->group(function () {
         Route::put('comments/{id}',              [CommentController::class, 'update']);
         Route::delete('comments/{id}',           [CommentController::class, 'destroy']);
 
+        // « J'aime » sur les commentaires ─ docs/fonctionnalites/jaime-commentaires.md
+        // Réponse : { success, data: { likesCount, isLikedByMe } } ; 404 si invisible.
+        Route::middleware('throttle:60,1')->group(function () {
+            $likes = \App\Http\Controllers\Api\CommentLikeController::class;
+            Route::post  ('comments/{id}/like', [$likes, 'likeTestimonyComment'])->whereUuid('id');
+            Route::delete('comments/{id}/like', [$likes, 'unlikeTestimonyComment'])->whereUuid('id');
+            Route::post  ('events/{id}/comments/{commentId}/like', [$likes, 'likeEventComment'])->whereUuid(['id', 'commentId']);
+            Route::delete('events/{id}/comments/{commentId}/like', [$likes, 'unlikeEventComment'])->whereUuid(['id', 'commentId']);
+            Route::post  ('daily-verse/{id}/comments/{commentId}/like', [$likes, 'likeVerseComment'])->whereNumber('id')->whereUuid('commentId');
+            Route::delete('daily-verse/{id}/comments/{commentId}/like', [$likes, 'unlikeVerseComment'])->whereNumber('id')->whereUuid('commentId');
+        });
+
         // Profil connecté : /me (forme courte) ─ langue des push et e-mails : { locale: fr|en } (docs/fonctionnalites/langues.md)
         Route::get('me',                  [AuthController::class, 'me']);
         Route::put('me',                  [UserController::class, 'updateMe']);
@@ -334,6 +348,8 @@ Route::prefix('v1')->group(function () {
         Route::get('me/conversion-testimony', [\App\Http\Controllers\Api\ConversionTestimonyController::class, 'mine']);
         // Notification de test vers tous mes appareils, résultat par jeton ─ docs/fonctionnalites/notifications-push.md
         Route::post('me/push-test',       [DeviceTokenController::class, 'test'])->middleware('throttle:5,1');
+        // Types de témoignages que le compte (qui agit) peut publier ─ docs/fonctionnalites/types-de-temoignages.md
+        Route::get('me/publishing',       [\App\Http\Controllers\Api\PublishingController::class, 'mine']);
 
         // Users (self management)
         Route::get('users/me',            [AuthController::class, 'me']); // comme auth/me, mais suit X-Act-As (compte administré)
@@ -390,6 +406,9 @@ Route::prefix('v1')->group(function () {
             Route::post('users/{id}/suspend',     [AdminController::class, 'suspendUser']);
             Route::post('users/{id}/activate',    [AdminController::class, 'activateUser']);
             Route::put('users/{id}/role',         [AdminController::class, 'updateUserRole']);
+            // Types de témoignages autorisés par profil ─ docs/fonctionnalites/types-de-temoignages.md
+            Route::get('users/{id}/publishing',   [\App\Http\Controllers\Api\PublishingController::class, 'show']);
+            Route::put('users/{id}/publishing',   [\App\Http\Controllers\Api\PublishingController::class, 'update']);
             // Comptes organisation ─ docs/fonctionnalites/comptes-organisation.md
             Route::post('users/{id}/verify',              [AdminController::class, 'verifyOrganization']);
             Route::post('users/{id}/reject-verification', [AdminController::class, 'rejectOrganization']);

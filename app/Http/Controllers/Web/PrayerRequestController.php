@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\PrayerRequest;
 use App\Services\PrayerActionException;
 use App\Services\PrayerRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -83,6 +84,21 @@ class PrayerRequestController extends Controller
 
             return back()->with('success', $prayed ? 'Merci de prier pour cette requête.' : 'Prière retirée.');
         });
+    }
+
+    /**
+     * Temps de prière (fetch) : même réponse JSON que l'API POST prayer/requests/{id}/pray/start.
+     * Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(string $id): JsonResponse
+    {
+        try {
+            $data = $this->requests->startPrayer($this->requests->find(Auth::user(), $id), Auth::user());
+        } catch (PrayerActionException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->status());
+        }
+
+        return response()->json(['success' => true, 'data' => $data, 'message' => __('prayer_focus.started')]);
     }
 
     public function answered(Request $request, string $id): RedirectResponse

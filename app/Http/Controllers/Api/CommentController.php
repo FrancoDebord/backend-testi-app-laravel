@@ -28,6 +28,8 @@ class CommentController extends Controller
             ->whereNull('parent_id')
             ->oldest()
             ->paginate(30);
+        // « J'aime » de la personne : une requête pour toute la page, réponses comprises.
+        app(\App\Services\CommentLikes::class)->preload(\App\Services\CommentLikes::TESTIMONY, $comments->items(), $request->user('sanctum'));
 
         return $this->paginated(
             CommentResource::collection($comments->items()),

@@ -66,6 +66,7 @@ return [
     ],
     'api'                                 => [
         'invalid_credentials'    => 'Email ou mot de passe incorrect',
+        'invalid_phone_credentials' => 'Numéro de téléphone ou mot de passe incorrect',
         'banned'                 => 'Votre compte a été banni',
         'login_success'          => 'Connexion réussie',
         'registered'             => 'Compte créé avec succès',
@@ -138,5 +139,10 @@ return [
         'submit'      => 'Se connecter',
         'or'          => 'ou',
         'no_account'  => 'Pas encore de compte ?',
+        'method'         => 'Se connecter avec',
+        'method_email'   => 'E-mail',
+        'method_phone'   => 'Téléphone',
+        'phone_hint'     => "Le numéro de téléphone indiqué à l'inscription.",
+        'email_required' => 'Indiquez votre adresse e-mail ou votre numéro de téléphone.',
     ],
 ];

@@ -80,7 +80,10 @@
 
             <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
                 @if($user && !$prayer->isHidden())
-                <form method="POST" action="{{ route('prayer.requests.pray', $prayer->id) }}" data-loading-label="Enregistrement…">
+                {{-- Ajouter une prière : temps de prière d'abord (resources/js/prayer-focus.js, docs/fonctionnalites/temps-de-priere.md) --}}
+                <form method="POST" action="{{ route('prayer.requests.pray', $prayer->id) }}" data-loading-label="Enregistrement…"
+                      data-prayer-focus="{{ route('prayer.requests.pray.start', $prayer->id) }}" data-prayed="{{ $hasPrayed ? '1' : '0' }}"
+                      data-prayer-excerpt="{{ Str::limit(\App\Services\Mentions::plain($prayer->body), 600) }}">
                     @csrf
                     <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }}" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}">
                         <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $hasPrayed ? 'Je prie pour vous' : 'Je prie' }}

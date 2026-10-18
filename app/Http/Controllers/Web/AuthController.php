@@ -12,6 +12,8 @@ use App\Models\UserSetting;
 use App\Services\GoogleSignIn;
 use App\Services\GoogleSignInException;
 use App\Services\OrganizationAccounts;
+use App\Services\PhoneLogin;
+use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Support\Countries;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
@@ -29,26 +31,41 @@ class AuthController extends Controller
         return view('auth.login', ['googleClientId' => GoogleSignIn::webClientId()]);
     }
 
+    /**
+     * Connexion par e-mail ou par téléphone de contact (indicatif + numéro), avec le mot de passe.
+     * Mêmes règles et mêmes messages que l'API (docs/fonctionnalites/telephone.md).
+     */
     public function login(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
-        ]);
-
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-
-            $user = Auth::user();
-            if ($user->status->value === 'banned') {
-                Auth::logout();
-                return back()->withErrors(['email' => __('account.banned')]);
-            }
-
-            return redirect()->intended(route('home'));
+        $byPhone = $request->input('login_method') === 'phone'
+            || (blank($request->input('email')) && filled($request->input('phone')));
+        if ($byPhone) {
+            $request->merge(['email' => null]);
+        } else {
+            $request->merge(['phone' => null]);
         }
 
-        return back()->withErrors(['email' => __('account.invalid_credentials')])->onlyInput('email');
+        $request->validate(LoginRequest::baseRules(), LoginRequest::baseMessages());
+
+        $user = $byPhone
+            ? PhoneLogin::findUser($request->input('phone_country'), $request->input('phone'))
+            : User::where('email', $request->input('email'))->first();
+        $field = $byPhone ? 'phone' : 'email';
+
+        if (!$user || !$user->password || !Hash::check((string) $request->input('password'), $user->password)) {
+            return back()->withErrors([$field => __('account.invalid_credentials')])
+                ->onlyInput('email', 'phone', 'phone_country', 'login_method');
+        }
+
+        if ($user->status->value === 'banned') {
+            return back()->withErrors([$field => __('account.banned')])
+                ->onlyInput('email', 'phone', 'phone_country', 'login_method');
+        }
+
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('home'));
     }
 
     /**
@@ -78,7 +95,10 @@ class AuthController extends Controller
     public function showRegister(): View|RedirectResponse
     {
         if (Auth::check()) return redirect()->route('home');
-        return view('auth.register', ['organizationTypes' => OrganizationType::cases()]);
+        return view('auth.register', [
+            'organizationTypes' => OrganizationType::cases(),
+            'googleClientId'    => GoogleSignIn::webClientId(),
+        ]);
     }
 
     /**
@@ -109,7 +129,7 @@ class AuthController extends Controller
         $organization   = OrganizationAccounts::registrationAttributes($data);
         $isOrganization = $organization['account_type'] === AccountType::Organization->value;
 
-        // Téléphone de contact, non vérifié : il ne permet jamais de se connecter (docs/fonctionnalites/telephone.md).
+        // Téléphone de contact, non vérifié : il permet la connexion avec le mot de passe, jamais par SMS (docs/fonctionnalites/telephone.md).
         $phone = PhoneNumber::toE164($data['phone_country'] ?? null, $data['phone'] ?? null);
 
         $user = User::create([

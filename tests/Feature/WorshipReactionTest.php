@@ -9,7 +9,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
-/** Réaction « Adorer Dieu » (worship), identique à celle de l'application mobile. */
+/**
+ * Réaction « Adorer Dieu » (worship) : toujours acceptée et comptée comme une prière (API, anciennes réactions).
+ * Le site, comme l'application, n'affiche plus qu'un seul bouton « Je prie » (docs/fonctionnalites/reactions.md).
+ */
 class WorshipReactionTest extends TestCase
 {
     use RefreshDatabase;
@@ -56,8 +59,10 @@ class WorshipReactionTest extends TestCase
         $this->assertDatabaseHas('reactions', ['testimony_id' => $this->testimony->id, 'type' => 'worship']);
     }
 
-    public function test_testimony_page_shows_the_adorer_button(): void
+    public function test_testimony_page_shows_a_single_i_pray_button(): void
     {
-        $this->get("/testimonies/{$this->testimony->id}")->assertOk()->assertSee('data-reaction="worship"', false)->assertSee('Adorer Dieu');
+        $this->get("/testimonies/{$this->testimony->id}")->assertOk()
+            ->assertSee('data-reaction="pray"', false)->assertSee('Je prie')
+            ->assertDontSee('data-reaction="worship"', false)->assertDontSee('data-reaction="amen"', false);
     }
 }

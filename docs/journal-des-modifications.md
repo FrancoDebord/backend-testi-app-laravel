@@ -4,6 +4,48 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-18 — Connexion par téléphone, Google à l'inscription, nom en double dans les notifications
+
+- **Utilisateurs** :
+  - connexion avec le **numéro de téléphone** indiqué à l'inscription et le mot de passe, sur le site (choix « E-mail » / « Téléphone » sur `/login`) et dans l'application ; la connexion par SMS exige toujours un numéro vérifié [telephone.md](fonctionnalites/telephone.md) ;
+  - bouton Google sur la page de création de compte du site (compte créé s'il est nouveau, connexion sinon) [connexion-google.md](fonctionnalites/connexion-google.md) ;
+  - page des notifications du site : le nom de l'auteur n'est plus répété (« Marie Marie a aimé votre commentaire » → « Marie a aimé votre commentaire »).
+- **API** : `POST /api/v1/auth/login` accepte `{ email, password }` **ou** `{ phone, phone_country, password }` (`phone` national tel que tapé ou « +229… », `phone_country` ISO facultatif) ; même réponse, même 401 pour un identifiant inconnu, un mauvais mot de passe ou un compte sans mot de passe, 403 si banni ; limite de 10 essais par minute (IP + identifiant, 429).
+- **Développeurs** : `App\Services\PhoneLogin` (E.164 puis anciens numéros : valeur brute, chiffres seuls), `LoginRequest::baseRules()` / `baseMessages()` partagés avec `Web\AuthController::login`, limiteur `login` (`AppServiceProvider`) sur `POST /api/v1/auth/login` et `POST /login`, partiel `auth/partials/google-signin`, paramètres `phoneLabel` / `phoneHint` / `phoneErrors` de `components/phone-input`, clés `account.login.method*`, `phone_hint`, `email_required` ; tests `PhoneLoginTest`, `WebNotificationActorNameTest`, `GoogleAuthTest` complété.
+- **Déploiement** : `php artisan optimize:clear` (routes) et `php artisan view:cache`. Aucune migration, aucune recompilation des assets (scripts propres aux pages).
+
+---
+
+## 2026-10-18 — « J'aime » sur les commentaires, types de témoignages autorisés
+
+- **Utilisateurs** :
+  - cœur « J'aime » sous les commentaires des témoignages (réponses comprises), des événements et du verset du jour ; l'auteur est prévenu la première fois (« Marie a aimé votre commentaire », push selon le réglage des « j'aime ») [jaime-commentaires.md](fonctionnalites/jaime-commentaires.md) ;
+  - administrateurs : section **Publication** dans les paramètres (texte, audio, vidéo, liens YouTube) et, sur la fiche d'un membre, exception par type (Par défaut / Autorisé / Interdit) ; un lien YouTube peut être accordé à un profil non administrateur ; la page Publier ne propose que les types autorisés [types-de-temoignages.md](fonctionnalites/types-de-temoignages.md).
+- **API** :
+  - `POST|DELETE comments/{id}/like`, `events/{id}/comments/{commentId}/like`, `daily-verse/{id}/comments/{commentId}/like` → `{ success, data: { likesCount, isLikedByMe } }` (404 si invisible) ; `likesCount` et `isLikedByMe` dans `CommentResource`, `EventCommentResource`, `DailyVerseCommentResource` ; notification `comment_liked` (`commentId` ajouté à `NotificationResource`) ;
+  - `allowed_testimony_types` dans la ressource utilisateur « owner » (`/me`, `/users/me`, `/auth/me`) ; `GET me/publishing` ; `GET|PUT admin/users/{id}/publishing` (administrateurs) ; réglages `testimony_type_*_enabled` dans `GET|PUT admin/settings` ; `POST testimonies` et `POST videos/upload-init` répondent 403 `{ errors: { type: [...] } }` pour un type désactivé (carnet privé compris ; modification jamais bloquée).
+- **Développeurs** : `App\Services\CommentLikes` (instance par requête), `App\Models\CommentLike`, `Api\CommentLikeController` (partagé par le site), composant `components/comment-like`, `resources/js/comment-likes.js` ; `App\Services\TestimonyTypePolicy`, `Api\PublishingController`, `Web\AdminController::updatePublishing()` ; `lang/{fr,en}/comment_likes.php`, `lang/{fr,en}/publishing.php` ; tests `CommentLikesTest`, `TestimonyTypePolicyTest`.
+- **Déploiement** : migrations `2026_10_18_100001_create_comment_likes_table` et `2026_10_18_200001_add_testimony_type_settings` (`php artisan migrate`), puis `php artisan optimize:clear` (nouvelles routes, réglages en cache) ; recompilation des assets (`npm run build`) et copie de `public/build/`.
+
+---
+
+## 2026-10-18 — Temps de prière avant « Je prie »
+
+- **Utilisateurs** : « Je prie » sur une requête de prière ou un témoignage ouvre un écran plein « Temps de prière » (décompte de 5 min, en pause quand l'onglet est caché, verset Jacques 5:16) ; à la fin, « J'ai prié… » puis « Valider ma prière » enregistre la prière. Fermer l'écran n'enregistre rien ; retirer sa prière reste immédiat. [temps-de-priere.md](fonctionnalites/temps-de-priere.md)
+- **API** : `POST prayer/requests/{id}/pray/start`, `POST testimonies/{id}/pray/start` → `{ startedAt, requiredSeconds, confirmableAt }`. `POST prayer/requests/{id}/pray` et `POST testimonies/{id}/reactions` (groupe prière) répondent **422** `{ errors: { prayer_focus: [...] }, remaining_seconds }` quand ils ajoutent une prière sans temps de prière écoulé. **Les anciennes versions de l'application reçoivent 422 jusqu'à leur mise à jour.**
+- **Développeurs** : `config/prayer.php`, `App\Services\PrayerFocus`, `App\Exceptions\PrayerFocusRequired`, `lang/{fr,en}/prayer_focus.php`, composant `components/prayer-focus-modal`, `resources/js/prayer-focus.js` ; routes web `prayer.requests.pray.start`, `testimonies.prayer.start` ; `tests/TestCase.php` désactive la règle (`prayer.focus_seconds = 0`), `PrayerFocusTest` l'active.
+- **Déploiement** : `PRAYER_FOCUS_SECONDS=300` dans `.env` (**0** pendant la transition, tant que l'application mise à jour n'est pas diffusée), `php artisan optimize:clear`, recompilation des assets et copie de `public/build/`. Aucune migration. Cache persistant requis (`CACHE_STORE=database` par défaut).
+
+---
+
+## 2026-10-18 — « Je prie » du site aligné sur l'application
+
+- **Utilisateurs** : page d'un témoignage : un seul bouton « Je prie » (au lieu de Prière / Amen / Adorer Dieu), qui pose ou retire la prière en un appui, avec mise à jour immédiate ; nombre de prières sur les cartes. [reactions.md](fonctionnalites/reactions.md)
+- **Développeurs** : `TestimonyReactions::togglePrayer()`, réponse du site enrichie (`is_prayed`, `is_liked`), `resources/js/videos.js` ; tests `WebPrayToggleTest`, `WorshipReactionTest` adapté.
+- **Déploiement** : recompilation des assets et copie de `public/build/`. Aucune migration.
+
+---
+
 ## 2026-10-17 — Témoignage de conversion : module terminé, corrections après interruption
 
 - **Utilisateurs** : bloc « Témoignages de conversion » sur l'accueil ; invitation à se connecter pour les visiteurs ; modérateurs : filtre « Témoignages de conversion », badge et détails (année, lieu, verset) dans la liste et la fiche. [temoignage-de-conversion.md](fonctionnalites/temoignage-de-conversion.md)

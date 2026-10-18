@@ -78,6 +78,7 @@ return [
         'comments'      => 'Commentaires',
         'shares'        => 'Partages',
         'shares_sr'     => 'partages',
+        'prayers_sr'    => 'prières',
     ],
 
     'watch' => [

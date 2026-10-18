@@ -184,7 +184,26 @@ class PrayerRequests
         $request->delete();
     }
 
-    /** « Je prie » (true) ou retrait (false). Renvoie l'état final. */
+    /**
+     * Commence (ou recommence) le temps de prière avant « Je prie » : mêmes conditions que la prière
+     * (compte actif, requête visible — vérifiée par find() — et non retirée).
+     *
+     * @return array{startedAt: string, requiredSeconds: int, confirmableAt: string}
+     */
+    public function startPrayer(PrayerRequest $request, User $user): array
+    {
+        $this->ensureActive($user);
+        if ($request->isHidden()) {
+            throw new PrayerActionException('Cette requête a été retirée par la modération.', 409);
+        }
+
+        return app(PrayerFocus::class)->start($user, 'prayer_request', $request->id);
+    }
+
+    /**
+     * « Je prie » (true) ou retrait (false). Renvoie l'état final. Ajouter une prière exige un temps
+     * de prière écoulé (PrayerFocus, 422) ; retirer sa prière ou prier de nouveau n'est jamais bloqué.
+     */
     public function setPrayed(PrayerRequest $request, User $user, ?bool $prayed = null): bool
     {
         $this->ensureActive($user);
@@ -198,6 +217,8 @@ class PrayerRequests
             $target   = $prayed ?? !$existing; // sans précision : bascule
 
             if ($target && !$existing) {
+                // Nouvelle prière : le temps de prière doit être écoulé (docs/fonctionnalites/temps-de-priere.md).
+                app(PrayerFocus::class)->ensureCompleted($user, 'prayer_request', $request->id);
                 PrayerRequestPrayer::create(['prayer_request_id' => $request->id, 'user_id' => $user->id]);
                 $request->increment('prayer_count');
                 $added = true;

@@ -270,7 +270,8 @@ class FcmClient
             'notification' => ['title' => $title, 'body' => $body],
             'android'      => $android,
             'apns'         => [
-                'headers' => ['apns-priority' => '10'],
+                // Notification visible sur iOS : type « alert » explicite (iOS 13+).
+                'headers' => ['apns-priority' => '10', 'apns-push-type' => 'alert'],
                 'payload' => ['aps' => ['sound' => 'default']],
             ],
         ];

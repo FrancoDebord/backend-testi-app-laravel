@@ -139,6 +139,28 @@ class GoogleAuthTest extends TestCase
         $this->get('/login')->assertOk()->assertDontSee(route('login.google'), false);
     }
 
+    public function test_register_page_shows_google_button_only_when_configured(): void
+    {
+        // Même bouton, même parcours que /login : compte créé s'il est nouveau, connexion sinon.
+        $this->get('/register')->assertOk()
+            ->assertSee('id="google-signin-button"', false)
+            ->assertSee(route('login.google'), false)
+            ->assertSee(self::WEB_CLIENT, false)
+            ->assertSee('signup_with', false);
+
+        config(['services.google.web_client_id' => null]);
+        $this->get('/register')->assertOk()->assertDontSee(route('login.google'), false);
+    }
+
+    public function test_web_google_sign_in_from_register_page_creates_the_account(): void
+    {
+        $this->fakeGoogle();
+
+        $this->from('/register')->post('/login/google', ['credential' => 'jeton'])->assertRedirect(route('home'));
+
+        $this->assertAuthenticatedAs(User::where('google_id', 'g-123')->sole());
+    }
+
     public function test_web_google_sign_in_opens_a_session(): void
     {
         $this->fakeGoogle();

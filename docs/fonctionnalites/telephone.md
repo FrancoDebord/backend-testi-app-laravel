@@ -35,8 +35,26 @@ Fiche d'un compte (`/admin/users/{id}`) : ligne **Téléphone** (lien d'appel) a
 | **Unicité** | Un numéro par compte : « Ce numéro est déjà associé à un autre compte. » |
 | **API mobile** | `POST /api/v1/auth/register` et `PUT /api/v1/users/me` acceptent `phone_country` (code ISO) + `phone` (numéro national), avec les mêmes contrôles que le site. **Facultatif à l'inscription par l'API, même pour une organisation** (les versions déjà installées de l'application ne l'envoient pas) ; la nouvelle application l'exige pour une organisation. Sans `phone_country`, `PUT users/me` accepte encore un numéro libre (anciennes versions). Un numéro vérifié n'est pas modifiable avec `phone_country` |
 | **Vérification** | Un numéro saisi sur le site, ou modifié dans le profil (site ou `PUT /api/v1/users/me`), **n'est pas vérifié** (`phone_verified_at` vide). Seule la connexion par SMS (`POST /api/v1/auth/phone`) le vérifie |
-| **Connexion par téléphone** | Ne retrouve un compte par son numéro que si ce numéro est **vérifié**. Un numéro seulement déclaré ne donne jamais accès au compte qui l'a déclaré. Si la personne qui confirme ce numéro par SMS n'a pas de compte, le numéro lui revient : il est retiré du compte qui l'avait seulement déclaré |
+| **Connexion par SMS** | `POST /api/v1/auth/phone` ne retrouve un compte par son numéro que si ce numéro est **vérifié**. Un numéro seulement déclaré ne donne jamais accès par SMS au compte qui l'a déclaré. Si la personne qui confirme ce numéro par SMS n'a pas de compte, le numéro lui revient : il est retiré du compte qui l'avait seulement déclaré |
+| **Connexion par téléphone + mot de passe** | Autorisée avec le numéro de contact (unique) indiqué à l'inscription, **même non vérifié** : le mot de passe protège le compte. Voir la section ci-dessous |
 | **Confidentialité** | Dans l'API, `email`, `phone`, `phone_country` et `is_phone_verified` ne sont remplis que pour la personne elle-même (connexion, inscription, `auth/me`, `users/me`) et pour les administrateurs ; `null` partout ailleurs (auteur d'un témoignage ou d'un commentaire, profil public) |
+
+## Connexion par téléphone et mot de passe (API et site)
+
+`POST /api/v1/auth/login` accepte **soit** `{ email, password }`, **soit** `{ phone, phone_country, password }` :
+
+| Champ | Règle |
+|---|---|
+| `email` | Obligatoire sans `phone` (`required_without:phone`), adresse valide. S'il est rempli, c'est lui qui est utilisé |
+| `phone` | Obligatoire sans `email` (`required_without:email`), 30 caractères au plus : numéro national tel que tapé (« 01 97 00 00 00 », « 0197000000 ») ou déjà international (« +229 01 97 00 00 00 ») |
+| `phone_country` | Facultatif, code ISO de `Countries::codes()` (« bj », majuscules acceptées). Inutile si `phone` commence par « + » ; s'il ne correspond pas à l'indicatif d'un numéro « +… », le numéro saisi l'emporte |
+| `password` | Obligatoire |
+
+- **Recherche du compte** (`App\Services\PhoneLogin::findUser`) : numéro E.164 calculé par `PhoneNumber::toE164()` (ou « + » suivi des chiffres) comparé à `users.phone` ; à défaut, pour les anciens comptes enregistrés hors E.164, la valeur brute identique, puis une comparaison **chiffres seuls** (espaces, tirets, préfixe « 00 » ignorés ; numéro national seul accepté). Si plusieurs anciens comptes ont les mêmes chiffres, aucun n'est retenu.
+- **Réponse** : identique à la connexion par e-mail (`user`, `access_token`, `token_type`). Numéro inconnu, mauvais mot de passe ou compte **sans mot de passe** (Google, SMS) : même **401** « Email ou mot de passe incorrect » (`account.api.invalid_credentials`), sans révéler si le numéro existe. Compte banni : **403**. Champs manquants : 422.
+- **Limite** : 10 essais par minute pour une adresse IP et un identifiant (limiteur `login`, `AppServiceProvider`), sur l'API comme sur le site (429 au-delà).
+- **Site** (`/login`) : choix « E-mail » / « Téléphone » (`login_method`) ; en mode téléphone, indicatif (liste des pays avec indicatifs, comme l'inscription) + numéro (`components/phone-input`). Mêmes règles et mêmes messages (« Identifiants incorrects. », « Votre compte a été banni. »). Sans JavaScript, les deux blocs restent visibles : le serveur prend le mode choisi, ou le téléphone si l'e-mail est vide.
+- La connexion **par SMS** exige toujours un numéro vérifié (ci-dessus).
 
 ## Fonctionnement technique
 
@@ -46,7 +64,8 @@ Fiche d'un compte (`/admin/users/{id}`) : ligne **Téléphone** (lien d'appel) a
 | Format, validation, affichage | `App\Support\PhoneNumber` : `toE164()`, `national()`, `display()`, `rules()` (unicité comprise), `MESSAGES` |
 | Modèle | `User::setContactPhone()` (un numéro différent perd sa vérification), `hasVerifiedPhone()` |
 | Formulaires | `resources/views/components/phone-input.blade.php` (indicatif `phone_country` + numéro `phone`) ; `Web\AuthController::register`, `Web\ProfileController::update` |
-| Connexion par téléphone | `Api\AuthController::phoneAuth` |
+| Connexion par SMS | `Api\AuthController::phoneAuth` |
+| Connexion téléphone + mot de passe | `App\Services\PhoneLogin`, `Api\AuthController::login` (`LoginRequest`), `Web\AuthController::login`, vue `auth/login.blade.php` |
 | API | `Api\UserController::updateMe` (numéro unique, vérification retirée s'il change) ; `UserResource` (coordonnées privées, `UserResource::owner()` pour les réponses destinées à la personne) |
 | JavaScript | `resources/js/app.js` : liste avec recherche (`data-country-select`, libellé court `data-label`, textes `data-placeholder` / `data-empty-text`) et `data-follow-country` (l'indicatif suit le pays, via `data-code` des options de pays) |
 
@@ -74,6 +93,8 @@ Après un ajout ou une correction de pays côté serveur, régénérer la liste 
 `tests/Feature/PhoneNumberTest.php` (9 tests) : formats (Bénin, Côte d'Ivoire, France, Nigeria, Cameroun, international, invalides), champ après le pays, inscription avec ou sans numéro, organisation (obligatoire, invalide, indicatif manquant, déjà utilisé), profil (numéro non vérifié modifiable, vérifié en lecture seule), API (unicité, vérification retirée), connexion par téléphone (numéro déclaré sans accès au compte, numéro vérifié toujours reconnu), confidentialité de l'API et fiche d'administration.
 
 Vérifié dans Chrome à 390, 768 et 1440 px : l'indicatif suit le pays (Côte d'Ivoire → +225), recherche par indicatif, inscription complète enregistrée en `+2290197123456` ; aucune erreur, aucun défilement horizontal.
+
+`tests/Feature/PhoneLoginTest.php` (18 tests) : connexion par téléphone + mot de passe, API et site (numéro E.164, saisi avec espaces et 0 initial, forme « +229… » avec ou sans indicatif, ancien numéro brut ou mêmes chiffres, ancien numéro ambigu, mauvais mot de passe et numéro inconnu avec le même message, compte banni 403, compte sans mot de passe 401, validation, limite de 10 essais, e-mail toujours accepté).
 
 ## Limites connues
 

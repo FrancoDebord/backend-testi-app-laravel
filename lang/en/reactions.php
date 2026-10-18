@@ -4,6 +4,7 @@
 return [
     // Watch page buttons
     'like'    => 'Like',
+    'i_pray'  => 'Praying',
     'pray'    => 'Prayer',
     'amen'    => 'Amen',
     'worship' => 'Worship God',

@@ -27,6 +27,11 @@ class AppSettingSeeder extends Seeder
             ['key' => 'allow_comments', 'value' => '1', 'type' => 'boolean', 'group' => 'features', 'label' => 'Autoriser les commentaires'],
             ['key' => 'allow_reactions', 'value' => '1', 'type' => 'boolean', 'group' => 'features', 'label' => 'Autoriser les réactions'],
             ['key' => 'allow_sharing', 'value' => '1', 'type' => 'boolean', 'group' => 'features', 'label' => 'Autoriser le partage'],
+            // Publishing group : types de témoignages autorisés (docs/fonctionnalites/types-de-temoignages.md)
+            ['key' => 'testimony_type_text_enabled', 'value' => '1', 'type' => 'boolean', 'group' => 'publishing', 'label' => 'Témoignages écrits (texte)'],
+            ['key' => 'testimony_type_audio_enabled', 'value' => '1', 'type' => 'boolean', 'group' => 'publishing', 'label' => 'Témoignages audio'],
+            ['key' => 'testimony_type_video_enabled', 'value' => '1', 'type' => 'boolean', 'group' => 'publishing', 'label' => 'Témoignages vidéo'],
+            ['key' => 'testimony_type_youtube_enabled', 'value' => '1', 'type' => 'boolean', 'group' => 'publishing', 'label' => 'Liens YouTube (administrateurs, et profils autorisés)'],
             ['key' => 'allow_audio', 'value' => '1', 'type' => 'boolean', 'group' => 'features', 'label' => 'Autoriser les témoignages audio'],
             ['key' => 'allow_video', 'value' => '1', 'type' => 'boolean', 'group' => 'features', 'label' => 'Autoriser les témoignages vidéo'],
             ['key' => 'require_consent_form', 'value' => '1', 'type' => 'boolean', 'group' => 'features', 'label' => 'Formulaire de consentement obligatoire'],

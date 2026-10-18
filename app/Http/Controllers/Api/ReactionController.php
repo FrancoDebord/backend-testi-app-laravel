@@ -47,6 +47,19 @@ class ReactionController extends Controller
     }
 
     /**
+     * POST testimonies/{id}/pray/start : commence (ou recommence) le temps de prière. Une réaction du groupe
+     * « je prie » n'est ajoutée qu'après config('prayer.focus_seconds') secondes. Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(Request $request, string $testimonyId, TestimonyReactions $reactions): JsonResponse
+    {
+        $testimony = Testimony::find($testimonyId);
+        $data = $testimony ? $reactions->startPrayer($request->user(), $testimony) : null;
+        if ($data === null) return $this->notFound();
+
+        return $this->success($data, __('prayer_focus.started'));
+    }
+
+    /**
      * DELETE testimonies/{id}/reactions/{reactionId} : retire la réaction (et toute autre du même groupe).
      * DELETE testimonies/{id}/reactions?group=appreciation|prayer (ou ?type=like…) : sans identifiant,
      * retire les réactions de la personne de ce groupe (toutes sans paramètre).

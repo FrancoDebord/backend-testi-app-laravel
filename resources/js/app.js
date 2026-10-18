@@ -1,6 +1,8 @@
 import './bootstrap';
 import { t, tn, dateLocale } from './i18n';
+import './prayer-focus'; // temps de prière avant « Je prie » (docs/fonctionnalites/temps-de-priere.md)
 import './videos';
+import './comment-likes'; // « J'aime » sur les commentaires (docs/fonctionnalites/jaime-commentaires.md)
 import './tts';
 
 // Designs du verset du jour : chargé seulement sur les pages qui l'affichent.

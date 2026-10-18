@@ -28,6 +28,8 @@ class AdminAudit
         'user.badge_revoked'        => 'Badge « Approuvé » retiré',
         'user.super_admin_granted'  => 'Statut super-administrateur attribué',
         'user.super_admin_revoked'  => 'Statut super-administrateur retiré',
+        // Types de témoignages autorisés par profil (docs/fonctionnalites/types-de-temoignages.md)
+        'user.testimony_types'      => 'Types de témoignages du profil modifiés',
     ];
 
     /** Libellé traduit d'une action (LABELS : texte français, gardé pour compatibilité). */

@@ -117,6 +117,9 @@
         <button type="submit" class="btn-cta w-full">{{ __('account.register.submit') }}</button>
     </form>
 
+    {{-- Créer son compte avec Google : même parcours que sur la page de connexion (docs/fonctionnalites/connexion-google.md). --}}
+    @include('auth.partials.google-signin', ['googleText' => 'signup_with'])
+
     <p class="mt-8 border-t border-slate-200 pt-5 text-center text-sm text-slate-500">
         {{ __('account.register.already') }}
         <a href="{{ route('login') }}" class="font-semibold text-primary-600 hover:text-primary-700 hover:underline">{{ __('account.login.submit') }}</a>

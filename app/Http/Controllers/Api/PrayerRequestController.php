@@ -100,6 +100,19 @@ class PrayerRequestController extends Controller
         });
     }
 
+    /**
+     * POST prayer/requests/{id}/pray/start : commence (ou recommence) le temps de prière. « Je prie » (pray)
+     * n'ajoute la prière qu'après config('prayer.focus_seconds') secondes. Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(Request $request, string $id): JsonResponse
+    {
+        return $this->attempt(function () use ($request, $id) {
+            $prayer = $this->requests->find($request->user(), $id);
+
+            return $this->success($this->requests->startPrayer($prayer, $request->user()), __('prayer_focus.started'));
+        });
+    }
+
     /** Exaucée (`note` facultative). */
     public function answered(Request $request, string $id): JsonResponse
     {

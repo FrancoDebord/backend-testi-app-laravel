@@ -8,14 +8,18 @@
         ['label' => __('testimonies.create.breadcrumb_space'), 'url' => route('testimonies.mine')],
         ['label' => __('testimonies.create.breadcrumb_publish')],
     ];
-    $types = ['text' => [__('testimonies.create.type_text'), 'fa-file-lines'], 'audio' => [__('testimonies.create.type_audio'), 'fa-microphone'], 'video' => [__('testimonies.create.type_video'), 'fa-video']];
-    // Lien YouTube : administrateurs seulement (docs/fonctionnalites/videos-youtube.md)
-    $isAdmin = auth()->user()->isAdmin();
-    if ($isAdmin) {
-        $types['youtube'] = [__('testimonies.create.type_youtube'), 'fa-brands fa-youtube'];
-    }
+    $types = ['text' => [__('testimonies.create.type_text'), 'fa-file-lines'], 'audio' => [__('testimonies.create.type_audio'), 'fa-microphone'], 'video' => [__('testimonies.create.type_video'), 'fa-video'],
+              'youtube' => [__('testimonies.create.type_youtube'), 'fa-brands fa-youtube']];
+    // Types autorisés pour ce compte (docs/fonctionnalites/types-de-temoignages.md) ; lien YouTube :
+    // administrateurs par défaut, ou profils autorisés (docs/fonctionnalites/videos-youtube.md).
+    $allowedTypes = $allowedTypes ?? app(\App\Services\TestimonyTypePolicy::class)->allowed(auth()->user());
+    $types = array_intersect_key($types, array_flip($allowedTypes));
+    $canYoutube = isset($types['youtube']);
     $visibilities = ['public' => __('testimonies.create.visibility_public'), 'followers' => __('testimonies.create.visibility_followers'), 'private' => __('testimonies.create.visibility_private')];
     $currentType = old('type', 'text');
+    if (!isset($types[$currentType])) {
+        $currentType = array_key_first($types) ?? 'text';
+    }
     // « Nouvelle entrée » du carnet privé : /publish?visibility=private (docs/fonctionnalites/carnet-prive.md)
     $defaultVisibility = request('visibility') === 'private' && !($prophecy ?? null) ? 'private' : 'public';
 @endphp
@@ -41,6 +45,10 @@
     {{-- Pourquoi témoigner ? replié pour ne pas éloigner le formulaire (docs/fonctionnalites/pourquoi-temoigner.md) --}}
     <x-why-testify collapsible :action="false" class="mb-4" />
 
+    @if($types === [])
+    {{-- Aucun type ouvert pour ce compte (docs/fonctionnalites/types-de-temoignages.md) --}}
+    @include('components.empty-state', ['title' => __('publishing.none_allowed_title'), 'text' => __('publishing.none_allowed_text')])
+    @else
     <form method="POST" action="{{ route('testimonies.store') }}" enctype="multipart/form-data" id="testimony-form"
           class="card divide-y divide-slate-100"
           data-autosave="testimony-create" data-has-old="{{ session()->hasOldInput() ? '1' : '0' }}"
@@ -137,7 +145,7 @@
 
             <div>
                 <span class="form-label">{{ __('testimonies.create.type') }} *</span>
-                <div class="{{ $isAdmin ? 'grid grid-cols-2 gap-2 sm:grid-cols-4' : 'grid grid-cols-1 gap-2 sm:grid-cols-3' }}">
+                <div class="{{ match (count($types)) { 4 => 'grid grid-cols-2 gap-2 sm:grid-cols-4', 3 => 'grid grid-cols-1 gap-2 sm:grid-cols-3', 2 => 'grid grid-cols-1 gap-2 sm:grid-cols-2', default => 'grid grid-cols-1 gap-2' } }}">
                     @foreach($types as $val => [$label, $icon])
                     <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50 has-[:checked]:text-slate-900">
                         <input type="radio" name="type" value="{{ $val }}" @checked($currentType === $val)>
@@ -205,8 +213,8 @@
                 </div>
             </div>
 
-            @if($isAdmin)
-            {{-- Vidéo YouTube : administrateurs seulement (docs/fonctionnalites/videos-youtube.md) --}}
+            @if($canYoutube)
+            {{-- Vidéo YouTube : administrateurs par défaut, ou profils autorisés (docs/fonctionnalites/videos-youtube.md) --}}
             <div data-type-section="youtube" class="rounded-lg border border-slate-200 p-4">
                 <label for="youtube_url" class="form-label"><i class="fa-brands fa-youtube mr-1 text-error-500" aria-hidden="true"></i>{{ __('testimonies.create.youtube_url') }} *</label>
                 <input id="youtube_url" type="url" name="youtube_url" value="{{ old('youtube_url') }}" maxlength="300" inputmode="url" class="form-input"
@@ -307,6 +315,7 @@
             </div>
         </div>
     </form>
+    @endif
 </div>
 @endsection
 
@@ -314,6 +323,7 @@
 <script>
 (function () {
     const form = document.getElementById('testimony-form');
+    if (!form) return; // aucun type ouvert pour ce compte
     const bodyText = document.getElementById('body_text');
     const media = document.getElementById('media_file');
     const MEDIA = {

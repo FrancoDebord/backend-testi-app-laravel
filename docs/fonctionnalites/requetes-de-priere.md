@@ -19,6 +19,7 @@ Disponible sur le **site** (`/priere/requetes`, menu latéral « Requêtes de pr
 | **Visibilité** | `public` (tout le monde, même sans compte) · `followers` (l'auteur, ses abonnés, la modération) · `private` (l'auteur **seul**, modération comprise : un carnet de prière personnel). Toute autre personne reçoit **404**. |
 | **Anonyme** | `is_anonymous` : le nom et la photo sont **masqués pour les autres** (`author: null`, « Anonyme »). Ils restent visibles de l'**auteur** et de la **modération**. Le fil `following` n'affiche jamais de requête anonyme (la lister « parmi les comptes que je suis » trahirait l'anonymat). |
 | **Je prie** | Une fois par personne (`prayer_request_prayers`), bascule ; compteur `prayer_count`. L'auteur est **prévenu une seule fois par personne** (notification `prayer_request_prayed`, « {Nom} prie pour votre requête de prière », push selon la préférence « prières ») : retirer puis remettre « Je prie » ne renvoie rien, et prier pour sa propre requête ne notifie pas. |
+| **Temps de prière** | Ajouter sa prière exige un temps de prière de 5 minutes commencé par `POST prayer/requests/{id}/pray/start` (sinon **422**). Retirer sa prière ou renvoyer `{ prayed: true }` alors qu'on prie déjà n'est jamais bloqué. Voir [Temps de prière](#temps-de-prière) et [temps-de-priere.md](temps-de-priere.md). |
 | **Encouragements** | Messages de 2 à 1 000 caractères + référence biblique facultative. Possibles si la requête est visible, non retirée, et pas privée (sauf pour l'auteur). L'auteur de la requête est **prévenu** (notification `prayer_encouragement`, push selon la préférence « prières »). Suppression : l'auteur du message, l'auteur de la requête, la modération. |
 | **Exaucée** | L'auteur seul : `status = answered`, `answered_at`, note facultative (`answer_note`). Remise « en attente » possible tant qu'aucun témoignage n'est rattaché. **Témoigner** ouvre Publier ; le témoignage peut ensuite être rattaché par `PUT /prayer/requests/{id}` `{ testimony_id }` (témoignage de l'auteur ; la requête passe exaucée). |
 | **Événement** | `event_id` : événement **publié** et visible (ou géré par l'auteur). |
@@ -45,7 +46,8 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 | GET | `prayer/requests/{id}` | Détail (404 si non visible) |
 | POST | `prayer/requests` | `{ body, visibility?, is_anonymous?, event_id? }` (connecté) |
 | PUT · DELETE | `prayer/requests/{id}` | Modifier (`body`, `visibility`, `is_anonymous`, `event_id`, `testimony_id`) · supprimer |
-| POST | `prayer/requests/{id}/pray` | « Je prie » : bascule, ou `{ prayed: true/false }` ; renvoie la requête |
+| POST | `prayer/requests/{id}/pray/start` | Commence (ou recommence) le temps de prière : `{ startedAt, requiredSeconds, confirmableAt }` |
+| POST | `prayer/requests/{id}/pray` | « Je prie » : bascule, ou `{ prayed: true/false }` ; renvoie la requête. Ajout : temps de prière écoulé exigé (422 sinon) |
 | POST · DELETE | `prayer/requests/{id}/answered` | Exaucée `{ note? }` · de nouveau en attente |
 | GET · POST | `prayer/requests/{id}/messages` | Encouragements (du plus ancien au plus récent) · `{ message, bible_reference? }` |
 | DELETE | `prayer/requests/{id}/messages/{messageId}` | Supprimer un encouragement |
@@ -78,7 +80,8 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 | GET | `/priere/requetes` `?onglet=miennes&statut=exaucees` | Toutes / mes requêtes, filtre « Exaucées » ; verset Jacques 5:16 |
 | GET · POST | `/priere/requetes/nouvelle` `?evenement=` · `/priere/requetes` | Confier une requête (visibilité, anonyme ; rattachée à l'événement si `?evenement=`) |
 | GET · DELETE | `/priere/requetes/{id}` | Détail (« Je prie », encouragements, exaucement, signalement) · supprimer |
-| POST | `/priere/requetes/{id}/je-prie` | Bascule « Je prie » |
+| POST | `/priere/requetes/{id}/je-prie/commencer` | Temps de prière (JSON, nom `prayer.requests.pray.start`) |
+| POST | `/priere/requetes/{id}/je-prie` | Bascule « Je prie » (ajout : après l'écran « Temps de prière ») |
 | POST · DELETE | `/priere/requetes/{id}/exaucee` | Exaucée `{ note? }` · remettre en attente |
 | POST · DELETE | `/priere/requetes/{id}/messages` · `/messages/{message}` | Encourager · supprimer un message |
 | POST | `/priere/requetes/{id}/signaler` | Signaler |
@@ -86,6 +89,16 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 | POST | `/priere/moderation/{id}/retirer` · `/retablir` | Retirer (motif) · rétablir / garder |
 
 **Partiel réutilisable** : `@include('prayer.partials.feed-card', ['request' => $prayerRequest])` (carte avec « Je prie » et encouragements, pour les fils). Charger `user`, `event` et `withPrayedBy($viewer)`. Page d'un événement : `prayer.partials.event-section` (sessions à venir + 3 dernières requêtes, « Confier une requête »).
+
+## Temps de prière
+
+« Je prie » ouvre un écran plein « Temps de prière » (décompte de 5 min, verset Jacques 5:16, case « J'ai prié pour cette requête », « Valider ma prière ») sur le site comme dans l'application. Le serveur compte le temps depuis `…/pray/start` (marge de 10 s) et refuse l'ajout trop tôt :
+
+```json
+{ "success": false, "message": "…", "errors": { "prayer_focus": ["Votre temps de prière n'est pas terminé : encore 3 min 20 s."] }, "remaining_seconds": 200 }
+```
+
+Les anciennes versions de l'application, qui appellent directement `…/pray`, reçoivent 422 jusqu'à leur mise à jour : `PRAYER_FOCUS_SECONDS=0` désactive la règle pendant la transition. Détails : [temps-de-priere.md](temps-de-priere.md).
 
 ## Application
 
@@ -96,7 +109,7 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 
 ## Fichiers
 
-`app/Models/PrayerRequest.php`, `PrayerRequestPrayer.php`, `PrayerRequestMessage.php`, `PrayerRequestReport.php` · `app/Services/PrayerRequests.php` (règles communes) · `app/Http/Controllers/Api/PrayerRequestController.php` · `app/Http/Controllers/Web/PrayerRequestController.php` · `app/Http/Resources/PrayerRequestResource.php` · vues `resources/views/prayer/requests/`, `prayer/partials/feed-card`, `prayer/partials/event-section`, `prayer/moderation` · migration `2026_10_05_400001_create_prayer_tables` · tests `tests/Feature/PrayerTest.php` · application `lib/features/prayer/`, `test/prayer_test.dart`.
+`app/Models/PrayerRequest.php`, `PrayerRequestPrayer.php`, `PrayerRequestMessage.php`, `PrayerRequestReport.php` · `app/Services/PrayerRequests.php` (règles communes) · `app/Http/Controllers/Api/PrayerRequestController.php` · `app/Http/Controllers/Web/PrayerRequestController.php` · `app/Http/Resources/PrayerRequestResource.php` · vues `resources/views/prayer/requests/`, `prayer/partials/feed-card`, `prayer/partials/event-section`, `prayer/moderation` · migration `2026_10_05_400001_create_prayer_tables` · tests `tests/Feature/PrayerTest.php`, `PrayerFocusTest.php` · application `lib/features/prayer/`, `test/prayer_test.dart`.
 
 ## Limites connues
 

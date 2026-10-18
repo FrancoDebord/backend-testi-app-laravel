@@ -32,12 +32,16 @@ class TestimonyCreator
 
         $isBunny = $videoStatus !== null;
 
-        // Vidéo YouTube (docs/fonctionnalites/videos-youtube.md) : administrateurs seulement.
+        // Types autorisés (docs/fonctionnalites/types-de-temoignages.md) : réglage global et exception du profil,
+        // carnet privé compris. Lien YouTube envoyé → type youtube (administrateurs par défaut) ; Bunny → vidéo.
+        app(TestimonyTypePolicy::class)->ensureAllowed(
+            $user,
+            $isBunny ? 'video' : TestimonyTypePolicy::requestedType($request->type, $request->youtube_url),
+        );
+
+        // Vidéo YouTube (docs/fonctionnalites/videos-youtube.md).
         $youtubeId = null;
         if (!$isBunny && filled($request->youtube_url)) {
-            if (!$user->isAdmin()) {
-                throw new ContentActionException(__('testimonies.validation.youtube_admin_only'), 403);
-            }
             $youtubeId = YouTube::parseId($request->youtube_url);
             if (!$youtubeId) {
                 throw new ContentActionException(__('testimonies.validation.youtube_unrecognized'), 422, ['youtube_url' => [__('testimonies.validation.youtube_unrecognized')]]);

@@ -66,6 +66,7 @@ return [
     ],
     'api'                                 => [
         'invalid_credentials'    => 'Incorrect email or password',
+        'invalid_phone_credentials' => 'Incorrect phone number or password',
         'banned'                 => 'Your account has been banned',
         'login_success'          => 'Signed in successfully',
         'registered'             => 'Account created successfully',
@@ -138,5 +139,10 @@ return [
         'submit'      => 'Sign in',
         'or'          => 'or',
         'no_account'  => 'No account yet?',
+        'method'         => 'Sign in with',
+        'method_email'   => 'Email',
+        'method_phone'   => 'Phone',
+        'phone_hint'     => 'The phone number you gave when you signed up.',
+        'email_required' => 'Enter your email address or your phone number.',
     ],
 ];

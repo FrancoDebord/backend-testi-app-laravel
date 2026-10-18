@@ -26,6 +26,8 @@ class PushNotifications
         'reply'                  => 'push_comments',
         'mention'                => 'push_comments',
         'like'                   => 'push_likes',
+        // « J'aime » sur un commentaire : même préférence que les réactions (docs/fonctionnalites/jaime-commentaires.md)
+        'comment_liked'          => 'push_likes',
         'prayer'                 => 'push_prayers',
         'testimony_approved'     => 'push_approval',
         'testimony_rejected'     => 'push_approval',

@@ -150,6 +150,7 @@ Le serveur utilise son propre client FCM HTTP v1 (`FcmClient`, sans `kreait/fire
    ```
    * * * * * cd /chemin/du/projet && php artisan queue:work --queue=push,default --stop-when-empty --max-time=50 --timeout=1900 >> /dev/null 2>&1
    ```
+   **Depuis le 2026-10-18**, le planificateur vide aussi la file `push` chaque minute (`routes/console.php` : `queue:work --queue=push --stop-when-empty --max-time=40`) : le cron HTTP `/api/v1/_cron?token=…` (`schedule:run`), appelé **chaque minute**, suffit pour les push. Sans aucun cron à la minute, les push restaient en file et n'arrivaient pas.
    Le worker vide la file puis s'arrête avant la minute suivante ; délai d'un push : moins d'une minute. La file `push` passe avant `default` (conversions vidéo). Sans cron à la minute : `PUSH_DELIVERY=after_response` (envoi après la réponse HTTP, sans nouvel essai). Avec `QUEUE_CONNECTION=sync`, les push partent pendant la requête (plus lent).
 5. Vérifier : `php artisan push:test adresse@exemple.com` (ou l'identifiant de l'utilisateur) après s'être connecté une fois dans l'application sur le téléphone. La commande affiche le résultat par appareil : `sent`, `invalid_token` (jeton supprimé), `retry`, `failed`.
 
@@ -182,3 +183,10 @@ Migration `2026_10_10_000001_add_last_used_at_to_device_tokens_table` (colonne `
 - `app/Observers/AppNotificationObserver.php` — branchement sur la création des notifications
 - `app/Console/Commands/SendTestPush.php` — commande `push:test {user}` (e-mail ou identifiant ; titre par défaut « Test ✅ », envoi immédiat sans file)
 - `config/services.php` (`fcm`), `.env.example`
+
+
+## Fiabilité (2026-10-18)
+
+- `POST /auth/refresh` ne renouvelle plus que la session de l'appareil appelant : il supprimait toutes les sessions de la personne (ses autres appareils étaient déconnectés) et rattachait tous ses jetons push à une seule session, supprimés à la déconnexion de celle-ci. Test : `PushReliabilityTest::test_refresh_on_one_device_keeps_the_other_devices_signed_in_with_their_push_tokens`.
+- iOS : en-tête `apns-push-type: alert` explicite sur les notifications visibles.
+- Application : au premier plan, la notification s'affiche avant la synchronisation des données (elle attendait la fin de celle-ci).

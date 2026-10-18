@@ -235,6 +235,8 @@
                     ])
                 @else
                 <ul class="card mb-6 divide-y divide-slate-100">
+                    {{-- « J'aime » de la personne lus en une requête (docs/fonctionnalites/jaime-commentaires.md) --}}
+                    @php app(\App\Services\CommentLikes::class)->preload('event_comment', $comments, $authUser); @endphp
                     @foreach($comments as $comment)
                     @php
                         $canDelete = $authUser && ($comment->user_id === $authUser->id || $manager || $authUser->isAdmin());
@@ -254,8 +256,8 @@
                             </p>
                             <p class="mt-1 text-sm break-words whitespace-pre-line text-slate-700">{{ \App\Services\Mentions::html($comment->body) }}</p>
 
-                            @if($canDelete || ($manager && !$comment->testimony))
-                            <div class="mt-2 flex flex-wrap gap-2">
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                @include('components.comment-like', ['type' => 'event_comment', 'comment' => $comment, 'url' => route('events.comments.like', [$event->id, $comment->id]), 'class' => '-ml-3'])
                                 @if($manager && !$comment->testimony)
                                 <button type="button" class="btn-ghost btn-sm" data-modal-open="promote-modal"
                                         data-promote-url="{{ route('events.comments.promote', [$event->id, $comment->id]) }}">
@@ -272,7 +274,6 @@
                                 </form>
                                 @endif
                             </div>
-                            @endif
                         </div>
                     </li>
                     @endforeach

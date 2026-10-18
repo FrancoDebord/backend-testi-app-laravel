@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Route;
 // ── Auth ─────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login',            [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login',           [AuthController::class, 'login']);
+    Route::post('/login',           [AuthController::class, 'login'])->middleware('throttle:login'); // e-mail ou téléphone + mot de passe
     // Bouton « Se connecter avec Google » (docs/fonctionnalites/connexion-google.md)
     Route::post('/login/google',    [AuthController::class, 'google'])->name('login.google')->middleware('throttle:20,1');
     Route::get('/register',         [AuthController::class, 'showRegister'])->name('register');
@@ -144,6 +144,18 @@ Route::whereUuid(['id', 'comment'])->group(function () {
         Route::put('/comments/{comment}',     [CommentController::class, 'update'])->middleware('throttle:20,1')->name('comments.update');
         Route::delete('/comments/{comment}',  [CommentController::class, 'destroy'])->name('comments.destroy');
     });
+});
+
+// ── « J'aime » sur les commentaires ─ docs/fonctionnalites/jaime-commentaires.md ──
+// Mêmes actions et réponses JSON que l'API (Api\CommentLikeController), session + CSRF.
+Route::middleware(['auth', 'throttle:60,1'])->group(function () {
+    $likes = \App\Http\Controllers\Api\CommentLikeController::class;
+    Route::post  ('/comments/{id}/like', [$likes, 'likeTestimonyComment'])->whereUuid('id')->name('comments.like');
+    Route::delete('/comments/{id}/like', [$likes, 'unlikeTestimonyComment'])->whereUuid('id')->name('comments.unlike');
+    Route::post  ('/evenements/{id}/commentaires/{commentId}/like', [$likes, 'likeEventComment'])->whereUuid(['id', 'commentId'])->name('events.comments.like');
+    Route::delete('/evenements/{id}/commentaires/{commentId}/like', [$likes, 'unlikeEventComment'])->whereUuid(['id', 'commentId'])->name('events.comments.unlike');
+    Route::post  ('/verset-du-jour/{id}/commentaires/{commentId}/like', [$likes, 'likeVerseComment'])->whereNumber('id')->whereUuid('commentId')->name('daily-verse.comments.like');
+    Route::delete('/verset-du-jour/{id}/commentaires/{commentId}/like', [$likes, 'unlikeVerseComment'])->whereNumber('id')->whereUuid('commentId')->name('daily-verse.comments.unlike');
 });
 
 // ── Témoignages en direct ─ docs/fonctionnalites/lives.md ─────────────────
@@ -260,6 +272,7 @@ Route::whereUuid(['id', 'message'])->group(function () {
     Route::middleware('auth')->group(function () {
         Route::delete('/priere/requetes/{id}',                     [\App\Http\Controllers\Web\PrayerRequestController::class, 'destroy'])->name('prayer.requests.destroy');
         Route::post('/priere/requetes/{id}/je-prie',               [\App\Http\Controllers\Web\PrayerRequestController::class, 'pray'])->middleware('throttle:60,1')->name('prayer.requests.pray');
+        Route::post('/priere/requetes/{id}/je-prie/commencer',     [\App\Http\Controllers\Web\PrayerRequestController::class, 'startPrayer'])->middleware('throttle:30,1')->name('prayer.requests.pray.start');
         Route::post('/priere/requetes/{id}/exaucee',               [\App\Http\Controllers\Web\PrayerRequestController::class, 'answered'])->name('prayer.requests.answered');
         Route::delete('/priere/requetes/{id}/exaucee',             [\App\Http\Controllers\Web\PrayerRequestController::class, 'reopen'])->name('prayer.requests.reopen');
         Route::post('/priere/requetes/{id}/messages',              [\App\Http\Controllers\Web\PrayerRequestController::class, 'storeMessage'])->middleware('throttle:20,1')->name('prayer.requests.messages.store');
@@ -298,6 +311,7 @@ Route::middleware('auth')->group(function () {
     // Supprimer : l'auteur ou un administrateur (jamais un modérateur).
     Route::delete('/testimonies/{id}',          [TestimonyController::class, 'destroy'])->name('testimonies.destroy');
     Route::post('/testimonies/{id}/reactions', [TestimonyController::class, 'storeReaction'])->name('testimonies.reactions.store');
+    Route::post('/testimonies/{id}/priere/commencer', [TestimonyController::class, 'startPrayer'])->middleware('throttle:30,1')->name('testimonies.prayer.start');
     Route::put('/testimonies/{id}/save',       [TestimonyController::class, 'saveTestimony'])->name('testimonies.save');
     Route::post('/testimonies/{id}/comments',  [TestimonyController::class, 'storeComment'])->name('testimonies.comments.store');
     // Partage interne « X a partagé » ─ docs/fonctionnalites/partage-interne.md
@@ -381,6 +395,8 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin
     Route::get('/users',                     [AdminController::class, 'users'])->name('users.index');
     Route::get('/users/{id}',                [AdminController::class, 'showUser'])->name('users.show');
     Route::put('/users/{id}',                [AdminController::class, 'updateUser'])->name('users.update');
+    // Types de témoignages autorisés pour ce profil ─ docs/fonctionnalites/types-de-temoignages.md
+    Route::put('/users/{id}/publication',    [AdminController::class, 'updatePublishing'])->whereUuid('id')->name('users.publishing.update');
     // Comptes organisation ─ docs/fonctionnalites/comptes-organisation.md
     Route::post('/users/{id}/verify',        [AdminController::class, 'verifyOrganization'])->name('users.verify');
     Route::post('/users/{id}/reject-verification', [AdminController::class, 'rejectOrganization'])->name('users.reject-verification');

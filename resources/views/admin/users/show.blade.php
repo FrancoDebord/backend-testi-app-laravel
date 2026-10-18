@@ -187,6 +187,43 @@
             @endif
         </section>
 
+        {{-- Types de témoignages autorisés pour ce profil ─ docs/fonctionnalites/types-de-temoignages.md --}}
+        @isset($publishing)
+        <section class="card p-5 sm:p-6" aria-labelledby="publishing-title">
+            <h2 id="publishing-title" class="card-title">{{ __('publishing.admin.profile_title') }}</h2>
+            <p class="mt-1 text-sm text-slate-600">{{ __('publishing.admin.profile_help') }}</p>
+            <form method="POST" action="{{ route('admin.users.publishing.update', $user->id) }}" class="mt-4" data-loading-label="Enregistrement…">
+                @csrf @method('PUT')
+                <div class="divide-y divide-slate-100">
+                    @foreach(\App\Services\TestimonyTypePolicy::TYPES as $ptype)
+                    {{-- Pas de bloc @ php…@ endphp ici : la page utilise déjà la forme courte @ php(…). --}}
+                    @php($override = $publishing['overrides'][$ptype])
+                    @php($choice = $override === null ? 'default' : ($override ? 'allow' : 'deny'))
+                    @php($isAllowed = in_array($ptype, $publishing['allowed'], true))
+                    <fieldset class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <legend class="sr-only">{{ __('publishing.admin.types.' . $ptype) }}</legend>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-slate-900" aria-hidden="true">{{ __('publishing.admin.types.' . $ptype) }}</p>
+                            <p class="text-xs text-slate-500">{{ __('publishing.admin.effective', ['state' => $isAllowed ? __('publishing.admin.state_allowed') : __('publishing.admin.state_forbidden')]) }}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-3 text-sm">
+                            @foreach(['default' => __('publishing.admin.default'), 'allow' => __('publishing.admin.allowed'), 'deny' => __('publishing.admin.forbidden')] as $value => $label)
+                            <label class="inline-flex items-center gap-1.5">
+                                <input type="radio" name="types[{{ $ptype }}]" value="{{ $value }}" @checked($choice === $value)>
+                                {{ $label }}
+                            </label>
+                            @endforeach
+                        </div>
+                    </fieldset>
+                    @endforeach
+                </div>
+                <div class="mt-4 flex justify-end border-t border-slate-100 pt-4">
+                    <button type="submit" class="btn-primary">{{ __('publishing.admin.save') }}</button>
+                </div>
+            </form>
+        </section>
+        @endisset
+
         <section class="card p-5 sm:p-6">
             <h2 class="card-title mb-4">Modifier le compte</h2>
             <form id="user-update-form" method="POST" action="{{ route('admin.users.update', $user->id) }}" data-loading-label="Enregistrement…">

@@ -52,6 +52,9 @@ class UserResource extends JsonResource
             'can_publish'      => $this->canPublish(),
             'can_moderate'     => $this->canModerate(),
             'is_admin'         => $this->isAdmin(),
+            // Types de témoignages que la personne peut publier (réponse « owner » : GET /me, /users/me, auth/me,
+            // connexion) — docs/fonctionnalites/types-de-temoignages.md
+            'allowed_testimony_types' => $this->when($this->forOwner, fn () => app(\App\Services\TestimonyTypePolicy::class)->allowed($this->resource)),
             // Comptes organisation (docs/fonctionnalites/comptes-organisation.md)
             'account_type'         => $this->account_type?->value ?? 'individual',
             'organization_name'    => $this->organization_name,

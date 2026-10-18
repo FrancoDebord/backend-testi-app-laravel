@@ -43,6 +43,7 @@
             $notifType = $notif->type->value;
             $notifIcon = match (true) {
                 $notifType === 'live_started'        => 'fa-solid fa-tower-broadcast',
+                $notifType === 'comment_liked'       => 'fa-regular fa-heart',
                 $notifType === 'account_verified'    => 'fa-solid fa-circle-check',
                 $notifType === 'account_approval_revoked' => 'fa-solid fa-circle-minus',
                 str_starts_with($notifType, 'event_') => 'fa-regular fa-calendar',
@@ -62,7 +63,14 @@
             <div class="min-w-0 flex-1">
                 <p class="text-sm break-words {{ $notif->is_read ? 'text-slate-700' : 'font-medium text-slate-900' }}">
                     @if(!$notif->is_read)<span class="mr-1.5 inline-block h-2 w-2 rounded-full bg-amber-500 align-middle" title="Non lue"></span>@endif
-                    @if($notif->actor_name)<span class="font-semibold">{{ $notif->actor_name }}</span> @endif{{ $notif->message }}
+                    {{-- Le message commence le plus souvent par le nom de l'auteur (« Marie a aimé… ») : le nom n'est alors
+                         pas répété devant, seulement mis en gras. --}}
+                    @php
+                        $notifActor   = trim((string) $notif->actor_name);
+                        $notifMessage = (string) $notif->message;
+                        $actorInMessage = $notifActor !== '' && \Illuminate\Support\Str::startsWith($notifMessage, $notifActor);
+                    @endphp
+                    @if($actorInMessage)<span class="font-semibold">{{ $notifActor }}</span>{{ mb_substr($notifMessage, mb_strlen($notifActor)) }}@elseif($notifActor !== '')<span class="font-semibold">{{ $notifActor }}</span> {{ $notifMessage }}@else{{ $notifMessage }}@endif
                 </p>
                 @if($notif->testimony_title)
                 <p class="mt-0.5 truncate text-sm text-slate-500 italic">« {{ $notif->testimony_title }} »</p>

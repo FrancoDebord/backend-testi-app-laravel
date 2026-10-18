@@ -227,6 +227,8 @@
             <p class="rounded-lg bg-slate-50 p-4 text-sm text-slate-600"><a href="{{ $loginUrl }}" class="font-semibold text-primary-700 hover:underline">Connectez-vous</a> pour commenter ce verset.</p>
             @endauth
             <ul class="divide-y divide-slate-100">
+            {{-- « J'aime » de la personne lus en une requête (docs/fonctionnalites/jaime-commentaires.md) --}}
+            @php app(\App\Services\CommentLikes::class)->preload('verse_comment', $comments, $viewer); @endphp
             @forelse($comments as $comment)
                 <li class="flex gap-3 py-3" id="commentaire-{{ $comment->id }}">
                     @include('components.avatar', ['user' => $comment->user, 'size' => 'sm'])
@@ -236,15 +238,15 @@
                             @if($comment->isHidden())<span class="badge-yellow ml-1 text-xs">Retiré</span>@endif
                         </p>
                         <p class="mt-0.5 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ \App\Services\Mentions::html($comment->body) }}</p>
-                        @if($viewer)
                         <div class="mt-1 flex flex-wrap items-center gap-2">
-                            @if($comment->canBeDeletedBy($viewer))
+                            @include('components.comment-like', ['type' => 'verse_comment', 'comment' => $comment, 'url' => route('daily-verse.comments.like', [$verse->id, $comment->id]), 'class' => '-ml-3'])
+                            @if($viewer && $comment->canBeDeletedBy($viewer))
                             <form method="POST" action="{{ route('daily-verse.comments.destroy', [$verse->id, $comment->id]) }}">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-xs text-slate-500 hover:text-error-700"><i class="fa-solid fa-trash" aria-hidden="true"></i> Supprimer</button>
                             </form>
                             @endif
-                            @if($comment->user_id !== $viewer->id)
+                            @if($viewer && $comment->user_id !== $viewer->id)
                             <details class="text-xs">
                                 <summary class="cursor-pointer text-slate-500 hover:text-slate-800"><i class="fa-regular fa-flag" aria-hidden="true"></i> Signaler</summary>
                                 <form method="POST" action="{{ route('daily-verse.comments.report', [$verse->id, $comment->id]) }}" class="mt-2 flex flex-wrap items-center gap-2">
@@ -258,7 +260,6 @@
                             </details>
                             @endif
                         </div>
-                        @endif
                     </div>
                 </li>
             @empty

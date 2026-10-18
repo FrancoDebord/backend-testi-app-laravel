@@ -146,6 +146,26 @@ class PushReliabilityTest extends TestCase
         $this->assertSame(0, DeviceToken::count());
     }
 
+    public function test_refresh_on_one_device_keeps_the_other_devices_signed_in_with_their_push_tokens(): void
+    {
+        $phone = $this->bearer($this->user);
+        $this->postJson('/api/v1/devices/token', ['token' => 'jeton-telephone', 'platform' => 'android'], $phone)->assertOk();
+        $this->app['auth']->forgetGuards();
+        $tablet = $this->bearer($this->user);
+        $this->postJson('/api/v1/devices/token', ['token' => 'jeton-tablette', 'platform' => 'android'], $tablet)->assertOk();
+        $tabletSession = DeviceToken::where('token', 'jeton-tablette')->value('access_token_id');
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => 'x'], $phone)->assertOk();
+        $this->app['auth']->forgetGuards();
+
+        // La tablette garde sa session et son jeton push, rattaché à sa propre session.
+        $this->getJson('/api/v1/auth/me', $tablet)->assertOk();
+        $this->assertSame($tabletSession, DeviceToken::where('token', 'jeton-tablette')->value('access_token_id'));
+        $this->assertNotSame($tabletSession, DeviceToken::where('token', 'jeton-telephone')->value('access_token_id'));
+        $this->assertSame(2, $this->user->tokens()->count());
+    }
+
     public function test_push_test_reports_each_token_removes_invalid_ones_and_logs_failures(): void
     {
         $this->fakeFcm();

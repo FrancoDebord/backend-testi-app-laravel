@@ -31,3 +31,8 @@
         <span id="loading-overlay-label">{{ __('layout.processing') }}</span>
     </div>
 </div>
+
+{{-- Temps de prière avant « Je prie » (docs/fonctionnalites/temps-de-priere.md) --}}
+@auth
+@include('components.prayer-focus-modal')
+@endauth

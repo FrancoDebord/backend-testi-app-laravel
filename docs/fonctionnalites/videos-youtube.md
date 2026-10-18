@@ -2,11 +2,14 @@
 
 ## But
 
-Permettre aux **administrateurs** de publier un témoignage vidéo déjà hébergé sur YouTube, sans envoyer de fichier. Le site et l'application lisent la vidéo avec le lecteur YouTube.
+Permettre aux **administrateurs** (et aux profils auxquels un administrateur l'accorde) de publier un témoignage vidéo déjà hébergé sur YouTube, sans envoyer de fichier. Le site et l'application lisent la vidéo avec le lecteur YouTube.
+
+> Depuis le 2026-10-18, le droit de publier un lien YouTube suit la règle des [types de témoignages autorisés](types-de-temoignages.md) : réglage global `testimony_type_youtube_enabled` (activé par défaut) **et** rôle administrateur, sauf exception du profil (« Autorisé » l'accorde à un non-administrateur, « Interdit » le retire même à un administrateur).
 
 ## Utilisation
 
-- **Site** : *Publier un témoignage* → type **Lien YouTube** (4ᵉ choix, à côté de Texte, Audio, Vidéo ; administrateurs seulement) → champ « Lien de la vidéo YouTube * ».
+- **Site** : *Publier un témoignage* → type **Lien YouTube** (4ᵉ choix, à côté de Texte, Audio, Vidéo ; administrateurs et profils autorisés) → champ « Lien de la vidéo YouTube * ».
+- **Application** : afficher la carte quand `allowed_testimony_types` contient `youtube`.
 - **Application** : carte **Lien YouTube** sur l'écran « Partagez votre témoignage » (administrateurs), ou bascule « Fichier vidéo / Lien YouTube » dans l'étape vidéo.
 - Un compte **modérateur** ne voit pas ce choix : il faut le rôle administrateur.
 - Liens acceptés : `youtube.com/watch?v=…`, `youtu.be/…`, `/shorts/…`, `/live/…`, `/embed/…`, `m.youtube.com`, ou l'identifiant de 11 caractères.
@@ -16,7 +19,7 @@ Permettre aux **administrateurs** de publier un témoignage vidéo déjà héber
 
 | Règle | Détail |
 |---|---|
-| Qui | Administrateurs seulement : site → erreur « Seuls les administrateurs… », API → 403 |
+| Qui | Administrateurs par défaut, ou profils autorisés par un administrateur (`TestimonyTypePolicy`) : sinon site → erreur « Seuls les administrateurs… », API → 403 `{ errors: { type: [...] } }` |
 | Type | Forcé à « vidéo » ; aucun fichier envoyé ni stocké ; pas de versions allégées ni de menu Qualité |
 | Miniature | Image de couverture choisie, sinon la miniature YouTube (`i.ytimg.com/vi/{id}/hqdefault.jpg`) |
 | Lecture sur le site | Lecteur intégré `youtube-nocookie.com` (aucun cookie publicitaire avant la lecture), lien « Ouvrir sur YouTube » |

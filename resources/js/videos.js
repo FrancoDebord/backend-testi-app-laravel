@@ -7,6 +7,7 @@
 */
 
 import { t, tn, dateLocale } from './i18n';
+import { prayerFocus } from './prayer-focus';
 
 const flash = (message, type = 'success') => window.flash?.(message, type);
 
@@ -441,15 +442,48 @@ document.addEventListener('click', async (e) => {
     }
     if (button.disabled) return;
     button.disabled = true;
+    const isPrayButton = button.hasAttribute('data-pray');
+    // Ajouter une prière : temps de prière d'abord (docs/fonctionnalites/temps-de-priere.md). Retirer : immédiat.
+    if (isPrayButton && button.getAttribute('aria-pressed') !== 'true' && group.dataset.prayStart) {
+        const ok = await prayerFocus({
+            startUrl: group.dataset.prayStart,
+            kind: 'testimony',
+            subject: group.dataset.praySubject || '',
+            excerpt: group.dataset.prayExcerpt || '',
+        });
+        if (!ok) {
+            button.disabled = false;
+            return;
+        }
+    }
+    // « Je prie » comme dans l'application : bouton et compteur changent tout de suite, puis l'état du serveur
+    // fait foi ; en cas d'échec, l'état d'avant est rétabli.
+    const isPray = isPrayButton;
+    const prayCount = group.querySelector('[data-count="prayer_count"]');
+    const before = isPray ? { pressed: button.getAttribute('aria-pressed') === 'true', count: prayCount?.textContent } : null;
+    if (isPray) {
+        const praying = !before.pressed;
+        setPressed(button, praying);
+        if (prayCount) {
+            const current = parseInt((before.count || '0').replace(/\D/g, ''), 10) || 0;
+            prayCount.textContent = formatCount(Math.max(0, current + (praying ? 1 : -1)));
+        }
+    }
     try {
         const data = await request(group.dataset.reactions, { method: 'POST', data: { type: button.dataset.reaction } });
         setPressed(button, data.reacted);
         // Une réaction par groupe (j'aime / je prie) : l'ancienne du même groupe est remplacée.
         if (Array.isArray(data.my_reactions)) {
-            group.querySelectorAll('[data-reaction]').forEach((b) => setPressed(b, data.my_reactions.includes(b.dataset.reaction)));
+            group.querySelectorAll('[data-reaction]').forEach((b) => setPressed(b, b.hasAttribute('data-pray')
+                ? Boolean(data.is_prayed)
+                : data.my_reactions.includes(b.dataset.reaction)));
         }
         group.querySelectorAll('[data-count]').forEach((el) => (el.textContent = formatCount(data[el.dataset.count] ?? 0)));
     } catch (error) {
+        if (isPray) {
+            setPressed(button, before.pressed);
+            if (prayCount) prayCount.textContent = before.count;
+        }
         flash(error.message, 'error');
     } finally {
         button.disabled = false;

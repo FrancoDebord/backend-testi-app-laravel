@@ -35,6 +35,12 @@ class TestimonyReactions
             $same = $mine->first(fn (Reaction $r) => $r->type === $type);
             $others = $mine->reject(fn (Reaction $r) => $r->type === $type);
 
+            // Nouvelle prière (aucune réaction du groupe « je prie ») : le temps de prière doit être écoulé.
+            // Passer de pray à amen, ou prier de nouveau, n'est jamais bloqué (docs/fonctionnalites/temps-de-priere.md).
+            if ($type->group() === 'prayer' && $mine->isEmpty()) {
+                app(PrayerFocus::class)->ensureCompleted($user, 'testimony', (string) $testimony->id);
+            }
+
             if ($others->isNotEmpty()) {
                 Reaction::whereKey($others->modelKeys())->delete();
                 $this->decrement($testimony, $type->counterField(), $others->count());
@@ -79,7 +85,40 @@ class TestimonyReactions
         });
     }
 
+    /**
+     * Commence (ou recommence) le temps de prière avant « Je prie » sur un témoignage que la personne
+     * peut consulter. Null si le témoignage ne lui est pas visible (404).
+     *
+     * @return array{startedAt: string, requiredSeconds: int, confirmableAt: string}|null
+     */
+    public function startPrayer(User $user, Testimony $testimony): ?array
+    {
+        if (!$testimony->isVisibleTo($user)) {
+            return null;
+        }
+
+        return app(PrayerFocus::class)->start($user, 'testimony', (string) $testimony->id);
+    }
+
     /** Bascule `$type` : retire la réaction si c'est déjà celle-là, sinon la pose. Retourne true si posée. */
+    /**
+     * « Je prie », comme l'application mobile (InteractionNotifier::togglePray) : un seul bouton. La personne
+     * prie déjà (pray, ou ancienne réaction amen / worship) → sa prière est retirée ; sinon « pray » est posé.
+     * Renvoie vrai si la personne prie après l'appel.
+     */
+    public function togglePrayer(User $user, Testimony $testimony): bool
+    {
+        $prays = Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)
+            ->whereIn('type', ReactionType::valuesOfGroup('prayer'))->exists();
+        if ($prays) {
+            $this->remove($user, $testimony, 'prayer');
+            return false;
+        }
+        $this->set($user, $testimony, ReactionType::Pray);
+
+        return true;
+    }
+
     public function toggle(User $user, Testimony $testimony, ReactionType $type): bool
     {
         $current = Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)

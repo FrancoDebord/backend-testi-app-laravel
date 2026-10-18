@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\CommentLikes;
 use App\Services\Mentions;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,7 +21,9 @@ class CommentResource extends JsonResource
             // Mentions « @ » : texte affichable (@Nom) + comptes mentionnés (docs/fonctionnalites/mentions.md).
             'text'        => Mentions::plain($this->body),
             'mentions'    => Mentions::of($this->body),
-            'likesCount'  => $this->likes_count,
+            // « J'aime » (docs/fonctionnalites/jaime-commentaires.md) ; isLikedByMe faux pour un visiteur.
+            'likesCount'  => (int) $this->likes_count,
+            'isLikedByMe' => app(CommentLikes::class)->isLikedBy(CommentLikes::TESTIMONY, (string) $this->id, $viewer),
             'repliesCount' => $this->replies_count,
             'parentId'    => $this->parent_id,
             // Auteur ou administrateur (CommentPolicy::delete), jamais un modérateur.

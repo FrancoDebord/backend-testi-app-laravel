@@ -17,6 +17,8 @@ class NotificationResource extends JsonResource
             'actorAvatar'    => $this->actor_avatar,
             'testimonyId'    => $this->testimony_id,
             'testimonyTitle' => $this->testimony_title,
+            // Commentaire concerné (comment, reply, mention, comment_liked).
+            'commentId'      => $this->comment_id,
             'message'        => $this->message,
             // Direct annoncé (type live_started) : ouvre l'écran du direct.
             'liveId'         => is_array($this->payload) ? ($this->payload['live_id'] ?? null) : null,

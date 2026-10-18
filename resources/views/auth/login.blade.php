@@ -15,10 +15,36 @@
 
     <form method="POST" action="{{ route('login') }}" class="mt-6 space-y-5" data-loading-label="{{ __('account.login.loading') }}">
         @csrf
-        <div>
+        {{--
+            E-mail ou téléphone de contact (docs/fonctionnalites/telephone.md). Sans JavaScript, les deux blocs restent
+            visibles : le serveur utilise le mode choisi (ou le téléphone si l'e-mail est vide).
+        --}}
+        @php($loginMethod = old('login_method', $errors->has('phone') || $errors->has('phone_country') ? 'phone' : 'email') === 'phone' ? 'phone' : 'email')
+        <fieldset data-login-method>
+            <legend class="form-label">{{ __('account.login.method') }}</legend>
+            <div class="grid grid-cols-2 gap-2">
+                @foreach(['email' => 'fa-regular fa-envelope', 'phone' => 'fa-solid fa-mobile-screen'] as $method => $icon)
+                <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50 has-[:checked]:text-slate-900">
+                    <input type="radio" name="login_method" value="{{ $method }}" @checked($loginMethod === $method)>
+                    <i class="{{ $icon }} text-slate-400" aria-hidden="true"></i>{{ __('account.login.method_' . $method) }}
+                </label>
+                @endforeach
+            </div>
+        </fieldset>
+        <div data-login-section="email">
             <label for="email" class="form-label">{{ __('account.fields.email') }}</label>
-            <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="email"
-                   class="form-input" placeholder="{{ __('account.fields.email_placeholder') }}" @if($errors->has('email')) aria-invalid="true" @endif>
+            <input id="email" type="email" name="email" value="{{ old('email') }}" @if($loginMethod === 'email') autofocus @endif autocomplete="email"
+                   class="form-input" placeholder="{{ __('account.fields.email_placeholder') }}" @if($errors->has('email')) aria-invalid="true" @endif data-login-required>
+        </div>
+        <div data-login-section="phone">
+            @include('components.phone-input', [
+                'phoneCountry' => old('phone_country'),
+                'number'       => old('phone'),
+                'required'     => false,
+                'phoneLabel'   => __('account.login.method_phone'),
+                'phoneHint'    => __('account.login.phone_hint'),
+                'phoneErrors'  => false,
+            ])
         </div>
         <div>
             <div class="mb-1 flex items-center justify-between gap-2">
@@ -40,20 +66,7 @@
         <button type="submit" class="btn-primary w-full">{{ __('account.login.submit') }}<i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
     </form>
 
-    @if($googleClientId)
-    {{-- Connexion avec Google (docs/fonctionnalites/connexion-google.md) : bouton officiel de Google Identity Services. --}}
-    <div id="google-signin" class="mt-6">
-        <div class="flex items-center gap-3 text-sm text-slate-500" aria-hidden="true">
-            <span class="flex-1 border-t border-slate-200"></span>{{ __('account.login.or') }}<span class="flex-1 border-t border-slate-200"></span>
-        </div>
-        <div id="google-signin-button" class="mt-5 flex min-h-10 justify-center"></div>
-        <form id="google-signin-form" method="POST" action="{{ route('login.google') }}" hidden>
-            @csrf
-            <input type="hidden" name="credential">
-            <input type="hidden" name="remember">
-        </form>
-    </div>
-    @endif
+    @include('auth.partials.google-signin', ['googleText' => 'continue_with'])
 
     <p class="mt-8 border-t border-slate-200 pt-5 text-center text-sm text-slate-500">
         {{ __('account.login.no_account') }}
@@ -62,37 +75,26 @@
 </div>
 @endsection
 
-@if($googleClientId)
 @push('scripts')
 <script>
+// Choix « E-mail » / « Téléphone » : seul le bloc choisi est affiché et obligatoire.
 (function () {
-    const block  = document.getElementById('google-signin');
-    const target = document.getElementById('google-signin-button');
-    const form   = document.getElementById('google-signin-form');
-
-    function render() {
-        google.accounts.id.initialize({
-            client_id: @json($googleClientId),
-            callback: function (response) {
-                form.elements.credential.value = response.credential;
-                form.elements.remember.value = document.querySelector('input[name="remember"][type="checkbox"]')?.checked ? '1' : '';
-                form.submit();
-            },
-        });
-        google.accounts.id.renderButton(target, {
-            theme: 'outline', size: 'large', shape: 'rectangular', text: 'continue_with', locale: @json(app()->getLocale()),
-            width: Math.min(400, Math.max(200, target.offsetWidth)),
+    const choice = document.querySelector('[data-login-method]');
+    if (!choice) return;
+    function apply() {
+        const method = choice.querySelector('input[name="login_method"]:checked')?.value || 'email';
+        document.querySelectorAll('[data-login-section]').forEach(function (section) {
+            const active = section.dataset.loginSection === method;
+            section.hidden = !active;
+            section.querySelectorAll('input[name="email"], input[name="phone"]').forEach(function (input) { input.required = active; });
         });
     }
-
-    // Script bloqué (bloqueur de publicité, hors ligne) : la connexion par e-mail reste seule.
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client?hl=' + @json(app()->getLocale());
-    script.async = true;
-    script.onload = render;
-    script.onerror = function () { block.hidden = true; };
-    document.head.appendChild(script);
+    choice.addEventListener('change', function () {
+        apply();
+        const method = choice.querySelector('input[name="login_method"]:checked')?.value;
+        document.getElementById(method === 'phone' ? 'phone' : 'email')?.focus();
+    });
+    apply();
 })();
 </script>
 @endpush
-@endif

@@ -125,6 +125,8 @@ class DailyVerseController extends Controller
     {
         $items = $this->verses->comments($this->find($id), $this->user($request))
             ->paginate(min(max((int) $request->query('limit', 30), 1), 50));
+        // « J'aime » de la personne : une requête pour toute la page (docs/fonctionnalites/jaime-commentaires.md).
+        app(\App\Services\CommentLikes::class)->preload(\App\Services\CommentLikes::VERSE, $items->items(), $this->user($request));
 
         return $this->paginated(DailyVerseCommentResource::collection($items->items()), [
             'currentPage' => $items->currentPage(),

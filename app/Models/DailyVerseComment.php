@@ -24,6 +24,8 @@ class DailyVerseComment extends Model
         return [
             'report_count' => 'integer',
             'hidden_at'    => 'datetime',
+            // « J'aime » (docs/fonctionnalites/jaime-commentaires.md) : tenu par App\Services\CommentLikes.
+            'likes_count'  => 'integer',
         ];
     }
 
@@ -40,6 +42,12 @@ class DailyVerseComment extends Model
     public function isHidden(): bool
     {
         return $this->hidden_at !== null;
+    }
+
+    /** Visible de la personne : retiré → auteur et modération seulement. */
+    public function isVisibleTo(?User $user): bool
+    {
+        return !$this->isHidden() || ($user !== null && ($user->id === $this->user_id || $user->canModerate()));
     }
 
     public function canBeDeletedBy(?User $user): bool

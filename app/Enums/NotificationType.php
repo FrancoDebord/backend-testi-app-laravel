@@ -44,6 +44,9 @@ enum NotificationType: string
     // Administrateurs de compte (docs/fonctionnalites/administrateurs-de-compte.md)
     case AccountManagerAdded   = 'account_manager_added';
     case AccountManagerRemoved = 'account_manager_removed';
+    // « J'aime » sur un commentaire (témoignage, événement, verset du jour) : préférence push_likes
+    // (docs/fonctionnalites/jaime-commentaires.md)
+    case CommentLiked          = 'comment_liked';
 
     public function isSystem(): bool
     {
@@ -65,7 +68,7 @@ enum NotificationType: string
 
     public function isReaction(): bool
     {
-        return in_array($this, [self::Like, self::Prayer, self::Follow, self::Share]);
+        return in_array($this, [self::Like, self::Prayer, self::Follow, self::Share, self::CommentLiked]);
     }
 
     public function isComment(): bool

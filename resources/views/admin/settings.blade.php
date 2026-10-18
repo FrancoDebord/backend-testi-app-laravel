@@ -22,7 +22,8 @@
 
     @foreach($settings as $group => $groupSettings)
     <section class="card">
-        <h2 class="card-title border-b border-slate-100 px-5 py-4">{{ Str::ucfirst($group) }}</h2>
+        {{-- « publishing » : types de témoignages autorisés (docs/fonctionnalites/types-de-temoignages.md) --}}
+        <h2 class="card-title border-b border-slate-100 px-5 py-4">{{ $group === 'publishing' ? __('publishing.admin.section') : Str::ucfirst($group) }}</h2>
         <div class="divide-y divide-slate-100">
             @foreach($groupSettings as $setting)
             <div class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">

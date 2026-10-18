@@ -64,7 +64,10 @@ class TestimonyController extends Controller
         $canConversion = !$conversionTestimony && \App\Services\ConversionTestimonies::canPublish($request->user());
         $kind = $canConversion && $request->query('kind') === 'conversion' ? 'conversion' : 'standard';
 
-        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos', 'conversionTestimony', 'canConversion', 'kind'));
+        // Types que ce compte peut publier (docs/fonctionnalites/types-de-temoignages.md) : les autres sont masqués.
+        $allowedTypes = app(\App\Services\TestimonyTypePolicy::class)->allowed($request->user());
+
+        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos', 'conversionTestimony', 'canConversion', 'kind', 'allowedTypes'));
     }
 
     /** Événement auquel rattacher le témoignage ; refuse si la personne n'en est pas gestionnaire. */
@@ -131,6 +134,24 @@ class TestimonyController extends Controller
             'media_file.mimetypes'   => __('testimonies.validation.media_mimetypes'),
             'consent_given.accepted' => __('testimonies.validation.consent'),
         ]);
+
+        // Types autorisés (docs/fonctionnalites/types-de-temoignages.md) : même règle que l'API, carnet privé compris.
+        $typePolicy = app(\App\Services\TestimonyTypePolicy::class);
+        $requestedType = \App\Services\TestimonyTypePolicy::requestedType($data['type'], $data['youtube_url'] ?? null);
+        try {
+            $typePolicy->ensureAllowed($request->user(), $requestedType);
+        } catch (\App\Services\ContentActionException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'errors' => $e->errors()], 403);
+            }
+            // Formulaire classique : message sous le choix du type (et sous le lien YouTube le cas échéant).
+            $errors = ['type' => $e->errors()['type'][0] ?? $e->getMessage()];
+            if ($requestedType === 'youtube') {
+                $errors['youtube_url'] = $e->getMessage();
+            }
+
+            return back()->withInput()->withErrors($errors);
+        }
 
         $event     = $this->attachableEvent($data['event_id'] ?? null, $request);
         $prophecies = app(\App\Services\Prophecies::class);
@@ -262,14 +283,11 @@ class TestimonyController extends Controller
                          });
     }
 
-    /** Lien YouTube du formulaire : administrateurs seulement, identifiant reconnu. */
+    /** Lien YouTube du formulaire : identifiant reconnu (droit de publier vérifié par TestimonyTypePolicy). */
     private function youtubeIdFrom(Request $request, array $data): ?string
     {
         if (blank($data['youtube_url'] ?? null)) {
             return null;
-        }
-        if (!$request->user()->isAdmin()) {
-            throw ValidationException::withMessages(['youtube_url' => __('testimonies.validation.youtube_admin_only')]);
         }
 
         return YouTube::parseId($data['youtube_url'])
@@ -330,21 +348,45 @@ class TestimonyController extends Controller
         return back()->with('success', __('testimonies.flash.reported'));
     }
 
+    /**
+     * Temps de prière (fetch) avant « Je prie » : même réponse JSON que l'API POST testimonies/{id}/pray/start.
+     * Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(string $id): JsonResponse
+    {
+        $testimony = Testimony::find($id);
+        $data = $testimony ? app(\App\Services\TestimonyReactions::class)->startPrayer(Auth::user(), $testimony) : null;
+        if ($data === null) {
+            return response()->json(['success' => false, 'message' => __('prayer_focus.not_found')], 404);
+        }
+
+        return response()->json(['success' => true, 'data' => $data, 'message' => __('prayer_focus.started')]);
+    }
+
     public function storeReaction(Request $request, string $id): JsonResponse|RedirectResponse
     {
         $request->validate(['type' => ['required', \Illuminate\Validation\Rule::enum(\App\Enums\ReactionType::class)]]);
 
         $testimony = Testimony::findOrFail($id);
 
-        // Une réaction par groupe (j'aime / je prie) : docs/fonctionnalites/reactions.md
-        $reacted = app(\App\Services\TestimonyReactions::class)
-            ->toggle(Auth::user(), $testimony, \App\Enums\ReactionType::from($request->type));
+        // Une réaction par groupe (j'aime / je prie) : docs/fonctionnalites/reactions.md. « Je prie » se comporte
+        // comme dans l'application : un seul bouton qui pose ou retire la prière (pray, amen et worship confondus).
+        $type = \App\Enums\ReactionType::from($request->type);
+        $service = app(\App\Services\TestimonyReactions::class);
+        $reacted = $type->group() === 'prayer'
+            ? $service->togglePrayer(Auth::user(), $testimony)
+            : $service->toggle(Auth::user(), $testimony, $type);
 
         $testimony->refresh();
 
         if ($request->ajax()) {
+            $state = $service->state(Auth::user(), $testimony);
+
             return response()->json([
                 'reacted'       => $reacted,
+                // État comme l'API de l'application : isPrayedByMe, isLikedByMe.
+                'is_prayed'     => $state['isPrayedByMe'],
+                'is_liked'      => $state['isLikedByMe'],
                 // Réactions de la personne après le changement (une par groupe) : boutons à jour.
                 'my_reactions'  => Reaction::where('user_id', Auth::id())->where('testimony_id', $testimony->id)
                     ->pluck('type')->map(fn ($t) => $t->value)->values(),
