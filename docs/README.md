@@ -257,6 +257,16 @@ Le fichier `storage/app/firebase-credentials.json` (chemin proposé par `.env.ex
 
 Aucune variable d'environnement. Après une régénération des couleurs (`php scripts/generate-verse-colors.php`) : recompiler et vider `storage/app/public/verse-images/`.
 
+### Fichiers envoyés (images, audios) : sans lien `public/storage` (2026-10-19)
+
+Symptôme en ligne : toutes les images et photos de profil en **403 Forbidden**, et dans le journal Apache
+`AH00037: Symbolic link not allowed or link target not accessible: …/public/storage`. L'hébergement refuse de
+suivre le lien symbolique créé par `storage:link`.
+
+- Par défaut (`STORAGE_PUBLIC_LINK=false` ou absent), le lien n'est plus utilisé : le déploiement (`POST /api/v1/_deploy`, réponse `storage_link`) le **retire** s'il existe, et Laravel sert `/storage/…` (`PublicStorageController` : types MIME, cache 7 jours, lecture partielle). Les adresses des fichiers ne changent pas.
+- Corriger tout de suite sans redéployer : supprimer `public/storage` par FTP (le lien seulement, **pas** `storage/app/public`), ou `php artisan storage:public-link` en SSH.
+- Serveur qui suit les liens (Apache `Options FollowSymLinks`) : `STORAGE_PUBLIC_LINK=true` dans `.env`, puis `php artisan config:cache` ; le déploiement recrée le lien et Apache sert les fichiers sans PHP.
+
 ### Langues, témoignage de conversion, événements passés, push (2026-10-15)
 
 [langues.md](fonctionnalites/langues.md), [temoignage-de-conversion.md](fonctionnalites/temoignage-de-conversion.md), [evenements.md](fonctionnalites/evenements.md), [notifications-push.md](fonctionnalites/notifications-push.md) :

@@ -11,7 +11,7 @@ Le **serveur** fait respecter la règle (API mobile et site) : une prière ajout
 | Règle | Détail |
 |---|---|
 | **Durée** | `config('prayer.focus_seconds')` = `PRAYER_FOCUS_SECONDS` (300 s par défaut). **0 désactive** entièrement la règle. |
-| **Début** | `…/pray/start` note l'heure de début côté serveur (cache, clé par type + identifiant + personne, durée de vie **6 h**). Un nouvel appel **recommence** le décompte. |
+| **Début** | `…/pray/start` note l'heure de début côté serveur (cache, clé par type + identifiant + personne, durée de vie **6 h**). Un nouvel appel pendant l'**heure** qui suit **garde le premier début** (réponse : même `startedAt`) ; au-delà, il recommence. Avant le 2026-10-19, un appel en double ou tardif remettait le décompte à zéro : « encore 4 min 54 s » alors que l'écran avait fini. Chaque refus « trop tôt » est journalisé (`elapsed`, `required`). |
 | **Marge** | La prière est acceptée **10 s** avant la fin (latence réseau, horloges). Le temps du serveur ne fait que grandir : la pause de l'écran quand l'onglet est caché (site) reste couverte. |
 | **Une prière par début** | Le début est **consommé** quand la prière est enregistrée : retirer puis remettre « Je prie » demande un nouveau temps de prière. |
 | **Quand la règle s'applique** | Seulement quand l'appel **ajoute** une prière : requête de prière « Je prie » alors que la personne ne prie pas encore ; témoignage, événement, session de prière : réaction du groupe « je prie » (`pray`, `amen`, `worship`) alors que la personne n'en a aucune ; verset du jour : réaction `pray` alors que la personne ne l'a pas (`like` et `amen` ne sont **pas** concernés) ; parole prophétique : **chaque** « J'ai prié » (chaque appel ajoute une entrée au journal de prière). |

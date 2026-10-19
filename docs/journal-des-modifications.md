@@ -68,6 +68,24 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-19 — Temps de prière : « encore 4 min 54 s » après la fin du décompte
+
+- **Cause** : le serveur remettait le décompte à zéro à chaque appel `…/pray/start` ; un appel en double ou reçu en retard (double appui, écran recréé, requête lente) juste avant la validation faisait refuser la prière alors que l'écran du site ou de l'application avait fini ses 5 minutes.
+- **Correction** : un nouvel appel garde le premier début s'il date de moins d'une heure (`PrayerFocus::RESTART_AFTER_SECONDS`) ; le décompte de 5 min reste imposé par l'écran, et chaque prière enregistrée consomme son début. Refus « trop tôt » journalisés. [temps-de-priere.md](fonctionnalites/temps-de-priere.md)
+- **Tests** : `PrayerFocusTest` (début en double ou tardif, début de plus d'une heure).
+- **Déploiement** : code seulement (aucune migration, aucun asset).
+
+---
+
+## 2026-10-19 — Images en 403 en production (lien `public/storage` refusé par Apache)
+
+- **Cause** : Apache refuse le lien symbolique `public/storage` (`AH00037: Symbolic link not allowed or link target not accessible`) ; comme le lien existait, la route de secours de Laravel n'était jamais appelée et chaque image répondait 403.
+- **Correction** : le lien n'est plus utilisé par défaut. Le déploiement le retire (`App\Support\PublicStorageLink::sync()`, appelé par `_deploy`) et Laravel sert `/storage/…` (`PublicStorageController`, cache 7 jours, lecture partielle). Nouvelle commande `php artisan storage:public-link`. Variable `STORAGE_PUBLIC_LINK=true` pour revenir au lien sur un serveur qui l'accepte. [README §4](README.md)
+- **Développeurs** : `config('filesystems.public_link')`, tests ajoutés dans `tests/Feature/PublicStorageTest.php`.
+- **Déploiement** : aucune migration ; après envoi du code, l'appel `_deploy` du pipeline retire le lien. En urgence : supprimer `public/storage` par FTP.
+
+---
+
 ## 2026-10-18 — « Je prie » du site aligné sur l'application
 
 - **Utilisateurs** : page d'un témoignage : un seul bouton « Je prie » (au lieu de Prière / Amen / Adorer Dieu), qui pose ou retire la prière en un appui, avec mise à jour immédiate ; nombre de prières sur les cartes. [reactions.md](fonctionnalites/reactions.md)

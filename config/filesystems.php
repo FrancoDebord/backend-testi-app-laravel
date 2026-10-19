@@ -99,4 +99,12 @@ return [
         public_path('storage') => storage_path('app/public'),
     ],
 
+    /*
+    | Lien public/storage → storage/app/public. Désactivé par défaut : certains hébergements (Apache
+    | « Symbolic link not allowed », AH00037) refusent de suivre le lien et renvoient 403 sur toutes les
+    | images. Sans lien, Laravel sert les fichiers (route storage.public, PublicStorageController : cache
+    | 7 jours, lecture partielle). true : le déploiement recrée le lien (serveur qui suit les liens).
+    */
+    'public_link' => (bool) env('STORAGE_PUBLIC_LINK', false),
+
 ];

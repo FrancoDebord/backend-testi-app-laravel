@@ -172,16 +172,41 @@ class PrayerFocusTest extends TestCase
         $this->actingAs($this->reader)->postJson($this->prayUrl())->assertStatus(422);
     }
 
-    public function test_tolerance_of_ten_seconds_and_restart(): void
+    public function test_tolerance_of_ten_seconds(): void
     {
-        $this->actingAs($this->reader)->postJson("{$this->prayUrl()}/start")->assertOk();
-        $this->wait(250);
-        // Recommencer remet le décompte à zéro.
         $this->actingAs($this->reader)->postJson("{$this->prayUrl()}/start")->assertOk();
         $this->wait(289);
         $this->actingAs($this->reader)->postJson($this->prayUrl())->assertStatus(422);
         $this->wait(1); // 290 s : dans la marge de 10 s
         $this->actingAs($this->reader)->postJson($this->prayUrl())->assertOk()->assertJsonPath('data.hasPrayed', true);
+    }
+
+    /**
+     * Cas signalé : écran fini (5 min) mais « encore 4 min 54 s ». Un second début envoyé juste avant la validation
+     * (double appui, écran recréé, requête lente) ne remet plus le décompte à zéro.
+     */
+    public function test_a_late_or_duplicate_start_keeps_the_first_start(): void
+    {
+        $first = $this->actingAs($this->reader)->postJson("{$this->prayUrl()}/start")->assertOk()->json('data.startedAt');
+        $this->wait(294);
+        $this->actingAs($this->reader)->postJson("{$this->prayUrl()}/start")->assertOk()->assertJsonPath('data.startedAt', $first);
+        $this->wait(6);
+        $this->actingAs($this->reader)->postJson($this->prayUrl())->assertOk()->assertJsonPath('data.hasPrayed', true);
+
+        // Début consommé : la prière suivante recommence un vrai temps de prière.
+        $this->actingAs($this->reader)->postJson($this->prayUrl(), ['prayed' => false])->assertOk();
+        $this->actingAs($this->reader)->postJson("{$this->prayUrl()}/start")->assertOk();
+        $this->actingAs($this->reader)->postJson($this->prayUrl())->assertStatus(422);
+    }
+
+    public function test_a_start_older_than_an_hour_is_restarted(): void
+    {
+        $first = $this->actingAs($this->reader)->postJson("{$this->prayUrl()}/start")->assertOk()->json('data.startedAt');
+        $this->wait(3600);
+        $second = $this->actingAs($this->reader)->postJson("{$this->prayUrl()}/start")->assertOk()->json('data.startedAt');
+        $this->assertNotSame($first, $second);
+        $this->wait(100);
+        $this->actingAs($this->reader)->postJson($this->prayUrl())->assertStatus(422);
     }
 
     public function test_removing_or_repeating_a_prayer_is_never_blocked(): void

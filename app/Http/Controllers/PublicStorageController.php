@@ -7,12 +7,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\Mime\MimeTypes;
 
 /**
- * Sert les fichiers du disque « public » (audios, vidéos, images envoyés)
- * quand le lien public/storage → storage/app/public est absent ou cassé
- * sur l'hébergement (cas des hébergements mutualisés où `storage:link`
- * n'a pas été lancé, ou lien symbolique copié depuis un autre poste).
+ * Sert les fichiers du disque « public » (audios, vidéos, images envoyés) à l'adresse /storage/… .
+ * Mode normal depuis le 2026-10-19 : le lien public/storage n'est plus créé (STORAGE_PUBLIC_LINK=false),
+ * car Apache le refusait sur l'hébergement (AH00037 « Symbolic link not allowed » → 403 sur les images).
+ * Voir App\Support\PublicStorageLink.
  *
- * Si le lien existe, le serveur web sert les fichiers directement et cette
+ * Si le lien existe (STORAGE_PUBLIC_LINK=true), le serveur web sert les fichiers directement et cette
  * route n'est jamais appelée.
  *
  * Les requêtes partielles (en-tête Range) sont gérées par BinaryFileResponse :

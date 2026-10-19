@@ -461,14 +461,9 @@ Route::prefix('v1')->group(function () {
         $out['bunny_sync'] = 'impossible : ' . $e->getMessage();
     }
 
-    if (! file_exists(public_path('storage'))) {
-        try {
-            Artisan::call('storage:link');
-            $out['storage_link'] = 'créé';
-        } catch (\Throwable $e) {
-            $out['storage_link'] = 'impossible : ' . $e->getMessage();
-        }
-    }
+    // Fichiers envoyés (images, audios) : servis par Laravel sans lien public/storage, sauf STORAGE_PUBLIC_LINK=true.
+    // Un lien refusé par Apache (AH00037) donnait 403 sur toutes les images : il est retiré.
+    $out['storage_link'] = \App\Support\PublicStorageLink::sync();
 
     return response()->json(['ok' => true] + $out);
 })->middleware('throttle:5,1');

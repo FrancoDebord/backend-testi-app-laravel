@@ -58,7 +58,7 @@ Application (`testi_app`) :
 ## Déploiement
 
 - `php artisan migrate --force` (migration `2026_09_29_400001_add_cover_url_to_users_table`).
-- Le lien `public/storage` doit exister (`php artisan storage:link`), comme pour les photos de profil.
+- Les images sont servies à l'adresse `/storage/…` par Laravel (route `storage.public`), sans lien `public/storage` depuis le 2026-10-19 (voir [README §4](../README.md), « Fichiers envoyés »).
 - Recompiler les assets et copier `public/build/` (aperçu du formulaire), puis `php artisan view:cache`.
 - Vérifier que `upload_max_filesize` et `post_max_size` de PHP acceptent 8 Mo.
 - Application : nouvelle version à publier.
