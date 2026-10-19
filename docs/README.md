@@ -7,6 +7,7 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Interface web (charte ARISE & SHINE Krea)](interface.md) | Composants CSS, layouts, comportements JavaScript, règles responsive, ajout d'une page |
 | [Mise en forme des témoignages](fonctionnalites/mise-en-forme-temoignages.md) | Gras, italique, émojis : éditeur, format stocké, affichage |
 | [Lien de partage](fonctionnalites/lien-de-partage.md) | Colonne `share_url`, API `shareUrl`, commande de recalcul |
+| [Aperçu de partage](fonctionnalites/apercu-de-partage.md) | Balises Open Graph / Twitter (`<x-share-meta>`) des témoignages, événements, requêtes de prière et directs ; images 1200 × 630 générées (GD) et servies par `/partage/…` |
 | [Page Vidéos](fonctionnalites/videos.md) | Page publique `/videos` (vidéos, shorts, directs, audios, textes), lecture, vues uniques, J'aime, commentaires et réponses |
 | [Témoignages en direct](fonctionnalites/lives.md) | Diffusion vidéo depuis un téléphone (modérateurs/admins), commentaires et réactions en temps réel, modération, API mobile ; directs passés : revoir le chat (avec le moment de chaque message) et témoigner sur un direct terminé |
 | [Connexion avec Google](fonctionnalites/connexion-google.md) | Bouton « Continuer avec Google » sur `/login` (site) ; `POST /auth/google { id_token }` (et `/auth/social`) : vérification du jeton (audience, émetteur, e-mail vérifié), création ou liaison du compte par `google_id` / e-mail, même réponse que la connexion e-mail |

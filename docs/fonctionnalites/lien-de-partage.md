@@ -16,6 +16,10 @@ Exemple : `https://testiapp.exemple.org/testimonies/b9ed2765-dd57-4c17-abb5-7bbc
 
 Le lien ouvre la page publique du témoignage (route web `testimonies.show`). Un témoignage privé renvoie 403 aux personnes autres que son auteur.
 
+## Aperçu sur les réseaux sociaux
+
+Collé dans WhatsApp, Facebook, Telegram, X ou LinkedIn, le lien affiche un aperçu « façon YouTube » : grande image 1200 × 630 (miniature vidéo avec bouton lecture, couverture, ou carte TestiApp avec le titre), titre « Titre - Auteur », début du texte et domaine. Balises Open Graph / Twitter de la page, image servie par `GET /partage/temoignages/{id}.jpg?v=…` (jamais par `/storage`). Témoignage non public : balises génériques du site, image 404. Détails, tests avec le débogueur Facebook et cache de WhatsApp : [apercu-de-partage.md](apercu-de-partage.md).
+
 ## Fonctionnement technique
 
 ### Base de données
@@ -65,6 +69,7 @@ Recalcule `share_url` de tous les témoignages à partir de la valeur actuelle d
 | `app/Http/Resources/TestimonyResource.php` | Champ `shareUrl` |
 | `app/Http/Controllers/Api/TestimonyController.php` | `recordShare()` |
 | `tests/Feature/TestimonyShareUrlTest.php` | Tests |
+| `app/Support/ShareMeta.php`, `app/Services/TestimonyShareImage.php` | Aperçu de partage ([apercu-de-partage.md](apercu-de-partage.md)) |
 
 ## Déploiement
 

@@ -60,6 +60,25 @@ Route::get('/storage/{path}', [PublicStorageController::class, 'show'])
     ])
     ->name('storage.public');
 
+// ── Images d'aperçu de partage (og:image) ─ docs/fonctionnalites/apercu-de-partage.md ──
+// JPEG 1200 × 630 générés au premier appel (storage/app/share-images), publics, sans session ni
+// cookies : lus par les robots de WhatsApp, Facebook, Telegram, X et LinkedIn. Jamais sous /storage
+// (refusé par Apache en production). Contenu non visible sans compte : 404.
+Route::withoutMiddleware([
+    \Illuminate\Cookie\Middleware\EncryptCookies::class,
+    \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    \Illuminate\Session\Middleware\StartSession::class,
+    \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+    \App\Http\Middleware\ActAsAccount::class,
+])->whereUuid('id')->group(function () {
+    Route::get('/partage/temoignages/{id}.jpg', [\App\Http\Controllers\Web\ShareImageController::class, 'testimony'])->name('share-images.testimony');
+    Route::get('/partage/evenements/{id}.jpg',  [\App\Http\Controllers\Web\ShareImageController::class, 'event'])->name('share-images.event');
+    Route::get('/partage/requetes/{id}.jpg',    [\App\Http\Controllers\Web\ShareImageController::class, 'prayerRequest'])->name('share-images.prayer-request');
+    Route::get('/partage/directs/{id}.jpg',     [\App\Http\Controllers\Web\ShareImageController::class, 'live'])->name('share-images.live');
+    Route::get('/partage/site.jpg',             [\App\Http\Controllers\Web\ShareImageController::class, 'site'])->name('share-images.site');
+});
+
 // ── App Links / Universal Links ───────────────────────────────────────────
 // Vérification par Android et iOS : les liens share_url s'ouvrent dans l'app.
 Route::get('/.well-known/assetlinks.json', function () {
@@ -92,6 +111,7 @@ Route::get('/',                     [HomeController::class, 'index'])->name('hom
 Route::get('/explore',              [ExploreController::class, 'index'])->name('explore');
 Route::get('/bible',                [BibleController::class, 'reader'])->name('bible.reader');
 // Verset du jour en plein écran : versions, prière, commentaires, témoignages (docs/fonctionnalites/verset-du-jour.md)
+Route::get('/verset-du-jour/historique', [\App\Http\Controllers\Web\DailyVerseController::class, 'history'])->name('daily-verse.history');
 Route::get('/verset-du-jour/{date?}', [\App\Http\Controllers\Web\DailyVerseController::class, 'show'])
     ->where('date', '\d{4}-\d{2}-\d{2}')->name('daily-verse.show');
 // Image de partage (aperçu des réseaux sociaux) et design choisi : docs/fonctionnalites/designs-du-verset.md

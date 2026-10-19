@@ -33,10 +33,29 @@ class DailyVerseController extends Controller
     public function __construct(private readonly DailyVerses $verses) {}
 
     /** GET /verset-du-jour/{date?}  ?version=KJV  ?comparer=1  ?onglet=prieres|commentaires|temoignages */
+    /** Historique des versets du jour (/verset-du-jour/historique). */
+    public function history(Request $request): View
+    {
+        $h = $this->verses->history((int) $request->query('page', 1), 15);
+        $viewer = Auth::user();
+
+        return view('daily-verse.history', [
+            'items' => array_map(fn (array $item) => [
+                'date'        => $item['date'],
+                'verse'       => $item['verse'],
+                'comments'    => $this->verses->commentCount($item['verse']),
+                'testimonies' => $this->verses->testimonyCount($item['verse']),
+                'mine'        => $viewer ? $item['verse']->userReactions($viewer->id) : [],
+            ], $h['items']),
+            'page'     => $h['page'],
+            'lastPage' => $h['lastPage'],
+        ]);
+    }
+
     public function show(Request $request, ?string $date = null): View
     {
         $verse = $this->verses->forDate($date);
-        abort_if(!$verse, 404, 'Aucun verset pour cette date.');
+        abort_if(!$verse, 404, __('daily_verse_history.not_found'));
 
         $data = $this->verses->versions($verse);
         $versions = collect($data['versions']);

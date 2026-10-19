@@ -116,3 +116,12 @@ Commentaire :
 - La réaction « J'aime / Je prie » de l'accueil de l'application passe par `POST/DELETE /daily-verse/react` (verset du jour). Depuis le 2026-10-06, ces routes sont **idempotentes** : réagir deux fois ne renvoie plus 409. `POST /daily-verse/{id}/react { type, active }` reste préférable.
 - `POST /daily-verse/share` et `POST /testimonies/{id}/share` (compteurs de partage) acceptent les **invités** (30 par minute) ; un témoignage non publié ou privé renvoie 404.
 - Pas de file de modération dédiée aux commentaires signalés : retrait automatique au 3e signalement, suppression par la modération depuis la page.
+
+
+## Historique des versets (2026-10-19)
+
+- API `GET /api/v1/daily-verse/history?page=&limit=` (public, `limit` ≤ 50, 15 par défaut) : un élément par jour, du plus récent (aujourd'hui) au plus ancien, depuis le premier verset enregistré (366 jours au plus) — `{ date, id, reference, verseText, theme, themeLabel, counts: { likes, prayers, comments, testimonies, prayerRequests }, myReactions, webUrl }`, `meta` (`currentPage`, `lastPage`, `total`, `perPage`). Le verset d'un jour est celui affiché ce jour-là (programmé, sinon choisi d'après la date). Nombre de témoignages liés mis en cache 10 minutes (`DailyVerses::testimonyCount`).
+- Site : page « Versets précédents » `/verset-du-jour/historique` (`daily-verse.history`), alignée sur l'écran de l'application (`VerseHistoryScreen`) : un jour par carte, du plus récent au plus ancien ; **aujourd'hui** mis en avant (liseré jaune, « Aujourd'hui », ouvre `/verset-du-jour`) ; date · thème, verset, référence ; « J'aime », prières, commentaires et témoignages (pluriels accordés), réactions de la personne connectée en couleur ; un clic ouvre le verset du jour concerné (`/verset-du-jour/{date}`). Textes : `lang/*/daily_verse_history.php` (mêmes libellés que l'application).
+- **Menu** (2026-10-19, comme le menu de l'application) : groupe « Découvrir » → « Verset du jour » (`daily-verse.show`) et « Versets précédents » (`daily-verse.history`). Le premier écran du verset du jour a un bouton « Versets précédents » à côté de « Fermer ».
+- Application : menu latéral « Verset du jour » et « Versets précédents » ; un jour passé s'ouvre dans la page du verset (mêmes onglets, « J'aime » et « Je prie » sur ce verset via `POST /daily-verse/{id}/react`).
+- Tests : `tests/Feature/DailyVerseHistoryTest.php`.

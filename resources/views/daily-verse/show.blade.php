@@ -63,6 +63,8 @@
                 <i class="fa-solid fa-sun" aria-hidden="true"></i>Verset du jour
                 <span class="font-normal" style="color: var(--verse-ink)">· {{ $dayLabel }} · {{ $versionName }}</span>
             </h1>
+            {{-- Versets précédents (historique), comme le bouton de l'écran de l'application --}}
+            <a href="{{ route('daily-verse.history') }}" class="verse-action ml-auto shrink-0" aria-label="{{ __('daily_verse_history.open') }}" title="{{ __('daily_verse_history.open') }}"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">{{ __('daily_verse_history.open') }}</span></a>
             <a href="{{ route('home') }}" class="verse-action shrink-0" aria-label="Fermer et revenir à l'accueil"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">Fermer</span></a>
         </div>
 

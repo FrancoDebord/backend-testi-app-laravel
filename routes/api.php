@@ -51,6 +51,7 @@ Route::prefix('v1')->group(function () {
     Route::get('daily-verse', [DailyVerseController::class, 'today']); // ?date=AAAA-MM-JJ&translation=
     // Versions, commentaires, requêtes de prière, témoignages liés — docs/fonctionnalites/verset-du-jour.md
     Route::get('daily-verse/versions', [DailyVerseController::class, 'versions']); // ?date=&translation=
+    Route::get('daily-verse/history', [DailyVerseController::class, 'history']); // ?page=&limit= — historique des versets du jour
     Route::whereNumber('id')->group(function () {
         Route::get('daily-verse/{id}',                 [DailyVerseController::class, 'show']);
         Route::get('daily-verse/{id}/versions',        [DailyVerseController::class, 'versions']);

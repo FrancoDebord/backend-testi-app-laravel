@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Support\BibleReference;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -226,6 +227,52 @@ class DailyVerses
                 $comment->update(['hidden_at' => now()]);
             }
         });
+    }
+
+    // ─── Historique ──────────────────────────────────────────────────────────
+
+    /** Jours remontés au plus dans l'historique. */
+    public const HISTORY_MAX_DAYS = 366;
+
+    /**
+     * Historique des versets du jour (docs/fonctionnalites/verset-du-jour.md) : un élément par
+     * jour, du plus récent (aujourd'hui) au plus ancien, depuis le premier verset enregistré.
+     * Chaque jour a le verset affiché ce jour-là (programmé, sinon choisi d'après la date).
+     *
+     * @return array{items: list<array{date: string, verse: DailyVerse}>, page: int, lastPage: int, total: int, perPage: int}
+     */
+    public function history(int $page = 1, int $perPage = 15): array
+    {
+        $perPage = max(1, min($perPage, 50));
+        $today   = \Carbon\CarbonImmutable::parse(VerseDesignOfTheDay::todayDate());
+        $first   = DailyVerse::query()->whereNotNull('scheduled_date')->min('scheduled_date')
+            ?? DailyVerse::query()->min('created_at');
+        $start   = $first ? \Carbon\CarbonImmutable::parse($first)->startOfDay() : $today;
+        $oldest  = $today->subDays(self::HISTORY_MAX_DAYS - 1);
+        if ($start->lessThan($oldest)) {
+            $start = $oldest;
+        }
+        $total    = $start->greaterThan($today) ? 1 : (int) $start->diffInDays($today) + 1;
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page     = max(1, min($page, $lastPage));
+
+        $items = [];
+        for ($i = ($page - 1) * $perPage; $i < min($total, $page * $perPage); $i++) {
+            $date  = $today->subDays($i)->toDateString();
+            $verse = DailyVerse::forDate($date);
+            if ($verse) {
+                $items[] = ['date' => $date, 'verse' => $verse];
+            }
+        }
+
+        return ['items' => $items, 'page' => $page, 'lastPage' => $lastPage, 'total' => $total, 'perPage' => $perPage];
+    }
+
+    /** Nombre de témoignages publiés qui citent ce passage (mis en cache 10 minutes). */
+    public function testimonyCount(DailyVerse $verse): int
+    {
+        return (int) Cache::remember("daily_verse_testimonies:{$verse->id}", 600,
+            fn () => $this->linkedTestimonies($verse, 100)->count());
     }
 
     public function commentCount(DailyVerse $verse): int

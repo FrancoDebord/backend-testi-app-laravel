@@ -14,6 +14,11 @@
 @endphp
 @section('title', $header)
 
+{{-- Aperçu de partage (WhatsApp, Facebook…) : docs/fonctionnalites/apercu-de-partage.md --}}
+@push('meta')
+    <x-share-meta :meta="\App\Support\ShareMeta::prayer($prayer)" />
+@endpush
+
 @section('headerActions')
     @if($prayer->canBeDeletedBy($user))
     <button type="button" class="btn-ghost text-error-700"

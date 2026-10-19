@@ -11,6 +11,8 @@ return [
         'lives'             => 'Directs',
         'events'            => 'Événements',
         'past_events'       => 'Événements passés',
+        'daily_verse'       => 'Verset du jour',
+        'verse_history'     => 'Versets précédents',
         'conversions'       => 'Témoignages de conversion',
         'prayer_requests'   => 'Requêtes de prière',
         'prayer_sessions'   => 'Sessions de prière',

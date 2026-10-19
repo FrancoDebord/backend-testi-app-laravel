@@ -38,7 +38,9 @@ Fichier `config/applinks.php`, alimenté par le `.env` :
 | `ANDROID_APP_SHA256_FINGERPRINTS` | empreinte de la **clé de debug** | Empreintes des certificats autorisés, séparées par des virgules |
 | `IOS_APP_ID` | *(vide)* | `<TEAM_ID>.<bundle id>`, par ex. `ABCDE12345.com.airid.testiApp` |
 
-Chemins concernés : clé `paths` de `config/applinks.php` (actuellement `/testimonies/*` et `/lives/*`, ce dernier ajouté pour ouvrir les directs dans l'app).
+Chemins concernés : clé `paths` de `config/applinks.php` : témoignages (`/testimonies/*`, `/videos/*`), directs (`/lives/*`), événements (`/evenements/*`), requêtes et sessions de prière (`/priere/requetes/*`, `/priere/sessions/*`), verset du jour (`/verset-du-jour`, `/verset-du-jour/*`) et témoignages de conversion (`/temoignages-de-conversion`) — 2026-10-19. L'application Android déclare les mêmes chemins (AndroidManifest.xml) et les traduit vers ses écrans (app_router.dart).
+
+Identifiant Android : `com.askrea.temoignage` depuis le changement de paquet (l'ancien `com.airid.testi_app` empêchait toute ouverture dans l'app). Empreintes par défaut : clé d'envoi (release, alias `upload`) et clé de debug.
 
 **Important pour la production** : la valeur par défaut ne contient que l'empreinte de la clé de **debug**. Pour l'application publiée, ajouter dans `ANDROID_APP_SHA256_FINGERPRINTS` l'empreinte de la clé **release**, ou celle de **Play App Signing** (Google Play Console → Intégrité de l'application → Certificat de clé de signature). Sinon Android refusera d'ouvrir les liens dans l'app publiée.
 

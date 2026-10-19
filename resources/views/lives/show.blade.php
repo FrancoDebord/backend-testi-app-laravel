@@ -1,5 +1,10 @@
 @extends('layouts.app')
 @section('title', $live->title)
+
+{{-- Aperçu de partage (WhatsApp, Facebook…) : docs/fonctionnalites/apercu-de-partage.md --}}
+@push('meta')
+    <x-share-meta :meta="\App\Support\ShareMeta::live($live)" />
+@endpush
 @php
     $header      = $live->title;
     $subheader   = __('lives.show.by', ['name' => $live->host->display_name]);

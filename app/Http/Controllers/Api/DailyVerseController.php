@@ -41,6 +41,46 @@ class DailyVerseController extends Controller
         return $this->success($this->payload($verse, $request));
     }
 
+    /**
+     * GET /daily-verse/history?page=&limit=  (public) : versets des jours passés, du plus récent au
+     * plus ancien, avec leurs compteurs (j'aime, prières, commentaires, témoignages, requêtes) et
+     * les réactions de la personne connectée.
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $h    = $this->verses->history((int) $request->query('page', 1), (int) $request->query('limit', 15));
+        $user = $this->user($request);
+
+        $data = array_map(function (array $item) use ($user) {
+            /** @var DailyVerse $verse */
+            $verse = $item['verse'];
+
+            return [
+                'date'        => $item['date'],
+                'id'          => $verse->id,
+                'reference'   => $verse->reference,
+                'verseText'   => $verse->verse_text,
+                'theme'       => $verse->theme,
+                'themeLabel'  => $verse->themeLabel(),
+                'counts'      => [
+                    'likes'          => $verse->like_count,
+                    'prayers'        => $verse->prayer_count,
+                    'comments'       => $this->verses->commentCount($verse),
+                    'testimonies'    => $this->verses->testimonyCount($verse),
+                    'prayerRequests' => $verse->prayerRequests()->where('visibility', 'public')->whereNull('hidden_at')->count(),
+                ],
+                'myReactions' => $user ? $verse->userReactions($user->id) : [],
+                'webUrl'      => route('daily-verse.show', ['date' => $item['date']]),
+            ];
+        }, $h['items']);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $data,
+            'meta'    => ['currentPage' => $h['page'], 'lastPage' => $h['lastPage'], 'total' => $h['total'], 'perPage' => $h['perPage']],
+        ]);
+    }
+
     // GET /daily-verse/{id}  (public)
     public function show(Request $request, int $id): JsonResponse
     {

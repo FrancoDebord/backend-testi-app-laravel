@@ -10,6 +10,9 @@
                 ['label' => __('layout.nav.home'),  'icon' => 'fa-house',               'url' => route('home'),         'active' => request()->routeIs('home')],
                 ['label' => __('layout.nav.explore'), 'icon' => 'fa-magnifying-glass',    'url' => route('explore'),      'active' => request()->routeIs('explore')],
                 ['label' => __('layout.nav.videos'),   'icon' => 'fa-circle-play',         'url' => route('videos.index'), 'active' => request()->routeIs('videos.*')],
+                // Verset du jour et historique, comme le menu de l'application (docs/fonctionnalites/verset-du-jour.md)
+                ['label' => __('layout.nav.daily_verse'), 'icon' => 'fa-sun', 'url' => route('daily-verse.show'), 'active' => request()->routeIs('daily-verse.show')],
+                ['label' => __('layout.nav.verse_history'), 'icon' => 'fa-clock-rotate-left', 'url' => route('daily-verse.history'), 'active' => request()->routeIs('daily-verse.history')],
                 ['label' => __('layout.nav.bible'),    'icon' => 'fa-book-bible',          'url' => route('bible.reader'), 'active' => request()->routeIs('bible.*')],
                 ['label' => __('layout.nav.lives'),  'icon' => 'fa-tower-broadcast',     'url' => route('lives.index'),  'active' => request()->routeIs('lives.index', 'lives.show')],
                 ['label' => __('layout.nav.events'), 'icon' => 'fa-calendar-days',     'url' => route('events.index'), 'active' => request()->routeIs('events.*') && !request()->routeIs('events.past')],

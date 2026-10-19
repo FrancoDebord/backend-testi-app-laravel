@@ -11,6 +11,8 @@ return [
         'lives'             => 'Live',
         'events'            => 'Events',
         'past_events'       => 'Past events',
+        'daily_verse'       => 'Verse of the day',
+        'verse_history'     => 'Previous verses',
         'conversions'       => 'Conversion stories',
         'prayer_requests'   => 'Prayer requests',
         'prayer_sessions'   => 'Prayer sessions',

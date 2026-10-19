@@ -1,5 +1,10 @@
 @extends('layouts.app')
 @section('title', $event->title)
+
+{{-- Aperçu de partage (WhatsApp, Facebook…) : docs/fonctionnalites/apercu-de-partage.md --}}
+@push('meta')
+    <x-share-meta :meta="\App\Support\ShareMeta::event($event)" />
+@endpush
 @use('App\Http\Controllers\Web\EventController', 'EventPage')
 @use('App\Models\EventParticipation')
 @php

@@ -4,6 +4,16 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-19 — Aperçu de partage façon YouTube (WhatsApp, Facebook, Telegram, X, LinkedIn)
+
+- **Utilisateurs** : un lien de témoignage collé dans WhatsApp, Facebook, Telegram, X ou LinkedIn affiche une **grande image 1200 × 630**, le titre « Titre - Auteur » en gras, le début du texte et le domaine. Vidéo : miniature (Bunny ou YouTube) avec **bouton lecture** et durée ; couverture pour les témoignages texte / audio (pastille « Audio ») ; sinon une carte TestiApp (dégradé bleu, rayons de soleil, titre, auteur, catégorie). Même chose pour les **événements**, les **requêtes de prière publiques** (jamais l'auteur d'une requête anonyme) et les **directs**. Un contenu non public ne révèle rien dans l'aperçu [apercu-de-partage.md](fonctionnalites/apercu-de-partage.md).
+- **Site** : balises `og:*`, `twitter:*` et `<link rel="canonical">` sur `testimonies.show`, `videos.show`, `events.show`, `prayer.requests.show`, `lives.show` (YouTube : `og:video` vers `https://www.youtube.com/embed/{id}`).
+- **Nouvelles routes** (publiques, sans session ni cookies, 404 si non public) : `GET /partage/temoignages/{id}.jpg` (`share-images.testimony`), `/partage/evenements/{id}.jpg`, `/partage/requetes/{id}.jpg`, `/partage/directs/{id}.jpg`, `/partage/site.jpg` — JPEG 1200 × 630, `Cache-Control: public, max-age=2592000`, adresse versionnée `?v=` qui change avec le contenu.
+- **Développeurs** : `App\Services\ShareImage` (dessin GD, téléchargement 5 s max avec `Referer: {APP_URL}/` pour Bunny, lecture directe des fichiers `/storage/…` du site, cache `storage/app/share-images/`, secours retenté après 1 h), `TestimonyShareImage`, `PageShareImages`, `App\Support\ShareMeta`, composant `<x-share-meta>`, `Web\ShareImageController`, `lang/{fr,en}/share.php` ; tests `SharePreviewTest` (20).
+- **Déploiement** : `php artisan optimize:clear` (nouvelles routes), `php artisan view:cache` ; vérifier que `SHARE_URL` est en https et que `storage/app/` est accessible en écriture (dossier `share-images` créé automatiquement). Contrôler avec <https://developers.facebook.com/tools/debug/> (« Scrape Again ») ; WhatsApp garde les aperçus en cache : ajouter `?v=2` au lien pour forcer un nouvel aperçu.
+
+---
+
 ## 2026-10-19 — Paramètres identiques site / application, directs passés, crédit des vidéos YouTube
 
 - **Utilisateurs** :
@@ -17,6 +27,15 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
   - `youtube_credit_author`, `youtube_credit_channel` (150 car.), `youtube_credit_url` (http/https, 300 car.) sur `POST|PUT testimonies`, pris en compte pour un témoignage YouTube seulement ; `TestimonyResource.youtubeCredit` `{ author, channel, url } | null`.
 - **Développeurs** : `App\Services\SettingsSchema` (source unique de la page web et de l'API : `GROUPS`, `HIDDEN`, `groups()`, `validate()`, `update()`), `lang/{fr,en}/settings.php` ; `App\Services\LiveTestimonies` (`rules()`, `messages()`, `resolve()`), `LiveSession::linkedTestimonies()`, `canBeTestifiedBy()`, `offsetSecondsAt()`, `Testimony::live()`, partiel `lives/partials/replay` (page en `mode: replay`, sans LiveKit), `lang/{fr,en}/lives_replay.php` ; `App\Support\YouTubeCredit`, `Testimony::youtubeCredit()`, `lang/{fr,en}/youtube_credit.php` ; tests `GlobalSettingsTest` (8), `PastLivesTest` (10), `YouTubeCreditTest` (4).
 - **Déploiement** : migrations `2026_10_19_300001_add_live_id_to_testimonies_table`, `2026_10_19_300002_add_youtube_credit_to_testimonies_table` et `2026_10_19_300003_add_push_notifications_setting` (réglage `push_notifications_enabled` créé s'il manque) (`php artisan migrate --force`), `php artisan optimize:clear` (nouvelles routes), `php artisan view:cache`, recompilation des assets (`npm run build`) et copie de `public/build/`.
+
+---
+
+## 2026-10-19 — Verset du jour : menu et « Versets précédents » comme l'application
+
+- **Utilisateurs** : menu « Découvrir » : « Verset du jour » et « Versets précédents » ; bouton « Versets précédents » sur le verset du jour ; page d'historique refaite comme l'écran de l'application (aujourd'hui mis en avant, J'aime / prières / commentaires / témoignages, réactions en couleur, pluriels, anglais). [verset-du-jour.md](fonctionnalites/verset-du-jour.md)
+- **Corrections** : couleurs hors charte de l'historique (`text-red-600`, `secondary-*` inexistant) remplacées par les jetons de la charte ; message 404 d'un jour sans verset traduit.
+- **Tests** : `DailyVerseHistoryTest` (page alignée sur l'application, menu et lien).
+- **Déploiement** : code seulement (aucune migration ; aucun script modifié).
 
 ---
 
@@ -65,6 +84,15 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 - **API** : `POST prayer/requests/{id}/pray/start`, `POST testimonies/{id}/pray/start` → `{ startedAt, requiredSeconds, confirmableAt }`. `POST prayer/requests/{id}/pray` et `POST testimonies/{id}/reactions` (groupe prière) répondent **422** `{ errors: { prayer_focus: [...] }, remaining_seconds }` quand ils ajoutent une prière sans temps de prière écoulé. **Les anciennes versions de l'application reçoivent 422 jusqu'à leur mise à jour.**
 - **Développeurs** : `config/prayer.php`, `App\Services\PrayerFocus`, `App\Exceptions\PrayerFocusRequired`, `lang/{fr,en}/prayer_focus.php`, composant `components/prayer-focus-modal`, `resources/js/prayer-focus.js` ; routes web `prayer.requests.pray.start`, `testimonies.prayer.start` ; `tests/TestCase.php` désactive la règle (`prayer.focus_seconds = 0`), `PrayerFocusTest` l'active.
 - **Déploiement** : `PRAYER_FOCUS_SECONDS=300` dans `.env` (**0** pendant la transition, tant que l'application mise à jour n'est pas diffusée), `php artisan optimize:clear`, recompilation des assets et copie de `public/build/`. Aucune migration. Cache persistant requis (`CACHE_STORE=database` par défaut).
+
+---
+
+## 2026-10-19 — Verset du jour : menu et « Versets précédents » comme l'application
+
+- **Utilisateurs** : menu « Découvrir » : « Verset du jour » et « Versets précédents » ; bouton « Versets précédents » sur le verset du jour ; page d'historique refaite comme l'écran de l'application (aujourd'hui mis en avant, J'aime / prières / commentaires / témoignages, réactions en couleur, pluriels, anglais). [verset-du-jour.md](fonctionnalites/verset-du-jour.md)
+- **Corrections** : couleurs hors charte de l'historique (`text-red-600`, `secondary-*` inexistant) remplacées par les jetons de la charte ; message 404 d'un jour sans verset traduit.
+- **Tests** : `DailyVerseHistoryTest` (page alignée sur l'application, menu et lien).
+- **Déploiement** : code seulement (aucune migration ; aucun script modifié).
 
 ---
 
