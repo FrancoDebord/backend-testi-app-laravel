@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\EventStatus;
-use App\Enums\EventType;
 use App\Enums\LiveStatus;
 use App\Enums\TestimonyStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -65,10 +64,28 @@ class Event extends Model
         return __('models.event_report_reasons');
     }
 
+    /** Libellé localisé du type (table event_types ; slug inconnu : slug « humanisé »). */
+    public function typeLabel(): string
+    {
+        return EventType::labelFor($this->type);
+    }
+
+    /** Clé d'icône du type (bullhorn, music…), partagée avec l'appli mobile. */
+    public function typeIcon(): string
+    {
+        return EventType::iconFor($this->type);
+    }
+
+    /** Classe Font Awesome de l'icône du type (site). */
+    public function typeFaIcon(): string
+    {
+        return EventType::faClass($this->typeIcon());
+    }
+
     protected function casts(): array
     {
         return [
-            'type'             => EventType::class,
+            // `type` : nom court d'un type d'événement (table event_types, docs/fonctionnalites/types-evenements.md).
             'status'           => EventStatus::class,
             'starts_at'        => 'datetime',
             'ends_at'          => 'datetime',

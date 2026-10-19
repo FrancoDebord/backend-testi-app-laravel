@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\EventStatus;
-use App\Enums\EventType;
 use App\Enums\NotificationType;
 use App\Enums\TestimonyStatus;
 use App\Services\Mentions;
@@ -33,15 +32,19 @@ class EventService
 
     // ─── Validation ──────────────────────────────────────────────────────────
 
-    /** Règles de création / modification (`$partial` : modification, champs facultatifs). */
-    public static function rules(bool $partial = false): array
+    /**
+     * Règles de création / modification (`$partial` : modification, champs facultatifs).
+     * `$currentType` (modification) : type déjà enregistré, accepté même s'il a été désactivé depuis.
+     */
+    public static function rules(bool $partial = false, ?string $currentType = null): array
     {
         $req = $partial ? 'sometimes' : 'required';
 
         return [
             'title'            => [$req, 'string', 'max:150'],
             'description'      => ['nullable', 'string', 'max:5000'],
-            'type'             => [$req, Rule::enum(EventType::class)],
+            // Nom court d'un type actif de la table event_types (docs/fonctionnalites/types-evenements.md).
+            'type'             => [$req, 'string', EventTypes::eventRule($currentType)],
             // « postponed » : accepté seulement s'il l'est déjà (le report passe par POST events/{id}/postpone).
             'status'           => ['nullable', Rule::in([EventStatus::Draft->value, EventStatus::Published->value, EventStatus::Postponed->value, EventStatus::Cancelled->value])],
             'starts_at'        => [$req, 'date'],

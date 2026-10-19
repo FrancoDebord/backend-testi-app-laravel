@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Web;
 
 use App\Enums\EventStatus;
-use App\Enums\EventType;
 use App\Enums\LiveStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\EventComment;
 use App\Models\EventParticipation;
+use App\Models\EventType;
 use App\Services\EventActionException;
 use App\Services\EventModeration;
 use App\Services\EventService;
@@ -47,7 +47,7 @@ class EventController extends Controller
         if ($tab === 'past') {
             return redirect()->route('events.past', array_filter($request->only(['type', 'q'])));
         }
-        $type = EventType::tryFrom((string) $request->query('type'));
+        $type = EventType::knownSlug((string) $request->query('type'));
         $q    = trim((string) $request->query('q'));
 
         $query = Event::query()->with([
@@ -63,7 +63,7 @@ class EventController extends Controller
             'past'  => $query->published()->past(),
             default => $query->published()->upcoming(),
         };
-        if ($type) $query->where('type', $type->value);
+        if ($type) $query->where('type', $type);
         if ($q !== '') {
             $query->where(fn ($w) => $w->where('title', 'like', "%{$q}%")
                 ->orWhere('city', 'like', "%{$q}%")
@@ -78,7 +78,7 @@ class EventController extends Controller
             'compact'   => $compact,
             'tabs'      => $tabs,
             'tab'       => $tab,
-            'type'      => $type?->value,
+            'type'      => $type,
             'q'         => $q,
             'canCreate' => $canCreate,
         ]);
@@ -90,11 +90,11 @@ class EventController extends Controller
      */
     public function past(Request $request): View
     {
-        $type = EventType::tryFrom((string) $request->query('type'));
+        $type = EventType::knownSlug((string) $request->query('type'));
         $q    = trim((string) $request->query('q'));
 
         $query = Event::query()->with(['organizer', 'images'])->withPublishedTestimonyCount()->finished();
-        if ($type) $query->where('type', $type->value);
+        if ($type) $query->where('type', $type);
         if ($q !== '') {
             $query->where(fn ($w) => $w->where('title', 'like', "%{$q}%")
                 ->orWhere('city', 'like', "%{$q}%")
@@ -103,7 +103,7 @@ class EventController extends Controller
 
         return view('events.past', [
             'events' => $query->paginate(12)->withQueryString(),
-            'type'   => $type?->value,
+            'type'   => $type,
             'q'      => $q,
         ]);
     }
@@ -220,7 +220,7 @@ class EventController extends Controller
         $event = $this->find($id);
         abort_unless($event->canBeManagedBy($request->user()), 403);
 
-        $data  = $this->validated($request, creating: false, existingImages: $event->images->count());
+        $data  = $this->validated($request, creating: false, existingImages: $event->images->count(), currentType: $event->type);
 
         try {
             $this->events->update($event, $request->user(), $data);
@@ -555,7 +555,7 @@ class EventController extends Controller
         return collect([$event->location, $event->city, $event->country])->filter(fn ($v) => filled($v))->implode(', ');
     }
 
-    private function validated(Request $request, bool $creating, int $existingImages = 0): array
+    private function validated(Request $request, bool $creating, int $existingImages = 0, ?string $currentType = null): array
     {
         // Lignes d'invités laissées vides : ignorées (le formulaire en propose toujours une).
         $request->merge([
@@ -573,7 +573,7 @@ class EventController extends Controller
             ->mapWithKeys(fn ($m, $k) => [str_replace('image.', 'images.*.', $k) => $m])->all();
 
         $data = $request->validate([
-            ...EventService::rules(),
+            ...EventService::rules(currentType: $currentType),
             'status'   => ['required', Rule::in($statuses)],
             'images'   => ['nullable', 'array', 'max:' . $freeImages],
             'images.*' => EventService::imageRules(),

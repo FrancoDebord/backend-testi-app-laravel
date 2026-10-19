@@ -25,6 +25,7 @@
         [route('admin.users.index'),                    'fa-user-gear',       'Gérer les utilisateurs',  'btn-secondary'],
         [route('moderation.index'),                     'fa-shield-halved',   'Ouvrir la modération',    'btn-accent'],
         [route('admin.categories.index'),               'fa-tags',            'Catégories',              'btn-secondary'],
+        [route('admin.event-types.index'),              'fa-calendar-check',  'Types d’événements',      'btn-secondary'],
         [route('admin.settings'),                       'fa-gear',            'Paramètres',              'btn-secondary'],
     ];
 

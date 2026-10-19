@@ -133,7 +133,7 @@ class LiveController extends Controller
         if ($live->status === \App\Enums\LiveStatus::Ended) {
             $replay = [
                 'comments'    => $live->comments()->with('user')->where('is_hidden', false)
-                    ->oldest()->orderBy('id')->paginate(50, ['*'], 'chat')->withQueryString(),
+                    ->oldest()->orderBy('id')->paginate(50, ['*'], 'chat')->withQueryString()->fragment('live-chat-replay'),
                 'testimonies' => $live->linkedTestimonies()->published()->with(['user', 'category'])->latest()->limit(12)->get(),
                 'testimoniesCount' => $live->linkedTestimonies()->published()->count(),
             ];

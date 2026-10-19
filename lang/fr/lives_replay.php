@@ -8,9 +8,9 @@ return [
         'live_not_ended' => 'Vous pourrez témoigner sur ce direct une fois qu’il sera terminé.',
     ],
     'chat' => [
-        'title'    => 'Revoir le chat',
+        'title'    => 'Revoir la discussion',
         'count'    => '{0} Aucun message|{1} 1 message|[2,*] :count messages',
-        'empty'    => 'Aucun message n’a été écrit pendant ce direct.',
+        'empty'    => "Aucun message n'a été laissé pendant ce direct.",
         'at'       => 'à :time du direct',
         'previous' => 'Messages précédents',
         'next'     => 'Messages suivants',
@@ -25,8 +25,38 @@ return [
     ],
     'testimonies' => [
         'title' => 'Témoignages sur ce direct',
+        'count' => '{0} Témoignages sur ce direct|{1} 1 témoignage sur ce direct|[2,*] :count témoignages sur ce direct',
         'empty' => 'Aucun témoignage publié sur ce direct pour le moment.',
         'more'  => 'Voir plus',
     ],
     'linked' => 'Témoignage sur le direct',
+
+    // Bilan d'un direct terminé, comme l'écran de fin de l'application (LiveEndedView)
+    'summary' => [
+        'badge'       => 'TERMINÉ',
+        'ended'       => 'Direct terminé',
+        'your_ended'  => 'Votre direct est terminé',
+        'numbers'     => 'En chiffres',
+        'host_numbers'=> 'Bilan de votre direct',
+        'reactions'   => 'Réactions',
+        'stats' => [
+            'duration'     => 'Durée',
+            'peak_viewers' => 'Spectateurs au plus fort',
+            'comments'     => 'Commentaires',
+            'reactions'    => 'Réactions',
+        ],
+        'reasons' => [
+            'host'       => 'Terminé par le diffuseur',
+            'moderator'  => 'Coupé par la modération',
+            'connection' => 'Interrompu (connexion perdue)',
+            'abandoned'  => "Jamais passé à l'antenne",
+            'default'    => "Merci d'avoir suivi ce témoignage.",
+        ],
+    ],
+    // Liste « Récents » de /lives (comme _RecentTile de l'application)
+    'recent' => [
+        'viewers'  => '{0} 0 spectateur|{1} 1 spectateur|[2,*] :count spectateurs',
+        'comments' => '{0} 0 commentaire|{1} 1 commentaire|[2,*] :count commentaires',
+        'open'     => 'Voir le bilan du direct',
+    ],
 ];

@@ -39,6 +39,10 @@
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" data-live-viewer>
 
     <div class="min-w-0 space-y-4">
+        @if($replay ?? null)
+        {{-- Direct terminé : bilan comme l'écran de fin de l'application (lives/partials/ended-summary) --}}
+        @include('lives.partials.ended-summary')
+        @else
         <div class="relative aspect-video overflow-hidden rounded-xl bg-slate-900">
             <video class="h-full w-full object-contain" autoplay playsinline data-live-video></video>
             <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-sm text-slate-200" data-live-overlay>
@@ -86,6 +90,7 @@
             </button>
             @endforeach
         </div>
+        @endif
 
         <section class="card p-5">
             <div class="flex items-center gap-3">
@@ -115,7 +120,9 @@
                         {{ $live->recordingLabel() }}
                     @endif
                 </p>
-                @if($live->testimony && $live->testimony->status->value === 'approved')
+                @if($replay ?? null)
+                    {{-- Boutons « Voir la rediffusion » / « Relire la vidéo » : dans le bilan ci-dessus. --}}
+                @elseif($live->testimony && $live->testimony->status->value === 'approved')
                     <a href="{{ route('testimonies.show', $live->testimony_id) }}" class="btn-secondary btn-sm"><i class="fa-solid fa-play"></i>{{ __('lives.show.see_replay') }}</a>
                 @elseif($live->testimony && $live->canBeModeratedBy(Auth::user()))
                     <a href="{{ route('moderation.show', $live->testimony_id) }}" class="btn-secondary btn-sm"><i class="fa-solid fa-shield-halved"></i>{{ __('lives.show.review_video') }}</a>
@@ -128,8 +135,7 @@
         @if($replay ?? null)
         <section aria-labelledby="live-testimonies-title" data-live-testimonies>
             <div class="mb-3 flex items-center justify-between gap-2">
-                <h2 id="live-testimonies-title" class="text-base font-semibold text-slate-900">{{ __('lives_replay.testimonies.title') }}
-                    <span class="text-sm font-normal text-slate-500">{{ $replay['testimoniesCount'] }}</span></h2>
+                <h2 id="live-testimonies-title" class="text-base font-semibold text-slate-900">{{ trans_choice('lives_replay.testimonies.count', $replay['testimoniesCount'], ['count' => $replay['testimoniesCount']]) }}</h2>
             </div>
             @if($replay['testimonies']->isEmpty())
                 <p class="card p-5 text-sm text-slate-500">{{ __('lives_replay.testimonies.empty') }}</p>
@@ -142,7 +148,7 @@
 
     <div class="min-w-0 space-y-6">
         @if($replay ?? null)
-            {{-- Revoir le chat et « Témoigner sur ce direct » (rendu serveur, sans temps réel) --}}
+            {{-- Revoir la discussion (rendu serveur, sans temps réel) ; « Témoigner sur ce direct » est dans le bilan. --}}
             @include('lives.partials.replay')
         @else
             @include('lives.partials.stage')
@@ -151,7 +157,9 @@
     </div>
 </div>
 
+@unless($replay ?? null)
 @include('lives.partials.viewers-modal')
+@endunless
 @include('lives.partials.config', ['mode' => ($replay ?? null) ? 'replay' : 'viewer'])
 @endsection
 

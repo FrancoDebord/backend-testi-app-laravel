@@ -4,6 +4,27 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-19 — Anciens directs affichés comme dans l'application
+
+- **Utilisateurs** :
+  - page d'un **direct terminé** : le lecteur vide et les réactions désactivées laissent place au **bilan de l'application** (fond violet nuit) : avatar du diffuseur avec pastille « TERMINÉ », « Direct terminé » (« Votre direct est terminé » pour le diffuseur), titre, « Diffuseur · raison de fin », « En chiffres » (« Bilan de votre direct ») avec Durée, Spectateurs au plus fort, Commentaires, Réactions, barres des réactions (❤️ 🙏 🙌 🛐 🔥, de la plus fréquente à la moins fréquente), bouton jaune « Témoigner sur ce direct » (déplacé de la colonne de droite, plus de doublon), « Voir la rediffusion » / « Relire la vidéo », « Revoir la discussion » (descend à la discussion) [lives.md](fonctionnalites/lives.md#directs-passés--revoir-le-chat-témoigner-après-la-fin-2026-10-19) ;
+  - « Revoir le chat » devient « Revoir la discussion » (moments `mm:ss` / `h:mm:ss`, texte vide de l'application) ; « N témoignages sur ce direct » ;
+  - liste « Directs récents » de `/lives` : chaque ligne ouvre le direct terminé (avatar, titre, diffuseur, « durée · N spectateurs · N commentaires », chevron), la rediffusion reste un lien secondaire.
+- **Développeurs** : `resources/views/lives/partials/ended-summary.blade.php` ; `LiveSession::durationSeconds()`, `totalReactions()`, `formatClock()` (= `formatLiveDuration` / `formatLiveOffset`), `compactNumber()` (« 1,2 k » / « 1.2k ») ; `lang/{fr,en}/lives_replay.php` : `summary.*`, `recent.*`, `testimonies.count`, `chat.title` / `chat.empty` / `testify.button` (en) alignés sur l'application ; pagination de la discussion avec l'ancre `#live-chat-replay`. Pour un direct terminé, la page ne rend plus `data-live-video`, `data-live-overlay`, `data-live-react` ni la fenêtre des spectateurs (`live.js` en mode `replay` n'y touche pas).
+- **Tests** : `PastLivesTest` (bilan, formulation du diffuseur, barres de réactions, ancre de la discussion, lignes « Récents » liées à `lives.show`, formats de durée et nombres compacts).
+- **Déploiement** : code seulement (aucune migration) : `php artisan view:cache`, recompilation des assets (`npm run build`) et copie de `public/build/`.
+
+---
+
+## 2026-10-19 — Types d'événements gérés par les administrateurs
+
+- **Utilisateurs** : administrateurs : nouvelle page *Administration › Types d'événements* (`/admin/types-evenements`) : ajouter un type (nom français et anglais, icône choisie parmi 19), le renommer, changer son icône, le réordonner (glisser-déposer ou flèches), l'activer / le désactiver, le supprimer (si des événements l'utilisent : « Remplacer par » un autre type actif, les événements y passent). Un type désactivé n'est plus proposé à la création d'un événement ; les événements qui l'utilisent le gardent. Les filtres et badges des événements affichent le nom et l'icône de la table [types-evenements.md](fonctionnalites/types-evenements.md).
+- **API** : `GET event-types` (public ; `?all=1` pour les administrateurs) → `{ success, data: [{ id, slug, name, nameFr, nameEn, icon, position, isActive, eventsCount }] }` ; administrateurs : `POST admin/event-types`, `PUT admin/event-types/{id}` (slug non modifiable), `PUT admin/event-types/reorder` `{ ids }`, `DELETE admin/event-types/{id}` (`replace_with` ; 409 `{ errors.events, eventsCount }` si utilisé sans remplaçant valide ; 422 pour le dernier type actif) ; modérateurs 403. `POST|PUT events` : `type` doit être un type actif (sauf le type déjà enregistré en modification). `EventResource` gagne `typeIcon` ; `meta.types` de `GET events` = types actifs `[{ value, label, icon }]`.
+- **Développeurs** : énumération `App\Enums\EventType` supprimée, remplacée par le modèle `App\Models\EventType` (cache `event_types`, `ICONS`, `labelFor()`, `iconFor()`, `faClass()`, `options()`), `App\Services\EventTypes`, `EventTypeInUseException`, `Api\EventTypeController`, `Web\EventTypeController`, vues `admin/event-types/`, `lang/{fr,en}/event_types.php` ; `Event::typeLabel()`, `typeIcon()`, `typeFaIcon()` ; `EventService::rules(currentType:)` ; tests `EventTypesTest` (18).
+- **Déploiement** : migration `2026_10_19_500001_create_event_types_table` (`php artisan migrate --force`), `php artisan optimize:clear` (nouvelles routes), `php artisan view:cache`, recompilation des assets (`npm run build`) et copie de `public/build/`.
+
+---
+
 ## 2026-10-19 — Aperçu de partage façon YouTube (WhatsApp, Facebook, Telegram, X, LinkedIn)
 
 - **Utilisateurs** : un lien de témoignage collé dans WhatsApp, Facebook, Telegram, X ou LinkedIn affiche une **grande image 1200 × 630**, le titre « Titre - Auteur » en gras, le début du texte et le domaine. Vidéo : miniature (Bunny ou YouTube) avec **bouton lecture** et durée ; couverture pour les témoignages texte / audio (pastille « Audio ») ; sinon une carte TestiApp (dégradé bleu, rayons de soleil, titre, auteur, catégorie). Même chose pour les **événements**, les **requêtes de prière publiques** (jamais l'auteur d'une requête anonyme) et les **directs**. Un contenu non public ne révèle rien dans l'aperçu [apercu-de-partage.md](fonctionnalites/apercu-de-partage.md).

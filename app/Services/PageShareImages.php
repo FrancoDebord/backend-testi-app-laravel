@@ -24,7 +24,7 @@ class PageShareImages
     public function eventFingerprint(Event $event): string
     {
         return ShareImage::fingerprint([
-            $event->updated_at?->getTimestamp(), $event->title, $event->type?->value, $event->status?->value,
+            $event->updated_at?->getTimestamp(), $event->title, $event->type, $event->status?->value,
             $event->coverUrl(), $event->youtube_live_id, $event->starts_at?->getTimestamp(), $event->ends_at?->getTimestamp(),
             $event->date_tbd, $event->location, $event->city, $event->country,
         ]);
@@ -50,7 +50,7 @@ class PageShareImages
             }
 
             $card = $this->images->brandCard([
-                'label' => __('share.event') . ' · ' . $event->type->label(),
+                'label' => __('share.event') . ' · ' . $event->typeLabel(),
                 'title' => (string) $event->title,
                 'lines' => array_values(array_filter([EventController::dateRange($event), EventController::place($event)])),
                 'side'  => $youtube ? 230 : 0,

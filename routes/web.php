@@ -439,6 +439,14 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin
     Route::post('/categories',               [AdminController::class, 'storeCategory'])->name('categories.store');
     Route::put('/categories/{id}',           [AdminController::class, 'updateCategory'])->name('categories.update');
     Route::delete('/categories/{id}',        [AdminController::class, 'deleteCategory'])->name('categories.destroy');
+    // Types d'événements ─ docs/fonctionnalites/types-evenements.md
+    Route::get('/types-evenements',              [\App\Http\Controllers\Web\EventTypeController::class, 'index'])->name('event-types.index');
+    Route::post('/types-evenements',             [\App\Http\Controllers\Web\EventTypeController::class, 'store'])->name('event-types.store');
+    Route::put('/types-evenements/ordre',        [\App\Http\Controllers\Web\EventTypeController::class, 'reorder'])->name('event-types.reorder');
+    Route::put('/types-evenements/{id}',         [\App\Http\Controllers\Web\EventTypeController::class, 'update'])->whereNumber('id')->name('event-types.update');
+    Route::post('/types-evenements/{id}/move',   [\App\Http\Controllers\Web\EventTypeController::class, 'move'])->whereNumber('id')->name('event-types.move');
+    Route::post('/types-evenements/{id}/toggle', [\App\Http\Controllers\Web\EventTypeController::class, 'toggle'])->whereNumber('id')->name('event-types.toggle');
+    Route::delete('/types-evenements/{id}',      [\App\Http\Controllers\Web\EventTypeController::class, 'destroy'])->whereNumber('id')->name('event-types.destroy');
     Route::get('/settings',                  [AdminController::class, 'settings'])->name('settings');
     Route::put('/settings',                  [AdminController::class, 'updateSettings'])->name('settings.update');
     Route::get('/documentation/{page?}',     [DocumentationController::class, 'show'])

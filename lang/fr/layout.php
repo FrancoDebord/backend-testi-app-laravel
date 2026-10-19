@@ -40,6 +40,7 @@ return [
         'verifications'     => 'Vérification des comptes',
         'content'           => 'Contenu',
         'categories'        => 'Catégories',
+        'event_types'       => 'Types d’événements',
         'admin_settings'    => 'Paramètres',
         'documentation'     => 'Documentation',
     ],

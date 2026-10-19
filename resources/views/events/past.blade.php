@@ -9,7 +9,8 @@
         ['label' => __('events_past.title')],
     ];
     $params = array_filter(['type' => $type, 'q' => $q !== '' ? $q : null]);
-    $types  = \App\Enums\EventType::options();
+    // Types actifs (table event_types) ; le type filtré reste affiché s'il a été désactivé.
+    $types  = \App\Models\EventType::cached()->filter(fn ($t) => $t->is_active || $t->slug === $type);
 @endphp
 
 @section('headerActions')
@@ -29,9 +30,9 @@
 
 <div class="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="{{ __('events_past.type_filter') }}">
     <a href="{{ route('events.past', array_merge($params, ['type' => null])) }}" class="{{ !$type ? 'chip-active' : 'chip' }}" @if(!$type) aria-current="true" @endif>{{ __('events_past.all') }}</a>
-    @foreach($types as $value => $label)
-    <a href="{{ route('events.past', array_merge($params, ['type' => $value])) }}"
-       class="{{ $type === $value ? 'chip-active' : 'chip' }}" @if($type === $value) aria-current="true" @endif>{{ $label }}</a>
+    @foreach($types as $t)
+    <a href="{{ route('events.past', array_merge($params, ['type' => $t->slug])) }}"
+       class="{{ $type === $t->slug ? 'chip-active' : 'chip' }}" @if($type === $t->slug) aria-current="true" @endif><i class="fa-solid {{ $t->faIcon() }}" aria-hidden="true"></i>{{ $t->localizedName() }}</a>
     @endforeach
 </div>
 

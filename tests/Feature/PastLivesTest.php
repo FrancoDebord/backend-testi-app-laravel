@@ -39,12 +39,13 @@ class PastLivesTest extends TestCase
 
     private function live(string $status = 'ended', array $extra = []): LiveSession
     {
-        return LiveSession::create(array_merge([
+        // forceFill : compteurs (comment_count, like_count…) hors $fillable.
+        return tap((new LiveSession)->forceFill(array_merge([
             'host_id' => $this->host->id, 'title' => 'Soirée de louange', 'room_name' => 'live-' . Str::random(8),
             'status' => $status,
             'started_at' => $status === 'preparing' ? null : Carbon::parse('2026-10-18 20:00:00'),
             'ended_at'   => $status === 'ended' ? Carbon::parse('2026-10-18 21:30:00') : null,
-        ], $extra));
+        ], $extra)))->save();
     }
 
     private function comment(LiveSession $live, User $user, string $body, string $at, bool $hidden = false): LiveComment
@@ -197,21 +198,86 @@ class PastLivesTest extends TestCase
         $this->testimony(['live_id' => $live->id, 'title' => 'Ma guérison ce soir']);
 
         $this->actingAs($this->marie)->get("/lives/{$live->id}")->assertOk()
-            ->assertSee('Revoir le chat')
+            ->assertSee('Revoir la discussion')
             ->assertSee('Merci pour ce moment')->assertSee('1:01:05')
             ->assertDontSee('Message masqué')
             ->assertSee('Témoigner sur ce direct')
             ->assertSee(route('publish', ['live' => $live->id]), false)
-            ->assertSee('Témoignages sur ce direct')->assertSee('Ma guérison ce soir')
+            ->assertSee('1 témoignage sur ce direct')->assertSee('Ma guérison ce soir')
             ->assertSee('"mode":"replay"', false);
 
         // Visiteur : invité à se connecter.
         $this->app['auth']->forgetGuards();
-        $this->get("/lives/{$live->id}")->assertOk()->assertSee('Connectez-vous pour témoigner sur ce direct.');
+        $this->get("/lives/{$live->id}")->assertOk()->assertSee('Connectez-vous pour témoigner sur ce direct.')
+            ->assertDontSee(route('publish', ['live' => $live->id]), false);
 
-        // Direct en cours : pas de rediffusion du chat.
+        // Direct en cours : pas de rediffusion du chat ni de bilan.
         $ongoing = $this->live('live');
-        $this->get("/lives/{$ongoing->id}")->assertOk()->assertDontSee('Revoir le chat')->assertSee('"mode":"viewer"', false);
+        $this->get("/lives/{$ongoing->id}")->assertOk()->assertDontSee('Revoir la discussion')
+            ->assertDontSee('data-live-ended', false)->assertSee('data-live-video', false)->assertSee('"mode":"viewer"', false);
+    }
+
+    public function test_ended_live_page_shows_the_app_summary(): void
+    {
+        $live = $this->live('ended', [
+            'end_reason' => 'moderator', 'peak_viewers' => 1234, 'comment_count' => 42,
+            'like_count' => 3, 'pray_count' => 10, 'amen_count' => 0, 'worship_count' => 0, 'fire_count' => 1,
+        ]);
+
+        $res = $this->actingAs($this->marie)->get("/lives/{$live->id}")->assertOk()
+            ->assertSee('data-live-ended', false)
+            ->assertSee('TERMINÉ')->assertSee('Direct terminé')->assertDontSee('Votre direct est terminé')
+            ->assertSee('Pasteur Paul · Coupé par la modération')
+            ->assertSee('En chiffres')
+            ->assertSeeInOrder(['Durée', 'Spectateurs au plus fort', 'Commentaires', 'Réactions'])
+            ->assertSee('1:30:00')->assertSee('1,2 k')->assertSee('42')
+            // Barres des réactions : du plus fréquent au moins fréquent, celles à 0 masquées.
+            ->assertSeeInOrder(['data-live-reaction-bar="pray"', 'data-live-reaction-bar="like"', 'data-live-reaction-bar="fire"'], false)
+            ->assertDontSee('data-live-reaction-bar="amen"', false)
+            ->assertSee('🙏')->assertSee('Prière')
+            ->assertSee('href="#live-chat-replay"', false)->assertSee('id="live-chat-replay"', false)
+            ->assertSee('Aucun message n\'a été laissé pendant ce direct.')
+            // Plus de lecteur vide ni de réactions désactivées : live.js ne s'y branche pas.
+            ->assertDontSee('data-live-video', false)->assertDontSee('data-live-react=', false);
+        $this->assertSame(1, substr_count($res->getContent(), 'data-live-testify'));
+        // Total des réactions (3 + 10 + 1).
+        $this->assertMatchesRegularExpression('/data-live-stat="reactions".*?>\s*14\s*</s', $res->getContent());
+
+        // Le diffuseur : « Votre direct est terminé », « Bilan de votre direct », raison seule.
+        $this->actingAs($this->host)->get("/lives/{$live->id}")->assertOk()
+            ->assertSee('Votre direct est terminé')->assertSee('Bilan de votre direct')
+            ->assertDontSee('Pasteur Paul · Coupé par la modération');
+
+        // Sans réaction : pas de section « Réactions » détaillée ; raison inconnue → message par défaut.
+        $quiet = $this->live('ended', ['end_reason' => 'camera']);
+        $this->actingAs($this->marie)->get("/lives/{$quiet->id}")->assertOk()
+            ->assertSee('Merci d\'avoir suivi ce témoignage.')->assertDontSee('data-live-reaction-bar', false);
+    }
+
+    public function test_live_index_recent_rows_link_to_the_ended_live(): void
+    {
+        $live = $this->live('ended', ['peak_viewers' => 1, 'comment_count' => 5]);
+        $short = $this->live('ended', ['ended_at' => Carbon::parse('2026-10-18 20:12:30'), 'peak_viewers' => 0, 'comment_count' => 1, 'title' => 'Prière du soir']);
+
+        $this->get('/lives')->assertOk()
+            ->assertSee('href="' . route('lives.show', $live->id) . '"', false)
+            ->assertSee('href="' . route('lives.show', $short->id) . '"', false)
+            ->assertSee('1:30:00 · 1 spectateur · 5 commentaires')
+            ->assertSee('12:30 · 0 spectateur · 1 commentaire')
+            ->assertSee('fa-chevron-right', false);
+    }
+
+    public function test_live_clock_and_compact_numbers_match_the_app(): void
+    {
+        $this->assertSame('00:05', LiveSession::formatClock(5));
+        $this->assertSame('12:30', LiveSession::formatClock(750));
+        $this->assertSame('1:02:05', LiveSession::formatClock(3725));
+        $this->assertSame('999', LiveSession::compactNumber(999));
+        $this->assertSame('1,2 k', LiveSession::compactNumber(1234));
+        $this->assertSame('12 k', LiveSession::compactNumber(12345));
+        app()->setLocale('en');
+        $this->assertSame('1.2k', LiveSession::compactNumber(1234));
+        $this->assertSame('1.5M', LiveSession::compactNumber(1500000));
     }
 
     public function test_web_publish_form_is_prefilled_and_links_the_testimony(): void

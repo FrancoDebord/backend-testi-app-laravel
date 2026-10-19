@@ -10,7 +10,7 @@
 @php
     $authUser    = Auth::user();
     $header      = $event->title;
-    $subheader   = $event->type->label() . ' · ' . EventPage::dateRange($event);
+    $subheader   = $event->typeLabel() . ' · ' . EventPage::dateRange($event);
     $breadcrumbs = [
         ['label' => __('layout.nav.home'), 'url' => route('home')],
         ['label' => __('layout.nav.events'), 'url' => route('events.index')],
@@ -133,7 +133,7 @@
         {{-- Présentation --}}
         <section class="card p-5 sm:p-6" aria-labelledby="event-about">
             <div class="flex flex-wrap items-center gap-2">
-                <span class="badge-blue"><i class="fa-solid {{ $event->type->icon() }}" aria-hidden="true"></i>{{ $event->type->label() }}</span>
+                <span class="badge-blue"><i class="fa-solid {{ $event->typeFaIcon() }}" aria-hidden="true"></i>{{ $event->typeLabel() }}</span>
                 <span class="{{ $phaseBadge }}">{{ $event->phaseLabel() }}</span>
                 @if($manager && $event->status === \App\Enums\EventStatus::Draft)
                     <span class="badge-draft">{{ __('events.form.status.draft') }}</span>

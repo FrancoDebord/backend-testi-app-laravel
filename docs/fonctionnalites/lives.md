@@ -33,9 +33,19 @@ Un direct peut aussi être diffusé depuis une caméra IP, OBS ou un encodeur (R
 
 ## Directs passés : revoir le chat, témoigner après la fin (2026-10-19)
 
-- **Revoir le chat** : une fois le direct terminé, ses commentaires restent lisibles par toute personne qui peut voir le direct (même sans compte) : **tous** les commentaires non masqués, du plus ancien au plus récent, avec leur moment dans le direct (`offsetSeconds`, secondes depuis `started_at` ; `null` si le début est inconnu). Site : la page d'un direct terminé (`/lives/{id}`) remplace le chat en temps réel par la liste « Revoir le chat » (50 messages par page, `?chat=2`…, heure `m:ss` ou `h:mm:ss`, message du diffuseur mis en évidence), sans connexion LiveKit (`mode: replay` dans `live-config`).
-- **Témoigner sur ce direct** : toute personne connectée peut publier un témoignage lié à un direct **terminé** et visible (`testimonies.live_id`). Bouton « Témoigner sur ce direct » sur la page du direct terminé → `/publish?live={id}` (bandeau « Vous témoignez sur le direct … », champ caché `live_id`) ; visiteur : invitation à se connecter. Le témoignage suit le circuit habituel (modération).
-- **Témoignages sur ce direct** : la page du direct terminé liste les témoignages **publiés** qui lui sont liés (12 plus récents) ; l'API les pagine.
+- **Bilan du direct (site, comme l'application)** : la page d'un direct terminé (`/lives/{id}`) n'affiche plus de lecteur vide ni de réactions désactivées, mais le bilan de l'écran de fin de l'application (`LiveEndedView`), rendu côté serveur (`lives/partials/ended-summary.blade.php`) sur fond dégradé violet nuit (#241640 → #120A1F, 480 px au plus) :
+  1. avatar du diffuseur (76 px, anneau blanc translucide) et pastille grise « TERMINÉ » ;
+  2. « Direct terminé », ou « Votre direct est terminé » pour le diffuseur ;
+  3. titre (2 lignes au plus), puis « Diffuseur · raison » (raison seule pour le diffuseur) selon `end_reason` : `host` « Terminé par le diffuseur », `moderator` « Coupé par la modération », `connection` « Interrompu (connexion perdue) », `abandoned` « Jamais passé à l'antenne », autre (dont `camera`) « Merci d'avoir suivi ce témoignage. » ;
+  4. « En chiffres » (« Bilan de votre direct » pour le diffuseur) : tuiles Durée (`started_at` → `ended_at`, masquée si inconnue), Spectateurs au plus fort (`peak_viewers`), Commentaires (`comment_count`), Réactions (somme des `*_count`) ; nombres compacts « 1,2 k » / « 1.2k » ;
+  5. « Réactions » (s'il y en a) : une barre par réaction non nulle (❤️ J'aime, 🙏 Prière, 🙌 Amen, 🛐 Adorer Dieu, 🔥 Feu), de la plus fréquente à la moins fréquente, avec sa part du total ;
+  6. bouton jaune « Témoigner sur ce direct » (visiteur : vers la connexion, avec « Connectez-vous pour témoigner sur ce direct. ») ;
+  7. « Voir la rediffusion » (enregistrement validé) ou « Relire la vidéo » (modération), puis « Revoir la discussion » qui descend à la discussion (`#live-chat-replay`, colonne de droite, sous le bilan sur mobile).
+  La carte diffuseur / événement / présentation reste sous le bilan ; aucun élément `data-live-*` du lecteur n'est rendu, `live.js` (mode `replay`) ne se connecte pas.
+- **Revoir la discussion** : une fois le direct terminé, ses commentaires restent lisibles par toute personne qui peut voir le direct (même sans compte) : **tous** les commentaires non masqués, du plus ancien au plus récent, avec leur moment dans le direct (`offsetSeconds`, secondes depuis `started_at` ; `null` si le début est inconnu). Site : la page d'un direct terminé remplace le chat en temps réel par la liste « Revoir la discussion » (50 messages par page, `?chat=2#live-chat-replay`…, moment `mm:ss` ou `h:mm:ss` comme `formatLiveOffset` de l'application, message du diffuseur mis en évidence ; vide : « Aucun message n'a été laissé pendant ce direct. »), sans connexion LiveKit (`mode: replay` dans `live-config`).
+- **Témoigner sur ce direct** : toute personne connectée peut publier un témoignage lié à un direct **terminé** et visible (`testimonies.live_id`). Bouton « Témoigner sur ce direct » dans le bilan → `/publish?live={id}` (bandeau « Vous témoignez sur le direct … », champ caché `live_id`) ; visiteur : invitation à se connecter. Le témoignage suit le circuit habituel (modération).
+- **Témoignages sur ce direct** : la page du direct terminé liste les témoignages **publiés** qui lui sont liés (12 plus récents) sous le titre « N témoignages sur ce direct » ; l'API les pagine.
+- **Liste « Directs récents » (`/lives`)** : comme `_RecentTile` de l'application, chaque ligne ouvre le bilan du direct (lien étiré sur toute la ligne) : avatar, titre, nom du diffuseur, puis « durée · N spectateurs · N commentaires » (durée `mm:ss` / `h:mm:ss`) et chevron ; « Rediffusion » reste un lien secondaire posé au-dessus (pas de lien imbriqué).
 - Règle de `live_id` (`App\Services\LiveTestimonies::resolve`) : identifiant uuid d'un direct existant, visible de la personne (pas « en préparation », salle de prière accessible) et au statut `ended` ; sinon **422** `errors.live_id` (« Le direct indiqué est invalide. » · « Ce direct est introuvable. » · « Vous pourrez témoigner sur ce direct une fois qu’il sera terminé. »). Direct supprimé → `live_id` remis à `null`.
 
 | Méthode | Route | Rôle |
@@ -47,7 +57,7 @@ Un direct peut aussi être diffusé depuis une caméra IP, OBS ou un encodeur (R
 
 `TestimonyResource` gagne `live: { id, title, startedAt } | null`.
 
-Fichiers : migration `2026_10_19_300001_add_live_id_to_testimonies_table`, `app/Services/LiveTestimonies.php`, `LiveSession::linkedTestimonies()`, `canBeTestifiedBy()`, `offsetSecondsAt()`, `Testimony::live()`, `resources/views/lives/partials/replay.blade.php`, `lang/{fr,en}/lives_replay.php`, `tests/Feature/PastLivesTest.php` (10 tests).
+Fichiers : migration `2026_10_19_300001_add_live_id_to_testimonies_table`, `app/Services/LiveTestimonies.php`, `LiveSession::linkedTestimonies()`, `canBeTestifiedBy()`, `offsetSecondsAt()`, `durationSeconds()`, `totalReactions()`, `LiveSession::formatClock()` / `compactNumber()`, `Testimony::live()`, `resources/views/lives/partials/replay.blade.php`, `resources/views/lives/partials/ended-summary.blade.php`, `lang/{fr,en}/lives_replay.php` (`summary.*`, `recent.*`), `tests/Feature/PastLivesTest.php` (13 tests).
 
 ## Utilisation
 

@@ -43,23 +43,35 @@
 @if($recent->isNotEmpty())
 <section>
     <h2 class="card-title mb-3">{{ __('lives.index.recent') }}</h2>
-    <ul class="card divide-y divide-slate-100">
+    {{-- Comme _RecentTile de l'application : toute la ligne ouvre le bilan du direct (lien étiré) ;
+         la rediffusion reste un lien secondaire posé au-dessus (pas de lien imbriqué). --}}
+    <ul class="card divide-y divide-slate-100 overflow-hidden">
         @foreach($recent as $live)
-        <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 sm:px-5">
-            <div class="min-w-0 flex-1 basis-56">
-                <p class="truncate text-sm font-medium text-slate-900">{{ $live->title }}</p>
-                <p class="truncate text-xs text-slate-500">{{ $live->host->display_name }} · {{ $live->started_at->format(__('lives.index.date_format')) }}</p>
+        @php
+            $duration = $live->durationSeconds();
+            $details = implode(' · ', array_filter([
+                $duration !== null ? \App\Models\LiveSession::formatClock($duration) : null,
+                trans_choice('lives_replay.recent.viewers', (int) $live->peak_viewers, ['count' => (int) $live->peak_viewers]),
+                trans_choice('lives_replay.recent.comments', (int) $live->comment_count, ['count' => (int) $live->comment_count]),
+            ]));
+        @endphp
+        <li class="relative flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50 focus-within:bg-slate-50 sm:px-5" data-live-recent="{{ $live->id }}">
+            @include('components.avatar', ['user' => $live->host, 'size' => 'md'])
+            <div class="min-w-0 flex-1">
+                <a href="{{ route('lives.show', $live->id) }}"
+                   class="block truncate text-sm font-semibold text-slate-900 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary-500"
+                   title="{{ __('lives_replay.recent.open') }}">{{ $live->title }}</a>
+                <p class="truncate text-xs text-slate-500">{{ $live->host->display_name }}</p>
+                <p class="truncate text-xs text-slate-500">
+                    <time datetime="{{ $live->started_at->toIso8601String() }}" class="sr-only">{{ $live->started_at->format(__('lives.index.date_format')) }} · </time>{{ $details }}
+                </p>
             </div>
-            <dl class="flex gap-4 text-xs text-slate-500">
-                <div><dt class="sr-only">{{ __('lives.index.duration') }}</dt><dd><i class="fa-regular fa-clock mr-1 text-slate-400"></i>{{ $live->started_at->diff($live->ended_at ?? $live->started_at)->format('%H:%I:%S') }}</dd></div>
-                <div><dt class="sr-only">{{ __('lives.index.viewers') }}</dt><dd><i class="fa-regular fa-eye mr-1 text-slate-400"></i>{{ $live->peak_viewers }}</dd></div>
-                <div><dt class="sr-only">{{ __('lives.index.comments') }}</dt><dd><i class="fa-regular fa-comment mr-1 text-slate-400"></i>{{ $live->comment_count }}</dd></div>
-            </dl>
             @if($live->testimony && $live->testimony->status->value === 'approved')
-                <a href="{{ route('testimonies.show', $live->testimony_id) }}" class="action-btn-view"><i class="fa-solid fa-play"></i>{{ __('lives.index.replay') }}</a>
+                <a href="{{ route('testimonies.show', $live->testimony_id) }}" class="action-btn-view relative z-10 shrink-0"><i class="fa-solid fa-play" aria-hidden="true"></i><span class="hidden sm:inline">{{ __('lives.index.replay') }}</span><span class="sr-only sm:hidden">{{ __('lives.index.replay') }}</span></a>
             @elseif($live->record && Auth::user()?->canModerate())
-                <span class="text-xs text-slate-500">{{ $live->recordingLabel() }}</span>
+                <span class="hidden shrink-0 text-xs text-slate-500 sm:inline">{{ $live->recordingLabel() }}</span>
             @endif
+            <i class="fa-solid fa-chevron-right shrink-0 text-xs text-slate-400" aria-hidden="true"></i>
         </li>
         @endforeach
     </ul>

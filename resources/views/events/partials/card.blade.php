@@ -12,14 +12,14 @@
         @if($cover)
             <img src="{{ $cover }}" alt="" class="h-full w-full object-cover" loading="lazy">
         @else
-            <i class="fa-solid {{ $event->type->icon() }}" aria-hidden="true"></i>
+            <i class="fa-solid {{ $event->typeFaIcon() }}" aria-hidden="true"></i>
         @endif
         <div class="absolute top-2 left-2 flex flex-wrap gap-1.5">
             @include('events.partials.status-badges', ['event' => $event, 'showStatus' => $showStatus ?? false, 'onAir' => $onAir])
         </div>
     </div>
     <div class="flex flex-1 flex-col gap-1.5 p-4">
-        <p><span class="badge-blue"><i class="fa-solid {{ $event->type->icon() }}" aria-hidden="true"></i>{{ $event->type->label() }}</span></p>
+        <p><span class="badge-blue"><i class="fa-solid {{ $event->typeFaIcon() }}" aria-hidden="true"></i>{{ $event->typeLabel() }}</span></p>
         <h3 class="line-clamp-2 text-base leading-snug font-semibold text-primary-700">
             <a href="{{ ($showTestimonies ?? false) ? route('events.show', ['id' => $event->id, 'section' => 'temoignages']) . '#temoignages' : route('events.show', $event->id) }}" class="rounded-sm after:absolute after:inset-0 after:content-[''] group-hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">{{ $event->title }}</a>
         </h3>

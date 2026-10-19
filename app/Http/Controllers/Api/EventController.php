@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\EventType;
 use App\Enums\LiveStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\EventCommentResource;
@@ -11,6 +10,7 @@ use App\Http\Resources\TestimonyResource;
 use App\Models\Event;
 use App\Models\EventComment;
 use App\Models\EventParticipation;
+use App\Models\EventType;
 use App\Models\User;
 use App\Services\EventActionException;
 use App\Services\EventModeration;
@@ -64,8 +64,8 @@ class EventController extends Controller
             $query->where('organizer_id', $organizer);
         }
 
-        if ($type = EventType::tryFrom((string) $request->query('type'))) {
-            $query->where('type', $type->value);
+        if ($type = EventType::knownSlug((string) $request->query('type'))) {
+            $query->where('type', $type);
         }
         if (filled($q = trim((string) $request->query('q')))) {
             $query->where(fn ($w) => $w->where('title', 'like', "%{$q}%")
@@ -81,7 +81,8 @@ class EventController extends Controller
             'canCreate' => Event::canBeCreatedBy($user),
             // Au nom de qui créer un événement (soi-même et / ou les organisations vérifiées gérées).
             'organizations' => $this->creatableFor($user),
-            'types'     => collect(EventType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->values(),
+            // Types actifs (table event_types) ─ docs/fonctionnalites/types-evenements.md
+            'types'     => EventType::activeTypes()->map(fn (EventType $t) => ['value' => $t->slug, 'label' => $t->localizedName(), 'icon' => $t->icon])->values(),
         ]);
     }
 
@@ -104,7 +105,7 @@ class EventController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $event = $this->find($id, $request);
-        $data  = $request->validate(EventService::rules(partial: true), EventService::messages());
+        $data  = $request->validate(EventService::rules(partial: true, currentType: $event->type), EventService::messages());
 
         return $this->attempt(function () use ($request, $event, $data) {
             $event = $this->events->update($event, $this->user($request), $data);

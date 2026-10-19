@@ -97,8 +97,8 @@
                 <label for="type" class="form-label">{{ __('events_past.type_filter') }} *</label>
                 <select id="type" name="type" required class="form-input" @error('type') aria-invalid="true" @enderror>
                     <option value="">{{ __('events.form.choose_type') }}</option>
-                    @foreach(\App\Enums\EventType::options() as $value => $label)
-                    <option value="{{ $value }}" @selected(old('type', $event->type?->value) === $value)>{{ $label }}</option>
+                    @foreach(\App\Models\EventType::options($event->exists ? $event->type : null) as $value => $label)
+                    <option value="{{ $value }}" @selected(old('type', $event->type) === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
                 @error('type')<p class="form-error">{{ $message }}</p>@enderror

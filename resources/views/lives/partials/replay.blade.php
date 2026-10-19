@@ -1,30 +1,15 @@
 {{--
-    Direct terminé : revoir le chat (messages visibles avec leur moment dans le direct), « Témoigner sur ce direct »
-    et témoignages publiés sur le direct. Voir docs/fonctionnalites/lives.md (« Directs passés »).
+    Direct terminé : revoir la discussion (messages visibles avec leur moment dans le direct, « 12:30 » / « 1:02:05 »
+    comme formatLiveOffset de l'application). Ancre #live-chat-replay : bouton « Revoir la discussion » du bilan
+    (lives/partials/ended-summary). Voir docs/fonctionnalites/lives.md (« Directs passés »).
     $replay = ['comments' => LengthAwarePaginator (?chat=), 'testimonies' => Collection, 'testimoniesCount' => int]
 --}}
 @php
     $chat = $replay['comments'];
-    $formatOffset = function (?int $seconds): ?string {
-        if ($seconds === null) return null;
-        return $seconds >= 3600 ? sprintf('%d:%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60)
-                                : sprintf('%d:%02d', intdiv($seconds, 60), $seconds % 60);
-    };
+    $formatOffset = fn (?int $seconds): ?string => $seconds === null ? null : \App\Models\LiveSession::formatClock($seconds);
 @endphp
 
-<section class="card p-5" data-live-testify>
-    @auth
-        <p class="text-sm text-slate-700">{{ __('lives_replay.testify.help') }}</p>
-        <a href="{{ route('publish', ['live' => $live->id]) }}" class="btn-primary mt-3 w-full justify-center">
-            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ __('lives_replay.testify.button') }}
-        </a>
-    @else
-        <p class="text-sm text-slate-700">{{ __('lives_replay.testify.login') }}</p>
-        <a href="{{ route('login') }}" class="btn-secondary mt-3 w-full justify-center">{{ __('lives.connect') }}</a>
-    @endauth
-</section>
-
-<section class="card flex min-h-0 min-w-0 flex-col" data-live-chat-replay aria-labelledby="live-chat-replay-title">
+<section id="live-chat-replay" class="card flex min-h-0 min-w-0 scroll-mt-24 flex-col" data-live-chat-replay aria-labelledby="live-chat-replay-title">
     <div class="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
         <h2 id="live-chat-replay-title" class="card-title">{{ __('lives_replay.chat.title') }}</h2>
         <span class="text-xs text-slate-500">{{ trans_choice('lives_replay.chat.count', $chat->total(), ['count' => $chat->total()]) }}</span>

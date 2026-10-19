@@ -112,6 +112,8 @@ Route::prefix('v1')->group(function () {
     // ── Categories (public) ─────────────────────────────────────────────
     Route::get('categories',        [CategoryController::class, 'index']);
     Route::get('categories/{slug}', [CategoryController::class, 'show']);
+    // Types d'événements (actifs ; ?all=1 pour les administrateurs) ─ docs/fonctionnalites/types-evenements.md
+    Route::get('event-types',       [\App\Http\Controllers\Api\EventTypeController::class, 'index']);
 
     // ── Autocomplétion des barres de recherche (public) ─ docs/fonctionnalites/recherche.md
     Route::get('search/suggest', [\App\Http\Controllers\Api\SearchController::class, 'suggest'])->middleware('throttle:120,1'); // ?q=&scope=&limit=
@@ -436,6 +438,11 @@ Route::prefix('v1')->group(function () {
             Route::post('categories',             [AdminController::class, 'storeCategory']);
             Route::put('categories/{id}',         [AdminController::class, 'updateCategory']);
             Route::delete('categories/{id}',      [AdminController::class, 'deleteCategory']);
+            // Types d'événements ─ docs/fonctionnalites/types-evenements.md
+            Route::post('event-types',            [\App\Http\Controllers\Api\EventTypeController::class, 'store']);
+            Route::put('event-types/reorder',     [\App\Http\Controllers\Api\EventTypeController::class, 'reorder']);
+            Route::put('event-types/{id}',        [\App\Http\Controllers\Api\EventTypeController::class, 'update'])->whereNumber('id');
+            Route::delete('event-types/{id}',     [\App\Http\Controllers\Api\EventTypeController::class, 'destroy'])->whereNumber('id');
             Route::get('settings',                [AdminController::class, 'settings']);
             // Mêmes groupes, libellés et descriptions que la page web ─ docs/fonctionnalites/parametres-globaux.md
             Route::get('settings/schema',         [AdminController::class, 'settingsSchema']);

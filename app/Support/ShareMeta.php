@@ -54,7 +54,7 @@ class ShareMeta
         if (!$event->isVisibleTo(null)) {
             return self::site();
         }
-        $facts = collect([$event->type->label(), EventController::dateRange($event), EventController::place($event)])->filter()->implode(' · ');
+        $facts = collect([$event->typeLabel(), EventController::dateRange($event), EventController::place($event)])->filter()->implode(' · ');
         $text = self::excerpt($event->description, self::DESCRIPTION_LENGTH - mb_strlen($facts) - 3);
 
         return [

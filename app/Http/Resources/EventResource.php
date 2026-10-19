@@ -37,8 +37,10 @@ class EventResource extends JsonResource
             'id'              => $this->id,
             'title'           => $this->title,
             'description'     => $this->description,
-            'type'            => $this->type->value,
-            'typeLabel'       => $this->type->label(),
+            // Type : nom court + libellé localisé + clé d'icône (table event_types, docs/fonctionnalites/types-evenements.md).
+            'type'            => $this->type,
+            'typeLabel'       => $this->typeLabel(),
+            'typeIcon'        => $this->typeIcon(),
             'status'          => $this->status->value,
             'statusLabel'     => $this->status->label(),
             'phase'           => $this->phase(),          // upcoming | ongoing | past

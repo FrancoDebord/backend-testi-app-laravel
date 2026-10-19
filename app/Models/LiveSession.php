@@ -193,6 +193,44 @@ class LiveSession extends Model
         return max(0, $at->getTimestamp() - $this->started_at->getTimestamp());
     }
 
+    /** Durée du direct en secondes (début → fin) ; null si le début ou la fin est inconnu. */
+    public function durationSeconds(): ?int
+    {
+        return $this->started_at && $this->ended_at ? $this->offsetSecondsAt($this->ended_at) : null;
+    }
+
+    /** « 1:02:05 » / « 12:30 » — comme formatLiveDuration / formatLiveOffset de l'application. */
+    public static function formatClock(int $seconds): string
+    {
+        $seconds = max(0, $seconds);
+        $h = intdiv($seconds, 3600);
+        $m = intdiv($seconds % 3600, 60);
+        $s = $seconds % 60;
+
+        return $h > 0 ? sprintf('%d:%02d:%02d', $h, $m, $s) : sprintf('%02d:%02d', $m, $s);
+    }
+
+    /** Nombre compact « 1,2 k » (fr) / « 1.2k » (en), comme _compact de l'application. */
+    public static function compactNumber(int $n): string
+    {
+        $fr = app()->getLocale() === 'fr';
+        $fmt = fn (float $v, int $decimals) => number_format($v, $decimals, $fr ? ',' : '.', '');
+        if ($n < 1000) {
+            return (string) $n;
+        }
+        if ($n < 1000000) {
+            return $fmt($n / 1000, $n < 10000 ? 1 : 0) . ($fr ? ' k' : 'k');
+        }
+
+        return $fmt($n / 1000000, 1) . ($fr ? ' M' : 'M');
+    }
+
+    /** Somme des réactions (like, pray, amen, worship, fire). */
+    public function totalReactions(): int
+    {
+        return array_sum($this->reactionCounts());
+    }
+
     /** Un spectateur peut voir le direct en préparation seulement s'il en est modérateur. */
     public function isVisibleTo(?User $user): bool
     {

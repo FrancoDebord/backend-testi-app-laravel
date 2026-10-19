@@ -60,6 +60,7 @@
                 ['label' => __('layout.nav.verifications'), 'icon' => 'fa-user-check', 'url' => route('admin.verifications.index'), 'active' => request()->routeIs('admin.verifications.*')],
                 ['label' => __('layout.nav.content'),         'icon' => 'fa-file-lines',   'url' => route('admin.content.index'),    'active' => request()->routeIs('admin.content.*')],
                 ['label' => __('layout.nav.categories'),      'icon' => 'fa-tags',         'url' => route('admin.categories.index'), 'active' => request()->routeIs('admin.categories.*')],
+                ['label' => __('layout.nav.event_types'),     'icon' => 'fa-calendar-check', 'url' => route('admin.event-types.index'), 'active' => request()->routeIs('admin.event-types.*')],
                 ['label' => __('layout.nav.admin_settings'),      'icon' => 'fa-sliders',      'url' => route('admin.settings'),         'active' => request()->routeIs('admin.settings')],
                 ['label' => __('layout.nav.documentation'),   'icon' => 'fa-book',         'url' => route('admin.documentation'),    'active' => request()->routeIs('admin.documentation')],
             ],
