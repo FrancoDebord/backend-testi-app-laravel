@@ -67,7 +67,20 @@ class TestimonyController extends Controller
         // Types que ce compte peut publier (docs/fonctionnalites/types-de-temoignages.md) : les autres sont masqués.
         $allowedTypes = app(\App\Services\TestimonyTypePolicy::class)->allowed($request->user());
 
-        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos', 'conversionTestimony', 'canConversion', 'kind', 'allowedTypes'));
+        // Témoigner sur un direct terminé (?live=, docs/fonctionnalites/lives.md) : ignoré s'il n'est pas terminé ou visible.
+        $live = $this->linkableLive(old('live_id', $request->query('live')), $request);
+
+        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos', 'conversionTestimony', 'canConversion', 'kind', 'allowedTypes', 'live'));
+    }
+
+    /** Direct terminé et visible auquel rattacher le témoignage, sinon null (pré-remplissage du formulaire). */
+    private function linkableLive(mixed $liveId, Request $request): ?\App\Models\LiveSession
+    {
+        try {
+            return app(\App\Services\LiveTestimonies::class)->resolve(is_string($liveId) ? $liveId : null, $request->user());
+        } catch (\App\Services\ContentActionException) {
+            return null;
+        }
     }
 
     /** Événement auquel rattacher le témoignage ; refuse si la personne n'en est pas gestionnaire. */
@@ -121,7 +134,11 @@ class TestimonyController extends Controller
             'bunny_upload'    => 'nullable|boolean',
             // Témoignage de conversion : kind, conversion_year, conversion_place, conversion_verse
             ...\App\Services\ConversionTestimonies::rules(),
-        ], \App\Services\ConversionTestimonies::messages() + TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
+            // Témoignage sur un direct terminé (docs/fonctionnalites/lives.md)
+            ...\App\Services\LiveTestimonies::rules(),
+            // Crédit de la vidéo YouTube d'origine (docs/fonctionnalites/videos-youtube.md)
+            ...\App\Support\YouTubeCredit::rules(),
+        ], \App\Services\ConversionTestimonies::messages() + \App\Services\LiveTestimonies::messages() + \App\Support\YouTubeCredit::messages() + TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
             'title.required'         => __('testimonies.validation.title_required'),
             'youtube_url.required_if' => __('testimonies.validation.youtube_required'),
             'category.required'      => __('testimonies.validation.category_required'),
@@ -154,6 +171,12 @@ class TestimonyController extends Controller
         }
 
         $event     = $this->attachableEvent($data['event_id'] ?? null, $request);
+        // Direct terminé et visible, sinon erreur sous le champ (même règle que l'API).
+        try {
+            $live = app(\App\Services\LiveTestimonies::class)->resolve($data['live_id'] ?? null, $request->user());
+        } catch (\App\Services\ContentActionException $e) {
+            throw ValidationException::withMessages(['live_id' => $e->getMessage()]);
+        }
         $prophecies = app(\App\Services\Prophecies::class);
         $prophecy  = filled($data['prophecy_id'] ?? null) ? $prophecies->find($request->user(), $data['prophecy_id']) : null;
         $coverUrl  = null;
@@ -203,6 +226,7 @@ class TestimonyController extends Controller
             'user_id'       => Auth::id(),
             'category_id'   => $category?->id,
             'event_id'      => $event?->id,
+            'live_id'       => $live?->id,
             'title'         => $data['title'],
             'type'          => $data['type'],
             'category_slug' => $data['category'],
@@ -212,6 +236,8 @@ class TestimonyController extends Controller
             'cover_url'     => $coverUrl ?? ($youtubeId ? YouTube::thumbnailUrl($youtubeId) : null),
             'media_url'     => $mediaUrl,
             'youtube_id'    => $youtubeId,
+            // Crédit de la vidéo d'origine : vidéo YouTube seulement (docs/fonctionnalites/videos-youtube.md).
+            ...\App\Support\YouTubeCredit::attributes($request, $youtubeId !== null),
             'proofs_public' => $request->boolean('proofs_public'),
             'bible_verse'   => $data['bible_verse'] ?? null,
             'bible_ref'     => $data['bible_ref'] ?? null,

@@ -66,6 +66,18 @@
         </div>
         @endif
 
+        {{-- Témoignage sur un direct terminé (?live=, docs/fonctionnalites/lives.md) --}}
+        @if($live ?? null)
+        <div class="p-5 sm:p-6" data-live-link>
+            <input type="hidden" name="live_id" value="{{ $live->id }}" data-autosave-ignore>
+            <div class="alert-info" role="status">
+                <i class="fa-solid fa-tower-broadcast mt-0.5" aria-hidden="true"></i>
+                <p>{{ __('lives_replay.testify.banner') }} <a href="{{ route('lives.show', $live->id) }}" class="font-semibold underline">{{ $live->title }}</a>.</p>
+            </div>
+            @error('live_id')<p class="form-error">{{ $message }}</p>@enderror
+        </div>
+        @endif
+
         {{-- Accomplissement d'une parole prophétique du carnet (docs/fonctionnalites/paroles-prophetiques.md) --}}
         @if($prophecy ?? null)
         <input type="hidden" name="prophecy_id" value="{{ $prophecy->id }}" data-autosave-ignore>
@@ -221,6 +233,32 @@
                        placeholder="https://www.youtube.com/watch?v=…" aria-describedby="youtube-hint">
                 <p id="youtube-hint" class="form-hint">{{ __('testimonies.create.youtube_hint') }}</p>
                 @error('youtube_url')<p class="form-error">{{ $message }}</p>@enderror
+
+                {{-- Crédit de la vidéo d'origine (facultatif, affiché sous le lecteur) --}}
+                <fieldset class="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                    <legend class="text-sm font-semibold text-slate-900">{{ __('youtube_credit.section') }}</legend>
+                    <p class="form-hint">{{ __('youtube_credit.section_help') }}</p>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label for="youtube_credit_author" class="form-label">{{ __('youtube_credit.author') }}</label>
+                            <input id="youtube_credit_author" type="text" name="youtube_credit_author" value="{{ old('youtube_credit_author') }}" maxlength="150" class="form-input" aria-describedby="youtube-credit-author-hint">
+                            <p id="youtube-credit-author-hint" class="form-hint">{{ __('youtube_credit.author_hint') }}</p>
+                            @error('youtube_credit_author')<p class="form-error">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="youtube_credit_channel" class="form-label">{{ __('youtube_credit.channel') }}</label>
+                            <input id="youtube_credit_channel" type="text" name="youtube_credit_channel" value="{{ old('youtube_credit_channel') }}" maxlength="150" class="form-input">
+                            @error('youtube_credit_channel')<p class="form-error">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+                    <div>
+                        <label for="youtube_credit_url" class="form-label">{{ __('youtube_credit.url') }}</label>
+                        <input id="youtube_credit_url" type="url" name="youtube_credit_url" value="{{ old('youtube_credit_url') }}" maxlength="300" inputmode="url" class="form-input"
+                               placeholder="https://www.youtube.com/@…" aria-describedby="youtube-credit-url-hint">
+                        <p id="youtube-credit-url-hint" class="form-hint">{{ __('youtube_credit.url_hint') }}</p>
+                        @error('youtube_credit_url')<p class="form-error">{{ $message }}</p>@enderror
+                    </div>
+                </fieldset>
             </div>
             @endif
 

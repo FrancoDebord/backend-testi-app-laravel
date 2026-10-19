@@ -50,11 +50,17 @@ class StoreTestimonyRequest extends FormRequest
             // Témoignage de conversion : kind, conversion_year, conversion_place, conversion_verse
             // (docs/fonctionnalites/temoignage-de-conversion.md)
             ...\App\Services\ConversionTestimonies::rules(),
+            // Témoignage sur un direct terminé (docs/fonctionnalites/lives.md)
+            ...\App\Services\LiveTestimonies::rules(),
+            // Crédit de la vidéo YouTube d'origine (docs/fonctionnalites/videos-youtube.md)
+            ...\App\Support\YouTubeCredit::rules(),
         ];
     }
 
     public function messages(): array
     {
-        return \App\Services\ConversionTestimonies::messages();
+        return \App\Services\ConversionTestimonies::messages()
+            + \App\Services\LiveTestimonies::messages()
+            + \App\Support\YouTubeCredit::messages();
     }
 }

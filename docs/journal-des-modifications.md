@@ -4,6 +4,36 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-19 — Paramètres identiques site / application, directs passés, crédit des vidéos YouTube
+
+- **Utilisateurs** :
+  - administrateurs : la page *Administration › Paramètres* et l'application affichent exactement les mêmes réglages (groupes Général, Publication, Modération et limites, Fonctionnalités, Notifications — interrupteur « Notifications push » —, Inscriptions ; libellés et descriptions en français ou en anglais) ; les anciens interrupteurs « audio / vidéo » du groupe Fonctionnalités, remplacés par le groupe Publication, ne sont plus affichés ; une valeur incorrecte (ex. texte dans un nombre) est refusée avec un message [parametres-globaux.md](fonctionnalites/parametres-globaux.md) ;
+  - page d'un **direct terminé** : « Revoir le chat » (tous les messages visibles avec leur moment dans le direct), bouton **« Témoigner sur ce direct »** (Publier prérempli) et liste des témoignages publiés sur ce direct [lives.md](fonctionnalites/lives.md) ;
+  - témoignage par **lien YouTube** : champs « Auteur de la vidéo », « Chaîne YouTube », « Lien de la chaîne » ; sous le lecteur : « Vidéo de {auteur} · {chaîne} », lien ouvert dans un nouvel onglet [videos-youtube.md](fonctionnalites/videos-youtube.md).
+- **API** :
+  - `GET admin/settings/schema` (administrateurs) → `{ success, data: { groups: [{ key, label, settings: [{ key, label, description, type, value }] }] } }` ; `PUT admin/settings` vérifie chaque clé et chaque type → 422 `errors.{clé}` (clé inconnue ou masquée, mauvais type), rien n'est enregistré ; modérateurs 403 ;
+  - `GET lives/{id}/comments` : pour un direct terminé (ou avec `?page` / `?limit`), tous les commentaires visibles du plus ancien au plus récent, paginés (`limit` ≤ 100, `meta { currentPage, lastPage, total, perPage }`) ; chaque commentaire gagne `offsetSeconds` (direct en cours : tableau inchangé) ;
+  - `live_id` (uuid) accepté par `POST testimonies` et `POST videos/upload-init` : direct existant, visible et terminé, sinon 422 `errors.live_id` ; `TestimonyResource.live` `{ id, title, startedAt } | null` ; `GET lives/{id}/testimonies` (témoignages publiés liés, paginés) ; `GET lives/{id}` gagne `testimoniesCount` et `canTestify` ;
+  - `youtube_credit_author`, `youtube_credit_channel` (150 car.), `youtube_credit_url` (http/https, 300 car.) sur `POST|PUT testimonies`, pris en compte pour un témoignage YouTube seulement ; `TestimonyResource.youtubeCredit` `{ author, channel, url } | null`.
+- **Développeurs** : `App\Services\SettingsSchema` (source unique de la page web et de l'API : `GROUPS`, `HIDDEN`, `groups()`, `validate()`, `update()`), `lang/{fr,en}/settings.php` ; `App\Services\LiveTestimonies` (`rules()`, `messages()`, `resolve()`), `LiveSession::linkedTestimonies()`, `canBeTestifiedBy()`, `offsetSecondsAt()`, `Testimony::live()`, partiel `lives/partials/replay` (page en `mode: replay`, sans LiveKit), `lang/{fr,en}/lives_replay.php` ; `App\Support\YouTubeCredit`, `Testimony::youtubeCredit()`, `lang/{fr,en}/youtube_credit.php` ; tests `GlobalSettingsTest` (8), `PastLivesTest` (10), `YouTubeCreditTest` (4).
+- **Déploiement** : migrations `2026_10_19_300001_add_live_id_to_testimonies_table`, `2026_10_19_300002_add_youtube_credit_to_testimonies_table` et `2026_10_19_300003_add_push_notifications_setting` (réglage `push_notifications_enabled` créé s'il manque) (`php artisan migrate --force`), `php artisan optimize:clear` (nouvelles routes), `php artisan view:cache`, recompilation des assets (`npm run build`) et copie de `public/build/`.
+
+---
+
+## 2026-10-19 — Temps de prière partout, notifications push sur consentement
+
+- **Utilisateurs** :
+  - le **temps de prière** (5 minutes avant de valider) s'applique aussi au « Je prie » du **verset du jour**, au « J'ai prié » des **paroles prophétiques** et aux réactions « Je prie » des **événements** et **sessions de prière** ; retirer sa prière reste immédiat, les réactions 🙏 des directs ne sont pas concernées [temps-de-priere.md](fonctionnalites/temps-de-priere.md) ;
+  - chaque notification part aussi en push, **sauf** si sa catégorie est coupée : nouvelles catégories *Nouveaux abonnés*, *Événements et sessions de prière*, *Mon compte*, *Modération* (équipe) ; les partages relèvent désormais de *Réactions* ; sur le site, décocher un interrupteur de notification est enfin enregistré [notifications-push.md](fonctionnalites/notifications-push.md) ;
+  - le réglage du back-office `push_notifications_enabled` à faux coupe réellement tous les push.
+- **API** :
+  - `POST daily-verse/{id}/pray/start`, `POST prophecies/{id}/pray/start`, `POST events/{id}/pray/start`, `POST prayer/sessions/{id}/pray/start` → `{ success, data: { startedAt, requiredSeconds, confirmableAt } }` ; ajouter « pray » (verset), « J'ai prié » (`prophecies/{id}/prayers`) ou une réaction du groupe « je prie » (`events|prayer/sessions/{id}/reactions`) sans temps écoulé → 422 `{ success: false, message, errors: { prayer_focus }, remaining_seconds }` ;
+  - `GET|PUT users/me/settings` : nouvelles clés `push_follows`, `push_events`, `push_account`, `push_moderation` (booléens, `true` par défaut).
+- **Développeurs** : `PrayerFocus::KINDS` (+ `daily_verse`, `prophecy`, `event`, `prayer_session`), `DailyVerses::startPrayer`, `Prophecies::startPrayer` / `pray(..., $by)`, `ContentInteractions::startPrayer` ; `PushNotifications::PREFERENCES` (public, tous les types), `CATEGORIES`, `GLOBAL_SETTING`, `globallyEnabled()` ; formulaires `data-prayer-focus-kind` (`resources/js/prayer-focus.js`), textes `prayer_focus.modal.for_*` / `confirm_*` ; tests `PrayerFocusOtherKindsTest`, `PushConsentTest`.
+- **Déploiement** : migration `2026_10_19_400001_add_push_categories_to_user_settings_table` (`php artisan migrate`), `php artisan optimize:clear` (routes), `php artisan view:cache`, recompilation des assets (`npm run build`) et copie de `public/build/`. Pendant la transition de l'application, `PRAYER_FOCUS_SECONDS=0` désactive le temps de prière.
+
+---
+
 ## 2026-10-18 — Connexion par téléphone, Google à l'inscription, nom en double dans les notifications
 
 - **Utilisateurs** :

@@ -90,12 +90,23 @@ class ProphecyController extends Controller
     {
         $prophecy = $this->prophecies->find($request->user(), $id);
         $data = $request->validate(['note' => 'nullable|string|max:1000', 'prayed_at' => 'nullable|date']);
-        $prayer = $this->prophecies->pray($prophecy, $data['note'] ?? null, $data['prayed_at'] ?? null);
+        $prayer = $this->prophecies->pray($prophecy, $data['note'] ?? null, $data['prayed_at'] ?? null, $request->user());
 
         return $this->created([
             'prayer'   => $this->prayerPayload($prayer),
             'prophecy' => new ProphecyResource($prophecy->refresh()),
         ], __('prophecies.flash.prayed'));
+    }
+
+    /**
+     * POST prophecies/{id}/pray/start : commence (ou recommence) le temps de prière. « J'ai prié » n'est
+     * enregistré qu'après config('prayer.focus_seconds') secondes. Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(Request $request, string $id): JsonResponse
+    {
+        $prophecy = $this->prophecies->find($request->user(), $id);
+
+        return $this->success($this->prophecies->startPrayer($prophecy, $request->user()), __('prayer_focus.started'));
     }
 
     public function deletePrayer(Request $request, string $id, int $prayerId): JsonResponse

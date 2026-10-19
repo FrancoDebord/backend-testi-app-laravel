@@ -261,11 +261,19 @@ class AdminController extends Controller
         return $this->success(AppSetting::allGrouped());
     }
 
-    public function updateSettings(Request $request): JsonResponse
+    /**
+     * Mêmes groupes, ordre, libellés et descriptions que la page web des paramètres
+     * (App\Services\SettingsSchema, docs/fonctionnalites/parametres-globaux.md).
+     */
+    public function settingsSchema(\App\Services\SettingsSchema $schema): JsonResponse
     {
-        foreach ($request->all() as $key => $value) {
-            AppSetting::set($key, $value);
-        }
+        return $this->success(['groups' => $schema->groups()]);
+    }
+
+    /** `{ clé: valeur }` ; 422 si une clé est inconnue (ou masquée) ou si le type ne correspond pas. */
+    public function updateSettings(Request $request, \App\Services\SettingsSchema $schema): JsonResponse
+    {
+        $schema->update($request->all());
 
         return $this->success(AppSetting::allGrouped(), __('admin.api.settings_updated'));
     }

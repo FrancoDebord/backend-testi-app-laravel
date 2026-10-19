@@ -128,7 +128,10 @@
             @endif
 
             @unless($fulfilled)
-            <form method="POST" action="{{ route('prophecies.pray', $prophecy->id) }}" class="mt-4 space-y-2" data-loading-label="Enregistrement de la prière…">
+            {{-- « J'ai prié » : temps de prière d'abord (resources/js/prayer-focus.js, docs/fonctionnalites/temps-de-priere.md) --}}
+            <form method="POST" action="{{ route('prophecies.pray', $prophecy->id) }}" class="mt-4 space-y-2" data-loading-label="Enregistrement de la prière…"
+                  data-prayer-focus="{{ route('prophecies.pray.start', $prophecy->id) }}" data-prayer-focus-kind="prophecy" data-prayed="0"
+                  data-prayer-subject="{{ $prophecy->title }}" data-prayer-excerpt="{{ \Illuminate\Support\Str::limit((string) $prophecy->body_text, 600) }}">
                 @csrf
                 <label for="prayer-note" class="form-label">Note (facultatif)</label>
                 <textarea id="prayer-note" name="note" rows="2" maxlength="1000" class="form-input" placeholder="Ce que vous avez demandé, un verset reçu…" @error('note') aria-invalid="true" @enderror>{{ old('note') }}</textarea>

@@ -101,6 +101,7 @@ Route::put('/verset-du-jour/style', [\App\Http\Controllers\Web\DailyVerseControl
     ->middleware(['auth', 'throttle:60,1'])->name('daily-verse.style');
 Route::middleware('auth')->whereNumber('id')->whereUuid('comment')->group(function () {
     Route::post('/verset-du-jour/{id}/reagir',                          [\App\Http\Controllers\Web\DailyVerseController::class, 'react'])->middleware('throttle:60,1')->name('daily-verse.react');
+    Route::post('/verset-du-jour/{id}/je-prie/commencer',               [\App\Http\Controllers\Web\DailyVerseController::class, 'startPrayer'])->middleware('throttle:30,1')->name('daily-verse.pray.start'); // temps de prière
     Route::post('/verset-du-jour/{id}/prieres',                         [\App\Http\Controllers\Web\DailyVerseController::class, 'storePrayer'])->middleware('throttle:20,1')->name('daily-verse.prayers.store');
     Route::post('/verset-du-jour/{id}/commentaires',                    [\App\Http\Controllers\Web\DailyVerseController::class, 'storeComment'])->middleware('throttle:20,1')->name('daily-verse.comments.store');
     Route::delete('/verset-du-jour/{id}/commentaires/{comment}',        [\App\Http\Controllers\Web\DailyVerseController::class, 'destroyComment'])->name('daily-verse.comments.destroy');
@@ -339,6 +340,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/carnet/paroles/{id}/en-attente', [ProphecyController::class, 'reopen'])->name('prophecies.reopen');
         // Journal de prière
         Route::post('/carnet/paroles/{id}/prieres',            [ProphecyController::class, 'pray'])->middleware('throttle:60,1')->name('prophecies.pray');
+        Route::post('/carnet/paroles/{id}/prieres/commencer',  [ProphecyController::class, 'startPrayer'])->middleware('throttle:30,1')->name('prophecies.pray.start'); // temps de prière
         Route::delete('/carnet/paroles/{id}/prieres/{prayer}', [ProphecyController::class, 'deletePrayer'])->whereNumber('prayer')->name('prophecies.prayers.destroy');
     });
 

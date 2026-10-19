@@ -226,6 +226,10 @@ class ProfileController extends Controller
             'push_prayers'       => 'nullable|boolean',
             'push_approval'      => 'nullable|boolean',
             'push_new_followed'  => 'nullable|boolean',
+            'push_follows'       => 'nullable|boolean',
+            'push_events'        => 'nullable|boolean',
+            'push_account'       => 'nullable|boolean',
+            'push_moderation'    => 'nullable|boolean',
             'app_theme'          => 'nullable|in:light,dark,system',
             'language'           => 'nullable|string|max:5',
         ]);

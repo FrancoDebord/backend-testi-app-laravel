@@ -171,6 +171,12 @@ class ContentInteractions
             $same = $mine->first(fn (ContentReaction $r) => $r->type === $type);
             $others = $mine->reject(fn (ContentReaction $r) => $r->type === $type);
 
+            // Nouvelle prière (aucune réaction du groupe « je prie ») : le temps de prière doit être écoulé.
+            // Passer de pray à amen, ou prier de nouveau, n'est jamais bloqué (docs/fonctionnalites/temps-de-priere.md).
+            if ($type->group() === 'prayer' && $mine->isEmpty()) {
+                app(PrayerFocus::class)->ensureCompleted($user, $kind, (string) $subject->id);
+            }
+
             if ($others->isNotEmpty()) {
                 ContentReaction::whereKey($others->modelKeys())->delete();
                 $this->decrement($subject, $type->counterField(), $others->count());
@@ -187,6 +193,17 @@ class ContentInteractions
         $subject->refresh();
 
         return $created;
+    }
+
+    /**
+     * Commence (ou recommence) le temps de prière avant une réaction du groupe « je prie » sur une
+     * publication visible (find() : 404 sinon). Voir docs/fonctionnalites/temps-de-priere.md
+     *
+     * @return array{startedAt: string, requiredSeconds: int, confirmableAt: string}
+     */
+    public function startPrayer(User $user, Model $subject): array
+    {
+        return app(PrayerFocus::class)->start($user, self::kindOf($subject), (string) $subject->id);
     }
 
     /** Retire les réactions de la personne du groupe donné ('appreciation' | 'prayer'), toutes si null. */

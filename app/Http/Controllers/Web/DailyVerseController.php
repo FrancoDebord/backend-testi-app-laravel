@@ -110,6 +110,21 @@ class DailyVerseController extends Controller
         });
     }
 
+    /**
+     * Temps de prière (fetch) avant « Je prie » : même réponse JSON que l'API POST daily-verse/{id}/pray/start.
+     * Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(int $id): JsonResponse
+    {
+        try {
+            $data = $this->verses->startPrayer($this->find($id), Auth::user());
+        } catch (PrayerActionException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], $e->status());
+        }
+
+        return response()->json(['success' => true, 'data' => $data, 'message' => __('prayer_focus.started')]);
+    }
+
     public function storePrayer(Request $request, int $id): RedirectResponse
     {
         $data = $request->validate(PrayerRequests::rules(), PrayerRequests::MESSAGES);

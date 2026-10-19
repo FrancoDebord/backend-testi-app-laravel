@@ -9,7 +9,9 @@
 |   3. « Valider » : la requête d'origine part (formulaire ou fetch), le serveur vérifie le temps écoulé.
 | Fermer l'écran = partir sans enregistrer. Retirer sa prière reste immédiat (pas d'écran).
 |
-| Requêtes de prière : <form data-prayer-focus="URL de début" data-prayed="0|1" data-prayer-subject="…">.
+| Formulaires : <form data-prayer-focus="URL de début" data-prayed="0|1" data-prayer-subject="…"
+|   data-prayer-focus-kind="prayer_request|daily_verse|prophecy"> (requêtes de prière, « Je prie » du verset
+|   du jour, « J'ai prié » d'une parole prophétique ; prayer_request par défaut).
 | Témoignages : resources/js/videos.js appelle prayerFocus({ startUrl, kind: 'testimony', subject, excerpt }).
 */
 import { t } from './i18n';
@@ -76,14 +78,15 @@ export async function prayerFocus({ startUrl, kind = 'prayer_request', subject =
         const submit = q('[data-prayer-focus-submit]');
         const submitLabel = q('[data-prayer-focus-submit-label]');
         const hint = q('[data-prayer-focus-hint]');
-        const isTestimony = kind === 'testimony';
+        // Textes selon le sujet : data-label-{request|testimony|verse|prophecy|event|session} et data-confirm-… du composant.
+        const suffix = { testimony: 'Testimony', daily_verse: 'Verse', prophecy: 'Prophecy', event: 'Event', prayer_session: 'Session' }[kind] || 'Request';
 
-        q('[data-prayer-focus-label]').textContent = isTestimony ? modal.dataset.labelTestimony : modal.dataset.labelRequest;
+        q('[data-prayer-focus-label]').textContent = modal.dataset[`label${suffix}`] || modal.dataset.labelRequest;
         q('[data-prayer-focus-subject]').textContent = subject;
         q('[data-prayer-focus-subject]').hidden = !subject;
         q('[data-prayer-focus-excerpt]').textContent = excerpt;
         q('[data-prayer-focus-excerpt]').hidden = !excerpt;
-        q('[data-prayer-focus-check-label]').textContent = isTestimony ? modal.dataset.confirmTestimony : modal.dataset.confirmRequest;
+        q('[data-prayer-focus-check-label]').textContent = modal.dataset[`confirm${suffix}`] || modal.dataset.confirmRequest;
 
         // Temps de prière effectif : n'avance que quand l'onglet est visible (le serveur, lui, compte le temps réel).
         let elapsed = 0;
@@ -176,7 +179,7 @@ export async function prayerFocus({ startUrl, kind = 'prayer_request', subject =
     });
 }
 
-// ── Requêtes de prière : formulaires « Je prie » ────────────────────────
+// ── Formulaires « Je prie » (requêtes, verset du jour, paroles prophétiques) ──
 // Capture : passe avant l'indicateur de chargement des formulaires (app.js), qui ignore un envoi annulé.
 document.addEventListener('submit', async (e) => {
     const form = e.target;
@@ -191,7 +194,7 @@ document.addEventListener('submit', async (e) => {
     e.stopImmediatePropagation();
     const ok = await prayerFocus({
         startUrl: form.dataset.prayerFocus,
-        kind: 'prayer_request',
+        kind: form.dataset.prayerFocusKind || 'prayer_request',
         subject: form.dataset.prayerSubject || '',
         excerpt: form.dataset.prayerExcerpt || '',
     });

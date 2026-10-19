@@ -8,7 +8,7 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Mise en forme des témoignages](fonctionnalites/mise-en-forme-temoignages.md) | Gras, italique, émojis : éditeur, format stocké, affichage |
 | [Lien de partage](fonctionnalites/lien-de-partage.md) | Colonne `share_url`, API `shareUrl`, commande de recalcul |
 | [Page Vidéos](fonctionnalites/videos.md) | Page publique `/videos` (vidéos, shorts, directs, audios, textes), lecture, vues uniques, J'aime, commentaires et réponses |
-| [Témoignages en direct](fonctionnalites/lives.md) | Diffusion vidéo depuis un téléphone (modérateurs/admins), commentaires et réactions en temps réel, modération, API mobile |
+| [Témoignages en direct](fonctionnalites/lives.md) | Diffusion vidéo depuis un téléphone (modérateurs/admins), commentaires et réactions en temps réel, modération, API mobile ; directs passés : revoir le chat (avec le moment de chaque message) et témoigner sur un direct terminé |
 | [Connexion avec Google](fonctionnalites/connexion-google.md) | Bouton « Continuer avec Google » sur `/login` (site) ; `POST /auth/google { id_token }` (et `/auth/social`) : vérification du jeton (audience, émetteur, e-mail vérifié), création ou liaison du compte par `google_id` / e-mail, même réponse que la connexion e-mail |
 | [Administrateurs de compte](fonctionnalites/administrateurs-de-compte.md) | Chaque titulaire nomme 2 personnes qui publient, commentent et agissent au nom de son compte ; sélecteur « Mes comptes », bandeau, actions réservées au titulaire, journal (site et application) |
 | [Événements chrétiens](fonctionnalites/evenements.md) | Croisades, conférences, camps… créés par les organisations vérifiées et les administrateurs : carrousel d'images, invités, « Je participe », commentaires des participants, témoignages officiels, direct de l'événement (site et application) |
@@ -36,7 +36,8 @@ Serveur Laravel de **TestiApp** (AIRID) : site web de partage de témoignages et
 | [Partage interne « X a partagé »](fonctionnalites/partage-interne.md) | Partager un témoignage sur TestiApp avec un commentaire facultatif (auteur d'origine toujours affiché) : Mon fil des abonnés, section « Partages » du profil, compteur, notification à l'auteur, annulation |
 | [Preuves d'un témoignage](fonctionnalites/preuves.md) | Deux images ou PDF par témoignage, privés (auteur et équipe de modération) |
 | [Vidéos sur Bunny Stream](fonctionnalites/videos-bunny-stream.md) | Envoi direct de l'application à Bunny (TUS, sans passer par le serveur), états `uploading` → `processing` → `ready`, webhook, objet `video` (HLS, MP4), envois abandonnés, reprise des anciennes vidéos |
-| [Vidéos YouTube](fonctionnalites/videos-youtube.md) | Publication d'un témoignage par lien YouTube (administrateurs et profils autorisés), lecture avec le lecteur YouTube |
+| [Vidéos YouTube](fonctionnalites/videos-youtube.md) | Publication d'un témoignage par lien YouTube (administrateurs et profils autorisés), lecture avec le lecteur YouTube, crédit de la vidéo d'origine (auteur, chaîne, lien) |
+| [Paramètres globaux](fonctionnalites/parametres-globaux.md) | Mêmes réglages sur le site (Administration › Paramètres) et dans l'application : `SettingsSchema` (groupes, ordre, libellés, descriptions traduits, réglages obsolètes masqués), `GET /admin/settings/schema`, `PUT /admin/settings` validé (422) |
 | [Types de témoignages autorisés](fonctionnalites/types-de-temoignages.md) | Interrupteurs globaux texte / audio / vidéo / lien YouTube (Administration › Paramètres › Publication), exceptions par profil (Par défaut / Autorisé / Interdit), refus 403, `allowed_testimony_types`, `GET /me/publishing`, `/admin/users/{id}/publishing` |
 | [Direct avec une caméra IP](fonctionnalites/lives-camera-ip.md) | Caméra IP, OBS ou encodeur (RTMP, ou adresse du flux) via LiveKit Ingress ; aperçu et lancement depuis le studio |
 | [Page d'accueil](fonctionnalites/accueil.md) | Maquette « Témoignages de Gloire » : bandeau et chiffres, actions rapides, récents, catégories, statistiques, modération et gestion des contenus selon le rôle |
@@ -161,6 +162,8 @@ Les versions allégées des médias ([qualites-media.md](fonctionnalites/qualite
 Carnet privé et paroles prophétiques sur le site (2026-10-05) : **aucune migration** ; **recompilation et copie de `public/build/`** et `php artisan view:cache`.
 
 Migration du 2026-10-06 (alignement sur l'application) : `2026_10_06_500001_widen_bible_verse_columns` (`testimonies.bible_verse` et `drafts.bible_verse` en `TEXT`, voir [réglages et compte](fonctionnalites/reglages-et-compte.md)). Lancer `php artisan migrate --force`, puis `php artisan route:cache` si les routes sont mises en cache (nouvelle route `GET users/me/settings`, partages ouverts aux invités). Aucun asset à recompiler.
+
+Migrations du 2026-10-19 (directs passés, crédit YouTube) : `2026_10_19_300001_add_live_id_to_testimonies_table` (`testimonies.live_id`, [directs passés](fonctionnalites/lives.md)) `2026_10_19_300002_add_youtube_credit_to_testimonies_table` (`youtube_credit_author`, `youtube_credit_channel`, `youtube_credit_url`, [YouTube](fonctionnalites/videos-youtube.md)) et `2026_10_19_300003_add_push_notifications_setting` (réglage `push_notifications_enabled` dans les [paramètres globaux](fonctionnalites/parametres-globaux.md)). Lancer `php artisan migrate --force`, `php artisan optimize:clear` (nouvelles routes `GET admin/settings/schema`, `GET lives/{id}/testimonies`), `php artisan view:cache`, puis recompiler et copier `public/build/`.
 
 Migrations du 2026-10-09 : `2026_10_09_100001_dedupe_testimony_reactions` (doublons de réactions supprimés, compteurs corrigés) et `2026_10_09_100002_create_content_reactions_and_reposts_tables` ([réactions](fonctionnalites/reactions.md) et [partages](fonctionnalites/partage-interne.md) des événements, requêtes et sessions de prière). Lancer `php artisan migrate --force`, puis `npm run build` (boutons de réaction du site) et `route:cache` / `view:cache` si utilisés.
 
@@ -347,6 +350,9 @@ php artisan test
 | `tests/Feature/LiveStartNotificationTest.php` | Abonnés prévenus une seule fois au démarrage d'un direct (notification + push) |
 | `tests/Feature/WebModerationNotificationTest.php` | Modération web et API : auteur et abonnés prévenus, carnet privé ignoré, motif en français |
 | `tests/Feature/DocumentationPageTest.php` | Accès réservé, rendu HTML, liens internes, chemins refusés |
+| `tests/Feature/GlobalSettingsTest.php` | Paramètres globaux : schéma (ordre, libellés, traduction, réglages masqués), page web identique, `PUT` typé et validé (422), droits |
+| `tests/Feature/PastLivesTest.php` | Directs passés : chat paginé avec `offsetSeconds`, témoigner sur un direct terminé (API, upload-init, site), `lives/{id}/testimonies`, `testimoniesCount` / `canTestify`, page du direct terminé |
+| `tests/Feature/YouTubeCreditTest.php` | Crédit de la vidéo YouTube : enregistrement, modification, ignoré hors YouTube, validation traduite, formulaire et affichage |
 | `tests/Feature/DisplayAndPlaybackTest.php` | Grandes cartes / liste compacte (cookie, six listes, « Afficher plus »), menu Qualité, En boucle, suivants de la lecture auto |
 
 `tests/Feature/ExampleTest.php` échoue actuellement : il interroge la base sans la migrer (absence de `RefreshDatabase`). Ce défaut est antérieur aux travaux documentés ici.

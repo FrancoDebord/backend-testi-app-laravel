@@ -41,6 +41,22 @@ class ContentInteractionController extends Controller
         });
     }
 
+    /**
+     * POST events/{id}/pray/start, prayer/sessions/{id}/pray/start : commence (ou recommence) le temps de prière.
+     * Une réaction du groupe « je prie » n'est ajoutée qu'après config('prayer.focus_seconds') secondes.
+     * Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(Request $request, string $id): JsonResponse
+    {
+        try {
+            $subject = $this->interactions->find((string) $request->route('kind'), $id, $request->user());
+        } catch (ContentActionException $e) {
+            return $this->error($e->getMessage(), $e->status());
+        }
+
+        return $this->success($this->interactions->startPrayer($request->user(), $subject), __('prayer_focus.started'));
+    }
+
     public function unreact(Request $request, string $id): JsonResponse
     {
         $request->validate([

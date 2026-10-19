@@ -140,9 +140,28 @@ class Prophecies
         $this->syncDevices($prophecy);
     }
 
-    /** « J'ai prié » (note facultative). */
-    public function pray(Prophecy $prophecy, ?string $note = null, ?string $prayedAt = null): ProphecyPrayer
+    /**
+     * Commence (ou recommence) le temps de prière avant « J'ai prié » (parole déjà trouvée par find()).
+     *
+     * @return array{startedAt: string, requiredSeconds: int, confirmableAt: string}
+     */
+    public function startPrayer(Prophecy $prophecy, User $user): array
     {
+        return app(PrayerFocus::class)->start($user, 'prophecy', (string) $prophecy->id);
+    }
+
+    /**
+     * « J'ai prié » (note facultative). Exige un temps de prière écoulé (PrayerFocus, 422), commencé par
+     * `$by` (la personne connectée ; l'auteur par défaut). Retirer une prière n'est jamais bloqué.
+     * Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function pray(Prophecy $prophecy, ?string $note = null, ?string $prayedAt = null, ?User $by = null): ProphecyPrayer
+    {
+        $by ??= $prophecy->user;
+        if ($by) {
+            app(PrayerFocus::class)->ensureCompleted($by, 'prophecy', (string) $prophecy->id);
+        }
+
         $prayer = $prophecy->prayers()->create([
             'note'      => filled($note) ? trim($note) : null,
             'prayed_at' => $prayedAt ?? now(),

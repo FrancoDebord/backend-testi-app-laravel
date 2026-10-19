@@ -63,6 +63,8 @@ L'API ne change pas : `amen` et `worship` restent acceptés et comptés comme de
 
 ## Temps de prière
 
+**Événements et sessions de prière** (2026-10-19) : une nouvelle réaction du groupe « je prie » sur `events/{id}/reactions` ou `prayer/sessions/{id}/reactions` exige aussi un temps de prière commencé par `POST events/{id}/pray/start` ou `POST prayer/sessions/{id}/pray/start` (même JSON, même 422, mêmes exceptions : changer d'émoji, retirer, « j'aime »). Requêtes de prière : la réaction « je prie » reste refusée, le bouton dédié et `prayer/requests/{id}/pray/start` s'appliquent. Les réactions 🙏 des directs ne sont pas concernées.
+
 Depuis le 2026-10-18, une **nouvelle** réaction du groupe « je prie » (`pray`, `amen`, `worship`) sur un témoignage n'est acceptée qu'après un temps de prière de 5 minutes commencé par `POST testimonies/{id}/pray/start` (site : `POST /testimonies/{id}/priere/commencer`). Sinon : **422** `{ success: false, message, errors: { prayer_focus: [...] }, remaining_seconds }`. Passer de `pray` à `amen`, renvoyer la même réaction, retirer sa prière et les réactions « j'aime » ne sont jamais bloqués. Sur le site, « Je prie » ouvre l'écran « Temps de prière » avant l'envoi ; un second appui (retrait) reste immédiat. `PRAYER_FOCUS_SECONDS=0` désactive la règle (transition : les anciennes versions de l'application reçoivent 422). Détails : [temps-de-priere.md](temps-de-priere.md).
 
 ## Application

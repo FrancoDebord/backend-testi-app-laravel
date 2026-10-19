@@ -202,6 +202,11 @@ class UserController extends Controller
             'push_prayers'           => ['nullable', 'boolean'],
             'push_approval'          => ['nullable', 'boolean'],
             'push_new_followed'      => ['nullable', 'boolean'],
+            // Catégories de push (App\Services\PushNotifications::PREFERENCES)
+            'push_follows'           => ['nullable', 'boolean'],
+            'push_events'            => ['nullable', 'boolean'],
+            'push_account'           => ['nullable', 'boolean'],
+            'push_moderation'        => ['nullable', 'boolean'],
             'app_theme'              => ['nullable', 'in:light,dark,system'],
             'language'               => ['nullable', 'string', 'max:5'],
             'last_bible_book'        => ['nullable', 'integer', 'min:1', 'max:66'],
@@ -213,6 +218,7 @@ class UserController extends Controller
         $settings->update($request->only([
             'is_private_account', 'comment_permission', 'push_comments',
             'push_likes', 'push_prayers', 'push_approval', 'push_new_followed',
+            'push_follows', 'push_events', 'push_account', 'push_moderation',
             'app_theme', 'language',
             'last_bible_book', 'last_bible_chapter', 'last_bible_translation',
         ]));

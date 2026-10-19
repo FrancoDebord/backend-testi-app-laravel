@@ -37,6 +37,8 @@ class Testimony extends Model
         'featured_order', 'featured_from', 'featured_until',
         // Bunny Stream (docs/fonctionnalites/videos-bunny-stream.md)
         'bunny_video_id', 'video_status', 'duration', 'available_resolutions',
+        // Témoignage sur un direct terminé (docs/fonctionnalites/lives.md) ; crédit de la vidéo YouTube (videos-youtube.md)
+        'live_id', 'youtube_credit_author', 'youtube_credit_channel', 'youtube_credit_url',
     ];
 
     /** Témoignage standard tant que rien d'autre n'est demandé (valeur par défaut de la colonne). */
@@ -230,6 +232,20 @@ class Testimony extends Model
     }
 
     /** Direct dont ce témoignage est l'enregistrement (rediffusion), s'il y en a un. */
+    /** Direct terminé sur lequel porte ce témoignage (testimonies.live_id, docs/fonctionnalites/lives.md). */
+    public function live(): BelongsTo
+    {
+        return $this->belongsTo(LiveSession::class, 'live_id');
+    }
+
+    /** Crédit de la vidéo YouTube d'origine ; null si rien n'est renseigné (docs/fonctionnalites/videos-youtube.md). */
+    public function youtubeCredit(): ?array
+    {
+        $credit = ['author' => $this->youtube_credit_author, 'channel' => $this->youtube_credit_channel, 'url' => $this->youtube_credit_url];
+
+        return array_filter($credit, 'filled') === [] ? null : $credit;
+    }
+
     public function liveSession(): HasOne
     {
         return $this->hasOne(LiveSession::class);

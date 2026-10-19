@@ -55,6 +55,9 @@ class TestimonyCreator
             throw new ContentActionException($e->getMessage(), $e->status());
         }
 
+        // Direct terminé sur lequel porte le témoignage (docs/fonctionnalites/lives.md) : 422 errors.live_id sinon.
+        $live = app(LiveTestimonies::class)->resolve($request->input('live_id'), $user);
+
         // Parole prophétique accomplie : elle doit appartenir à l'auteur (docs/fonctionnalites/paroles-prophetiques.md).
         $prophecy = null;
         if (filled($request->prophecy_id)) {
@@ -81,6 +84,7 @@ class TestimonyCreator
             'user_id'      => $user->id,
             'category_id'  => $category?->id,
             'event_id'     => $event?->id,
+            'live_id'      => $live?->id,
             'title'        => $request->title,
             'type'         => ($isBunny || $youtubeId) ? 'video' : $request->type,
             'category_slug' => $categorySlug,
@@ -88,6 +92,8 @@ class TestimonyCreator
             'body_text'    => self::bodyWithMentions($request),
             'media_url'    => $mediaUrl,
             'youtube_id'   => $youtubeId,
+            // Crédit de la vidéo d'origine : vidéo YouTube seulement (docs/fonctionnalites/videos-youtube.md).
+            ...\App\Support\YouTubeCredit::attributes($request, $youtubeId !== null),
             'video_status' => $videoStatus,
             'proofs_public' => $request->boolean('proofs_public'),
             'renditions'   => $media?->renditions,

@@ -128,9 +128,21 @@ class LiveController extends Controller
         $live = LiveSession::with(['host', 'event'])->findOrFail($id);
         abort_unless($live->isVisibleTo(Auth::user()), 404);
 
+        // Direct terminé : revoir le chat (pagination ?chat=) et témoignages publiés sur le direct (docs/fonctionnalites/lives.md).
+        $replay = null;
+        if ($live->status === \App\Enums\LiveStatus::Ended) {
+            $replay = [
+                'comments'    => $live->comments()->with('user')->where('is_hidden', false)
+                    ->oldest()->orderBy('id')->paginate(50, ['*'], 'chat')->withQueryString(),
+                'testimonies' => $live->linkedTestimonies()->published()->with(['user', 'category'])->latest()->limit(12)->get(),
+                'testimoniesCount' => $live->linkedTestimonies()->published()->count(),
+            ];
+        }
+
         return view('lives.show', [
             'live'       => $live,
             'configured' => $this->lives->isConfigured(),
+            'replay'     => $replay,
         ]);
     }
 }

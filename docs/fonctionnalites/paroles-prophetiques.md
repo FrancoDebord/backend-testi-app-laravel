@@ -40,7 +40,8 @@ Disponible dans l'**application** et sur le **site** (`/carnet/paroles`). Les ra
 | GET | `prophecies?status=waiting\|fulfilled` | Mes paroles (en attente d'abord) ; `meta.waiting`, `meta.fulfilled` |
 | POST | `prophecies` | Créer : `received_on?`, `title?`, `body_text` ou `audio_url` (+ `audio_duration`), `given_by?`, `due_on?`, `reminder_frequency?` (`daily`/`weekly`), `reminder_time`, `reminder_weekday` |
 | GET / PUT / DELETE | `prophecies/{id}` | Détail · modifier (champs partiels, `status` = `waiting`/`fulfilled`, `fulfilled_on?`) · supprimer |
-| GET · POST | `prophecies/{id}/prayers` `{ note?, prayed_at? }` | Journal de prière · « J'ai prié » (renvoie `{ prayer, prophecy }`) |
+| GET · POST | `prophecies/{id}/prayers` `{ note?, prayed_at? }` | Journal de prière · « J'ai prié » (renvoie `{ prayer, prophecy }`) ; depuis le 2026-10-19, seulement après le [temps de prière](temps-de-priere.md) (sinon 422 `errors.prayer_focus`, `remaining_seconds`) |
+| POST | `prophecies/{id}/pray/start` | Commence le temps de prière (5 min, `PRAYER_FOCUS_SECONDS`) : `{ startedAt, requiredSeconds, confirmableAt }` ; un début vaut pour une prière |
 | DELETE | `prophecies/{id}/prayers/{prayerId}` | Retirer une prière |
 | POST | `testimonies` `{ …, prophecy_id, prophecy_public }` | Témoignage de l'accomplissement : la parole passe `fulfilled`, `testimony_id` renseigné, `is_public` selon le choix |
 
@@ -68,7 +69,8 @@ Menu latéral **Paroles prophétiques** et onglet du **Carnet privé**. Mêmes r
 | DELETE | `/carnet/paroles/{id}` | Supprimer (le témoignage publié reste en ligne) |
 | POST | `/carnet/paroles/{id}/accomplie` `{ fulfilled_on? }` | Marquer accomplie sans témoigner (date du jour par défaut, pas dans le futur) |
 | POST | `/carnet/paroles/{id}/en-attente` | Remettre en attente (refusé si un témoignage est rattaché) |
-| POST · DELETE | `/carnet/paroles/{id}/prieres` `{ note? }` · `/carnet/paroles/{id}/prieres/{prayer}` | « J'ai prié » (tant que la parole est en attente) · retirer une prière |
+| POST · DELETE | `/carnet/paroles/{id}/prieres` `{ note? }` · `/carnet/paroles/{id}/prieres/{prayer}` | « J'ai prié » (tant que la parole est en attente ; écran « Temps de prière » d'abord) · retirer une prière (jamais bloqué) |
+| POST | `/carnet/paroles/{id}/prieres/commencer` (`prophecies.pray.start`) | Début du temps de prière (JSON, comme l'API) |
 | GET | `/publish?prophecy={id}` | **Témoigner** : bandeau « Accomplissement de la parole… » et case « Publier aussi la parole prophétique » (cochée) ; `POST /testimonies` reçoit `prophecy_id`, `prophecy_public` |
 
 **Rappels** : le site enregistre seulement le réglage (fréquence, heure du téléphone, jour) ; l'application programme la notification à la prochaine ouverture des paroles.

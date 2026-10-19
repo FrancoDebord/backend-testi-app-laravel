@@ -109,7 +109,11 @@ class DailyVerses
 
     // ─── Réactions ───────────────────────────────────────────────────────────
 
-    /** Ajoute (true) ou retire (false) une réaction ; sans précision, bascule. Renvoie l'état final. */
+    /**
+     * Ajoute (true) ou retire (false) une réaction ; sans précision, bascule. Renvoie l'état final.
+     * Ajouter « Je prie » (`pray`) exige un temps de prière écoulé (PrayerFocus, 422) ; `like` et `amen`
+     * ne sont pas concernés, retirer n'est jamais bloqué (docs/fonctionnalites/temps-de-priere.md).
+     */
     public function setReaction(DailyVerse $verse, User $user, string $type, ?bool $on = null): bool
     {
         $field = self::REACTIONS[$type] ?? throw new PrayerActionException('Réaction inconnue.', 422);
@@ -119,6 +123,9 @@ class DailyVerses
             $existing = DailyVerseReaction::where(['daily_verse_id' => $verse->id, 'user_id' => $user->id, 'type' => $type])->first();
             $target   = $on ?? !$existing;
             if ($target && !$existing) {
+                if ($type === 'pray') {
+                    app(PrayerFocus::class)->ensureCompleted($user, 'daily_verse', (string) $verse->id);
+                }
                 DailyVerseReaction::create(['daily_verse_id' => $verse->id, 'user_id' => $user->id, 'type' => $type]);
                 $verse->increment($field);
             } elseif (!$target && $existing) {
@@ -128,6 +135,18 @@ class DailyVerses
 
             return $target;
         });
+    }
+
+    /**
+     * Commence (ou recommence) le temps de prière avant « Je prie » sur le verset (compte actif).
+     *
+     * @return array{startedAt: string, requiredSeconds: int, confirmableAt: string}
+     */
+    public function startPrayer(DailyVerse $verse, User $user): array
+    {
+        $this->ensureActive($user);
+
+        return app(PrayerFocus::class)->start($user, 'daily_verse', (string) $verse->id);
     }
 
     // ─── Commentaires ────────────────────────────────────────────────────────

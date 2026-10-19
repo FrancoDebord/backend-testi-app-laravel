@@ -10,20 +10,29 @@ Sans configuration (`FIREBASE_CREDENTIALS` vide), rien ne change : les notificat
 
 - **Toute** notification enregistrée dans `app_notifications` part aussi en push vers **tous les appareils** du destinataire (`device_tokens`, relation `User::deviceTokens()`).
 - Appareils : `POST /api/v1/devices/token` ou son alias `POST /api/v1/device-tokens` `{ token, platform?: android|ios|web }` (connexion requise) enregistre le jeton par `updateOrCreate` sur `token` : un jeton déjà connu sous un autre compte (même téléphone) est **réattribué** à l'utilisateur connecté ; `platform` est facultative (la valeur connue est gardée si elle est omise) ; `last_used_at` est mis à jour. `DELETE /api/v1/devices/token` ou `DELETE /api/v1/device-tokens` `{ token }` le supprime (à la déconnexion), seulement s'il appartient à l'utilisateur. Routes réservées au titulaire du compte (refusées en agissant pour une organisation).
+- **Sur consentement** (2026-10-19) : chaque type de notification appartient à une **catégorie** (`PushNotifications::PREFERENCES`) que la personne peut couper dans ses réglages ; la notification reste alors visible dans l'application, seul le push est retenu. Toutes les catégories sont **activées par défaut**.
+- **Interrupteur général** : le réglage du back-office `push_notifications_enabled` (`AppSetting`, vrai par défaut / absent) à `false` coupe **tous** les push (`PushNotifications::globallyEnabled()`, contrôlé dans `dispatchFor()` et `dispatch()`). Les notifications restent créées dans l'application. La notification de test (`push:test`, `POST /me/push-test`, bouton du back-office) n'est pas concernée : elle sert justement à vérifier la configuration.
 - Pas de push si FCM n'est pas configuré, si le destinataire n'a aucun appareil, s'il a désactivé la catégorie dans ses réglages, ou s'il est **l'auteur de l'action** (`actor_id` = destinataire, ex. modérateur qui approuve son propre témoignage) : on n'est jamais prévenu de sa propre action.
 - Le push est envoyé en file d'attente (file `push`), après validation de la transaction, ou juste après la réponse HTTP avec `PUSH_DELIVERY=after_response`. Un échec d'envoi n'empêche jamais la création de la notification dans l'application ni ne fait échouer la requête API : `PushNotifier` capture et journalise toute exception.
 - Un jeton d'appareil refusé par FCM comme **périmé** (`UNREGISTERED`, application désinstallée) ou **mal formé** (`INVALID_ARGUMENT` portant sur le jeton) est supprimé de `device_tokens`. Les autres erreurs ne suppriment rien (un mauvais projet configuré ne doit pas effacer tous les jetons).
 
 ### Préférences (`user_settings`)
 
-| Type de notification | Réglage | Sans réglage enregistré |
+Chaque `NotificationType` a une catégorie (vérifié par `tests/Feature/PushConsentTest`). Clés exposées par `GET|PUT /api/v1/users/me/settings` (booléens, `true` par défaut, colonnes de `user_settings`) et par la page Paramètres du site :
+
+| Réglage (`user_settings`) | Catégorie | Types de notification |
 |---|---|---|
-| `comment`, `reply`, `mention` | `push_comments` | envoyé |
-| `like` (J'aime et autres réactions) | `push_likes` | envoyé |
-| `prayer` (« Je prie » sur un témoignage), `prayer_encouragement`, `prayer_request_prayed` (« Je prie » sur une requête de prière) | `push_prayers` | envoyé |
-| `testimony_approved`, `testimony_rejected`, `pending_correction` | `push_approval` | envoyé |
-| `new_followed_testimony`, `live_started` | `push_new_followed` | envoyé |
-| `follow`, `share`, `organization_verified`, `organization_rejected` | aucun : toujours envoyé | envoyé |
+| `push_comments` | Commentaires | `comment`, `reply`, `mention` |
+| `push_likes` | Réactions et partages | `like` (j'aime et autres réactions), `comment_liked`, `share` (**nouveau** : avant, toujours envoyé) |
+| `push_prayers` | Prières | `prayer` (« Je prie » sur un témoignage, un événement, une session), `prayer_encouragement`, `prayer_request_prayed` |
+| `push_approval` | Publication de mes témoignages | `testimony_approved`, `testimony_rejected`, `pending_correction`, et les push seuls `video_ready`, `video_failed` |
+| `push_new_followed` | Comptes suivis | `new_followed_testimony`, `live_started` |
+| `push_follows` (**nouveau**) | Nouveaux abonnés | `follow` (avant, toujours envoyé) |
+| `push_events` (**nouveau**) | Événements et sessions de prière | `event_postponed`, `event_cancelled`, `event_survey`, `prayer_session_started`, `prayer_session_reminder` |
+| `push_account` (**nouveau**) | Mon compte | `organization_verified`, `organization_rejected` (avant, toujours envoyés), `account_verified`, `account_verification_rejected`, `account_approval_revoked`, `account_manager_added`, `account_manager_removed` |
+| `push_moderation` (**nouveau**) | Équipe de modération | `testimony_resubmitted`, `video_stuck` (affiché sur le site seulement pour les modérateurs et administrateurs) |
+
+Un type inconnu (absent de la table) reste envoyé. Sans ligne `user_settings` : tout est envoyé. Migration `2026_10_19_400001_add_push_categories_to_user_settings_table` (colonnes à `true` par défaut). Sur le site, les interrupteurs envoient `0` quand ils sont décochés (avant, décocher n'enregistrait rien).
 
 Ces correspondances reprennent le filtre de l'application (`_shouldShow` dans `lib/services/fcm_service.dart`), qui ne filtre que l'affichage au premier plan ; le serveur filtre désormais aussi les push reçus application fermée.
 
@@ -77,7 +86,7 @@ Texte : le champ `message` de la notification (déjà rédigé en français par 
 
 ## Fonctionnement technique
 
-1. **Création** : `AppNotification::create(...)` (commentaires, réactions, abonnements, modération, comptes organisation…) déclenche `App\Observers\AppNotificationObserver::created` (enregistré dans `AppServiceProvider`, après validation de la transaction).
+1. **Création** : `AppNotification::create(...)` (commentaires, réactions, abonnements, modération, comptes organisation…) déclenche `App\Observers\AppNotificationObserver::created` (enregistré dans `AppServiceProvider`, après validation de la transaction). C'est le **seul** point d'envoi des notifications enregistrées (audit du 2026-10-19 : aucun envoi explicite en double ; seules exceptions, sans observateur : `FollowerNotifications` qui insère par lots puis appelle `dispatchFor()` pour chaque ligne, et les push seuls `video_ready` / `video_failed` de `BunnyVideoSync`, soumis à `push_approval`).
 2. **Filtre et texte** : `App\Services\PushNotifications::dispatchFor()` vérifie la configuration, l'auteur de l'action, les préférences et la présence d'un appareil, construit titre, texte et données, puis `PushNotifications::dispatch()` met en file `App\Jobs\SendPushNotificationJob` (file `services.fcm.queue`) ou, avec `PUSH_DELIVERY=after_response`, l'exécute après la réponse (`dispatch(...)->afterResponse()`, sans nouvel essai).
 3. **Envoi** : la tâche (3 essais, attente 30 s puis 120 s) appelle `App\Services\PushNotifier::sendToUser($user, $titre, $texte, $donnees)`, qui lit les jetons de l'utilisateur et appelle `FcmClient::sendMulticast()` : un seul jeton = une requête ; plusieurs = requêtes **en parallèle** (`Http::pool` ; l'API v1 n'a pas d'envoi groupé, l'ancien point d'accès « batch » est fermé). `sendToUser` ne lève jamais d'exception et renvoie un résumé (`sent`, `invalid`, `retry`, `failed`, `disabled`, `error`, `results` par jeton) ; les appareils servis reçoivent `last_used_at = now()`. La tâche n'est relancée que si **aucun** appareil n'a été servi et qu'une erreur temporaire (429, 5xx, réseau, jeton OAuth2 indisponible) s'est produite : un appareil ne reçoit jamais deux fois la même notification.
 4. **Authentification** : `FcmClient` signe un JWT RS256 (`openssl_sign`) avec la clé du compte de service (portée `https://www.googleapis.com/auth/firebase.messaging`, adresse `token_uri` du fichier JSON), l'échange contre un jeton d'accès OAuth2 et le garde en cache (`Cache`) jusqu'à 5 minutes avant son expiration. Un 401 de FCM vide le cache et refait un essai.

@@ -36,6 +36,9 @@ class AppSettingSeeder extends Seeder
             ['key' => 'allow_video', 'value' => '1', 'type' => 'boolean', 'group' => 'features', 'label' => 'Autoriser les témoignages vidéo'],
             ['key' => 'require_consent_form', 'value' => '1', 'type' => 'boolean', 'group' => 'features', 'label' => 'Formulaire de consentement obligatoire'],
 
+            // Notifications group : interrupteur global des push (App\Services\PushNotifications::GLOBAL_SETTING)
+            ['key' => 'push_notifications_enabled', 'value' => '1', 'type' => 'boolean', 'group' => 'notifications', 'label' => 'Notifications push'],
+
             // Registration group
             ['key' => 'allow_registration', 'value' => '1', 'type' => 'boolean', 'group' => 'registration', 'label' => 'Autoriser les inscriptions'],
             ['key' => 'default_role', 'value' => 'utilisateur', 'type' => 'string', 'group' => 'registration', 'label' => 'Rôle par défaut'],

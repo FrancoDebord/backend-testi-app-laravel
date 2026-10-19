@@ -20,23 +20,63 @@ use Throwable;
  */
 class PushNotifications
 {
-    /** Préférence (colonne de user_settings) qui commande chaque type. Absent = toujours envoyé. */
-    private const PREFERENCES = [
-        'comment'                => 'push_comments',
-        'reply'                  => 'push_comments',
-        'mention'                => 'push_comments',
-        'like'                   => 'push_likes',
-        // « J'aime » sur un commentaire : même préférence que les réactions (docs/fonctionnalites/jaime-commentaires.md)
-        'comment_liked'          => 'push_likes',
-        'prayer'                 => 'push_prayers',
-        'testimony_approved'     => 'push_approval',
-        'testimony_rejected'     => 'push_approval',
-        'pending_correction'     => 'push_approval',
-        'new_followed_testimony' => 'push_new_followed',
-        'live_started'           => 'push_new_followed',
-        'prayer_encouragement'   => 'push_prayers',
-        'prayer_request_prayed'  => 'push_prayers',
+    /**
+     * Catégorie (colonne de user_settings, activée par défaut) qui commande chaque type : la personne qui coupe
+     * une catégorie ne reçoit plus ces push (la notification reste dans l'application). Tout type de
+     * NotificationType a une catégorie (tests\Feature\PushConsentTest) ; video_ready / video_failed sont
+     * des push seuls (BunnyVideoSync). Un type inconnu est envoyé. Voir docs/fonctionnalites/notifications-push.md
+     */
+    public const PREFERENCES = [
+        // Commentaires, réponses, mentions
+        'comment'                       => 'push_comments',
+        'reply'                         => 'push_comments',
+        'mention'                       => 'push_comments',
+        // Réactions « j'aime » et partages (docs/fonctionnalites/jaime-commentaires.md)
+        'like'                          => 'push_likes',
+        'comment_liked'                 => 'push_likes',
+        'share'                         => 'push_likes',
+        // Prières
+        'prayer'                        => 'push_prayers',
+        'prayer_encouragement'          => 'push_prayers',
+        'prayer_request_prayed'         => 'push_prayers',
+        // Publication de mes témoignages
+        'testimony_approved'            => 'push_approval',
+        'testimony_rejected'            => 'push_approval',
+        'pending_correction'            => 'push_approval',
+        'video_ready'                   => 'push_approval',
+        'video_failed'                  => 'push_approval',
+        // Comptes suivis : nouveaux témoignages, directs
+        'new_followed_testimony'        => 'push_new_followed',
+        'live_started'                  => 'push_new_followed',
+        // Nouveaux abonnés
+        'follow'                        => 'push_follows',
+        // Événements et sessions de prière
+        'event_postponed'               => 'push_events',
+        'event_cancelled'               => 'push_events',
+        'event_survey'                  => 'push_events',
+        'prayer_session_started'        => 'push_events',
+        'prayer_session_reminder'       => 'push_events',
+        // Mon compte : vérification, badge, administrateurs
+        'organization_verified'         => 'push_account',
+        'organization_rejected'         => 'push_account',
+        'account_verified'              => 'push_account',
+        'account_verification_rejected' => 'push_account',
+        'account_approval_revoked'      => 'push_account',
+        'account_manager_added'         => 'push_account',
+        'account_manager_removed'       => 'push_account',
+        // Équipe de modération
+        'testimony_resubmitted'         => 'push_moderation',
+        'video_stuck'                   => 'push_moderation',
     ];
+
+    /** Catégories exposées dans GET/PUT users/me/settings (toutes activées par défaut). */
+    public const CATEGORIES = [
+        'push_comments', 'push_likes', 'push_prayers', 'push_approval', 'push_new_followed',
+        'push_follows', 'push_events', 'push_account', 'push_moderation',
+    ];
+
+    /** Réglage du back-office (AppSetting) : false coupe tous les push. */
+    public const GLOBAL_SETTING = 'push_notifications_enabled';
 
     // Titres et textes de secours : lang/{fr,en}/notifications.php (titles.*, fallback.*), dans la langue du destinataire.
 
@@ -50,7 +90,7 @@ class PushNotifications
     {
         try {
             $recipientId = $notification->recipient_id;
-            if (!$recipientId || !app(FcmClient::class)->isConfigured()) {
+            if (!$recipientId || !self::globallyEnabled() || !app(FcmClient::class)->isConfigured()) {
                 return;
             }
 
@@ -84,6 +124,15 @@ class PushNotifications
      */
     public static function dispatch(string $userId, string $title, string $body, array $data = []): void
     {
+        // Réglage du back-office « Notifications push » coupé : aucun push.
+        if (!self::globallyEnabled()) {
+            return;
+        }
+        // Push seul (sans notification enregistrée, ex. video_ready) : la catégorie de son type s'applique aussi.
+        if (isset($data['type']) && !isset($data['notification_id']) && !self::allows($userId, (string) $data['type'])) {
+            return;
+        }
+
         $job = new SendPushNotificationJob($userId, $title, $body, $data);
 
         if (config('services.fcm.delivery') === 'after_response') {
@@ -93,6 +142,18 @@ class PushNotifications
         }
 
         dispatch($job);
+    }
+
+    /** Push autorisés par le back-office (AppSetting push_notifications_enabled, vrai par défaut). */
+    public static function globallyEnabled(): bool
+    {
+        try {
+            $value = \App\Models\AppSetting::get(self::GLOBAL_SETTING, true);
+        } catch (Throwable) {
+            return true; // table absente (installation en cours) : comportement d'avant
+        }
+
+        return $value === null || filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) !== false;
     }
 
     /** L'utilisateur accepte-t-il les push de ce type ? Sans réglages enregistrés : oui. */

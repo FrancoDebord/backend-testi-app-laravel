@@ -113,6 +113,12 @@ class LiveSession extends Model
         return $this->belongsTo(Testimony::class);
     }
 
+    /** Témoignages publiés par les spectateurs sur ce direct terminé (testimonies.live_id, « Directs passés »). */
+    public function linkedTestimonies(): HasMany
+    {
+        return $this->hasMany(Testimony::class, 'live_id');
+    }
+
     /** Libellé de l'état de l'enregistrement, ou null si le direct n'est pas enregistré. */
     public function recordingLabel(): ?string
     {
@@ -169,6 +175,22 @@ class LiveSession extends Model
     public function canBeEndedBy(?User $user): bool
     {
         return $user !== null && ($this->isHost($user) || $user->isAdmin());
+    }
+
+    /** Témoigner sur ce direct : personne connectée, direct terminé et visible (docs/fonctionnalites/lives.md). */
+    public function canBeTestifiedBy(?User $user): bool
+    {
+        return $user !== null && $this->status === LiveStatus::Ended && $this->isVisibleTo($user);
+    }
+
+    /** Secondes écoulées entre le début du direct et ce moment ; null si le début est inconnu. */
+    public function offsetSecondsAt(?\DateTimeInterface $at): ?int
+    {
+        if (!$this->started_at || !$at) {
+            return null;
+        }
+
+        return max(0, $at->getTimestamp() - $this->started_at->getTimestamp());
     }
 
     /** Un spectateur peut voir le direct en préparation seulement s'il en est modérateur. */

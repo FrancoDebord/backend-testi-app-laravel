@@ -12,8 +12,15 @@
         ['push_likes', 'Réactions (j’aime, prières…)'],
         ['push_prayers', 'Prières'],
         ['push_approval', 'Validation de mes témoignages'],
-        ['push_new_followed', 'Nouveaux témoignages de mes abonnements'],
+        ['push_new_followed', 'Nouveaux témoignages et directs de mes abonnements'],
+        ['push_follows', 'Nouveaux abonnés'],
+        ['push_events', 'Événements et sessions de prière'],
+        ['push_account', 'Mon compte (vérification, badge, administrateurs)'],
     ];
+    // Équipe de modération seulement : témoignages renvoyés, vidéos bloquées (docs/fonctionnalites/notifications-push.md)
+    if (auth()->user()?->canModerate()) {
+        $pushOptions[] = ['push_moderation', 'Modération (témoignages renvoyés, vidéos bloquées)'];
+    }
 @endphp
 
 @section('content')
@@ -50,7 +57,8 @@
             @foreach($pushOptions as [$key, $label])
             <div class="flex items-center justify-between gap-4 px-5 py-3">
                 <span class="text-sm text-slate-700">{{ $label }}</span>
-                @include('components.switch', ['name' => $key, 'checked' => (bool) ($settings->$key ?? true), 'label' => $label])
+                {{-- sendFalse : décocher enregistre bien le refus (consentement aux push) --}}
+                @include('components.switch', ['name' => $key, 'checked' => (bool) ($settings->$key ?? true), 'label' => $label, 'sendFalse' => true])
             </div>
             @endforeach
         </div>

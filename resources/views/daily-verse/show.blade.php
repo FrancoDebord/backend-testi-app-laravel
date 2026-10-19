@@ -113,7 +113,10 @@
     {{-- ── Méditer : prière, écoute, mode lecture ────────────────────────── --}}
     <section class="card flex flex-wrap items-center gap-2 p-5" aria-label="Méditer le verset">
         @auth
-        <form method="POST" action="{{ route('daily-verse.react', $verse->id) }}" data-loading-label="…">
+        {{-- « Je prie » : temps de prière d'abord (resources/js/prayer-focus.js, docs/fonctionnalites/temps-de-priere.md) --}}
+        <form method="POST" action="{{ route('daily-verse.react', $verse->id) }}" data-loading-label="…"
+              data-prayer-focus="{{ route('daily-verse.pray.start', $verse->id) }}" data-prayer-focus-kind="daily_verse" data-prayed="{{ $prayed ? '1' : '0' }}"
+              data-prayer-subject="{{ $reference }}" data-prayer-excerpt="{{ \Illuminate\Support\Str::limit($shown, 600) }}">
             @csrf <input type="hidden" name="type" value="pray">
             <button type="submit" class="{{ $prayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $prayed ? 'true' : 'false' }}">
                 <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie <span class="tabular-nums">{{ $verse->prayer_count }}</span>

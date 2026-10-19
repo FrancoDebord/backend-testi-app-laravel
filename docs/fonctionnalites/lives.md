@@ -31,6 +31,24 @@ Un direct peut aussi être diffusé depuis une caméra IP, OBS ou un encodeur (R
 - **Message épinglé du diffuseur** : un message **écrit par le diffuseur** et épinglé ne peut être **retiré, remplacé ni masqué** que par le diffuseur. Un modérateur ou un administrateur qui regarde le direct est un spectateur : réponse **403** (`LiveService::ensureCanReplacePin()`), et le site comme l'application masquent le bouton. Un message de spectateur épinglé reste gérable par la modération.
 - **Zone des commentaires** plus haute (site : 16 à 40 rem ; application : 40 % de l'écran spectateur, 34 % dans le studio). Messages en bulles, message du diffuseur mis en évidence avec la pastille « Diffuseur ». **Zone d'écriture** : champ qui grandit avec le texte (jusqu'à 4 lignes), bouton d'envoi rond, compteur de caractères, option « Épingler » en pastille ; Entrée envoie, Maj+Entrée va à la ligne (site).
 
+## Directs passés : revoir le chat, témoigner après la fin (2026-10-19)
+
+- **Revoir le chat** : une fois le direct terminé, ses commentaires restent lisibles par toute personne qui peut voir le direct (même sans compte) : **tous** les commentaires non masqués, du plus ancien au plus récent, avec leur moment dans le direct (`offsetSeconds`, secondes depuis `started_at` ; `null` si le début est inconnu). Site : la page d'un direct terminé (`/lives/{id}`) remplace le chat en temps réel par la liste « Revoir le chat » (50 messages par page, `?chat=2`…, heure `m:ss` ou `h:mm:ss`, message du diffuseur mis en évidence), sans connexion LiveKit (`mode: replay` dans `live-config`).
+- **Témoigner sur ce direct** : toute personne connectée peut publier un témoignage lié à un direct **terminé** et visible (`testimonies.live_id`). Bouton « Témoigner sur ce direct » sur la page du direct terminé → `/publish?live={id}` (bandeau « Vous témoignez sur le direct … », champ caché `live_id`) ; visiteur : invitation à se connecter. Le témoignage suit le circuit habituel (modération).
+- **Témoignages sur ce direct** : la page du direct terminé liste les témoignages **publiés** qui lui sont liés (12 plus récents) ; l'API les pagine.
+- Règle de `live_id` (`App\Services\LiveTestimonies::resolve`) : identifiant uuid d'un direct existant, visible de la personne (pas « en préparation », salle de prière accessible) et au statut `ended` ; sinon **422** `errors.live_id` (« Le direct indiqué est invalide. » · « Ce direct est introuvable. » · « Vous pourrez témoigner sur ce direct une fois qu’il sera terminé. »). Direct supprimé → `live_id` remis à `null`.
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| GET | `lives/{id}/comments` | Direct **terminé** (ou `?page` / `?limit` envoyés) : `{ data: [commentaire…], meta: { currentPage, lastPage, total, perPage } }`, `limit` 50 par défaut, 100 au plus. Direct en cours : inchangé (tableau des 100 derniers). Chaque commentaire : `{ id, body, mentions, createdAt, offsetSeconds, user: { id, displayName, initials, avatarUrl } }` |
+| GET | `lives/{id}/testimonies` | Témoignages publiés liés au direct, du plus récent au plus ancien : `TestimonyResource` paginés (`?page`, `?limit` ≤ 50), `meta { currentPage, lastPage, total, perPage }` |
+| GET | `lives/{id}` | Détail + `testimoniesCount` (témoignages publiés liés) et `canTestify` (connecté **et** direct terminé) |
+| POST 🔒 | `testimonies`, `videos/upload-init` | Champ `live_id` (uuid, facultatif) ; aussi accepté par le formulaire Publier du site |
+
+`TestimonyResource` gagne `live: { id, title, startedAt } | null`.
+
+Fichiers : migration `2026_10_19_300001_add_live_id_to_testimonies_table`, `app/Services/LiveTestimonies.php`, `LiveSession::linkedTestimonies()`, `canBeTestifiedBy()`, `offsetSecondsAt()`, `Testimony::live()`, `resources/views/lives/partials/replay.blade.php`, `lang/{fr,en}/lives_replay.php`, `tests/Feature/PastLivesTest.php` (10 tests).
+
 ## Utilisation
 
 ### Diffuser (depuis le navigateur du téléphone)
@@ -137,7 +155,7 @@ Préfixe `/api/v1`, format `{ success, data, message }`. Authentification Sanctu
 | GET | `lives` | `active` (en cours), `recent` (terminés), `canGoLive`, `configured`, `recordingConfigured` |
 | GET | `lives/{id}` | Détail (dont `pinnedComment` et `recording: { enabled, status, label, durationSec, replayTestimonyId }`) + `liveStats` (spectateurs, réactions…). `replayTestimonyId` : témoignage à ouvrir pour la rediffusion, une fois publié |
 | POST | `lives/{id}/viewer-token` | Accès spectateur : `{ url, token, identity }` (connexion facultative) |
-| GET | `lives/{id}/comments` | 100 derniers commentaires visibles |
+| GET | `lives/{id}/comments` | En cours : 100 derniers commentaires visibles ; terminé : tous, paginés, avec `offsetSeconds` (voir « Directs passés ») |
 | GET | `lives/{id}/stats` | `{ status, viewers, peakViewers, commentCount, reactions, pinnedComment }` |
 | POST 🔒 | `lives` | Lancer un direct (modérateur/admin) : `title`, `description?`, `category_slug?`, `comments_enabled?`, `record?` (défaut : oui si le stockage est configuré) → `{ live, video: { url, token } }` |
 | POST 🔒 | `lives/{id}/host-token` | Accès diffuseur (reprise du direct) |

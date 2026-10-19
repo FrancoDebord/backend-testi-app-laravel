@@ -1,6 +1,6 @@
 {{--
     Écran « Temps de prière » (resources/js/prayer-focus.js), une seule fois par page (layouts/partials/global-ui).
-    « Je prie » (requête de prière ou témoignage) : décompte de 5 min, puis « J'ai prié… » active « Valider ma prière ».
+    « Je prie » (requête de prière, témoignage, verset du jour, parole prophétique…) : décompte de 5 min, puis « J'ai prié… » active « Valider ma prière ».
     Le serveur compte aussi le temps (App\Services\PrayerFocus). Voir docs/fonctionnalites/temps-de-priere.md
 --}}
 <div id="prayer-focus" class="fixed inset-0 z-[65] overflow-y-auto bg-gradient-to-b from-[#0b1f4d] via-[#12306f] to-[#1d4fa3] text-white"
@@ -9,6 +9,14 @@
      data-label-testimony="{{ __('prayer_focus.modal.for_testimony') }}"
      data-confirm-request="{{ __('prayer_focus.modal.confirm_request') }}"
      data-confirm-testimony="{{ __('prayer_focus.modal.confirm_testimony') }}"
+     data-label-verse="{{ __('prayer_focus.modal.for_verse') }}"
+     data-confirm-verse="{{ __('prayer_focus.modal.confirm_verse') }}"
+     data-label-prophecy="{{ __('prayer_focus.modal.for_prophecy') }}"
+     data-confirm-prophecy="{{ __('prayer_focus.modal.confirm_prophecy') }}"
+     data-label-event="{{ __('prayer_focus.modal.for_event') }}"
+     data-confirm-event="{{ __('prayer_focus.modal.confirm_event') }}"
+     data-label-session="{{ __('prayer_focus.modal.for_session') }}"
+     data-confirm-session="{{ __('prayer_focus.modal.confirm_session') }}"
      data-validating="{{ __('prayer_focus.modal.validating') }}"
      data-validate="{{ __('prayer_focus.modal.validate') }}">
     <div class="mx-auto flex min-h-full w-full max-w-xl flex-col px-5 py-6 sm:py-10">

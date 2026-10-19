@@ -250,15 +250,14 @@ class AdminController extends Controller
 
     public function settings(): View
     {
-        $settings = AppSetting::orderBy('group')->orderBy('key')->get()->groupBy('group');
-        return view('admin.settings', compact('settings'));
+        // Même source que l'API (GET /api/v1/admin/settings/schema) : docs/fonctionnalites/parametres-globaux.md
+        $groups = app(\App\Services\SettingsSchema::class)->groups();
+        return view('admin.settings', compact('groups'));
     }
 
     public function updateSettings(Request $request): RedirectResponse
     {
-        foreach ($request->except(['_token', '_method']) as $key => $value) {
-            AppSetting::set($key, $value);
-        }
+        app(\App\Services\SettingsSchema::class)->update($request->except(['_token', '_method']));
 
         return back()->with('success', __('admin.flash.settings_updated'));
     }

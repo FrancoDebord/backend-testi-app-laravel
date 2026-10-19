@@ -108,9 +108,20 @@ class ProphecyController extends Controller
     {
         $prophecy = $this->prophecies->find($request->user(), $id);
         $data = $request->validate(['note' => 'nullable|string|max:1000']);
-        $this->prophecies->pray($prophecy, $data['note'] ?? null);
+        $this->prophecies->pray($prophecy, $data['note'] ?? null, null, $request->user());
 
         return redirect()->route('prophecies.show', $prophecy->id)->with('success', __('prophecies.flash.prayed'));
+    }
+
+    /**
+     * Temps de prière (fetch) avant « J'ai prié » : même réponse JSON que l'API POST prophecies/{id}/pray/start.
+     * Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $prophecy = $this->prophecies->find($request->user(), $id);
+
+        return response()->json(['success' => true, 'data' => $this->prophecies->startPrayer($prophecy, $request->user()), 'message' => __('prayer_focus.started')]);
     }
 
     public function deletePrayer(Request $request, string $id, int $prayer): RedirectResponse

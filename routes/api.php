@@ -68,6 +68,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('daily-verse/react',  [DailyVerseController::class, 'unreact']);
         Route::whereNumber('id')->whereUuid('commentId')->group(function () {
             Route::post  ('daily-verse/{id}/react',                       [DailyVerseController::class, 'reactTo'])->middleware('throttle:60,1');
+            Route::post  ('daily-verse/{id}/pray/start',                  [DailyVerseController::class, 'startPrayer'])->middleware('throttle:30,1'); // temps de prière (docs/fonctionnalites/temps-de-priere.md)
             Route::post  ('daily-verse/{id}/comments',                    [DailyVerseController::class, 'storeComment'])->middleware('throttle:20,1');
             Route::delete('daily-verse/{id}/comments/{commentId}',        [DailyVerseController::class, 'destroyComment']);
             Route::post  ('daily-verse/{id}/comments/{commentId}/report', [DailyVerseController::class, 'reportComment'])->middleware('throttle:20,1');
@@ -143,6 +144,8 @@ Route::prefix('v1')->group(function () {
     Route::get('lives/{id}',                [LiveController::class, 'show'])->whereUuid('id');
     Route::post('lives/{id}/viewer-token',  [LiveController::class, 'viewerToken'])->whereUuid('id');
     Route::get('lives/{id}/comments',       [LiveController::class, 'comments'])->whereUuid('id');
+    // Directs passés : témoignages publiés sur le direct (docs/fonctionnalites/lives.md)
+    Route::get('lives/{id}/testimonies',    [LiveController::class, 'testimonies'])->whereUuid('id');
     Route::get('lives/{id}/stats',          [LiveController::class, 'stats'])->whereUuid('id');
     Route::get('lives/{id}/stage',          [LiveController::class, 'stage'])->whereUuid('id');
     Route::get('lives/{id}/viewers',        [LiveController::class, 'viewers'])->whereUuid('id')->middleware('throttle:30,1');
@@ -266,6 +269,10 @@ Route::prefix('v1')->group(function () {
             Route::post("{$prefix}/{id}/repost",      [\App\Http\Controllers\Api\ContentInteractionController::class, 'repost'])->defaults('kind', $kind)->middleware('throttle:30,1');
             Route::delete("{$prefix}/{id}/repost",    [\App\Http\Controllers\Api\ContentInteractionController::class, 'unrepost'])->defaults('kind', $kind);
         }
+        // Temps de prière avant « Je prie » (requêtes de prière : prayer/requests/{id}/pray/start) — docs/fonctionnalites/temps-de-priere.md
+        foreach (['events' => 'event', 'prayer/sessions' => 'prayer_session'] as $prefix => $kind) {
+            Route::post("{$prefix}/{id}/pray/start", [\App\Http\Controllers\Api\ContentInteractionController::class, 'startPrayer'])->defaults('kind', $kind)->middleware('throttle:30,1');
+        }
     });
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -303,7 +310,8 @@ Route::prefix('v1')->group(function () {
             Route::put('prophecies/{id}',                    [\App\Http\Controllers\Api\ProphecyController::class, 'update']);
             Route::delete('prophecies/{id}',                 [\App\Http\Controllers\Api\ProphecyController::class, 'destroy']);
             Route::get('prophecies/{id}/prayers',            [\App\Http\Controllers\Api\ProphecyController::class, 'prayers']);
-            Route::post('prophecies/{id}/prayers',           [\App\Http\Controllers\Api\ProphecyController::class, 'pray'])->middleware('throttle:60,1');
+            Route::post('prophecies/{id}/prayers',           [\App\Http\Controllers\Api\ProphecyController::class, 'pray'])->middleware('throttle:60,1'); // après le temps de prière
+            Route::post('prophecies/{id}/pray/start',        [\App\Http\Controllers\Api\ProphecyController::class, 'startPrayer'])->middleware('throttle:30,1'); // temps de prière (docs/fonctionnalites/temps-de-priere.md)
             Route::delete('prophecies/{id}/prayers/{prayerId}', [\App\Http\Controllers\Api\ProphecyController::class, 'deletePrayer'])->whereNumber('prayerId');
         });
         // Mon fil : comptes suivis, complétés de suggestions ─ docs/fonctionnalites/recommandations.md
@@ -428,6 +436,8 @@ Route::prefix('v1')->group(function () {
             Route::put('categories/{id}',         [AdminController::class, 'updateCategory']);
             Route::delete('categories/{id}',      [AdminController::class, 'deleteCategory']);
             Route::get('settings',                [AdminController::class, 'settings']);
+            // Mêmes groupes, libellés et descriptions que la page web ─ docs/fonctionnalites/parametres-globaux.md
+            Route::get('settings/schema',         [AdminController::class, 'settingsSchema']);
             Route::put('settings',                [AdminController::class, 'updateSettings']);
         });
     });

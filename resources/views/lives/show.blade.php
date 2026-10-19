@@ -118,16 +118,36 @@
             </div>
             @endif
         </section>
+
+        {{-- Direct terminé : témoignages publiés sur ce direct (docs/fonctionnalites/lives.md) --}}
+        @if($replay ?? null)
+        <section aria-labelledby="live-testimonies-title" data-live-testimonies>
+            <div class="mb-3 flex items-center justify-between gap-2">
+                <h2 id="live-testimonies-title" class="text-base font-semibold text-slate-900">{{ __('lives_replay.testimonies.title') }}
+                    <span class="text-sm font-normal text-slate-500">{{ $replay['testimoniesCount'] }}</span></h2>
+            </div>
+            @if($replay['testimonies']->isEmpty())
+                <p class="card p-5 text-sm text-slate-500">{{ __('lives_replay.testimonies.empty') }}</p>
+            @else
+                @include('components.testimony-list', ['items' => $replay['testimonies'], 'routeName' => 'testimonies.show', 'gridClass' => 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'])
+            @endif
+        </section>
+        @endif
     </div>
 
     <div class="min-w-0 space-y-6">
-        @include('lives.partials.stage')
-        @include('lives.partials.comments')
+        @if($replay ?? null)
+            {{-- Revoir le chat et « Témoigner sur ce direct » (rendu serveur, sans temps réel) --}}
+            @include('lives.partials.replay')
+        @else
+            @include('lives.partials.stage')
+            @include('lives.partials.comments')
+        @endif
     </div>
 </div>
 
 @include('lives.partials.viewers-modal')
-@include('lives.partials.config', ['mode' => 'viewer'])
+@include('lives.partials.config', ['mode' => ($replay ?? null) ? 'replay' : 'viewer'])
 @endsection
 
 @push('scripts')

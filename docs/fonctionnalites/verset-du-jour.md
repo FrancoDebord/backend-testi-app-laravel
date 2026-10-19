@@ -54,7 +54,8 @@ Migration : `2026_10_06_400001_create_daily_verse_participation`.
 | GET | `/daily-verse?date=AAAA-MM-JJ&translation=KJV` | public | Verset (du jour par défaut). Ajoute `parsed` (livre, chapitre, versets), `translation` (le passage dans cette version, si demandé), `counts.comments`, `counts.prayerRequests` (publiques), `webUrl`. |
 | GET | `/daily-verse/{id}` | public | Même format pour un verset donné |
 | GET | `/daily-verse/versions?date=` · `/daily-verse/{id}/versions?translation=` | public | Le passage dans chaque version |
-| POST | `/daily-verse/{id}/react` `{ type: like\|pray\|amen, active? }` | connecté | Bascule (ou fixe) une réaction ; renvoie le verset. `POST/DELETE /daily-verse/react` (verset du jour) restent disponibles. |
+| POST | `/daily-verse/{id}/react` `{ type: like\|pray\|amen, active? }` | connecté | Bascule (ou fixe) une réaction ; renvoie le verset. `POST/DELETE /daily-verse/react` (verset du jour) restent disponibles. Ajouter `pray` exige le [temps de prière](temps-de-priere.md) (2026-10-19, sinon 422) ; `like`, `amen` et les retraits ne sont jamais bloqués. |
+| POST | `/daily-verse/{id}/pray/start` | connecté | Commence le temps de prière avant « Je prie » : `{ startedAt, requiredSeconds, confirmableAt }`. Site : `POST /verset-du-jour/{id}/je-prie/commencer` (`daily-verse.pray.start`), le bouton « Je prie » ouvre l'écran « Temps de prière ». |
 | GET | `/daily-verse/{id}/comments?limit=30` | public | Commentaires, récents d'abord (`meta` de pagination) |
 | POST | `/daily-verse/{id}/comments` `{ body, mention_ids? }` | connecté | 201 |
 | DELETE | `/daily-verse/{id}/comments/{commentId}` | auteur, modération | |

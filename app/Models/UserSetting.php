@@ -15,6 +15,8 @@ class UserSetting extends Model
     protected $fillable = [
         'user_id', 'is_private_account', 'comment_permission',
         'push_comments', 'push_likes', 'push_prayers', 'push_approval', 'push_new_followed',
+        // Catégories ajoutées le 2026-10-19 (docs/fonctionnalites/notifications-push.md)
+        'push_follows', 'push_events', 'push_account', 'push_moderation',
         'app_theme', 'language',
         'last_bible_book', 'last_bible_chapter', 'last_bible_translation',
     ];
@@ -28,6 +30,10 @@ class UserSetting extends Model
             'push_prayers'          => 'boolean',
             'push_approval'         => 'boolean',
             'push_new_followed'     => 'boolean',
+            'push_follows'          => 'boolean',
+            'push_events'           => 'boolean',
+            'push_account'          => 'boolean',
+            'push_moderation'       => 'boolean',
             'last_bible_book'       => 'integer',
             'last_bible_chapter'    => 'integer',
             'updated_at'            => 'datetime',

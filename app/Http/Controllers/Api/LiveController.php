@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\LiveStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LiveSessionResource;
+use App\Http\Resources\TestimonyResource;
 use App\Models\LiveComment;
 use App\Models\LiveSession;
 use App\Models\User;
@@ -54,7 +55,26 @@ class LiveController extends Controller
 
         return $this->success(array_merge((new LiveSessionResource($live))->toArray($request), [
             'liveStats' => $this->lives->stats($live),
+            // Directs passés (docs/fonctionnalites/lives.md) : témoignages publiés sur ce direct,
+            // et droit d'en publier un (personne connectée, direct terminé).
+            'testimoniesCount' => $live->linkedTestimonies()->published()->count(),
+            'canTestify'       => $live->canBeTestifiedBy($this->user($request)),
         ]));
+    }
+
+    /** Témoignages publiés sur ce direct, du plus récent au plus ancien (?page, ?limit ≤ 50). */
+    public function testimonies(Request $request, string $id): JsonResponse
+    {
+        $live  = $this->find($id, $request);
+        $items = $live->linkedTestimonies()->published()->with('user')->latest()
+            ->paginate(max(1, min((int) $request->query('limit', 20), 50)));
+
+        return $this->paginated(TestimonyResource::collection($items->items()), [
+            'currentPage' => $items->currentPage(),
+            'lastPage'    => $items->lastPage(),
+            'total'       => $items->total(),
+            'perPage'     => $items->perPage(),
+        ]);
     }
 
     /** Démarre un direct (modérateurs et administrateurs) et renvoie les accès diffuseur. */
@@ -135,14 +155,34 @@ class LiveController extends Controller
 
     // ─── Commentaires ────────────────────────────────────────────────────────
 
-    /** 100 derniers commentaires visibles, du plus ancien au plus récent. */
+    /**
+     * Direct en cours : 100 derniers commentaires visibles, du plus ancien au plus récent (tableau).
+     * Direct terminé (ou ?page / ?limit envoyés) : revoir le chat, TOUS les commentaires visibles du plus ancien
+     * au plus récent, paginés (limit ≤ 100, 50 par défaut) avec meta { currentPage, lastPage, total, perPage }.
+     * Chaque commentaire porte offsetSeconds : secondes écoulées depuis le début du direct (null si inconnu).
+     */
     public function comments(Request $request, string $id): JsonResponse
     {
         $live = $this->find($id, $request);
-        $comments = $live->comments()->with('user')->where('is_hidden', false)
-            ->latest()->limit(100)->get()->reverse()->values();
+        $payload = fn (LiveComment $c) => [...$c->toPayload(), 'offsetSeconds' => $live->offsetSecondsAt($c->created_at)];
 
-        return $this->success($comments->map->toPayload());
+        if ($live->status !== LiveStatus::Ended && !$request->has('page') && !$request->has('limit')) {
+            $comments = $live->comments()->with('user')->where('is_hidden', false)
+                ->latest()->limit(100)->get()->reverse()->values();
+
+            return $this->success($comments->map($payload));
+        }
+
+        $page = $live->comments()->with('user')->where('is_hidden', false)
+            ->oldest()->orderBy('id')
+            ->paginate(max(1, min((int) $request->query('limit', 50), 100)));
+
+        return $this->paginated(collect($page->items())->map($payload)->values(), [
+            'currentPage' => $page->currentPage(),
+            'lastPage'    => $page->lastPage(),
+            'total'       => $page->total(),
+            'perPage'     => $page->perPage(),
+        ]);
     }
 
     public function storeComment(Request $request, string $id): JsonResponse

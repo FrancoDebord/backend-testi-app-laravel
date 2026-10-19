@@ -17,7 +17,12 @@ use InvalidArgumentException;
  */
 class PrayerFocus
 {
-    public const KINDS = ['prayer_request', 'testimony'];
+    /**
+     * Sujets concernés : requête de prière (« Je prie » dédié et réactions), témoignage (réactions du groupe
+     * « je prie »), verset du jour (réaction `pray`), parole prophétique (« J'ai prié »), événement et
+     * session de prière (réactions du groupe « je prie », ContentInteractions).
+     */
+    public const KINDS = ['prayer_request', 'testimony', 'daily_verse', 'prophecy', 'event', 'prayer_session'];
 
     /** Marge accordée à l'application (latence, horloges). */
     public const TOLERANCE_SECONDS = 10;

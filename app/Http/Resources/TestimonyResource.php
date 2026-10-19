@@ -40,6 +40,8 @@ class TestimonyResource extends JsonResource
             'category'     => $this->category_slug,
             // Événement auquel le témoignage est rattaché (docs/fonctionnalites/evenements.md).
             'eventId'      => $this->event_id,
+            // Direct terminé sur lequel porte le témoignage (docs/fonctionnalites/lives.md) : { id, title, startedAt } ou null.
+            'live'         => $this->live_id && $this->live ? ['id' => $this->live->id, 'title' => $this->live->title, 'startedAt' => $this->live->started_at?->toIso8601String()] : null,
             // Parole prophétique accomplie : montrée si l'auteur l'a rendue publique ; à l'auteur toujours.
             'prophecy'     => $this->prophecyFor($request),
             // Texte lisible (« @Nom ») + mentions cliquables (docs/fonctionnalites/mentions.md).
@@ -50,6 +52,8 @@ class TestimonyResource extends JsonResource
             // Vidéo YouTube (docs/fonctionnalites/videos-youtube.md) : l'application l'affiche avec le lecteur YouTube.
             'youtubeId'    => $this->youtube_id,
             'youtubeUrl'   => $this->youtube_id ? \App\Support\YouTube::watchUrl($this->youtube_id) : null,
+            // Crédit de la vidéo d'origine : { author, channel, url } ; null si rien n'est renseigné.
+            'youtubeCredit' => $this->resource->youtubeCredit(),
             // Versions allégées, débit croissant ; [] si aucune (docs/fonctionnalites/qualites-media.md).
             'renditions'   => \App\Models\MediaFile::renditionsForApi($this->renditions),
             // État des versions allégées (détail d'un témoignage) : done, pending, processing, failed, none ou null.

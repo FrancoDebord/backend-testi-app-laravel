@@ -11,7 +11,7 @@ Ces points du contrat de l'API servent aux écrans Profil et Paramètres de l'ap
 
 Clés :
 
-- `push_comments`, `push_likes`, `push_prayers`, `push_approval`, `push_new_followed` : booléens (voir [notifications push](notifications-push.md)) ; `push_likes` commande aussi les « j'aime » sur vos commentaires (`comment_liked`, [jaime-commentaires.md](jaime-commentaires.md)) ;
+- `push_comments`, `push_likes`, `push_prayers`, `push_approval`, `push_new_followed`, et depuis le 2026-10-19 `push_follows`, `push_events`, `push_account`, `push_moderation` : booléens, `true` par défaut (catégories de push, table des types dans [notifications push](notifications-push.md)) ; `push_likes` commande aussi les « j'aime » sur vos commentaires (`comment_liked`, [jaime-commentaires.md](jaime-commentaires.md)) ;
 - `comment_permission` : `everyone` \| `followers` \| `nobody` ;
 - `is_private_account`, `app_theme`, `language`, `last_bible_*`.
 

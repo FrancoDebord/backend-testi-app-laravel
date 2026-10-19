@@ -107,6 +107,17 @@ class DailyVerseController extends Controller
         });
     }
 
+    /**
+     * POST /daily-verse/{id}/pray/start : commence (ou recommence) le temps de prière. « Je prie » (`pray`)
+     * n'est ajouté qu'après config('prayer.focus_seconds') secondes. Voir docs/fonctionnalites/temps-de-priere.md
+     */
+    public function startPrayer(Request $request, int $id): JsonResponse
+    {
+        $verse = $this->find($id);
+
+        return $this->attempt(fn () => $this->success($this->verses->startPrayer($verse, $request->user()), __('prayer_focus.started')));
+    }
+
     // POST /daily-verse/share  (authentifié)
     public function share(): JsonResponse
     {

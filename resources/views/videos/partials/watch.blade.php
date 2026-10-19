@@ -121,6 +121,22 @@
                     <i class="fa-brands fa-youtube text-error-500" aria-hidden="true"></i>{{ __('videos.watch.youtube_hosted') }} ·
                     <a href="{{ \App\Support\YouTube::watchUrl($testimony->youtube_id) }}" target="_blank" rel="noopener" class="font-medium text-primary-600 hover:underline">{{ __('videos.watch.youtube_open') }}</a>
                 </p>
+                {{-- Crédit de la vidéo d'origine : « Vidéo de {auteur} · {chaîne} » (docs/fonctionnalites/videos-youtube.md) --}}
+                @if($credit = $testimony->youtubeCredit())
+                @php $creditText = implode(' · ', array_filter([$credit['author'], $credit['channel']], 'filled')); @endphp
+                <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600" data-youtube-credit>
+                    <i class="fa-solid fa-circle-user text-slate-400" aria-hidden="true"></i>
+                    @if($creditText !== '')
+                        @if($credit['url'])
+                        <a href="{{ $credit['url'] }}" target="_blank" rel="noopener" class="font-medium text-primary-600 hover:underline">{{ __('youtube_credit.video_by', ['credit' => $creditText]) }}</a>
+                        @else
+                        <span>{{ __('youtube_credit.video_by', ['credit' => $creditText]) }}</span>
+                        @endif
+                    @else
+                        <a href="{{ $credit['url'] }}" target="_blank" rel="noopener" class="font-medium text-primary-600 hover:underline">{{ __('youtube_credit.open_channel') }}</a>
+                    @endif
+                </p>
+                @endif
             @elseif($type === 'video')
                 @if($testimony->media_url)
                 <div class="relative overflow-hidden rounded-xl bg-black {{ $isShort ? 'flex justify-center' : '' }}">
