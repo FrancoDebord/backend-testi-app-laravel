@@ -24,6 +24,8 @@ class LiveSessionResource extends JsonResource
             ...($this->usesExternalCamera() && $user?->id === $this->host_id
                 ? ['camera' => ['url' => $this->ingress_url, 'streamKey' => $this->ingress_stream_key, 'sourceUrl' => self::maskCameraUrl($this->camera_url)]]
                 : []),
+            // Direct YouTube : { id, url, embedUrl, thumbnailUrl } ; reste présent après la fin (rediffusion). null sinon.
+            'youtube'         => $this->youtube(),
             'statusLabel'     => $this->status->label(),
             'commentsEnabled' => $this->comments_enabled,
             'speakersEnabled' => (bool) $this->speakers_enabled, // demandes d'intervention ouvertes

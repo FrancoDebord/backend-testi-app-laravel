@@ -7,7 +7,9 @@
         'liveId'          => $live->id,
         'title'           => $live->title,
         'status'          => $live->status->value,
-        'source'          => $live->source ?? 'browser',  // browser, rtmp ou url (docs/fonctionnalites/lives-camera-ip.md)
+        'source'          => $live->source ?? 'browser',  // browser, rtmp, url (docs/fonctionnalites/lives-camera-ip.md) ou youtube
+        // Mode « youtube » : lecteur YouTube, aucune connexion LiveKit (docs/fonctionnalites/lives.md)
+        'youtube'         => $live->youtube(),
         'startedAt'       => $live->started_at?->toIso8601String(),
         'commentsEnabled' => $live->comments_enabled,
         'hostId'          => $live->host_id,
@@ -30,6 +32,7 @@
             'reactions'   => route('lives.reactions', $live->id),
             'stats'       => route('lives.stats', $live->id),
             'viewers'     => route('lives.viewers', $live->id),
+            'heartbeat'   => route('lives.heartbeat', $live->id),
             'stage'         => route('lives.stage', $live->id),
             'stageRequest'  => route('lives.stage.request', $live->id),
             'stageWithdraw' => route('lives.stage.withdraw', $live->id),

@@ -25,7 +25,12 @@ class LiveSession extends Model
         'record', 'recording_status', 'egress_id', 'recording_path', 'recording_duration', 'recording_error', 'testimony_id',
         // Caméra IP / encodeur (docs/fonctionnalites/lives-camera-ip.md)
         'source', 'ingress_id', 'ingress_url', 'ingress_stream_key', 'camera_url',
+        // Direct YouTube (source « youtube », sans LiveKit) : docs/fonctionnalites/lives.md
+        'youtube_video_id',
     ];
+
+    /** Sources acceptées (validation des formulaires et de l'API). */
+    public const SOURCES = ['browser', 'rtmp', 'url', 'youtube'];
 
     /** Sources vidéo d'un direct. */
     /** Sources vidéo [browser|rtmp|url => libellé] (lang/{fr,en}/models.php › live_sources). */
@@ -260,6 +265,31 @@ class LiveSession extends Model
     public function usesExternalCamera(): bool
     {
         return in_array($this->source, ['rtmp', 'url'], true);
+    }
+
+    /** Direct diffusé sur YouTube : ni salle LiveKit, ni jeton, ni enregistrement (docs/fonctionnalites/lives.md). */
+    public function isYoutube(): bool
+    {
+        return $this->source === 'youtube';
+    }
+
+    /**
+     * Vidéo YouTube du direct (et sa rediffusion une fois terminé) : identifiant, liens de lecture et miniature ;
+     * null pour un direct LiveKit.
+     *
+     * @return array{id: string, url: string, embedUrl: string, thumbnailUrl: string}|null
+     */
+    public function youtube(): ?array
+    {
+        $id = $this->youtube_video_id;
+        if (!$this->isYoutube() || !filled($id)) return null;
+
+        return [
+            'id'           => $id,
+            'url'          => \App\Support\YouTube::watchUrl($id),
+            'embedUrl'     => \App\Support\YouTube::embedUrl($id),
+            'thumbnailUrl' => \App\Support\YouTube::thumbnailUrl($id),
+        ];
     }
 
     /** Identité LiveKit du flux de la caméra : commence par « host- », donc affichée comme le diffuseur. */

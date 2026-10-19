@@ -4,6 +4,15 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-19 — Directs par lien YouTube (sans LiveKit)
+
+- **Utilisateurs** : *Lancer un direct* propose une 4ᵉ source, **Lien YouTube** : le diffuseur lance son direct sur YouTube puis colle le lien ; le direct est aussitôt à l'antenne (abonnés prévenus) avec le lecteur YouTube, et garde chat, réactions, message épinglé, modération, bouton « Couper le direct », compteur de spectateurs, témoignages et bilan de fin (la vidéo YouTube sert de rediffusion, « Ouvrir sur YouTube »). Possible même quand le service vidéo LiveKit n'est pas configuré (seule source proposée alors). Pas d'intervenants ni d'enregistrement pour cette source. Pastille « YouTube » dans les listes [lives.md](fonctionnalites/lives.md#direct-youtube-2026-10-19).
+- **API** : `POST lives` accepte `source=youtube` + `youtube_url` (obligatoire ; lien non reconnu → 422 `errors.youtube_url`), fonctionne sans LiveKit, `record` forcé à `false`, statut `live` immédiat, réponse `{ live, video: null }`. `LiveSessionResource.youtube` = `{ id, url, embedUrl, thumbnailUrl }` ou `null`. `GET lives` : `youtubeEnabled: true`. Nouveau `POST lives/{id}/heartbeat` (public, 12/min, `viewer_id?` ≤ 64) → même réponse que `GET lives/{id}/stats` (`{ status, viewers, peakViewers, commentCount, reactions, pinnedComment, stage }`) ; décompte des spectateurs d'un direct YouTube (60 s par signal, diffuseur exclu), utilisé aussi par `stats`, `liveStats` et `viewers`. Sur un direct YouTube, `viewer-token`, `host-token` et les actions `stage/*` → **409** « Ce direct est diffusé sur YouTube. » / « This live is streamed on YouTube. » ; `GET lives/{id}/stage` renvoie une scène fermée.
+- **Développeurs** : colonne `live_sessions.youtube_video_id` ; `LiveSession::SOURCES`, `isYoutube()`, `youtube()` ; `LiveService::start()` (YouTube : pas de salle, `goLive` immédiat), `heartbeat()`, `ensureLiveKitLive()`, `broadcast()` ignoré pour YouTube ; `lives:cleanup` ne consulte plus LiveKit pour un direct YouTube et le clôture `abandoned` après 12 h (`livekit.youtube_max_hours`) ; `LiveStage` (scène fermée, aucune diffusion) ; route web `lives.heartbeat` ; `lives.studio` redirige vers `lives.show` ; vue `lives/partials/youtube-player.blade.php` ; `live.js` mode `youtube` (aucune connexion LiveKit, commentaires toutes les 8 s, heartbeat toutes les 30 s, `viewer_id` en `localStorage`) ; vérifications caméra/micro lancées seulement quand leur panneau est visible. Textes `lang/{fr,en}/lives.php` (`create.source_youtube*`, `create.youtube_*`, `show.youtube_*`, `messages.youtube_url_*`, `errors.youtube_only`, `index.youtube_available`), `models.live_sources.youtube`. Tests `YoutubeLivesTest` (11).
+- **Déploiement** : migration `2026_10_19_600001_add_youtube_to_live_sessions` (`php artisan migrate --force`), `php artisan optimize:clear` (nouvelles routes), `php artisan view:cache`, recompilation des assets (`npm run build`) et copie de `public/build/`. Variable facultative `LIVE_YOUTUBE_MAX_HOURS` (12 par défaut).
+
+---
+
 ## 2026-10-19 — Anciens directs affichés comme dans l'application
 
 - **Utilisateurs** :

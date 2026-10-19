@@ -57,6 +57,7 @@ Depuis le 2026-10-17, le direct d'un événement se diffuse **sur YouTube** : l'
 - **API** : `POST /events` et `PUT /events/{id}` acceptent `youtube_live_url` (chaîne, 300 caractères au plus, facultative). Absent : inchangé ; `""` ou `null` : retiré ; lien non reconnu : **422** (`events.validation.youtube_live_invalid`). `EventResource.youtubeLive` = `{ id, url, embedUrl, thumbnailUrl }` ou `null` (`url` : `https://www.youtube.com/watch?v=…`, `embedUrl` : lecteur `youtube-nocookie.com`, `thumbnailUrl` : `i.ytimg.com/vi/…/hqdefault.jpg`).
 - **Site** : bloc **Direct sur YouTube** sur la page de l'événement (lecteur intégré `youtube-nocookie`, lien **Ouvrir sur YouTube**), comme les vidéos YouTube des témoignages ([videos-youtube.md](videos-youtube.md)).
 - Pas de notification aux participants. Tests : `tests/Feature/EventYouTubeLiveTest.php`.
+- **Direct de l'événement par lien YouTube** (2026-10-19) : un direct (`POST lives` avec `event_id`) peut aussi avoir la source `youtube` : chat, réactions, notification des abonnés comme un direct LiveKit, sans LiveKit ([lives.md › Direct YouTube](lives.md#direct-youtube-2026-10-19)).
 
 ## Liste compacte
 

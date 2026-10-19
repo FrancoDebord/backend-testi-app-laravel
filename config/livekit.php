@@ -40,6 +40,11 @@ return [
     // Un direct resté « en préparation » plus longtemps est clôturé (minutes)
     'preparing_timeout' => 30,
 
+    // Direct YouTube (source « youtube », sans LiveKit) : clôturé « abandoned » après ce délai à l'antenne (heures)
+    'youtube_max_hours' => (int) env('LIVE_YOUTUBE_MAX_HOURS', 12),
+    // Spectateurs d'un direct YouTube : une personne compte tant que son dernier signal (heartbeat) date de moins de N secondes
+    'viewer_heartbeat_ttl' => 60,
+
     // Intervenants (docs/fonctionnalites/lives-intervenants.md) : un seul à l'antenne à la fois.
     'stage_invite_timeout'      => 60,  // secondes pour accepter une invitation
     'stage_message_length'      => 200, // sujet annoncé avec la demande

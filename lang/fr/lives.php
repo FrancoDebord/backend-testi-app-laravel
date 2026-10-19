@@ -18,6 +18,7 @@ return [
         'header'          => 'Témoignages en direct',
         'subheader'       => 'Regardez, commentez et réagissez aux témoignages diffusés en direct.',
         'not_configured'  => "Le service vidéo n'est pas encore configuré sur ce serveur (variables :vars). Les directs ne peuvent pas être lancés.",
+        'youtube_available' => 'Les directs diffusés sur YouTube restent possibles : choisissez « Lien YouTube » en lançant le direct.',
         'now'             => 'En ce moment',
         'empty_title'     => 'Aucun direct en cours',
         'empty_text'      => 'Les témoignages diffusés en direct apparaîtront ici.',
@@ -51,6 +52,12 @@ return [
         'recorded_active' => 'Ce direct est enregistré : il pourra être publié ensuite comme témoignage vidéo, après relecture.',
         'see_replay'      => 'Voir la rediffusion',
         'review_video'    => 'Relire la vidéo',
+        // Direct YouTube (docs/fonctionnalites/lives.md)
+        'youtube_player'  => 'Lecteur YouTube du direct',
+        'youtube_open'    => 'Ouvrir sur YouTube',
+        'youtube_badge'   => 'YouTube',
+        'youtube_hosted'  => 'Diffusé sur YouTube',
+        'youtube_replay'  => 'Rediffusion sur YouTube',
     ],
 
     'studio' => [
@@ -120,6 +127,14 @@ return [
         'source_rtmp_hint' => 'La caméra (ou OBS, vMix, un boîtier) envoie le flux : vous recevrez une adresse et une clé à y saisir.',
         'source_url'      => 'Caméra IP (adresse du flux)',
         'source_url_hint' => 'Renseignez la caméra (RTSP, SRT, HLS…) : le service vidéo lit lui-même son flux, joignable depuis Internet.',
+        'source_youtube'  => 'Lien YouTube',
+        'source_youtube_hint' => 'Le direct est diffusé sur YouTube ; les commentaires et réactions restent ici.',
+        'youtube_url'     => 'Lien du direct YouTube *',
+        'youtube_url_placeholder' => 'https://www.youtube.com/live/…',
+        'youtube_url_hint' => "Lancez d'abord le direct sur YouTube, puis collez son lien ici.",
+        'youtube_only'    => "Le service vidéo n'est pas configuré sur ce serveur : seul un direct YouTube peut être lancé.",
+        'youtube_notice'  => 'Le direct sera visible de tous dès sa création, avec le lecteur YouTube.',
+        'go_live_youtube' => 'Lancer le direct',
         'ipcam_legend'    => 'Connexion à la caméra IP',
         'ipcam_input'     => 'Saisie de la caméra',
         'mode_form'       => 'Formulaire',
@@ -274,6 +289,8 @@ return [
         'stage_opened'        => "Demandes d'intervention ouvertes.",
         'stage_closed'        => "Demandes d'intervention fermées.",
         'not_found'           => 'Direct introuvable.',
+        'youtube_url_required' => 'Collez le lien de votre direct YouTube.',
+        'youtube_url_invalid'  => 'Lien YouTube invalide.',
     ],
 
     // Services (LiveActionException)
@@ -327,6 +344,9 @@ return [
         'stage_banned'        => 'Vous ne pouvez plus intervenir pendant ce direct.',
         'already_requested'   => 'Vous avez déjà une demande en cours.',
         'staff_only'          => 'Seuls le diffuseur et les modérateurs gèrent les intervenants.',
+        // Direct YouTube : pas de vidéo LiveKit (jetons, intervenants, enregistrement)
+        'youtube_only'        => 'Ce direct est diffusé sur YouTube.',
+        'youtube_url_invalid' => 'Lien YouTube invalide.',
     ],
 
     'notify_started' => ':name est en direct : :title',

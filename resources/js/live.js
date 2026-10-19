@@ -239,7 +239,9 @@ function initPreflight(root) {
     $('#live-create-form')?.addEventListener('submit', stop);
     window.addEventListener('pagehide', stop);
 
-    run();
+    // Autre source choisie (caméra IP, YouTube) : pas d'accès à la caméra tant que le panneau est masqué.
+    if (root.hidden) root.addEventListener('live:preflight-show', run, { once: true });
+    else run();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1633,6 +1635,77 @@ function initViewer() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Direct YouTube : lecteur YouTube (iframe), aucune salle LiveKit.
+// Chat relu toutes les 8 s, présence (heartbeat) toutes les 30 s. docs/fonctionnalites/lives.md
+// ═══════════════════════════════════════════════════════════════════════
+function viewerId() {
+    const make = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
+    try {
+        let id = window.localStorage.getItem('live-viewer-id');
+        if (!id) {
+            id = make();
+            window.localStorage.setItem('live-viewer-id', id);
+        }
+        return id.slice(0, 64);
+    } catch {
+        return make();
+    }
+}
+
+function initYoutube() {
+    const interactions = initInteractions();
+    const id = viewerId();
+    let status = config.status;
+    let timer = null;
+    const intervals = [];
+
+    function onEnded() {
+        if (status === 'ended') return;
+        status = 'ended';
+        renderStatus('ended');
+        clearInterval(timer);
+        intervals.forEach(clearInterval);
+        $$('[data-live-react]').forEach((b) => (b.disabled = true));
+        $('[data-live-comment-form]')?.remove();
+        $('#live-end-form')?.closest('div')?.remove();
+        // Page rechargée : bilan du direct, avec la vidéo YouTube en rediffusion.
+        setTimeout(() => window.location.reload(), 1500);
+    }
+
+    $('#live-end-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            await api(config.urls.end, { method: 'POST' });
+            flash(t('live.viewer.cut'));
+            onEnded();
+        } catch (err) {
+            flash(err.message, 'error');
+        }
+    });
+
+    const heartbeat = async () => {
+        if (document.hidden && status === 'live') return; // onglet caché : la personne ne regarde plus
+        try {
+            const stats = await api(config.urls.heartbeat, { method: 'POST', body: { viewer_id: id } });
+            interactions.renderStats(stats);
+            if (stats.status === 'ended') onEnded();
+        } catch {
+            /* réessai au prochain signal */
+        }
+    };
+
+    intervals.push(setInterval(heartbeat, 30000));
+    intervals.push(setInterval(() => interactions.loadComments(), 8000));
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && status !== 'ended') heartbeat();
+    });
+
+    interactions.loadComments();
+    heartbeat();
+    if (status === 'live') timer = startTimer(config.startedAt);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Qui regarde (liste visible de tous) — docs/fonctionnalites/lives.md
 // ═══════════════════════════════════════════════════════════════════════
 function initViewersList() {
@@ -1709,3 +1782,4 @@ const preflight = $('[data-live-preflight]');
 if (preflight) initPreflight(preflight);
 if (config?.mode === 'studio') initStudio();
 if (config?.mode === 'viewer') initViewer();
+if (config?.mode === 'youtube') initYoutube(); // sans LiveKit

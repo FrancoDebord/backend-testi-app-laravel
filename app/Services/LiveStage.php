@@ -62,7 +62,8 @@ class LiveStage
         $refusal = $this->refusalReason($live, $viewer, $mine);
 
         return [
-            'enabled'       => (bool) $live->speakers_enabled,
+            // Direct YouTube : scène toujours fermée (état vide, comme des demandes fermées).
+            'enabled'       => (bool) $live->speakers_enabled && !$live->isYoutube(),
             'current'       => $current?->toPayload($staff || $current->user_id === $viewer?->id),
             'queueCount'    => $queue->count(),
             'queue'         => $staff ? $queue->map(fn ($s, $i) => $s->toPayload(true, $i + 1))->all() : null,
@@ -80,7 +81,7 @@ class LiveStage
             ->whereIn('status', LiveSpeaker::STAGE)->first();
 
         return [
-            'enabled'    => (bool) $live->speakers_enabled,
+            'enabled'    => (bool) $live->speakers_enabled && !$live->isYoutube(),
             'current'    => $current?->toPayload(),
             'queueCount' => LiveSpeaker::where('live_session_id', $live->id)->where('status', LiveSpeaker::WAITING)->count(),
         ];
@@ -328,6 +329,7 @@ class LiveStage
     private function refusalReason(LiveSession $live, ?User $user, ?LiveSpeaker $open): ?string
     {
         return match (true) {
+            $live->isYoutube()                           => __('lives.errors.youtube_only'), // pas de scène sans LiveKit
             $user === null                               => __('lives.errors.login_to_request'),
             $live->status === LiveStatus::Ended          => __('lives.errors.ended'),
             !$live->isOnAir()                            => __('lives.errors.not_started'),
@@ -360,7 +362,7 @@ class LiveStage
      */
     private function broadcast(LiveSession $live, string $event, ?LiveSpeaker $speaker = null, array $extra = []): void
     {
-        if (!$this->livekit->isConfigured()) {
+        if ($live->isYoutube() || !$this->livekit->isConfigured()) {
             return;
         }
         try {

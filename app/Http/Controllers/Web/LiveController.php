@@ -69,11 +69,14 @@ class LiveController extends Controller
             'comments_enabled' => 'nullable|boolean',
             'record'           => 'nullable|boolean',
             // Caméra IP / encodeur (docs/fonctionnalites/lives-camera-ip.md)
-            'source'           => 'nullable|in:browser,rtmp,url',
+            'source'           => 'nullable|in:' . implode(',', LiveSession::SOURCES),
             'camera_url'       => ['nullable', 'required_if:source,url', 'string', 'max:500', 'regex:#^(rtsps?|rtmps?|https?|srt)://[^\s]+$#i'],
-            // Vérifications de la caméra de l'appareil : inutiles avec une caméra IP.
+            // Direct YouTube (docs/fonctionnalites/lives.md)
+            'youtube_url'      => \App\Http\Controllers\Api\LiveController::youtubeUrlRules(),
+            // Vérifications de la caméra de l'appareil : inutiles avec une caméra IP ou YouTube.
             'checks_passed'    => $request->input('source', 'browser') === 'browser' ? 'accepted' : 'nullable',
         ], [
+            ...\App\Http\Controllers\Api\LiveController::youtubeUrlMessages(),
             'camera_url.required_if' => __('lives.messages.camera_url_required'),
             'camera_url.regex'       => __('lives.messages.camera_url_regex'),
             'title.required'         => __('lives.messages.title_required'),
@@ -92,7 +95,10 @@ class LiveController extends Controller
             return back()->withInput($request->except(['camera_url', 'camera_password', 'camera_passphrase']))->with('error', $e->getMessage());
         }
 
-        return redirect()->route('lives.studio', $live->id);
+        // Direct YouTube : déjà à l'antenne, pas de studio (lecteur YouTube sur la page du direct).
+        return $live->isYoutube()
+            ? redirect()->route('lives.show', $live->id)->with('status', __('lives.messages.on_air'))
+            : redirect()->route('lives.studio', $live->id);
     }
 
     /**
@@ -114,10 +120,14 @@ class LiveController extends Controller
         return $event;
     }
 
-    public function studio(string $id): View
+    public function studio(string $id): View|RedirectResponse
     {
         $live = LiveSession::with('host')->findOrFail($id);
         abort_unless($live->isHost(Auth::user()), 403);
+        // Direct YouTube : diffusé depuis YouTube, la page du direct sert de régie (chat, Terminer).
+        if ($live->isYoutube()) {
+            return redirect()->route('lives.show', $live->id);
+        }
         abort_if($live->status === LiveStatus::Ended, 410, __('lives.messages.ended'));
 
         return view('lives.studio', ['live' => $live]);

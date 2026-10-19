@@ -36,6 +36,18 @@
 
 <section class="overflow-hidden rounded-2xl bg-linear-to-b from-[#241640] to-[#120A1F] px-4 py-8 text-white shadow-card sm:px-6"
          aria-labelledby="live-ended-title" data-live-ended>
+    {{-- Direct YouTube : la vidéo YouTube sert de rediffusion (docs/fonctionnalites/lives.md) --}}
+    @if($youtubeReplay = $live->youtube())
+    <div class="mx-auto mb-8 max-w-3xl" data-youtube-replay>
+        <h3 class="mb-2.5 flex items-center gap-2 text-[11px] font-bold tracking-[0.8px] text-white/55 uppercase">
+            <i class="fa-brands fa-youtube text-sm text-error-500" aria-hidden="true"></i>{{ __('lives.show.youtube_replay') }}
+        </h3>
+        @include('lives.partials.youtube-player', ['youtube' => $youtubeReplay])
+        <p class="mt-2 text-right text-xs">
+            <a href="{{ $youtubeReplay['url'] }}" target="_blank" rel="noopener" class="font-semibold text-sun-300 underline hover:text-sun-200">{{ __('lives.show.youtube_open') }}</a>
+        </p>
+    </div>
+    @endif
     <div class="mx-auto flex max-w-[480px] flex-col items-center">
 
         {{-- En-tête : avatar entouré, pastille « TERMINÉ » --}}

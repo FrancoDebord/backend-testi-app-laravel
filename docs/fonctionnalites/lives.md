@@ -25,6 +25,22 @@ Diffuser un témoignage **en vidéo, en direct, depuis un téléphone**, et perm
 
 Un direct peut aussi être diffusé depuis une caméra IP, OBS ou un encodeur (RTMP, ou adresse du flux) : voir [lives-camera-ip.md](lives-camera-ip.md).
 
+## Direct YouTube (2026-10-19)
+
+Quatrième source d'un direct, à côté de la caméra de l'appareil (`browser`) et d'une caméra IP / encodeur (`rtmp`, `url`) : **`youtube`**. Le diffuseur lance d'abord son direct **sur YouTube**, puis colle son lien : **LiveKit n'est pas utilisé du tout** (ni salle, ni jeton, ni ingress, ni enregistrement). Le reste est inchangé : commentaires, réactions, message épinglé, exclusions, masquage, témoignages sur le direct, bilan du direct terminé, directs d'événement (`event_id`), notification `live_started` aux abonnés.
+
+- **Possible même si LiveKit n'est pas configuré** : seule la source `youtube` échappe au 503 « service vidéo non configuré ». Droits inchangés (modérateurs et administrateurs, gestionnaires d'un événement pour son direct ; `canGoLive` ne change pas).
+- **Lien** : toutes les formes acceptées par les événements (`App\Support\YouTube::parseId` : `watch?v=`, `youtu.be/`, `/live/`, `/shorts/`, `/embed/`, l'identifiant seul). Seul l'identifiant est enregistré (`live_sessions.youtube_video_id`, 20 caractères). Lien absent ou non reconnu : **422** `errors.youtube_url` (« Collez le lien de votre direct YouTube. » / « Lien YouTube invalide. »).
+- **À l'antenne aussitôt** : statut `live`, `started_at` = maintenant, mêmes effets que `goLive` (abonnés prévenus). `record` forcé à `false`. Un seul direct en cours par diffuseur (409 inchangé). Salle fictive `youtube-{uuid}` (colonne obligatoire), jamais créée chez LiveKit.
+- **Actions LiveKit refusées** : `viewer-token`, `host-token`, `stage/requests`, `stage/requests/mine`, `stage/accept`, `stage/settings`, `stage/{speakerId}/invite|decline|remove` → **409** « Ce direct est diffusé sur YouTube. » / « This live is streamed on YouTube. » (`lives.errors.youtube_only`). `GET lives/{id}/stage` répond normalement avec une scène fermée (`enabled: false`, `canRequest: false`, `refusal` = ce message), comme quand les demandes sont fermées.
+- **Temps réel** : aucun message de données LiveKit n'est envoyé (`LiveService::broadcast` et `LiveStage::broadcast` ne font rien pour un direct YouTube ou sans LiveKit, sans jamais lever d'erreur). Les clients relisent `GET lives/{id}/comments` (site : toutes les 8 s).
+- **Spectateurs sans LiveKit** : `POST lives/{id}/heartbeat` (public, invités compris, 12 appels par minute ; `viewer_id` facultatif, identifiant généré par l'appareil, 64 caractères au plus), à envoyer toutes les 30 s. Clé du spectateur : le compte connecté, sinon `viewer_id`, sinon l'adresse IP hachée ; chaque signal compte **60 s** (`livekit.viewer_heartbeat_ttl`, cache `live-heartbeats:{id}`) ; le diffuseur n'est pas compté. Réponse = celle de `GET lives/{id}/stats` : `{ status, viewers, peakViewers, commentCount, reactions, pinnedComment, stage }`. `peak_viewers` suit le maximum. Direct terminé (ou direct LiveKit) : statistiques renvoyées sans compter. Pour un direct YouTube, `stats`, `liveStats` (`GET lives/{id}`) et `viewers` (liste « Qui regarde ») utilisent ce décompte.
+- **Fin** : `POST lives/{id}/end` comme d'habitude (diffuseur → `host`, administrateur → `moderator`). `lives:cleanup` ne vérifie jamais de salle LiveKit pour un direct YouTube et le clôture `abandoned` après **12 h** à l'antenne (`livekit.youtube_max_hours`, `LIVE_YOUTUBE_MAX_HOURS`), même sans LiveKit configuré.
+- **`LiveSessionResource`** : `source: 'youtube'` et `youtube: { id, url, embedUrl, thumbnailUrl }` (`null` pour les autres sources), toujours présent après la fin : la vidéo YouTube devient la rediffusion. `POST lives` répond `{ live, video: null }`. `GET lives` gagne `youtubeEnabled: true`.
+- **Site** : *Lancer un direct* propose « Lien YouTube » (champ du lien, aide « Lancez d'abord le direct sur YouTube, puis collez son lien ici. ») ; caméra, micro, vérifications et enregistrement sont masqués pour cette source. Sans LiveKit, la page reste ouverte aux personnes autorisées avec la seule source YouTube (les autres sont désactivées). Après création : page du direct (`lives.show`), pas de studio (`lives.studio` y redirige). Page du direct : lecteur YouTube 16:9 (`youtube-nocookie`) à la place de la vidéo LiveKit, statut, durée, compteur de spectateurs (réponse du heartbeat), lien « Ouvrir sur YouTube », chat et réactions habituels, bouton « Couper le direct » pour le diffuseur ou un administrateur ; pas d'intervenants. `live.js` en mode `youtube` : aucune connexion LiveKit, commentaires relus toutes les 8 s, `POST /lives/{id}/heartbeat` (route web `lives.heartbeat`) toutes les 30 s avec un `viewer_id` gardé dans le navigateur ; à la fin, la page se recharge sur le bilan. Bilan d'un direct YouTube terminé : la vidéo YouTube en rediffusion au-dessus du bilan, avec « Ouvrir sur YouTube ». Listes : pastille « YouTube » (et miniature de la vidéo sur la carte d'un direct en cours).
+
+Fichiers : migration `2026_10_19_600001_add_youtube_to_live_sessions`, `LiveSession::SOURCES`, `isYoutube()`, `youtube()`, `LiveService::start()` / `heartbeat()` / `ensureLiveKitLive()` / `cleanup()`, `LiveStage::state()`, `Api\LiveController::heartbeat()` / `youtubeUrlRules()`, `resources/views/lives/partials/youtube-player.blade.php`, `resources/js/live.js` (`initYoutube`), `tests/Feature/YoutubeLivesTest.php` (11 tests).
+
 ## Qui regarde, commentaires, message épinglé (2026-09-29)
 
 - **Qui regarde** : tout le monde (même sans compte) peut ouvrir la liste des spectateurs en touchant le compteur (œil) du direct : comptes connectés (nom, photo, lien vers le profil) et nombre de visiteurs non connectés. Le diffuseur n'y figure pas ; une personne ouverte dans plusieurs onglets n'apparaît qu'une fois. `GET /lives/{id}/viewers` (web) et `GET /api/v1/lives/{id}/viewers` → `{ total, people: [{ id, displayName, initials, avatarUrl, isVerified }], anonymous }`, relu au plus toutes les 10 s (`LiveService::viewers()`), 30 appels par minute.
@@ -162,12 +178,13 @@ Préfixe `/api/v1`, format `{ success, data, message }`. Authentification Sanctu
 
 | Méthode | Route | Rôle |
 |---|---|---|
-| GET | `lives` | `active` (en cours), `recent` (terminés), `canGoLive`, `configured`, `recordingConfigured` |
+| GET | `lives` | `active` (en cours), `recent` (terminés), `canGoLive`, `configured`, `youtubeEnabled` (toujours `true`, 2026-10-19), `recordingConfigured` |
 | GET | `lives/{id}` | Détail (dont `pinnedComment` et `recording: { enabled, status, label, durationSec, replayTestimonyId }`) + `liveStats` (spectateurs, réactions…). `replayTestimonyId` : témoignage à ouvrir pour la rediffusion, une fois publié |
 | POST | `lives/{id}/viewer-token` | Accès spectateur : `{ url, token, identity }` (connexion facultative) |
 | GET | `lives/{id}/comments` | En cours : 100 derniers commentaires visibles ; terminé : tous, paginés, avec `offsetSeconds` (voir « Directs passés ») |
-| GET | `lives/{id}/stats` | `{ status, viewers, peakViewers, commentCount, reactions, pinnedComment }` |
-| POST 🔒 | `lives` | Lancer un direct (modérateur/admin) : `title`, `description?`, `category_slug?`, `comments_enabled?`, `record?` (défaut : oui si le stockage est configuré) → `{ live, video: { url, token } }` |
+| GET | `lives/{id}/stats` | `{ status, viewers, peakViewers, commentCount, reactions, pinnedComment, stage }` (direct YouTube : `viewers` = signaux de présence récents) |
+| POST | `lives/{id}/heartbeat` | Présence d'un spectateur (direct YouTube) : `{ viewer_id? }`, public, 12/min → même réponse que `stats` (voir « Direct YouTube ») |
+| POST 🔒 | `lives` | Lancer un direct (modérateur/admin) : `title`, `description?`, `category_slug?`, `comments_enabled?`, `record?` (défaut : oui si le stockage est configuré) → `{ live, video: { url, token } }`. `source` : `browser`, `rtmp`, `url` ou `youtube` (+ `youtube_url`, obligatoire) → `{ live, video: null }`, direct déjà à l'antenne |
 | POST 🔒 | `lives/{id}/host-token` | Accès diffuseur (reprise du direct) |
 | POST 🔒 | `lives/{id}/go-live` | Passer à l'antenne, une fois la caméra publiée |
 | POST 🔒 | `lives/{id}/end` | Terminer (diffuseur) ou couper (modérateur) |
@@ -178,7 +195,7 @@ Préfixe `/api/v1`, format `{ success, data, message }`. Authentification Sanctu
 | POST 🔒 | `lives/{id}/bans` | `{ user_id }` : exclure (modération) |
 | POST 🔒 | `lives/{id}/reactions` | `{ type }` : `like`, `pray`, `amen`, `worship` (« Adorer »), `fire` |
 
-Codes d'erreur : **403** (droits, compte, exclusion) · **404** (introuvable ou pas encore public) · **409** (direct déjà en cours ou non démarré) · **410** (terminé) · **422** (commentaire vide ou trop long, réaction inconnue) · **429** (trop de commentaires ou de réactions) · **503** (service vidéo non configuré ou injoignable).
+Codes d'erreur : **403** (droits, compte, exclusion) · **404** (introuvable ou pas encore public) · **409** (direct déjà en cours ou non démarré ; action LiveKit sur un direct YouTube) · **410** (terminé) · **422** (commentaire vide ou trop long, réaction inconnue) · **429** (trop de commentaires ou de réactions) · **503** (service vidéo non configuré ou injoignable).
 
 ### Messages temps réel (sujet `live`, JSON)
 

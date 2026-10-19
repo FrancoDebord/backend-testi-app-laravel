@@ -43,6 +43,25 @@
         {{-- Direct terminé : bilan comme l'écran de fin de l'application (lives/partials/ended-summary) --}}
         @include('lives.partials.ended-summary')
         @else
+        @if($live->isYoutube())
+        {{-- Direct YouTube : lecteur YouTube, aucune connexion LiveKit (live.js, mode « youtube »). docs/fonctionnalites/lives.md --}}
+        <div class="space-y-2" data-live-youtube>
+            @include('lives.partials.youtube-player', ['youtube' => $live->youtube()])
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="{{ $live->status->badgeClass() }}" data-live-status>{{ $live->status->label() }}</span>
+                <span class="rounded-full bg-slate-900/80 px-2 py-0.5 text-xs font-medium text-white" data-live-timer hidden>00:00</span>
+                {{-- Qui regarde : spectateurs comptés par le signal de présence (heartbeat) --}}
+                <button type="button" class="rounded-full bg-slate-900/80 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-900 focus-visible:outline-2 focus-visible:outline-primary-500"
+                        data-live-viewers-open aria-haspopup="dialog" title="{{ __('lives.see_viewers') }}">
+                    <i class="fa-regular fa-eye mr-1" aria-hidden="true"></i><span data-live-viewers>0</span><span class="sr-only">{{ __('lives.viewers_sr') }}</span>
+                </button>
+                <span class="ml-auto flex items-center gap-2 text-xs text-slate-500">
+                    <i class="fa-brands fa-youtube text-error-500" aria-hidden="true"></i>{{ __('lives.show.youtube_hosted') }} ·
+                    <a href="{{ $live->youtube()['url'] ?? '#' }}" target="_blank" rel="noopener" class="font-medium text-primary-600 hover:underline" data-live-youtube-open>{{ __('lives.show.youtube_open') }}</a>
+                </span>
+            </div>
+        </div>
+        @else
         <div class="relative aspect-video overflow-hidden rounded-xl bg-slate-900">
             <video class="h-full w-full object-contain" autoplay playsinline data-live-video></video>
             <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-sm text-slate-200" data-live-overlay>
@@ -81,6 +100,7 @@
             </button>
             <button type="button" class="btn-secondary btn-sm ml-auto" data-stage-self-leave><i class="fa-solid fa-phone-slash" aria-hidden="true"></i>{{ __('lives.show.leave_stage') }}</button>
         </div>
+        @endif
 
         <div class="card flex flex-wrap items-center gap-2 p-3" aria-label="{{ __('lives.show.reactions') }}">
             @foreach($reactionDefs as [$type, $icon, $label])
@@ -151,7 +171,10 @@
             {{-- Revoir la discussion (rendu serveur, sans temps réel) ; « Témoigner sur ce direct » est dans le bilan. --}}
             @include('lives.partials.replay')
         @else
+            {{-- Direct YouTube : pas d'intervenants (aucune salle LiveKit) --}}
+            @unless($live->isYoutube())
             @include('lives.partials.stage')
+            @endunless
             @include('lives.partials.comments')
         @endif
     </div>
@@ -160,7 +183,7 @@
 @unless($replay ?? null)
 @include('lives.partials.viewers-modal')
 @endunless
-@include('lives.partials.config', ['mode' => ($replay ?? null) ? 'replay' : 'viewer'])
+@include('lives.partials.config', ['mode' => ($replay ?? null) ? 'replay' : ($live->isYoutube() ? 'youtube' : 'viewer')])
 @endsection
 
 @push('scripts')

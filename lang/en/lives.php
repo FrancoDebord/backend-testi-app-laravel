@@ -18,6 +18,7 @@ return [
         'header'          => 'Live testimonies',
         'subheader'       => 'Watch, comment on and react to testimonies streamed live.',
         'not_configured'  => 'The video service is not configured on this server yet (variables :vars). Live streams cannot be started.',
+        'youtube_available' => 'Live streams broadcast on YouTube are still possible: choose “YouTube link” when starting the live stream.',
         'now'             => 'Right now',
         'empty_title'     => 'No live stream right now',
         'empty_text'      => 'Testimonies streamed live will appear here.',
@@ -51,6 +52,12 @@ return [
         'recorded_active' => 'This live stream is being recorded: it may later be published as a video testimony, after review.',
         'see_replay'      => 'Watch the replay',
         'review_video'    => 'Review the video',
+        // YouTube live (docs/fonctionnalites/lives.md)
+        'youtube_player'  => 'YouTube player of the live stream',
+        'youtube_open'    => 'Open on YouTube',
+        'youtube_badge'   => 'YouTube',
+        'youtube_hosted'  => 'Streamed on YouTube',
+        'youtube_replay'  => 'Replay on YouTube',
     ],
 
     'studio' => [
@@ -120,6 +127,14 @@ return [
         'source_rtmp_hint' => 'The camera (or OBS, vMix, a box) sends the stream: you will get an address and a key to enter in it.',
         'source_url'      => 'IP camera (stream address)',
         'source_url_hint' => 'Enter the camera details (RTSP, SRT, HLS…): the video service reads its stream itself, reachable from the Internet.',
+        'source_youtube'  => 'YouTube link',
+        'source_youtube_hint' => 'The live stream is broadcast on YouTube; comments and reactions stay here.',
+        'youtube_url'     => 'YouTube live stream link *',
+        'youtube_url_placeholder' => 'https://www.youtube.com/live/…',
+        'youtube_url_hint' => 'Start the live stream on YouTube first, then paste its link here.',
+        'youtube_only'    => 'The video service is not configured on this server: only a YouTube live stream can be started.',
+        'youtube_notice'  => 'The live stream will be visible to everyone as soon as it is created, with the YouTube player.',
+        'go_live_youtube' => 'Start the live stream',
         'ipcam_legend'    => 'IP camera connection',
         'ipcam_input'     => 'Camera input',
         'mode_form'       => 'Form',
@@ -274,6 +289,8 @@ return [
         'stage_opened'        => 'Requests to speak are open.',
         'stage_closed'        => 'Requests to speak are closed.',
         'not_found'           => 'Live stream not found.',
+        'youtube_url_required' => 'Paste the link to your YouTube live stream.',
+        'youtube_url_invalid'  => 'Invalid YouTube link.',
     ],
 
     // Services (LiveActionException)
@@ -327,6 +344,9 @@ return [
         'stage_banned'        => 'You can no longer speak during this live stream.',
         'already_requested'   => 'You already have a request in progress.',
         'staff_only'          => 'Only the host and moderators manage speakers.',
+        // YouTube live: no LiveKit video (tokens, speakers, recording)
+        'youtube_only'        => 'This live is streamed on YouTube.',
+        'youtube_url_invalid' => 'Invalid YouTube link.',
     ],
 
     'notify_started' => ':name is live: :title',

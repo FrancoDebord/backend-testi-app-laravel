@@ -31,7 +31,11 @@
 @if(!$configured)
 <div class="alert-warning mb-6" role="status">
     <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-    <p>{!! __('lives.create.not_configured', ['vars' => '<code>LIVEKIT_URL</code>, <code>LIVEKIT_API_KEY</code>, <code>LIVEKIT_API_SECRET</code>', 'file' => '<code>.env</code>']) !!}</p>
+    <div>
+        <p>{!! __('lives.create.not_configured', ['vars' => '<code>LIVEKIT_URL</code>, <code>LIVEKIT_API_KEY</code>, <code>LIVEKIT_API_SECRET</code>', 'file' => '<code>.env</code>']) !!}</p>
+        {{-- Direct YouTube : possible sans LiveKit (docs/fonctionnalites/lives.md) --}}
+        <p class="mt-1 font-medium">{{ __('lives.create.youtube_only') }}</p>
+    </div>
 </div>
 @endif
 
@@ -120,25 +124,35 @@
         <h2 class="card-title">{{ __('lives.create.the_live') }}</h2>
 
         {{-- Source vidéo : caméra de l'appareil, caméra IP / encodeur (docs/fonctionnalites/lives-camera-ip.md) --}}
-        @php($currentSource = old('source', 'browser'))
+        {{-- Lien YouTube : aucune vidéo LiveKit, seule source possible si le service vidéo n'est pas configuré. --}}
+        @php($currentSource = $configured ? old('source', 'browser') : 'youtube')
         <fieldset>
             <legend class="form-label">{{ __('lives.create.camera_used') }}</legend>
             <div class="grid gap-2">
                 @foreach([
-                    'browser' => ['fa-mobile-screen', __('lives.create.source_browser'), __('lives.create.source_browser_hint')],
-                    'rtmp'    => ['fa-video', __('lives.create.source_rtmp'), __('lives.create.source_rtmp_hint')],
-                    'url'     => ['fa-link', __('lives.create.source_url'), __('lives.create.source_url_hint')],
+                    'browser' => ['fa-solid fa-mobile-screen', __('lives.create.source_browser'), __('lives.create.source_browser_hint')],
+                    'rtmp'    => ['fa-solid fa-video', __('lives.create.source_rtmp'), __('lives.create.source_rtmp_hint')],
+                    'url'     => ['fa-solid fa-link', __('lives.create.source_url'), __('lives.create.source_url_hint')],
+                    'youtube' => ['fa-brands fa-youtube', __('lives.create.source_youtube'), __('lives.create.source_youtube_hint')],
                 ] as $value => [$icon, $label, $hint])
-                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50">
-                    <input type="radio" name="source" value="{{ $value }}" class="mt-1" @checked($currentSource === $value) data-live-source>
+                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                    <input type="radio" name="source" value="{{ $value }}" class="mt-1" @checked($currentSource === $value) @disabled(!$configured && $value !== 'youtube') data-live-source>
                     <span class="min-w-0">
-                        <span class="flex items-center gap-2 font-semibold text-slate-900"><i class="fa-solid {{ $icon }} text-primary-600" aria-hidden="true"></i>{{ $label }}</span>
+                        <span class="flex items-center gap-2 font-semibold text-slate-900"><i class="{{ $icon }} text-primary-600" aria-hidden="true"></i>{{ $label }}</span>
                         <span class="block text-xs text-slate-500">{{ $hint }}</span>
                     </span>
                 </label>
                 @endforeach
             </div>
             @error('source')<p class="form-error">{{ $message }}</p>@enderror
+        </fieldset>
+        {{-- Direct YouTube : lien du direct déjà lancé sur YouTube (docs/fonctionnalites/lives.md) --}}
+        <fieldset class="space-y-1" data-live-source-panel="youtube" @if($currentSource !== 'youtube') hidden disabled @endif>
+            <label for="youtube_url" class="form-label"><i class="fa-brands fa-youtube text-error-500" aria-hidden="true"></i> {{ __('lives.create.youtube_url') }}</label>
+            <input id="youtube_url" type="text" inputmode="url" name="youtube_url" value="{{ old('youtube_url') }}" maxlength="300" required class="form-input"
+                   placeholder="{{ __('lives.create.youtube_url_placeholder') }}" aria-describedby="youtube-url-hint" autocomplete="off" spellcheck="false" data-live-youtube-url>
+            <p id="youtube-url-hint" class="form-hint">{{ __('lives.create.youtube_url_hint') }}</p>
+            @error('youtube_url')<p class="form-error">{{ $message }}</p>@enderror
         </fieldset>
         {{-- Caméra IP : formulaire de connexion (adresse composée dans le navigateur → camera_url).
              Mot de passe et phrase secrète sans attribut name : jamais envoyés à part ni remis en session. --}}
@@ -283,7 +297,8 @@
             @include('components.switch', ['name' => 'comments_enabled', 'checked' => (bool) old('comments_enabled', true), 'label' => __('lives.create.allow_comments'), 'sendFalse' => true])
         </div>
 
-        <div class="flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-4 py-3">
+        {{-- Enregistrement : sans objet pour un direct YouTube (masqué par le script ci-dessous). --}}
+        <div class="flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-4 py-3" data-live-record-option @if($currentSource === 'youtube') hidden @endif>
             <div>
                 <p class="text-sm font-medium text-slate-900">{{ __('lives.create.record') }}</p>
                 @if($recordingConfigured)
@@ -300,11 +315,14 @@
         </div>
 
         <div class="border-t border-slate-100 pt-4">
-            <p class="mb-3 text-xs text-slate-500">{{ __('lives.create.visible_notice') }}</p>
+            <p class="mb-3 text-xs text-slate-500" data-live-notice="camera" @if($currentSource === 'youtube') hidden @endif>{{ __('lives.create.visible_notice') }}</p>
+            <p class="mb-3 text-xs text-slate-500" data-live-notice="youtube" @if($currentSource !== 'youtube') hidden @endif>{{ __('lives.create.youtube_notice') }}</p>
             <div class="flex flex-wrap justify-end gap-2">
                 <a href="{{ $event ? route('events.show', $event->id) : route('lives.index') }}" class="btn-secondary">{{ __('lives.create.cancel') }}</a>
-                <button type="submit" class="btn-primary" data-submit-guard disabled @disabled(!$configured)>
-                    <i class="fa-solid fa-video"></i>{{ __('lives.create.open_studio') }}
+                {{-- Sans LiveKit, seule la source YouTube est proposée (les autres sont désactivées). --}}
+                <button type="submit" class="btn-primary" data-submit-guard disabled>
+                    <span data-live-submit="camera" @if($currentSource === 'youtube') hidden @endif><i class="fa-solid fa-video"></i>{{ __('lives.create.open_studio') }}</span>
+                    <span data-live-submit="youtube" @if($currentSource !== 'youtube') hidden @endif><i class="fa-brands fa-youtube"></i>{{ __('lives.create.go_live_youtube') }}</span>
                 </button>
             </div>
         </div>
@@ -322,8 +340,18 @@
     const sync = () => {
         const source = form.querySelector('[data-live-source]:checked')?.value || 'browser';
         const device = source === 'browser';
-        form.querySelector('[data-live-preflight]').hidden = !device;
-        form.querySelector('[data-live-camera-help]').hidden = device;
+        const youtube = source === 'youtube';
+        const preflight = form.querySelector('[data-live-preflight]');
+        const wasHidden = preflight.hidden;
+        preflight.hidden = !device;
+        // Vérifications de la caméra et du micro : lancées seulement quand elles s'affichent (live.js).
+        if (device && wasHidden) preflight.dispatchEvent(new Event('live:preflight-show'));
+        form.querySelector('[data-live-camera-help]').hidden = device || youtube;
+        // Direct YouTube : ni caméra, ni micro, ni enregistrement.
+        form.querySelector('[data-live-record-option]').hidden = youtube;
+        form.querySelectorAll('[data-live-notice], [data-live-submit]').forEach((el) => {
+            el.hidden = (el.dataset.liveNotice || el.dataset.liveSubmit) !== (youtube ? 'youtube' : 'camera');
+        });
         // Panneau masqué : désactivé aussi (ni validé ni envoyé).
         form.querySelectorAll('[data-live-source-panel]').forEach((el) => { el.hidden = el.dataset.liveSourcePanel !== source; el.disabled = el.hidden; });
         check.toggleAttribute('data-required-check', device);

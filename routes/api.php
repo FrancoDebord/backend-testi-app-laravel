@@ -152,6 +152,8 @@ Route::prefix('v1')->group(function () {
     Route::get('lives/{id}/stats',          [LiveController::class, 'stats'])->whereUuid('id');
     Route::get('lives/{id}/stage',          [LiveController::class, 'stage'])->whereUuid('id');
     Route::get('lives/{id}/viewers',        [LiveController::class, 'viewers'])->whereUuid('id')->middleware('throttle:30,1');
+    // Présence d'un spectateur (direct YouTube, sans LiveKit) : public, invités compris
+    Route::post('lives/{id}/heartbeat',     [LiveController::class, 'heartbeat'])->whereUuid('id')->middleware('throttle:12,1');
     Route::post('livekit/webhook',          LiveKitWebhookController::class)->name('livekit.webhook');
     // Bunny Stream (public, état relu par l'API Bunny) — docs/fonctionnalites/videos-bunny-stream.md
     Route::post('webhooks/bunny',           \App\Http\Controllers\Api\BunnyWebhookController::class)->middleware('throttle:120,1')->name('bunny.webhook');

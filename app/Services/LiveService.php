@@ -45,10 +45,23 @@ class LiveService
 
     // ─── Démarrage / arrêt ───────────────────────────────────────────────────
 
-    /** Crée un direct « en préparation » et sa salle LiveKit. */
+    /**
+     * Crée un direct « en préparation » et sa salle LiveKit.
+     * Source « youtube » : aucune salle LiveKit (possible même sans LiveKit configuré), pas d'enregistrement,
+     * et le direct passe aussitôt à l'antenne (mêmes effets que goLive). Voir docs/fonctionnalites/lives.md
+     */
     public function start(User $host, array $data): LiveSession
     {
-        $this->ensureConfigured();
+        $source = $data['source'] ?? 'browser';
+        $youtubeId = null;
+        if ($source === 'youtube') {
+            $youtubeId = \App\Support\YouTube::parseId($data['youtube_url'] ?? null);
+            if ($youtubeId === null) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['youtube_url' => __('lives.errors.youtube_url_invalid')]);
+            }
+        } else {
+            $this->ensureConfigured();
+        }
         $this->ensureActiveAccount($host);
         // Direct d'un événement : son organisateur (organisation vérifiée) peut le diffuser,
         // même sans être modérateur. Voir docs/fonctionnalites/evenements.md
@@ -84,18 +97,22 @@ class LiveService
             throw new LiveActionException(__('lives.errors.already_live'), 409, $existing);
         }
 
-        $room = 'live-' . Str::uuid();
-        try {
-            $this->livekit->createRoom($room, (int) config('livekit.empty_timeout'), (int) config('livekit.max_participants'));
-        } catch (LiveKitException $e) {
-            throw new LiveActionException(__('lives.errors.service_unreachable'), 503);
+        if ($youtubeId !== null) {
+            // Nom unique (colonne obligatoire) qui ne correspond à aucune salle LiveKit.
+            $room = 'youtube-' . Str::uuid();
+        } else {
+            $room = 'live-' . Str::uuid();
+            try {
+                $this->livekit->createRoom($room, (int) config('livekit.empty_timeout'), (int) config('livekit.max_participants'));
+            } catch (LiveKitException $e) {
+                throw new LiveActionException(__('lives.errors.service_unreachable'), 503);
+            }
         }
-
-        $source = $data['source'] ?? 'browser';
 
         $live = LiveSession::create([
             'source'           => $source,
             'camera_url'       => $source === 'url' ? ($data['camera_url'] ?? null) : null,
+            'youtube_video_id' => $youtubeId,
             'host_id'          => $host->id,
             'event_id'         => $event?->id,
             'prayer_session_id' => $prayer?->id,
@@ -103,13 +120,19 @@ class LiveService
             'description'      => $data['description'] ?? null,
             'category_slug'    => $data['category_slug'] ?? null,
             'comments_enabled' => $data['comments_enabled'] ?? true,
-            'record'           => ($data['record'] ?? true) && $this->isRecordingConfigured(),
+            'record'           => $youtubeId === null && ($data['record'] ?? true) && $this->isRecordingConfigured(),
             'room_name'        => $room,
             'status'           => LiveStatus::Preparing,
         ]);
 
         if ($live->usesExternalCamera()) {
             $this->connectCamera($live, $host);
+        }
+
+        // YouTube : le flux est déjà diffusé sur YouTube, à l'antenne tout de suite (abonnés prévenus).
+        if ($live->isYoutube()) {
+            $live->setRelation('host', $host);
+            $this->goLive($live, $host);
         }
 
         return $live;
@@ -327,6 +350,12 @@ class LiveService
 
         $this->stage->closeAll($live);
         $this->broadcast($live, ['type' => 'ended', 'reason' => $reason]);
+        Cache::forget($this->heartbeatKey($live));
+
+        // Direct YouTube : ni enregistrement, ni caméra, ni salle LiveKit à fermer.
+        if ($live->isYoutube()) {
+            return $live;
+        }
 
         // Arrêt propre de l'enregistrement : LiveKit finalise le fichier puis prévient par webhook.
         if ($live->egress_id && $live->recording_status === 'recording') {
@@ -354,6 +383,7 @@ class LiveService
     /** @return array{url: string, token: string, identity: string} */
     public function hostCredentials(LiveSession $live, User $user): array
     {
+        $this->ensureLiveKitLive($live);
         $this->ensureConfigured();
         $this->ensureActiveAccount($user);
         if (!$live->isHost($user)) {
@@ -380,6 +410,7 @@ class LiveService
     /** Jeton spectateur : lecture seule, invisible des autres participants. */
     public function viewerCredentials(LiveSession $live, ?User $user): array
     {
+        $this->ensureLiveKitLive($live);
         $this->ensureConfigured();
         if (!$live->isVisibleTo($user)) {
             throw new LiveActionException(__('lives.errors.not_started'), 404);
@@ -578,6 +609,24 @@ class LiveService
      */
     public function viewers(LiveSession $live): array
     {
+        if ($live->isYoutube()) {
+            // Direct YouTube : personnes dont le signal (heartbeat) est récent.
+            if (!$live->isOnAir()) {
+                return ['total' => 0, 'people' => [], 'anonymous' => 0];
+            }
+            $userIds = [];
+            $anonymous = 0;
+            foreach (array_keys($this->recentViewers($live)) as $key) {
+                if (str_starts_with($key, 'u:')) {
+                    $userIds[substr($key, 2)] = true;
+                } else {
+                    $anonymous++;
+                }
+            }
+
+            return $this->viewerList($userIds, $anonymous);
+        }
+
         if (!$live->isOnAir() || !$this->isConfigured()) {
             return ['total' => 0, 'people' => [], 'anonymous' => 0];
         }
@@ -604,28 +653,45 @@ class LiveService
                 }
             }
 
-            $people = User::whereIn('id', array_keys($userIds))
-                ->where('status', \App\Enums\UserAccountStatus::Active->value)
-                ->orderBy('display_name')->limit(200)
-                ->get(['id', 'display_name', 'avatar_url', 'account_type', 'verification_status'])
-                ->map(fn (User $u) => [
-                    'id'          => $u->id,
-                    'displayName' => $u->display_name,
-                    'initials'    => $u->initials,
-                    'avatarUrl'   => $u->avatar_url,
-                    'isVerified'  => $u->isVerified(),
-                    ...\App\Models\User::approvalFieldsFor($u), // badge-approuve.md
-                ])->values()->all();
-
-            return ['total' => count($people) + $anonymous, 'people' => $people, 'anonymous' => $anonymous];
+            return $this->viewerList($userIds, $anonymous);
         });
+    }
+
+    /**
+     * @param array<string, true> $userIds comptes connectés qui regardent
+     * @return array{total: int, people: list<array>, anonymous: int}
+     */
+    private function viewerList(array $userIds, int $anonymous): array
+    {
+        $people = User::whereIn('id', array_keys($userIds))
+            ->where('status', \App\Enums\UserAccountStatus::Active->value)
+            ->orderBy('display_name')->limit(200)
+            ->get(['id', 'display_name', 'avatar_url', 'account_type', 'verification_status'])
+            ->map(fn (User $u) => [
+                'id'          => $u->id,
+                'displayName' => $u->display_name,
+                'initials'    => $u->initials,
+                'avatarUrl'   => $u->avatar_url,
+                'isVerified'  => $u->isVerified(),
+                ...\App\Models\User::approvalFieldsFor($u), // badge-approuve.md
+            ])->values()->all();
+
+        return ['total' => count($people) + $anonymous, 'people' => $people, 'anonymous' => $anonymous];
     }
 
     /** @return array{viewers: int, peakViewers: int, commentCount: int, reactions: array<string,int>, status: string} */
     public function stats(LiveSession $live): array
     {
         $viewers = 0;
-        if ($live->isOnAir() && $this->isConfigured()) {
+        if ($live->isYoutube()) {
+            // Direct YouTube : spectateurs comptés par le signal « heartbeat » (sans LiveKit).
+            if ($live->isOnAir()) {
+                $viewers = count($this->recentViewers($live));
+                if ($viewers > $live->peak_viewers) {
+                    $live->update(['peak_viewers' => $viewers]);
+                }
+            }
+        } elseif ($live->isOnAir() && $this->isConfigured()) {
             $viewers = Cache::remember("live-viewers:{$live->id}", 10, function () use ($live) {
                 try {
                     $participants = $this->livekit->listParticipants($live->room_name);
@@ -650,9 +716,66 @@ class LiveService
         ];
     }
 
+    // ─── Spectateurs sans LiveKit (direct YouTube) ───────────────────────────
+
+    /**
+     * Signal de présence d'un spectateur (POST lives/{id}/heartbeat, toutes les 30 s environ) : la personne
+     * compte pendant config('livekit.viewer_heartbeat_ttl') secondes. Clé : le compte connecté, sinon
+     * l'identifiant généré par l'appareil (viewer_id), sinon l'adresse IP (hachée). Le diffuseur n'est pas compté.
+     * Direct terminé (ou direct LiveKit) : rien n'est compté. Renvoie les statistiques (comme GET …/stats).
+     */
+    public function heartbeat(LiveSession $live, ?User $user, ?string $viewerId, ?string $ip): array
+    {
+        if ($live->isYoutube() && $live->isOnAir() && !$live->isHost($user)) {
+            $key = match (true) {
+                $user !== null    => 'u:' . $user->id,
+                filled($viewerId) => 'v:' . $viewerId,
+                default           => 'ip:' . hash('sha256', (string) $ip . '|' . config('app.key')),
+            };
+            $this->withHeartbeatLock($live, function () use ($live, $key) {
+                $viewers = $this->recentViewers($live);
+                $viewers[$key] = now()->getTimestamp() + (int) config('livekit.viewer_heartbeat_ttl', 60);
+                Cache::put($this->heartbeatKey($live), $viewers, now()->addSeconds(2 * (int) config('livekit.viewer_heartbeat_ttl', 60)));
+            });
+        }
+
+        return $this->stats($live);
+    }
+
+    /** @return array<string, int> clé du spectateur => fin de validité (horodatage) ; signaux expirés retirés */
+    private function recentViewers(LiveSession $live): array
+    {
+        $now = now()->getTimestamp();
+        $viewers = Cache::get($this->heartbeatKey($live), []);
+
+        return array_filter(is_array($viewers) ? $viewers : [], fn ($until) => (int) $until >= $now);
+    }
+
+    private function heartbeatKey(LiveSession $live): string
+    {
+        return "live-heartbeats:{$live->id}";
+    }
+
+    private function withHeartbeatLock(LiveSession $live, callable $callback): void
+    {
+        if (!Cache::getStore() instanceof \Illuminate\Contracts\Cache\LockProvider) {
+            $callback(); // magasin de cache sans verrous
+            return;
+        }
+        try {
+            Cache::lock($this->heartbeatKey($live) . ':lock', 5)->block(2, $callback);
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException) {
+            $callback(); // au pire un signal écrasé : compteur approximatif
+        }
+    }
+
     // ─── Outils ──────────────────────────────────────────────────────────────
 
-    /** Clôture les directs abandonnés (préparation trop longue) ou dont la salle a disparu. */
+    /**
+     * Clôture les directs abandonnés (préparation trop longue) ou dont la salle a disparu.
+     * Directs YouTube : jamais vérifiés auprès de LiveKit ; clôturés « abandoned » après
+     * config('livekit.youtube_max_hours') heures à l'antenne.
+     */
     public function cleanup(): int
     {
         $closed = 0;
@@ -664,8 +787,15 @@ class LiveService
                 $closed++;
             });
 
+        LiveSession::onAir()->where('source', 'youtube')
+            ->where('started_at', '<', now()->subHours((int) config('livekit.youtube_max_hours', 12)))
+            ->each(function (LiveSession $live) use (&$closed) {
+                $this->end($live, null, 'abandoned');
+                $closed++;
+            });
+
         if ($this->isConfigured()) {
-            LiveSession::onAir()->each(function (LiveSession $live) use (&$closed) {
+            LiveSession::onAir()->where(fn ($q) => $q->whereNull('source')->orWhere('source', '!=', 'youtube'))->each(function (LiveSession $live) use (&$closed) {
                 try {
                     $participants = $this->livekit->listParticipants($live->room_name);
                 } catch (LiveKitException $e) {
@@ -704,7 +834,8 @@ class LiveService
 
     private function broadcast(LiveSession $live, array $payload): void
     {
-        if (!$this->isConfigured()) {
+        // Direct YouTube : pas de salle LiveKit, les clients relisent commentaires et statistiques.
+        if ($live->isYoutube() || !$this->isConfigured()) {
             return;
         }
         try {
@@ -730,6 +861,14 @@ class LiveService
     {
         if ($user->status !== UserAccountStatus::Active) {
             throw new LiveActionException(__('lives.errors.account_inactive'), 403);
+        }
+    }
+
+    /** Actions propres à la vidéo LiveKit (jetons, intervenants, enregistrement) : refusées pour un direct YouTube. */
+    public function ensureLiveKitLive(LiveSession $live): void
+    {
+        if ($live->isYoutube()) {
+            throw new LiveActionException(__('lives.errors.youtube_only'), 409);
         }
     }
 

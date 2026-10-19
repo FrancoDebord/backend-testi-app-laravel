@@ -9,6 +9,7 @@ Diffuser un direct depuis une **caméra IP**, une caméra de salle ou un logicie
 1. *Lancer un direct* → **Caméra utilisée** :
    - **Caméra de cet appareil** : fonctionnement habituel (vérifications de la caméra et du micro) ;
    - **Caméra IP ou encodeur (RTMP)** (conseillé) : le studio donne une **adresse** et une **clé de diffusion** à saisir dans la caméra ou le logiciel ;
+   - **Lien YouTube** (2026-10-19) : le direct est diffusé sur YouTube, sans LiveKit : voir [lives.md › Direct YouTube](lives.md#direct-youtube-2026-10-19) ;
    - **Caméra IP (adresse du flux)** : le service vidéo lit lui-même un flux joignable depuis Internet (HLS, HTTP, SRT, RTMP ; RTSP selon le service) ; l'adresse se renseigne dans un [formulaire](#formulaire-de-la-caméra-ip) (modèle, hôte, port, identifiants…).
 2. Les vérifications de l'appareil sont remplacées par un mode d'emploi (encadré « Brancher une caméra IP »).
 3. **Studio** : panneau « Caméra IP » (adresse et clé avec boutons Copier / Afficher, état « En attente du flux » / « Flux reçu »), **aperçu** de l'image de la caméra (son coupé dans le studio). Les boutons Micro, Caméra, Retourner sont masqués.

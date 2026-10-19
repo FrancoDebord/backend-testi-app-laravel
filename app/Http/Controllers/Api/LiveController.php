@@ -42,6 +42,8 @@ class LiveController extends Controller
 
         return $this->success([
             'configured' => $this->lives->isConfigured(),
+            // Direct par lien YouTube : toujours possible, même sans LiveKit (docs/fonctionnalites/lives.md)
+            'youtubeEnabled' => true,
             'recordingConfigured' => $this->lives->isRecordingConfigured(),
             'canGoLive'  => (bool) $user?->canModerate(),
             'active'     => LiveSessionResource::collection($active),
@@ -88,23 +90,59 @@ class LiveController extends Controller
             'comments_enabled' => 'nullable|boolean',
             'record'           => 'nullable|boolean',
             // Caméra IP / encodeur (docs/fonctionnalites/lives-camera-ip.md)
-            'source'           => 'nullable|in:browser,rtmp,url',
+            'source'           => 'nullable|in:' . implode(',', LiveSession::SOURCES),
             'camera_url'       => ['nullable', 'required_if:source,url', 'string', 'max:500', 'regex:#^(rtsps?|rtmps?|https?|srt)://[^\s]+$#i'],
+            // Direct YouTube : lien watch, youtu.be, /live/, /shorts/, /embed/ (ou l'identifiant seul)
+            'youtube_url'      => self::youtubeUrlRules(),
         ], [
             'title.required' => __('lives.messages.title_required'),
             'camera_url.required_if' => __('lives.messages.camera_url_required'),
             'camera_url.regex'       => __('lives.messages.camera_url_regex'),
+            ...self::youtubeUrlMessages(),
         ]);
 
         return $this->attempt(function () use ($request, $data) {
             $user = $this->user($request);
             $live = $this->lives->start($user, $data);
 
+            // Direct YouTube : déjà à l'antenne, aucun accès LiveKit (video: null).
             return $this->created([
                 'live'  => new LiveSessionResource($live->load('host')),
-                'video' => $this->lives->hostCredentials($live, $user),
-            ], __('lives.messages.created'));
+                'video' => $live->isYoutube() ? null : $this->lives->hostCredentials($live, $user),
+            ], $live->isYoutube() ? __('lives.messages.on_air') : __('lives.messages.created'));
         });
+    }
+
+    /** Règles du lien YouTube d'un direct (API et formulaire web). */
+    public static function youtubeUrlRules(): array
+    {
+        return ['nullable', 'required_if:source,youtube', 'string', 'max:300', function (string $attribute, mixed $value, \Closure $fail) {
+            if (is_string($value) && trim($value) !== '' && \App\Support\YouTube::parseId($value) === null) {
+                $fail(__('lives.messages.youtube_url_invalid'));
+            }
+        }];
+    }
+
+    /** @return array<string, string> */
+    public static function youtubeUrlMessages(): array
+    {
+        return [
+            'youtube_url.required_if' => __('lives.messages.youtube_url_required'),
+            'youtube_url.string'      => __('lives.messages.youtube_url_invalid'),
+            'youtube_url.max'         => __('lives.messages.youtube_url_invalid'),
+        ];
+    }
+
+    /**
+     * Présence d'un spectateur (public, toutes les 30 s) : compte les spectateurs d'un direct YouTube
+     * (sans LiveKit). viewer_id : identifiant généré par l'appareil (invités). Renvoie les mêmes données que stats.
+     */
+    public function heartbeat(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['viewer_id' => 'nullable|string|max:64']);
+        $live = $this->find($id, $request);
+
+        return $this->success($this->lives->heartbeat($live, $this->user($request), $request->input('viewer_id'), $request->ip()));
     }
 
     public function hostToken(Request $request, string $id): JsonResponse
@@ -265,6 +303,7 @@ class LiveController extends Controller
         $live = $this->find($id, $request);
 
         return $this->attempt(function () use ($live, $request) {
+            $this->lives->ensureLiveKitLive($live); // direct YouTube : 409
             $this->stage->request($live, $this->user($request), $request->input('message'));
             return $this->created($this->stage->state($live, $this->user($request)), __('lives.messages.stage_requested'));
         });
@@ -276,6 +315,7 @@ class LiveController extends Controller
         $live = $this->find($id, $request);
 
         return $this->attempt(function () use ($live, $request) {
+            $this->lives->ensureLiveKitLive($live); // direct YouTube : 409
             $this->stage->withdraw($live, $this->user($request));
             return $this->success($this->stage->state($live, $this->user($request)));
         });
@@ -288,6 +328,7 @@ class LiveController extends Controller
         $live = $this->find($id, $request);
 
         return $this->attempt(function () use ($live, $request) {
+            $this->lives->ensureLiveKitLive($live); // direct YouTube : 409
             $this->stage->accept($live, $this->user($request), $request->input('identity'), $request->boolean('camera'));
             return $this->success($this->stage->state($live, $this->user($request)), __('lives.messages.stage_accepted'));
         });
@@ -298,6 +339,7 @@ class LiveController extends Controller
         $live = $this->find($id, $request);
 
         return $this->attempt(function () use ($live, $request, $speakerId) {
+            $this->lives->ensureLiveKitLive($live); // direct YouTube : 409
             $this->stage->invite($live, $speakerId, $this->user($request));
             return $this->success($this->stage->state($live, $this->user($request)), __('lives.messages.stage_invited'));
         });
@@ -308,6 +350,7 @@ class LiveController extends Controller
         $live = $this->find($id, $request);
 
         return $this->attempt(function () use ($live, $request, $speakerId) {
+            $this->lives->ensureLiveKitLive($live); // direct YouTube : 409
             $this->stage->decline($live, $speakerId, $this->user($request));
             return $this->success($this->stage->state($live, $this->user($request)), __('lives.messages.stage_declined'));
         });
@@ -318,6 +361,7 @@ class LiveController extends Controller
         $live = $this->find($id, $request);
 
         return $this->attempt(function () use ($live, $request, $speakerId) {
+            $this->lives->ensureLiveKitLive($live); // direct YouTube : 409
             $this->stage->remove($live, $speakerId, $this->user($request));
             return $this->success($this->stage->state($live, $this->user($request)), __('lives.messages.stage_removed'));
         });
@@ -330,6 +374,7 @@ class LiveController extends Controller
 
         return $this->attempt(function () use ($live, $request) {
             $enabled = $request->boolean('enabled');
+            $this->lives->ensureLiveKitLive($live); // direct YouTube : 409
             $this->stage->setEnabled($live, $this->user($request), $enabled);
             return $this->success($this->stage->state($live, $this->user($request)),
                 $enabled ? __('lives.messages.stage_opened') : __('lives.messages.stage_closed'));

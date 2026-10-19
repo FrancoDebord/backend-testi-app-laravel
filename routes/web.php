@@ -195,6 +195,8 @@ Route::whereUuid('id')->group(function () {
     Route::get('/lives/{id}/stats',               [LiveActions::class, 'stats'])->name('lives.stats');
     Route::get('/lives/{id}/stage',               [LiveActions::class, 'stage'])->name('lives.stage');
     Route::get('/lives/{id}/viewers',             [LiveActions::class, 'viewers'])->middleware('throttle:30,1')->name('lives.viewers');
+    // Présence d'un spectateur (direct YouTube, sans LiveKit) : invités compris
+    Route::post('/lives/{id}/heartbeat',          [LiveActions::class, 'heartbeat'])->middleware('throttle:12,1')->name('lives.heartbeat');
 
     Route::middleware('auth')->group(function () {
         Route::get('/lives/{id}/studio',                  [LiveController::class, 'studio'])->name('lives.studio');

@@ -32,6 +32,7 @@ return [
         'browser' => "This device's camera",
         'rtmp'    => 'IP camera or encoder (RTMP)',
         'url'     => 'Camera stream address',
+        'youtube' => 'YouTube link',
     ],
     'live_recording' => [
         'recording'      => 'Recording in progress',

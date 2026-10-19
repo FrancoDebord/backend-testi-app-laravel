@@ -20,7 +20,10 @@
 @if($canGoLive && !$configured)
 <div class="alert-warning mb-6" role="status">
     <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-    <p>{!! __('lives.index.not_configured', ['vars' => '<code>LIVEKIT_URL</code>, <code>LIVEKIT_API_KEY</code>, <code>LIVEKIT_API_SECRET</code>']) !!}</p>
+    <div>
+        <p>{!! __('lives.index.not_configured', ['vars' => '<code>LIVEKIT_URL</code>, <code>LIVEKIT_API_KEY</code>, <code>LIVEKIT_API_SECRET</code>']) !!}</p>
+        <p class="mt-1 font-medium">{{ __('lives.index.youtube_available') }}</p>
+    </div>
 </div>
 @endif
 
@@ -61,7 +64,7 @@
                 <a href="{{ route('lives.show', $live->id) }}"
                    class="block truncate text-sm font-semibold text-slate-900 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary-500"
                    title="{{ __('lives_replay.recent.open') }}">{{ $live->title }}</a>
-                <p class="truncate text-xs text-slate-500">{{ $live->host->display_name }}</p>
+                <p class="truncate text-xs text-slate-500">{{ $live->host->display_name }}@if($live->isYoutube()) · <span class="font-medium text-slate-600" data-live-youtube-badge><i class="fa-brands fa-youtube text-error-500" aria-hidden="true"></i> {{ __('lives.show.youtube_badge') }}</span>@endif</p>
                 <p class="truncate text-xs text-slate-500">
                     <time datetime="{{ $live->started_at->toIso8601String() }}" class="sr-only">{{ $live->started_at->format(__('lives.index.date_format')) }} · </time>{{ $details }}
                 </p>
