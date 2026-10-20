@@ -217,11 +217,13 @@ class AdminController extends Controller
     {
         $data = $request->validate([
             'name'          => 'required|string|max:50',
+            'name_en'       => 'nullable|string|max:100', // nom anglais facultatif (categories-de-temoignages.md)
             'slug'          => 'required|string|unique:categories,slug|max:30',
             'icon'          => 'nullable|string',
             'color'         => 'nullable|string|max:10',
             'display_order' => 'nullable|integer',
         ]);
+        $data['name_en'] = trim((string) ($data['name_en'] ?? '')) ?: null;
 
         Category::create($data);
         return back()->with('success', __('admin.flash.category_created'));
@@ -232,11 +234,13 @@ class AdminController extends Controller
         $category = Category::findOrFail($id);
         $data     = $request->validate([
             'name'          => 'required|string|max:50',
+            'name_en'       => 'nullable|string|max:100', // vide : nom anglais effacé
             'icon'          => 'nullable|string',
             'color'         => 'nullable|string|max:10',
             'display_order' => 'nullable|integer',
             'is_active'     => 'nullable|boolean',
         ]);
+        $data['name_en'] = trim((string) ($data['name_en'] ?? '')) ?: null;
 
         $category->update($data + ['is_active' => $request->boolean('is_active')]);
         return back()->with('success', __('admin.flash.category_updated'));

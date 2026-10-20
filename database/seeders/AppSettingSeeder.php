@@ -11,7 +11,7 @@ class AppSettingSeeder extends Seeder
     {
         $settings = [
             // App group
-            ['key' => 'app_name', 'value' => 'TestiApp', 'type' => 'string', 'group' => 'app', 'label' => 'Nom de l\'application'],
+            ['key' => 'app_name', 'value' => 'My Testimony', 'type' => 'string', 'group' => 'app', 'label' => 'Nom de l\'application'],
             ['key' => 'app_tagline', 'value' => 'Partagez votre foi', 'type' => 'string', 'group' => 'app', 'label' => 'Slogan'],
             ['key' => 'app_version', 'value' => '1.0.0', 'type' => 'string', 'group' => 'app', 'label' => 'Version'],
             ['key' => 'maintenance_mode', 'value' => '0', 'type' => 'boolean', 'group' => 'app', 'label' => 'Mode maintenance'],

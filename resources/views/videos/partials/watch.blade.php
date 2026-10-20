@@ -82,8 +82,8 @@
                             <label for="share-category" class="form-label">{{ __('testimonies.create.category') }}</label>
                             <select id="share-category" name="category" required class="form-input" @error('category') aria-invalid="true" @enderror>
                                 <option value="">{{ __('testimonies.create.category_choose') }}</option>
-                                @foreach(\App\Models\Category::active()->get(['slug', 'name']) as $cat)
-                                <option value="{{ $cat->slug }}" @selected(old('category', $testimony->category_slug !== 'autre' ? $testimony->category_slug : null) === $cat->slug)>{{ $cat->name }}</option>
+                                @foreach(\App\Models\Category::active()->get(['slug', 'name', 'name_en']) as $cat)
+                                <option value="{{ $cat->slug }}" @selected(old('category', $testimony->category_slug !== 'autre' ? $testimony->category_slug : null) === $cat->slug)>{{ $cat->displayName() }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -380,7 +380,7 @@
                     <span data-views-label>{{ $testimony->viewsLabel() }}</span>
                     @if($publishedAt)<time datetime="{{ $publishedAt->toIso8601String() }}">{{ $publishedAt->translatedFormat(__('videos.watch.published_format')) }}</time>@endif
                     @if($testimony->category)
-                    <a href="{{ route('videos.index', ['category' => $testimony->category->slug]) }}" class="font-medium text-slate-600 hover:text-slate-900 hover:underline">{{ $testimony->category->name }}</a>
+                    <a href="{{ route('videos.index', ['category' => $testimony->category->slug]) }}" class="font-medium text-slate-600 hover:text-slate-900 hover:underline">{{ $testimony->category->displayName() }}</a>
                     @endif
                     @if($testimony->liveSession)
                     <span class="font-medium text-slate-600"><i class="fa-solid fa-tower-broadcast mr-1 text-slate-400" aria-hidden="true"></i>{{ __('videos.watch.live_replay') }}</span>
@@ -539,7 +539,7 @@
     </div>
 </div>
 
-{{-- ── Modale « Partager sur TestiApp » (docs/fonctionnalites/partage-interne.md) ── --}}
+{{-- ── Modale « Partager sur My Testimony » (docs/fonctionnalites/partage-interne.md) ── --}}
 @if($canRepost)
 <div id="repost-modal" data-modal class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
      role="dialog" aria-modal="true" aria-labelledby="repost-modal-title" hidden>

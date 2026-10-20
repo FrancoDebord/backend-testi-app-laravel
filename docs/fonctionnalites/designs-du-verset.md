@@ -172,7 +172,7 @@ Résultat avec la palette Krea : `nuit` (voile 0,26) et `crepuscule` (voile 0,18
 - `App\Services\VerseShareImage` utilise Intervention Image 3 avec GD (pas de navigateur : hébergement mutualisé LWS) ;
 - le dégradé et les halos sont calculés au 1/6 de la résolution puis agrandis ; formes, motifs, grain, voile et texte sont dessinés à pleine résolution ;
 - polices TTF de `resources/fonts/ttf` (Lora pour le verset et la référence, Inter pour les libellés), retour à la ligne automatique ;
-- la référence est sous le verset, « ARISE & SHINE Krea · TestiApp » en bas ;
+- la référence est sous le verset, « ARISE & SHINE Krea · My Testimony » en bas ;
 - cache : `storage/app/public/verse-images/{date}-{id}.png`, générée une seule fois (environ 1 à 2 s). Les images d'une date sont supprimées quand son verset change (texte, référence, date). Toutes le sont si un verset est activé ou désactivé, ou s'il n'a pas de date, car le verset de repli d'une date en dépend.
 
 ## Tests

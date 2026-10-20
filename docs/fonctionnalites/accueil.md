@@ -2,7 +2,7 @@
 
 ## But
 
-Présenter la plateforme selon la maquette « Témoignages de Gloire » et la charte ARISE & SHINE Krea ([interface.md](../interface.md)) : chiffres clés, témoignages récents, catégories, statistiques, plus populaires ; et, selon le rôle, les actions et la modération utiles.
+Présenter la plateforme selon la maquette « My Testimony » et la charte ARISE & SHINE Krea ([interface.md](../interface.md)) : chiffres clés, témoignages récents, catégories, statistiques, plus populaires ; et, selon le rôle, les actions et la modération utiles.
 
 ## Utilisation
 
@@ -10,7 +10,7 @@ Présenter la plateforme selon la maquette « Témoignages de Gloire » et la ch
 
 | Bloc | Contenu | Visible par |
 |---|---|---|
-| **Bandeau « Témoignages de Gloire »** | Titre, « Des vies transformées pour la gloire de Dieu », « Dieu agit encore ! » (écriture manuscrite Caveat, dès 768 px), illustration (lever de soleil, montagnes, personne les bras levés, dessinée en SVG aux couleurs de la charte) ; chiffres : témoignages publiés, utilisateurs actifs, vues totales, prières reçues | Tous |
+| **Bandeau « My Testimony »** | Titre « My Testimony » (« My » en bleu `primary-600`, « Testimony » en orange `accent-500`, nom de marque jamais traduit), « Des vies transformées pour la gloire de Dieu », « Dieu agit encore ! » (écriture manuscrite Caveat, dès 768 px), illustration (lever de soleil, montagnes, personne les bras levés, dessinée en SVG aux couleurs de la charte) ; chiffres : témoignages publiés, utilisateurs actifs, vues totales, prières reçues | Tous |
 | **Actions rapides** | Visiteur : Se connecter, Créer mon compte (orange), Explorer, Voir les directs. Membre : Ajouter un témoignage, Mes témoignages, Mes abonnements, Paramètres. Équipe : Ajouter un témoignage, Gérer les utilisateurs (administrateur), Voir la file de modération (jaune, avec le nombre en attente), Paramètres | Tous |
 | **En direct** | Directs à l'antenne (bandeau fin) | Tous, s'il y en a |
 | **Témoignages récents** | Filtres Tous / Vidéos / Audios / Textes, choix Grandes cartes / Liste compacte, cartes encadrées (catégorie, titre, extrait, auteur, vues, date, J'aime / commentaires / partages), 12 par page | Tous |
@@ -36,7 +36,7 @@ Avec un filtre (`?type=`, `?category=`) ou à partir de la page 2 : seulement la
 |---|---|
 | Chiffres du bandeau et statistiques | Recalculés au plus toutes les 5 minutes (cache `home.stats`, `home.activity`) |
 | « Utilisateurs actifs » | Comptes au statut actif |
-| « Prières reçues » | Somme des prières sur les témoignages publiés (la maquette montre une « note moyenne », qui n'existe pas dans TestiApp) |
+| « Prières reçues » | Somme des prières sur les témoignages publiés (la maquette montre une « note moyenne », qui n'existe pas dans My Testimony) |
 | Évolution | `(semaine − semaine précédente) / semaine précédente`, rien si la semaine précédente est vide |
 | Couleurs des catégories | `Category::presentation()` : icône selon la catégorie, bleu / orange / jaune en alternance (`display_order`) ; les emojis enregistrés en base ne sont pas affichés |
 
@@ -67,4 +67,4 @@ Contrôle dans Chrome (visiteur et administrateur, 390, 768, 1440 px) : aucun d�
 
 - L'illustration du bandeau est dessinée en SVG (pas de photo) : une vraie photo pourrait la remplacer plus tard.
 - Pas de note des témoignages : le 4ᵉ chiffre est le nombre de prières.
-- Pas d'onglets « Images » et « Documents » : TestiApp ne gère que vidéo, audio et texte.
+- Pas d'onglets « Images » et « Documents » : My Testimony ne gère que vidéo, audio et texte.

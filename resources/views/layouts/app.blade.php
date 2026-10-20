@@ -92,7 +92,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'TestiApp') — TestiApp · ARISE &amp; SHINE Krea</title>
+    <title>@yield('title', 'My Testimony') — My Testimony · ARISE &amp; SHINE Krea</title>
     <link rel="icon" type="image/png" href="{{ asset('icons/arise-shine-krea-star.png') }}">
     <meta name="theme-color" content="#184797">
     @stack('meta')
@@ -116,7 +116,7 @@
     <div class="flex h-20 shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-5">
         <a href="{{ route('home') }}" class="flex min-w-0 items-center gap-3">
             <img src="{{ asset('icons/arise-shine-krea.png') }}" alt="ARISE &amp; SHINE Krea" class="h-14 w-auto" width="477" height="493">
-            <span class="border-l border-slate-200 pl-3 text-sm font-bold text-primary-600">TestiApp</span>
+            <span class="border-l border-slate-200 pl-3 text-sm font-bold"><span class="text-primary-600">My</span> <span class="text-accent-600">Testimony</span></span>
         </a>
         <button type="button" class="btn-ghost btn-sm lg:hidden" data-sidebar-close aria-label="{{ __('layout.close_menu') }}">
             <i class="fa-solid fa-xmark"></i>
@@ -339,7 +339,7 @@
 
     <footer class="border-t border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-            <p>© {{ date('Y') }} TestiApp — ARISE &amp; SHINE Krea</p>
+            <p>© {{ date('Y') }} My Testimony — ARISE &amp; SHINE Krea</p>
             <div class="flex flex-wrap items-center gap-4">
                 <p class="flex flex-wrap gap-4">
                     <a href="{{ route('home') }}" class="hover:text-slate-900">{{ __('layout.nav.home') }}</a>

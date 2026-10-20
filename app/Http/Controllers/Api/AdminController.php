@@ -199,6 +199,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'name'          => 'required|string|max:50',
+            'name_en'       => 'nullable|string|max:100', // nom anglais facultatif (categories-de-temoignages.md)
             'slug'          => 'nullable|string|regex:/^[a-z0-9_-]+$/|max:50',
             'icon'          => 'nullable|string',
             'color'         => 'nullable|string|max:10',
@@ -213,6 +214,7 @@ class AdminController extends Controller
 
         $category = Category::create([
             'name'          => $request->name,
+            'name_en'       => trim((string) $request->input('name_en')) ?: null,
             'slug'          => $slug,
             'icon'          => $request->icon,
             'color'         => $request->color,
@@ -229,13 +231,18 @@ class AdminController extends Controller
 
         $request->validate([
             'name'          => 'nullable|string|max:50',
+            'name_en'       => 'nullable|string|max:100', // chaîne vide ou null : nom anglais effacé
             'icon'          => 'nullable|string',
             'color'         => 'nullable|string|max:10',
             'display_order' => 'nullable|integer|min:0',
             'is_active'     => 'nullable|boolean',
         ]);
 
-        $category->update($request->only(['name', 'icon', 'color', 'display_order', 'is_active']));
+        $data = $request->only(['name', 'icon', 'color', 'display_order', 'is_active']);
+        if ($request->exists('name_en')) {
+            $data['name_en'] = trim((string) $request->input('name_en')) ?: null;
+        }
+        $category->update($data);
 
         return $this->success(new CategoryResource($category), __('admin.api.category_updated'));
     }

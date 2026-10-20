@@ -9,7 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Partage interne d'un témoignage sur TestiApp depuis le site (page d'un témoignage).
+ * Partage interne d'un témoignage sur My Testimony depuis le site (page d'un témoignage).
  * Règles communes avec l'API : App\Services\Reposts. Voir docs/fonctionnalites/partage-interne.md
  */
 class RepostController extends Controller

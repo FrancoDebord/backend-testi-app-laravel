@@ -66,7 +66,7 @@
         <label for="mod-cat" class="form-label">{{ __('moderation.index.category') }}</label>
         <select id="mod-cat" name="categorie" class="form-input">
             <option value="">{{ __('moderation.index.all_categories') }}</option>
-            @foreach($categories as $c)<option value="{{ $c->slug }}" @selected(request('categorie') === $c->slug)>{{ $c->name }}</option>@endforeach
+            @foreach($categories as $c)<option value="{{ $c->slug }}" @selected(request('categorie') === $c->slug)>{{ $c->displayName() }}</option>@endforeach
         </select>
     </div>
     <div class="flex flex-wrap items-end gap-3">

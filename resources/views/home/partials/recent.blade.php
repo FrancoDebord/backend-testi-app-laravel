@@ -13,8 +13,8 @@
                class="{{ (request('type') ?? '') === $val ? 'chip-active' : 'chip' }} text-xs" @if((request('type') ?? '') === $val) aria-current="true" @endif>{{ $label }}</a>
             @endforeach
             @if($activeCategory)
-            <a href="{{ route('home', array_filter(['type' => request('type')])) }}" class="chip-active text-xs" aria-label="Retirer le filtre {{ $activeCategory->name }}">
-                {{ $activeCategory->name }}<i class="fa-solid fa-xmark text-[10px]" aria-hidden="true"></i>
+            <a href="{{ route('home', array_filter(['type' => request('type')])) }}" class="chip-active text-xs" aria-label="Retirer le filtre {{ $activeCategory->displayName() }}">
+                {{ $activeCategory->displayName() }}<i class="fa-solid fa-xmark text-[10px]" aria-hidden="true"></i>
             </a>
             @endif
         </nav>

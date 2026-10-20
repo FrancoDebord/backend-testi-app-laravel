@@ -78,7 +78,7 @@
         @endif
 
         <p class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-            @if($category)<span><i class="fa-solid fa-tag mr-1 text-slate-400" aria-hidden="true"></i>{{ $category->name }}</span>@endif
+            @if($category)<span><i class="fa-solid fa-tag mr-1 text-slate-400" aria-hidden="true"></i>{{ $category->displayName() }}</span>@endif
             @if($duration)<span><i class="fa-regular fa-clock mr-1 text-slate-400" aria-hidden="true"></i>{{ $duration }}</span>@endif
             <span><i class="fa-solid fa-thumbs-up mr-1 text-slate-400" aria-hidden="true"></i>{{ \App\Support\Locales::number($testimony->like_count) }}<span class="sr-only"> {{ __('videos.row.likes_sr') }}</span></span>
             <span><i class="fa-solid fa-hands-praying mr-1 text-slate-400" aria-hidden="true"></i>{{ \App\Support\Locales::number($testimony->prayer_count) }}<span class="sr-only"> {{ __('videos.common.prayers_sr') }}</span></span>

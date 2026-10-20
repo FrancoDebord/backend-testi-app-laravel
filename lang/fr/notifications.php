@@ -3,7 +3,7 @@
 // Notifications push et de l'application (App\Services\PushNotifications, TestimonyModeration).
 return [
     'titles' => [
-        'default'                => 'Témoignages',
+        'default'                => 'My Testimony',
         'like'                   => 'Nouvelle réaction',
         'prayer'                 => 'Nouvelle prière',
         'comment'                => 'Nouveau commentaire',

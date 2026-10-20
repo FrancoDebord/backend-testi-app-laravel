@@ -2,19 +2,19 @@
 
 ## But
 
-Comme un transfert WhatsApp ou un partage Facebook : une personne connectée **partage un témoignage sur TestiApp**, avec un **commentaire facultatif**, pour le faire connaître à ses abonnés. L'**auteur d'origine reste toujours affiché** : le partage montre « X a partagé » au-dessus de la carte du témoignage original (son auteur, son lien) ; le contenu n'est **jamais recopié** sous le nom du partageur.
+Comme un transfert WhatsApp ou un partage Facebook : une personne connectée **partage un témoignage sur My Testimony**, avec un **commentaire facultatif**, pour le faire connaître à ses abonnés. L'**auteur d'origine reste toujours affiché** : le partage montre « X a partagé » au-dessus de la carte du témoignage original (son auteur, son lien) ; le contenu n'est **jamais recopié** sous le nom du partageur.
 
-À ne pas confondre avec le [lien de partage](lien-de-partage.md) (partage **hors** de TestiApp : copier le lien, WhatsApp…), qui reste disponible.
+À ne pas confondre avec le [lien de partage](lien-de-partage.md) (partage **hors** de My Testimony : copier le lien, WhatsApp…), qui reste disponible.
 
 ## Utilisation
 
 | Où | Comment |
 |---|---|
-| Application, page d'un témoignage | Bouton **Partager** → feuille de partage → **« Partager sur TestiApp »** : commentaire facultatif (500 caractères), **Partager avec mes abonnés** ; une fois partagé, **Mettre à jour mon partage** ou **Annuler mon partage**. Invité : invitation à créer un compte. |
-| Site, page d'un témoignage | Bouton **« Partager sur TestiApp »** (avec le nombre de partages) → fenêtre avec le commentaire ; **Partagé sur TestiApp** une fois fait (mettre à jour, **Annuler le partage**). |
+| Application, page d'un témoignage | Bouton **Partager** → feuille de partage → **« Partager sur My Testimony »** : commentaire facultatif (500 caractères), **Partager avec mes abonnés** ; une fois partagé, **Mettre à jour mon partage** ou **Annuler mon partage**. Invité : invitation à créer un compte. |
+| Site, page d'un témoignage | Bouton **« Partager sur My Testimony »** (avec le nombre de partages) → fenêtre avec le commentaire ; **Partagé sur My Testimony** une fois fait (mettre à jour, **Annuler le partage**). |
 | Mon fil des abonnés | En-tête **« X a partagé · il y a… »**, le commentaire, puis la carte du témoignage d'origine. |
 | Tous les fils et listes de l'application | Accueil « Pour vous », Mon fil, Explorer, catégories, recherche, profils, sauvegardés : un témoignage partagé porte l'en-tête « X a partagé ». Il montre le partage d'un compte suivi d'abord, puis le sien, puis le plus récent (champ `repostedBy` de `TestimonyResource`). |
-| Événements, requêtes et sessions de prière | Bouton **Partager** de la page et des éléments insérés dans les fils, puis **« Sur TestiApp »**, avec un commentaire facultatif. Les publications partagées par les comptes suivis (30 derniers jours) rejoignent le groupe « suivis » de Mon fil, avec l'en-tête « X a partagé ». |
+| Événements, requêtes et sessions de prière | Bouton **Partager** de la page et des éléments insérés dans les fils, puis **« Sur My Testimony »**, avec un commentaire facultatif. Les publications partagées par les comptes suivis (30 derniers jours) rejoignent le groupe « suivis » de Mon fil, avec l'en-tête « X a partagé ». |
 | Profil du partageur | Section **« Partages »** (site : 12 derniers ; application : 10 derniers, profil public). |
 | Auteur d'origine | Notification **« X a partagé votre témoignage « titre » »** (type `share`, push « réactions »). |
 
@@ -26,7 +26,7 @@ Comme un transfert WhatsApp ou un partage Facebook : une personne connectée **p
 | Quoi | Un témoignage **publié et public** (approuvé, `visibility = public`). Refusé (404) pour un témoignage en attente, réservé aux abonnés, du carnet privé ou supprimé. |
 | Son propre témoignage | Refusé (422 « Vous ne pouvez pas partager votre propre témoignage. »). |
 | Unicité | **Un partage par personne et par témoignage** (index unique). Partager de nouveau ne crée rien : le commentaire est remplacé (réponse 200 au lieu de 201) ; ni compteur ni notification en plus. |
-| Compteur | `testimonies.repost_count` (+1 à la création, −1 à l'annulation) ; API `stats.repostsCount`, `isRepostedByMe`. Distinct de `sharesCount` (partages hors de TestiApp). |
+| Compteur | `testimonies.repost_count` (+1 à la création, −1 à l'annulation) ; API `stats.repostsCount`, `isRepostedByMe`. Distinct de `sharesCount` (partages hors de My Testimony). |
 | Annulation | `DELETE` : le partage disparaît des fils et du profil. |
 | Témoignage devenu non public / supprimé | Le partage n'est plus montré (filtré à l'affichage, Mon fil et profil) ; il réapparaît si le témoignage redevient public. |
 | Mon fil | Les partages des comptes suivis (30 derniers jours) se mêlent à leurs témoignages, du plus récent au plus ancien ; un témoignage n'apparaît qu'une fois (au partage le plus récent). Les partages de ses propres témoignages par d'autres n'apparaissent pas dans son fil. Voir [recommandations.md](recommandations.md#mon-fil-get-apiv1feedpagelimit-connecté--site-mon-fil). |
@@ -78,7 +78,7 @@ Application : `lib/features/repost/repost.dart` (`RepostInfo`, `RepostRepository
 
 ## Tests
 
-`tests/Feature/PersonalFeedAndRepostTest.php` : création, unicité, commentaire modifié, notification, compteur, `isRepostedByMe`, annulation ; refus (le sien, réservé aux abonnés, en attente) ; affichage dans Mon fil d'un abonné avec l'auteur d'origine, profil, disparition quand le témoignage n'est plus public ; site (bouton, partage, Mon fil, profil, annulation). Application : `test/personal_feed_test.dart` (en-tête « X a partagé » sans débordement, feuille « Partager sur TestiApp »).
+`tests/Feature/PersonalFeedAndRepostTest.php` : création, unicité, commentaire modifié, notification, compteur, `isRepostedByMe`, annulation ; refus (le sien, réservé aux abonnés, en attente) ; affichage dans Mon fil d'un abonné avec l'auteur d'origine, profil, disparition quand le témoignage n'est plus public ; site (bouton, partage, Mon fil, profil, annulation). Application : `test/personal_feed_test.dart` (en-tête « X a partagé » sans débordement, feuille « Partager sur My Testimony »).
 
 ## Limites connues
 

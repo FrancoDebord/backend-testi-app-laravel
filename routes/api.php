@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Artisan;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes v1 — TestiApp
+| API Routes v1 — My Testimony
 |--------------------------------------------------------------------------
 | Base URL : /api/v1
 | Auth     : Laravel Sanctum (Bearer token)

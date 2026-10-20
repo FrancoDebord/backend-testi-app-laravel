@@ -239,8 +239,8 @@ class PersonalFeedAndRepostTest extends TestCase
     {
         $t = $this->published($this->stranger, 'Guéri du cancer', 20);
 
-        $this->actingAs($this->followed)->get(route('testimonies.show', $t->id))->assertOk()->assertSee('Partager sur TestiApp');
-        $this->actingAs($this->stranger)->get(route('testimonies.show', $t->id))->assertOk()->assertDontSee('Partager sur TestiApp');
+        $this->actingAs($this->followed)->get(route('testimonies.show', $t->id))->assertOk()->assertSee('Partager sur My Testimony');
+        $this->actingAs($this->stranger)->get(route('testimonies.show', $t->id))->assertOk()->assertDontSee('Partager sur My Testimony');
 
         $this->actingAs($this->followed)->from(route('testimonies.show', $t->id))
             ->post(route('testimonies.repost', $t->id), ['comment' => 'Dieu est fidèle'])

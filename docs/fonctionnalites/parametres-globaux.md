@@ -45,7 +45,7 @@ Préfixe `/api/v1`, Sanctum, administrateurs.
         "label": "Général",
         "settings": [
           { "key": "maintenance_mode", "label": "Mode maintenance", "description": "Signale une maintenance en cours.", "type": "boolean", "value": false },
-          { "key": "app_name", "label": "Nom de l’application", "description": null, "type": "string", "value": "TestiApp" }
+          { "key": "app_name", "label": "Nom de l’application", "description": null, "type": "string", "value": "My Testimony" }
         ]
       },
       { "key": "publishing", "label": "Publication", "settings": [ … ] }

@@ -187,7 +187,7 @@
                 {{ $prophecy->reminder_frequency === 'weekly' ? 'Chaque ' . Str::lower($weekdays[$prophecy->reminder_weekday] ?? '') : 'Chaque jour' }}
                 à {{ $prophecy->reminder_time }}
             </p>
-            <p class="mt-1 text-xs text-slate-500">{{ $fulfilled ? 'Plus de rappel : la parole est accomplie.' : "Envoyé par l'application TestiApp sur votre téléphone." }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ $fulfilled ? 'Plus de rappel : la parole est accomplie.' : "Envoyé par l'application My Testimony sur votre téléphone." }}</p>
             @else
             <p class="mt-2 text-sm text-slate-500">Aucun rappel. Programmez-en un pour penser à prier ; il sera envoyé par l'application sur votre téléphone.</p>
             @endif

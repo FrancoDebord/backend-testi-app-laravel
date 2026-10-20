@@ -86,4 +86,11 @@ return [
             'tracking' => 'Suivi',
         ],
     ],
+
+    // Types de témoignages (resources/views/admin/categories/index.blade.php)
+    'categories' => [
+        'name_en'      => 'Nom anglais (facultatif)',
+        'name_en_hint' => 'Affiché quand le site ou l’application est en anglais ; sinon le nom français est utilisé.',
+        'english'      => 'Anglais',
+    ],
 ];

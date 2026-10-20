@@ -9,7 +9,7 @@ return [
     'image_label'      => 'VERSE OF THE DAY',
 
     'show' => [
-        'site_name'        => 'TestiApp · ARISE & SHINE Krea',
+        'site_name'        => 'My Testimony · ARISE & SHINE Krea',
         'close_aria'       => 'Close and go back home',
         'close'            => 'Close',
         'not_in_version'   => 'This passage is not available in the chosen version: text of the day shown.',

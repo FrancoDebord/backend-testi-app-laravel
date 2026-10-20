@@ -46,7 +46,7 @@ class GlobalSettingsTest extends TestCase
         $this->assertSame(['key' => 'maintenance_mode', 'label' => 'Mode maintenance', 'description' => 'Signale une maintenance en cours.', 'type' => 'boolean', 'value' => false], $byKey['maintenance_mode']);
         $this->assertSame(100, $byKey['max_file_size_mb']['value']);
         $this->assertSame('integer', $byKey['max_file_size_mb']['type']);
-        $this->assertSame('TestiApp', $byKey['app_name']['value']);
+        $this->assertSame('My Testimony', $byKey['app_name']['value']);
         $this->assertNull($byKey['app_name']['description']);
         $this->assertTrue($byKey['testimony_type_youtube_enabled']['value']);
         $this->assertSame(['key' => 'push_notifications_enabled', 'label' => 'Notifications push', 'type' => 'boolean', 'value' => true],

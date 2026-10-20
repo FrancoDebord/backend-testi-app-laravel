@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'TestiApp') — TestiApp · ARISE &amp; SHINE Krea</title>
+    <title>@yield('title', 'My Testimony') — My Testimony · ARISE &amp; SHINE Krea</title>
     <link rel="icon" type="image/png" href="{{ asset('icons/arise-shine-krea-star.png') }}">
     <meta name="theme-color" content="#184797">
 
@@ -21,7 +21,7 @@
     <div class="mx-auto flex h-20 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <a href="{{ route('home') }}" class="flex min-w-0 items-center gap-3">
             <img src="{{ asset('icons/arise-shine-krea.png') }}" alt="ARISE &amp; SHINE Krea" class="h-14 w-auto" width="477" height="493">
-            <span class="border-l border-slate-200 pl-3 text-sm font-bold text-primary-600">TestiApp</span>
+            <span class="border-l border-slate-200 pl-3 text-sm font-bold"><span class="text-primary-600">My</span> <span class="text-accent-600">Testimony</span></span>
         </a>
         <div class="flex items-center gap-2">
             @include('components.locale-switcher')
@@ -73,7 +73,7 @@
 
 <footer class="border-t border-slate-200 bg-white">
     <p class="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-slate-500 sm:px-6">
-        © {{ date('Y') }} TestiApp — ARISE &amp; SHINE Krea
+        © {{ date('Y') }} My Testimony — ARISE &amp; SHINE Krea
     </p>
 </footer>
 

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Partage interne (« republier ») d'un témoignage sur TestiApp, commun à l'API mobile et au site.
+ * Partage interne (« republier ») d'un témoignage sur My Testimony, commun à l'API mobile et au site.
  *
  * - un partage par personne et par témoignage (un nouvel envoi ne fait que changer le commentaire) ;
  * - seulement un témoignage publié et public, jamais le sien ;

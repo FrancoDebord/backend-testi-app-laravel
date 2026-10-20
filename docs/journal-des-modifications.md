@@ -4,6 +4,22 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-20 — Nom « My Testimony », témoignages du plus récent au plus ancien, catégories en anglais
+
+- **Utilisateurs** :
+  - l'application s'appelle désormais **My Testimony** (nom de marque, jamais traduit) : titres des pages, logo texte (« My » en bleu, « Testimony » en orange, comme l'ancien « Témoignages de **Gloire** »), bandeau de l'accueil, pied de page, aperçus de partage (`og:site_name`, images 1200 × 630 et image du verset), titre par défaut des notifications push, « Partager sur My Testimony », textes de connexion et de consentement ;
+  - les listes de témoignages sont triées **du plus récemment publié au plus ancien** par défaut (accueil « Témoignages récents », Explorer, Vidéos ; « Plus récents » sélectionné) ;
+  - **« À la une »** (accueil du site et application) : le témoignage publié le plus récent y entre **toujours**, puis les mises à la une manuelles (les plus récentes d'abord), puis le complément récent ; la liste est triée par date de publication. Un témoignage tout juste publié ou approuvé apparaît aussitôt [gestion-des-temoignages.md](fonctionnalites/gestion-des-temoignages.md#à-la-une) ;
+  - les catégories (« types de témoignages ») ont un **nom anglais** affiché quand la langue est l'anglais ; *Administration › Catégories* : champ « Nom anglais (facultatif) » à l'ajout et à la modification, colonne « Anglais » [categories-de-temoignages.md](fonctionnalites/categories-de-temoignages.md).
+- **API** :
+  - `GET /testimonies` sans `sort` : déjà trié par date de publication (inchangé) ; `sort=for_you`, `popular`, `most_viewed` inchangés ;
+  - `GET /testimonies/featured` : nouvel algorithme (le plus récent toujours inclus, tri par date de publication décroissante, `featured_source` `manual` | `recent`, `featured_order` n'influence plus l'ordre) ;
+  - `CategoryResource` (`GET categories`, `GET categories/{slug}`, `admin/categories`) : `name` = nom localisé (`Accept-Language`), nouveaux `nameFr` et `nameEn` (nullable) ; `POST admin/categories` accepte `name_en` (≤ 100) ; `PUT admin/categories/{id}` aussi (chaîne vide = effacé).
+- **Développeurs** : `config('app.name')` par défaut « My Testimony » ; `ShareImage::SITE_NAME` et `ShareImage::VERSION = 2` (images de partage recréées) ; `lang/{fr,en}/share.php`, `notifications.php` (`titles.default`), `videos.php`, `layout.php`, `account.php`, `testimonies.php`, `daily_verse.php` ; `App\Services\FeaturedTestimonies` réécrit (clé de cache `testimonies:featured:v2`) et cache vidé aussi par les événements `saved` / `deleted` / `restored` de `Testimony` ; accueil et Explorer : `latestPublished()` au lieu de `latest()` ; `Category::displayName()`, accesseur `localized_name`, `Category::ENGLISH_NAMES`, `name_en` fillable ; noms de catégories affichés par `displayName()` dans les vues ; lexique de recherche des catégories par langue. « Mon fil » garde son classement personnalisé (comptes suivis puis « Pour vous »). Tests : `CategoryNamesTest` (6), `TestimonyManagementTest` (à la une : 2 nouveaux tests, 2 mis à jour), `HomePageTest`, `SharePreviewTest`, `GlobalSettingsTest`, `PersonalFeedAndRepostTest`, `DocumentationPageTest` mis à jour.
+- **Déploiement** : migrations `2026_10_20_100000_rename_app_to_my_testimony` (paramètre `app_name`) et `2026_10_20_100001_add_name_en_to_categories` (`php artisan migrate --force`), `php artisan optimize:clear`, `php artisan view:cache`, recompilation des assets (`npm run build`) et copie de `public/build/`. `.env` du serveur : `APP_NAME="My Testimony"` après avoir fixé `SESSION_COOKIE` et `CACHE_PREFIX` à leur valeur actuelle (voir [README §4](README.md#4-déploiement)). Inchangés : identifiant du paquet, App Links, domaines, base de données.
+
+---
+
 ## 2026-10-19 — Directs par lien YouTube (sans LiveKit)
 
 - **Utilisateurs** : *Lancer un direct* propose une 4ᵉ source, **Lien YouTube** : le diffuseur lance son direct sur YouTube puis colle le lien ; le direct est aussitôt à l'antenne (abonnés prévenus) avec le lecteur YouTube, et garde chat, réactions, message épinglé, modération, bouton « Couper le direct », compteur de spectateurs, témoignages et bilan de fin (la vidéo YouTube sert de rediffusion, « Ouvrir sur YouTube »). Possible même quand le service vidéo LiveKit n'est pas configuré (seule source proposée alors). Pas d'intervenants ni d'enregistrement pour cette source. Pastille « YouTube » dans les listes [lives.md](fonctionnalites/lives.md#direct-youtube-2026-10-19).

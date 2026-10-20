@@ -115,7 +115,7 @@ class SharePreviewTest extends TestCase
         $tags = $this->meta($this->get(route('testimonies.show', $t->id))->assertOk());
 
         $this->assertSame('article', $tags['og:type']);
-        $this->assertSame('TestiApp · ARISE & SHINE Krea', $tags['og:site_name']);
+        $this->assertSame('My Testimony · ARISE & SHINE Krea', $tags['og:site_name']);
         $this->assertSame('Guérie après trois ans - Marie Adjovi', $tags['og:title']);
         $this->assertSame("Le Seigneur m'a guérie. Merci @Paul pour ses prières.", $tags['og:description']);
         $this->assertSame($t->share_url, $tags['og:url']);
@@ -142,7 +142,7 @@ class SharePreviewTest extends TestCase
 
         $empty = $this->testimony(['type' => 'video', 'body_text' => null, 'media_url' => 'https://app.example.org/storage/media/v.mp4']);
         $tags = $this->meta($this->get(route('testimonies.show', $empty->id)));
-        $this->assertSame('Témoignage de Marie Adjovi sur TestiApp', $tags['og:description']);
+        $this->assertSame('Témoignage de Marie Adjovi sur My Testimony', $tags['og:description']);
         $this->assertSame('video.other', $tags['og:type']);
     }
 
@@ -263,7 +263,7 @@ class SharePreviewTest extends TestCase
             $t = $this->testimony(array_merge(['title' => 'Secret de famille', 'body_text' => 'Texte confidentiel'], $attrs));
             $tags = $this->meta($this->get(route('testimonies.show', $t->id)));
 
-            $this->assertSame('TestiApp — témoignages qui fortifient la foi', $tags['og:title']);
+            $this->assertSame('My Testimony — témoignages qui fortifient la foi', $tags['og:title']);
             $this->assertSame('website', $tags['og:type']);
             $this->assertSame(self::SHARE . '/partage/site.jpg', $tags['og:image']);
             foreach ($tags as $value) {
@@ -410,7 +410,7 @@ class SharePreviewTest extends TestCase
         $tags = $this->meta($this->get(route('lives.show', $live->id))->assertOk());
 
         $this->assertSame('Soirée de louange - Marie Adjovi', $tags['og:title']);
-        $this->assertSame('Direct de Marie Adjovi sur TestiApp', $tags['og:description']);
+        $this->assertSame('Direct de Marie Adjovi sur My Testimony', $tags['og:description']);
         $this->assertSame('video.other', $tags['og:type']);
         $this->assertJpeg($this->get($this->imagePath($tags)));
 

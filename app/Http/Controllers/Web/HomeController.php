@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 /**
- * Accueil (charte ARISE & SHINE Krea, maquette « Témoignages de Gloire ») :
+ * Accueil (charte ARISE & SHINE Krea, maquette « My Testimony ») :
  * bandeau et chiffres clés, actions rapides, témoignages récents, catégories, statistiques,
  * plus populaires, à la une, shorts ; modération et gestion des contenus pour l'équipe,
  * « Mes témoignages » pour une personne connectée. Voir docs/fonctionnalites/accueil.md
@@ -43,7 +43,7 @@ class HomeController extends Controller
 
         $feedQuery = Testimony::with(['user', 'category'])
             ->published()
-            ->latest();
+            ->latestPublished()->orderByDesc('id'); // du plus récemment publié au plus ancien
 
         if ($category) $feedQuery->ofCategory($category);
         if ($type) $feedQuery->where('type', $type);

@@ -10,14 +10,14 @@ Même traitement pour les pages **événement**, **requête de prière** (publiq
 
 | Page | Image (1200 × 630 JPEG) | Titre | Description |
 |---|---|---|---|
-| Témoignage vidéo (Bunny, fichier) | miniature recadrée, **bouton lecture** central (disque sombre translucide, triangle blanc), **durée** en bas à droite si connue | « Titre - Auteur » | début du texte (160 car.) ou « Témoignage de {auteur} sur TestiApp » |
+| Témoignage vidéo (Bunny, fichier) | miniature recadrée, **bouton lecture** central (disque sombre translucide, triangle blanc), **durée** en bas à droite si connue | « Titre - Auteur » | début du texte (160 car.) ou « Témoignage de {auteur} sur My Testimony » |
 | Témoignage YouTube | miniature `maxresdefault`, sinon `hqdefault`, + bouton lecture ; balises `og:video` (lecteur `https://www.youtube.com/embed/{id}`) | idem | idem |
 | Témoignage texte / audio avec couverture | la couverture recadrée ; audio : pastille « 🎧 Audio » (écouteurs dessinés) | idem | idem |
-| Témoignage sans image | **carte de la marque** : dégradé bleu #184797 → #0B2B66, rayons de soleil orange / jaune, libellé « TÉMOIGNAGE · CATÉGORIE » (ou VIDÉO / AUDIO), titre (3 lignes max, « … »), « Par {auteur} », pied « TestiApp · ARISE & SHINE Krea » ; vidéo : bouton lecture à droite | idem | idem |
+| Témoignage sans image | **carte de la marque** : dégradé bleu #184797 → #0B2B66, rayons de soleil orange / jaune, libellé « TÉMOIGNAGE · CATÉGORIE » (ou VIDÉO / AUDIO), titre (3 lignes max, « … »), « Par {auteur} », pied « My Testimony · ARISE & SHINE Krea » ; vidéo : bouton lecture à droite | idem | idem |
 | Événement | 1re image de couverture (+ lecture si direct YouTube), sinon miniature YouTube + lecture, sinon carte « ÉVÉNEMENT · TYPE », titre, date, lieu | titre | « Type · date · lieu — début de la description » |
-| Requête de prière publique | carte « REQUÊTE DE PRIÈRE », extrait entre guillemets, « Par {auteur} » (**jamais si anonyme**), « Priez avec nous sur TestiApp » | « Requête de prière - Auteur » (sans auteur si anonyme) | début de la requête |
-| Direct visible sans compte | carte « EN DIRECT » / « DIRECT TERMINÉ », titre, hôte, bouton lecture ; pastille rouge « En direct » pendant le direct | « Titre - Hôte » | description ou « Direct de {hôte} sur TestiApp » |
-| Contenu non public | **balises génériques du site** + image générique (`/partage/site.jpg`) : rien du titre, du texte ni de l'auteur | « TestiApp — témoignages qui fortifient la foi » | présentation du site |
+| Requête de prière publique | carte « REQUÊTE DE PRIÈRE », extrait entre guillemets, « Par {auteur} » (**jamais si anonyme**), « Priez avec nous sur My Testimony » | « Requête de prière - Auteur » (sans auteur si anonyme) | début de la requête |
+| Direct visible sans compte | carte « EN DIRECT » / « DIRECT TERMINÉ », titre, hôte, bouton lecture ; pastille rouge « En direct » pendant le direct | « Titre - Hôte » | description ou « Direct de {hôte} sur My Testimony » |
+| Contenu non public | **balises génériques du site** + image générique (`/partage/site.jpg`) : rien du titre, du texte ni de l'auteur | « My Testimony — témoignages qui fortifient la foi » | présentation du site |
 
 « Non public » : témoignage du carnet, réservé aux abonnés, en attente / refusé, vidéo pas encore prête ; événement brouillon ou masqué ; requête « abonnés » / privée / retirée ; direct en préparation ou salle d'une session de prière réservée. Règle : `isVisibleTo(null)` (visible sans compte), car les robots ne sont jamais connectés.
 
@@ -27,7 +27,7 @@ Les textes des images sont dessinés dans la langue par défaut du site (`APP_LO
 
 Composant Blade `<x-share-meta>` (`resources/views/components/share-meta.blade.php`), poussé dans `@stack('meta')` du `<head>` (juste après `<title>`, avant les feuilles de style) :
 
-`link rel=canonical`, `meta name=description`, `og:type` (`video.other` pour une vidéo / un direct, `article` sinon, `website` pour le générique), `og:site_name` « TestiApp · ARISE & SHINE Krea », `og:title`, `og:description`, `og:url`, `og:locale` (+ `alternate`), `og:image`, `og:image:secure_url`, `og:image:type` `image/jpeg`, `og:image:width` 1200, `og:image:height` 630, `og:image:alt`, YouTube : `og:video:url`, `og:video:secure_url`, `og:video:type` `text/html`, `og:video:width` 1280, `og:video:height` 720 ; `twitter:card` `summary_large_image`, `twitter:title`, `twitter:description`, `twitter:image`, `twitter:image:alt`.
+`link rel=canonical`, `meta name=description`, `og:type` (`video.other` pour une vidéo / un direct, `article` sinon, `website` pour le générique), `og:site_name` « My Testimony · ARISE & SHINE Krea », `og:title`, `og:description`, `og:url`, `og:locale` (+ `alternate`), `og:image`, `og:image:secure_url`, `og:image:type` `image/jpeg`, `og:image:width` 1200, `og:image:height` 630, `og:image:alt`, YouTube : `og:video:url`, `og:video:secure_url`, `og:video:type` `text/html`, `og:video:width` 1280, `og:video:height` 720 ; `twitter:card` `summary_large_image`, `twitter:title`, `twitter:description`, `twitter:image`, `twitter:image:alt`.
 
 ```blade
 @push('meta')

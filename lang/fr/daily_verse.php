@@ -9,7 +9,7 @@ return [
     'image_label'      => 'VERSET DU JOUR',
 
     'show' => [
-        'site_name'        => 'TestiApp · ARISE & SHINE Krea',
+        'site_name'        => 'My Testimony · ARISE & SHINE Krea',
         'close_aria'       => "Fermer et revenir à l'accueil",
         'close'            => 'Fermer',
         'not_in_version'   => "Ce passage n'est pas disponible dans la version choisie : texte du jour affiché.",

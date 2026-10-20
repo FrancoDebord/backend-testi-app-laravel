@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** Accueil selon la maquette « Témoignages de Gloire ». docs/fonctionnalites/accueil.md */
+/** Accueil selon la maquette « My Testimony ». docs/fonctionnalites/accueil.md */
 class HomePageTest extends TestCase
 {
     use RefreshDatabase;
@@ -34,7 +34,7 @@ class HomePageTest extends TestCase
         $this->testimony($this->user('Marie Koffi'), 'Guéri du paludisme');
 
         $this->get('/')->assertOk()
-            ->assertSee('Témoignages de Gloire')
+            ->assertSee('Accueil — My Testimony')->assertSee('<span class="text-accent-500">Testimony</span>', false)
             ->assertSee('Témoignages publiés')->assertSee('Utilisateurs actifs')->assertSee('Vues totales')
             ->assertSee('Actions rapides')->assertSee('Se connecter')->assertSee('Créer mon compte')
             ->assertSee('Témoignages récents')->assertSee('Guéri du paludisme')

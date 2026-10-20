@@ -65,7 +65,7 @@ return [
         'tags_placeholder'        => 'guérison, miracle, foi',
         'tags_hint'               => 'Séparez les mots-clés par des virgules.',
         'visibility'              => 'Visibilité',
-        'consent'                 => 'Je certifie que ce témoignage est authentique et personnel, et j\'accepte qu\'il soit partagé sur la plateforme TestiApp après relecture.',
+        'consent'                 => 'Je certifie que ce témoignage est authentique et personnel, et j\'accepte qu\'il soit partagé sur la plateforme My Testimony après relecture.',
         'autosave'                => 'Votre brouillon est enregistré automatiquement sur cet appareil.',
         'submit'                  => 'Soumettre pour relecture',
         'audio_file'              => 'Fichier audio',
@@ -167,7 +167,7 @@ return [
         'not_restorable'        => 'Ce témoignage est dans la corbeille depuis plus de :days jours : il ne peut plus être restauré.',
     ],
 
-    // Partage interne sur TestiApp (App\Services\Reposts)
+    // Partage interne sur My Testimony (App\Services\Reposts)
     'repost' => [
         'created'        => 'Témoignage partagé avec vos abonnés.',
         'updated'        => 'Partage mis à jour.',

@@ -21,7 +21,7 @@ class ShareImageController extends Controller
 {
     public function testimony(TestimonyShareImage $images, string $id): BinaryFileResponse
     {
-        $testimony = Testimony::with(['user:id,display_name', 'category:id,name'])->find($id);
+        $testimony = Testimony::with(['user:id,display_name', 'category:id,name,name_en'])->find($id);
         abort_if(!$testimony || !TestimonyShareImage::isShareable($testimony), 404);
 
         return $this->send($images->file($testimony));

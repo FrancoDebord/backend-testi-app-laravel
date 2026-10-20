@@ -83,7 +83,7 @@
                     @include('components.verified-badge', ['user' => $testimony->user])
                 </span>
                 @if($category)
-                <span class="shrink-0 text-slate-300" aria-hidden="true">·</span><span class="max-w-[40%] shrink-0 truncate text-slate-500">{{ $category->name }}</span>
+                <span class="shrink-0 text-slate-300" aria-hidden="true">·</span><span class="max-w-[40%] shrink-0 truncate text-slate-500">{{ $category->displayName() }}</span>
                 @endif
             </p>
             @endunless

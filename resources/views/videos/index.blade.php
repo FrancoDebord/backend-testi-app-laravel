@@ -57,7 +57,7 @@
            class="{{ !$category ? 'chip-active' : 'chip' }}" @if(!$category) aria-current="true" @endif>{{ __('videos.index.all_categories') }}</a>
         @foreach($categories as $cat)
         <a href="{{ route('videos.index', array_merge($params, ['category' => $cat->slug])) }}"
-           class="{{ $category === $cat->slug ? 'chip-active' : 'chip' }}" @if($category === $cat->slug) aria-current="true" @endif>{{ $cat->name }}</a>
+           class="{{ $category === $cat->slug ? 'chip-active' : 'chip' }}" @if($category === $cat->slug) aria-current="true" @endif>{{ $cat->displayName() }}</a>
         @endforeach
     </div>
     @endif

@@ -29,7 +29,7 @@ class DocumentationPageTest extends TestCase
     {
         $response = $this->actingAs($this->user('administrateur'))->get('/admin/documentation')->assertOk();
 
-        $response->assertSee('TestiApp — Documentation du serveur', false);
+        $response->assertSee('My Testimony — Documentation du serveur', false);
         $response->assertSee('<div class="doc-table"><table>', false);           // tableaux Markdown
         $response->assertSee('id="4-déploiement"', false);                        // ancres des titres
         $response->assertSee(route('admin.documentation', ['page' => 'interface']), false); // lien interne réécrit

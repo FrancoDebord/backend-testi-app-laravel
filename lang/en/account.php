@@ -130,7 +130,7 @@ return [
     ],
     'login'                               => [
         'title'       => 'Sign in',
-        'intro'       => 'Good to see you again. Access your TestiApp space.',
+        'intro'       => 'Good to see you again. Access your My Testimony space.',
         'loading'     => 'Signing in…',
         'forgot'      => 'Forgot your password?',
         'reveal_what' => 'the password',

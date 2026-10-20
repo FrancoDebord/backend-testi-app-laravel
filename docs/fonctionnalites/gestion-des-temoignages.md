@@ -75,12 +75,16 @@ Ce label est distinct de la publication. Colonnes : `is_verified`, `verified_by`
 
 Colonnes : `is_featured` (existante), `featured_order`, `featured_from`, `featured_until` (dates facultatives). Les modérateurs et les administrateurs peuvent mettre un témoignage à la une.
 
-`GET /api/v1/testimonies/featured` (public, cache 10 min vidé à chaque modification) :
+`GET /api/v1/testimonies/featured` (public) et la section « À la une » de l'accueil du site (5 éléments) utilisent la même liste (`App\Services\FeaturedTestimonies`). Depuis le 2026-10-20, avec une limite N (`featured_limit`, 10) :
 
-1. les mises à la une manuelles actives (approuvées, publiques, non supprimées, dans leurs dates), triées par `featured_order` puis par date de publication ;
-2. si `featured_fill_recent` est vrai et qu'il y en a moins de 10, un complément de témoignages publiés (approuvés, publics, non supprimés), du plus récent au plus ancien.
+1. le **témoignage publié le plus récent** y entre **toujours**, même s'il y a déjà N mises à la une manuelles ;
+2. puis les **mises à la une manuelles** actives (approuvées, publiques, non supprimées, dans leurs dates), de la plus récente à la plus ancienne, jusqu'à N au total ;
+3. si `featured_fill_recent` est vrai, complément avec les témoignages publiés **suivants les plus récents**, jusqu'à N ;
+4. la liste est ensuite **triée par date de publication** (`COALESCE(approved_at, created_at)`, comme `latestPublished`), du plus récent au plus ancien, manuels et compléments mêlés.
 
-Chaque élément porte `featured_source` : `manual` ou `recent`. Seuls les `manual` ont le badge `featured`. La section « À la une » de l'accueil du site utilise la même liste (`App\Services\FeaturedTestimonies`).
+`featured_order` n'influence plus l'ordre (il reste enregistré et renvoyé dans `featuredOrder`). Chaque élément porte `featured_source` : `manual` (mise à la une manuelle en cours, badge `featured`) ou `recent` (le plus récent quand il n'est pas mis à la une manuellement, et le complément ; pas de badge).
+
+Cache : identifiants en cache `featured_cache_minutes` (10 min), **vidé** à chaque publication (approbation, publication directe sans modération), refus, modification par l'auteur, mise à la une, corbeille, restauration et suppression : `TestimonyModeration::forgetFeatured()` et, pour tous les autres chemins (suppression par l'auteur, vidéo devenue prête, changement de visibilité…), les événements `saved` / `deleted` / `restored` du modèle `Testimony`. Un témoignage qui vient d'être publié apparaît donc aussitôt en tête.
 
 ## Filtres de la liste
 
@@ -90,10 +94,12 @@ Chaque élément porte `featured_source` : `manual` ou `recent`. Seuls les `manu
 - `?verified=1` : avec le label seulement ;
 - `?featured=1` : mises à la une manuelles actives ;
 - `?sort=` :
-  - `recent` : date de publication ;
+  - `recent` (**défaut**, sans `sort`) : date de publication, du plus récent au plus ancien ;
   - `popular` : réactions, puis vues ;
   - `most_viewed` : vues (`recommended` reste accepté comme ancien nom) ;
-  - `for_you` : inchangé.
+  - `for_you` : classement personnalisé, seulement s'il est demandé explicitement.
+
+Site : la liste « Témoignages récents » de l'accueil, Explorer et Vidéos sont triées du plus récemment publié au plus ancien par défaut (« Plus récents » sélectionné) ; les autres tris restent proposés.
 
 Avec `?after=` (synchronisation par différence), le tri par `updated_at` reste prioritaire.
 

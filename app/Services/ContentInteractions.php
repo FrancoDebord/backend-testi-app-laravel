@@ -71,7 +71,7 @@ class ContentInteractions
         return $subject;
     }
 
-    /** Peut être partagée sur TestiApp : publique, ni retirée ni annulée (ni brouillon). */
+    /** Peut être partagée sur My Testimony : publique, ni retirée ni annulée (ni brouillon). */
     public function isShareable(Model $subject): bool
     {
         return match (self::kindOf($subject)) {

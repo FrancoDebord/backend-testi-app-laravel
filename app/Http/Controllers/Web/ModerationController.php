@@ -87,7 +87,7 @@ class ModerationController extends Controller
                 'rejectedToday'  => ModerationLog::where('action', 'rejected')->whereDate('created_at', $today)->count(),
                 'totalThisMonth' => ModerationLog::whereIn('action', ['approved', 'rejected'])->where('created_at', '>=', now()->startOfMonth())->count(),
             ],
-            'categories' => Category::orderBy('name')->get(['slug', 'name']),
+            'categories' => Category::orderBy('name')->get(['slug', 'name', 'name_en']),
             'reasons'    => RejectionReason::cases(),
             'trashDays'  => (int) config('testimonies.trash_days', 30),
         ]);

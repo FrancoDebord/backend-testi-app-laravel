@@ -34,7 +34,7 @@ class TestimonyShareImage
             $testimony->updated_at?->getTimestamp(), $testimony->title, $testimony->type?->value,
             $testimony->cover_url, $testimony->youtube_id, $testimony->bunny_video_id, $testimony->video_status,
             $testimony->duration_sec, $testimony->duration,
-            $testimony->user?->display_name, $testimony->category?->name ?? $testimony->category_slug,
+            $testimony->user?->display_name, $testimony->category?->name ?? $testimony->category_slug, $testimony->category?->name_en,
         ]);
     }
 
@@ -68,7 +68,7 @@ class TestimonyShareImage
         }
 
         $author = $testimony->user?->display_name;
-        $category = $testimony->category?->name;
+        $category = $testimony->category?->displayName();
         $label = collect([$isVideo ? __('share.video') : ($isAudio ? __('share.audio') : __('share.testimony')), $category])
             ->filter()->implode(' · ');
         $card = $this->images->brandCard([

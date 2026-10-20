@@ -34,7 +34,7 @@
     {{-- Aperçu des réseaux sociaux : image générée dans le design du jour --}}
     <meta name="description" content="{{ \Illuminate\Support\Str::limit($verse->verse_text, 200) }} — {{ $verse->reference }}">
     <meta property="og:type" content="article">
-    <meta property="og:site_name" content="TestiApp · ARISE &amp; SHINE Krea">
+    <meta property="og:site_name" content="My Testimony · ARISE &amp; SHINE Krea">
     <meta property="og:title" content="Verset du jour — {{ $verse->reference }}">
     <meta property="og:description" content="{{ \Illuminate\Support\Str::limit($verse->verse_text, 200) }}">
     <meta property="og:url" content="{{ $pageUrl }}">

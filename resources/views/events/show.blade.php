@@ -553,7 +553,7 @@
                 <label for="promote-category" class="form-label">{{ __('events.show.category') }}</label>
                 <select id="promote-category" name="category" class="form-input">
                     @foreach($categories as $cat)
-                    <option value="{{ $cat->slug }}" @selected($cat->slug === 'autre')>{{ $cat->name }}</option>
+                    <option value="{{ $cat->slug }}" @selected($cat->slug === 'autre')>{{ $cat->displayName() }}</option>
                     @endforeach
                 </select>
             </div>

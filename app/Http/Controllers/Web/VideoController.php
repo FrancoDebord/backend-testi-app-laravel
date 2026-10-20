@@ -49,7 +49,7 @@ class VideoController extends Controller
         $sort = in_array((string) $request->query('sort'), self::SORT_KEYS, true) ? $request->query('sort') : 'recent';
         $q    = mb_substr(trim((string) $request->query('q', '')), 0, 100);
 
-        $categories = Category::active()->get(['id', 'name', 'slug']);
+        $categories = Category::active()->get(['id', 'name', 'name_en', 'slug']);
         $category   = $categories->firstWhere('slug', $request->query('category'))?->slug;
 
         $query = Testimony::with(['user', 'category', 'liveSession:id,testimony_id'])

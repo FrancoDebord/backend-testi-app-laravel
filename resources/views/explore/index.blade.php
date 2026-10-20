@@ -52,7 +52,7 @@
         <a href="{{ route('explore', array_merge($params, ['category' => null])) }}" class="{{ !$category ? 'chip-active' : 'chip' }}">Toutes les catégories</a>
         @foreach($categories as $cat)
         <a href="{{ route('explore', array_merge($params, ['category' => $cat->slug])) }}"
-           class="{{ $category === $cat->slug ? 'chip-active' : 'chip' }}" @if($category === $cat->slug) aria-current="true" @endif>{{ $cat->name }}</a>
+           class="{{ $category === $cat->slug ? 'chip-active' : 'chip' }}" @if($category === $cat->slug) aria-current="true" @endif>{{ $cat->displayName() }}</a>
         @endforeach
     </div>
     @endif

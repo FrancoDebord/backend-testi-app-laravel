@@ -12,8 +12,47 @@ class Category extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'name', 'slug', 'icon', 'color', 'display_order', 'testimony_count', 'is_active',
+        'name', 'name_en', 'slug', 'icon', 'color', 'display_order', 'testimony_count', 'is_active',
     ];
+
+    /** Noms anglais des types connus (slug => nom) : seeder et migration 2026_10_20_100001. */
+    public const ENGLISH_NAMES = [
+        'guerison'          => 'Healing',
+        'delivrance'        => 'Deliverance',
+        'conversion'        => 'Conversion',
+        'salut'             => 'Salvation',
+        'mariage'           => 'Marriage',
+        'famille'           => 'Family',
+        'finances'          => 'Finances',
+        'provision'         => 'Provision',
+        'miracles'          => 'Miracles',
+        'protection'        => 'Divine protection',
+        'protection_divine' => 'Divine protection',
+        'ministere'         => 'Ministry',
+        'emploi'            => 'Employment & Career',
+        'etudes'            => 'Studies',
+        'autre'             => 'Other',
+    ];
+
+    /**
+     * Nom affiché selon la langue : name_en en anglais s'il est renseigné, sinon name (français).
+     * Voir docs/fonctionnalites/categories-de-temoignages.md
+     */
+    public function displayName(?string $locale = null): string
+    {
+        $locale ??= app()->getLocale();
+        if (str_starts_with((string) $locale, 'en') && filled($this->name_en)) {
+            return (string) $this->name_en;
+        }
+
+        return (string) $this->name;
+    }
+
+    /** Accesseur $category->localized_name (même règle que displayName()). */
+    protected function localizedName(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::get(fn () => $this->displayName());
+    }
 
     protected function casts(): array
     {

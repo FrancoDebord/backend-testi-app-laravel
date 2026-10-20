@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * Partage interne d'un témoignage sur TestiApp (« X a partagé »).
+ * Partage interne d'un témoignage sur My Testimony (« X a partagé »).
  * Règles communes avec le site : App\Services\Reposts. Voir docs/fonctionnalites/partage-interne.md
  */
 class RepostController extends Controller

@@ -34,7 +34,7 @@ class ExploreController extends Controller
         match($sort) {
             'popular'     => $query->orderByDesc('like_count'),
             'recommended' => $query->orderByDesc('views_count'),
-            default       => $query->latest(),
+            default       => $query->latestPublished(), // « Plus récents » par défaut
         };
 
         $results    = $query->paginate(12)->withQueryString();

@@ -285,7 +285,7 @@
             <select id="category_slug" name="category_slug" class="form-input">
                 <option value="">{{ __('lives.create.no_category') }}</option>
                 @foreach($categories as $cat)
-                <option value="{{ $cat->slug }}" @selected(old('category_slug') === $cat->slug)>{{ $cat->name }}</option>
+                <option value="{{ $cat->slug }}" @selected(old('category_slug') === $cat->slug)>{{ $cat->displayName() }}</option>
                 @endforeach
             </select>
         </div>

@@ -1,5 +1,5 @@
 {{--
-    Carte de témoignage (maquette « Témoignages de Gloire ») : carte par défaut de toutes les listes
+    Carte de témoignage (maquette « My Testimony ») : carte par défaut de toutes les listes
     en affichage « Grandes cartes » (accueil, Explorer, Vidéos, profil, sauvegardes, mes témoignages).
     @include('videos.partials.tile', ['testimony' => $t, 'url' => route('testimonies.show', $t->id)])
     Miniature (type en haut à droite, durée en bas à droite, statut en haut à gauche pour ses propres
@@ -74,7 +74,7 @@
 
         {{-- Catégorie posée sur le bord de l'image --}}
         @if($category)
-        <span class="{{ $category->presentation()['badge'] }} absolute -bottom-3 left-3 z-[1] ring-2 ring-white">{{ $category->name }}</span>
+        <span class="{{ $category->presentation()['badge'] }} absolute -bottom-3 left-3 z-[1] ring-2 ring-white">{{ $category->displayName() }}</span>
         @endif
     </div>
 

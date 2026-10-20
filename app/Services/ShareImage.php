@@ -28,13 +28,13 @@ class ShareImage
     public const HEIGHT = 630;
     public const QUALITY = 82;
     /** À incrémenter quand le dessin change : toutes les images sont recréées. */
-    public const VERSION = 1;
+    public const VERSION = 2; // 2 : nom « My Testimony » (2026-10-20)
     /** Délai (s) avant de retenter une image de secours. */
     public const FALLBACK_TTL = 3600;
     /** Délai maximal de téléchargement d'une miniature distante (s). */
     public const FETCH_TIMEOUT = 5;
 
-    public const SITE_NAME = 'TestiApp · ARISE & SHINE Krea';
+    public const SITE_NAME = 'My Testimony · ARISE & SHINE Krea';
 
     // Couleurs de la marque.
     private const BLUE = [0x18, 0x47, 0x97];
@@ -145,7 +145,7 @@ class ShareImage
             // Le CDN Bunny refuse les requêtes sans Referer (protection contre le hotlinking).
             $response = Http::withHeaders([
                 'Referer'    => rtrim((string) config('app.url'), '/') . '/',
-                'User-Agent' => 'TestiApp-SharePreview/1.0',
+                'User-Agent' => 'MyTestimony-SharePreview/1.0',
                 'Accept'     => 'image/*',
             ])->connectTimeout(3)->timeout(self::FETCH_TIMEOUT)->get($url);
 

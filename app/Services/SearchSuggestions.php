@@ -352,7 +352,10 @@ class SearchSuggestions
     /** @return list<array{t: string, id: string, l: string, n: string, w: int, x?: array}> */
     private function lexicon(string $source): array
     {
-        return Cache::remember('search:lexicon:' . self::CACHE_VERSION . ':' . $source, self::LEXICON_CACHE_SECONDS, function () use ($source) {
+        // Types de témoignages : nom selon la langue (Category::displayName), lexique par langue.
+        $suffix = $source === 'category' ? ':' . app()->getLocale() : '';
+
+        return Cache::remember('search:lexicon:' . self::CACHE_VERSION . ':' . $source . $suffix, self::LEXICON_CACHE_SECONDS, function () use ($source) {
             $rows = match ($source) {
                 'testimony' => Testimony::published()->latest('updated_at')->limit(self::LEXICON_CAP)
                     ->get(['id', 'title', 'like_count', 'views_count'])
@@ -363,8 +366,8 @@ class SearchSuggestions
                 'event' => Event::published()->orderByDesc('starts_at')->limit(1500)
                     ->get(['id', 'title', 'going_count', 'ends_at'])
                     ->map(fn ($e) => self::entry('event', $e->id, $e->title, 1 + min(30, (int) $e->going_count) + ($e->ends_at && $e->ends_at->isFuture() ? 10 : 0))),
-                'category' => Category::active()->get(['slug', 'name', 'testimony_count'])
-                    ->map(fn ($c) => self::entry('category', $c->slug, $c->name, 20 + min(60, (int) $c->testimony_count), ['sub' => ['search.sub.category']])),
+                'category' => Category::active()->get(['slug', 'name', 'name_en', 'testimony_count'])
+                    ->map(fn ($c) => self::entry('category', $c->slug, $c->displayName(), 20 + min(60, (int) $c->testimony_count), ['sub' => ['search.sub.category']])),
                 'bible' => $this->bibleBooks(),
                 'prayer_session' => $this->visibleSessions()->orderBy('starts_at')->limit(500)
                     ->get(['id', 'title', 'participant_count'])

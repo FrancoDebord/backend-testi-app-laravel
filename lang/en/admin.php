@@ -86,4 +86,11 @@ return [
             'tracking' => 'Tracking',
         ],
     ],
+
+    // Testimony types (resources/views/admin/categories/index.blade.php)
+    'categories' => [
+        'name_en'      => 'English name (optional)',
+        'name_en_hint' => 'Shown when the site or the app is in English; otherwise the French name is used.',
+        'english'      => 'English',
+    ],
 ];

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -30,6 +31,7 @@ class CategorySeeder extends Seeder
             DB::table('categories')->insertOrIgnore([
                 'id' => (string) Str::uuid(),
                 'name' => $category['name'],
+                'name_en' => Category::ENGLISH_NAMES[$category['slug']] ?? null,
                 'slug' => $category['slug'],
                 'icon' => $category['icon'],
                 'color' => $category['color'],

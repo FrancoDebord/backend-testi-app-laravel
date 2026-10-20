@@ -65,7 +65,7 @@ return [
         'tags_placeholder'        => 'healing, miracle, faith',
         'tags_hint'               => 'Separate keywords with commas.',
         'visibility'              => 'Visibility',
-        'consent'                 => 'I certify that this testimony is genuine and personal, and I agree to it being shared on the TestiApp platform after review.',
+        'consent'                 => 'I certify that this testimony is genuine and personal, and I agree to it being shared on the My Testimony platform after review.',
         'autosave'                => 'Your draft is saved automatically on this device.',
         'submit'                  => 'Submit for review',
         'audio_file'              => 'Audio file',
@@ -167,7 +167,7 @@ return [
         'not_restorable'        => 'This testimony has been in the trash for more than :days days: it can no longer be restored.',
     ],
 
-    // Internal sharing on TestiApp (App\Services\Reposts)
+    // Internal sharing on My Testimony (App\Services\Reposts)
     'repost' => [
         'created'        => 'Testimony shared with your followers.',
         'updated'        => 'Share updated.',

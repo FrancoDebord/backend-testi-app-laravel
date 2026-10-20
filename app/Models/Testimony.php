@@ -97,6 +97,17 @@ class Testimony extends Model
         static::saved($forgetAuthorFeed);
         static::deleted($forgetAuthorFeed);
 
+        // « À la une » : le plus récent publié y entre toujours ; toute publication, dépublication,
+        // mise à la une ou suppression vide le cache pour qu'il apparaisse (ou disparaisse) aussitôt.
+        static::saved(function (Testimony $testimony) {
+            if ($testimony->wasRecentlyCreated || $testimony->wasChanged(['status', 'visibility', 'approved_at', 'is_featured',
+                'featured_order', 'featured_from', 'featured_until', 'video_status', 'media_url', 'deleted_at', 'category_id'])) {
+                \App\Services\FeaturedTestimonies::forget();
+            }
+        });
+        static::deleted(fn () => \App\Services\FeaturedTestimonies::forget());
+        static::restored(fn () => \App\Services\FeaturedTestimonies::forget());
+
         // Vidéo Bunny supprimée à la suppression DÉFINITIVE seulement (la corbeille se restaure), après la
         // réponse ; un échec est journalisé sans bloquer la suppression (docs/fonctionnalites/videos-bunny-stream.md,
         // gestion-des-temoignages.md).

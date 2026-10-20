@@ -1,6 +1,6 @@
 # Recherche et autocomplétion
 
-Pendant la saisie dans une barre de recherche (application et site), TestiApp propose des **suggestions de texte** qui complètent la saisie et quelques **résultats directs** (témoignage, compte, événement, catégorie, livre de la Bible, session de prière) qui ouvrent la page correspondante. Quand le champ est vide, les **recherches récentes** de la personne s'affichent ; elles sont gardées sur l'appareil ou dans le navigateur, jamais sur le serveur.
+Pendant la saisie dans une barre de recherche (application et site), My Testimony propose des **suggestions de texte** qui complètent la saisie et quelques **résultats directs** (témoignage, compte, événement, catégorie, livre de la Bible, session de prière) qui ouvrent la page correspondante. Quand le champ est vide, les **recherches récentes** de la personne s'affichent ; elles sont gardées sur l'appareil ou dans le navigateur, jamais sur le serveur.
 
 ## Pour les utilisateurs
 

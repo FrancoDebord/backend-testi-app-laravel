@@ -185,7 +185,7 @@
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-semibold text-slate-900">{{ $t->title }}</p>
                     <p class="flex min-w-0 items-center gap-2 text-xs text-slate-500">
-                        @if($t->category)<span class="badge-blue shrink-0">{{ $t->category->name }}</span>@endif
+                        @if($t->category)<span class="badge-blue shrink-0">{{ $t->category->displayName() }}</span>@endif
                         <span class="truncate">{{ $t->user?->display_name }} · {{ $t->created_at->format('d/m/Y') }}</span>
                     </p>
                 </div>
@@ -261,7 +261,7 @@
                         <i class="fa-solid fa-hands-praying"></i>
                     </span>
                     <div class="min-w-0 flex-1">
-                        <p class="truncate text-sm font-semibold text-slate-900">{{ $category->name }}</p>
+                        <p class="truncate text-sm font-semibold text-slate-900">{{ $category->displayName() }}</p>
                         <p class="text-xs text-slate-500">{{ $n($category->published_count) }} témoignage{{ $category->published_count > 1 ? 's' : '' }}</p>
                     </div>
                 </div>

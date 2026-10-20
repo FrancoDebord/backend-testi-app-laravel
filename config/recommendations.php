@@ -49,7 +49,7 @@ return [
     'geocoder' => [
         'enabled'    => env('GEOCODER_ENABLED', true),
         'url'        => env('GEOCODER_URL', 'https://nominatim.openstreetmap.org/reverse'),
-        'user_agent' => env('GEOCODER_USER_AGENT', 'TestiApp/1.0 (+' . env('APP_URL', 'https://testiapp.org') . ')'),
+        'user_agent' => env('GEOCODER_USER_AGENT', 'MyTestimony/1.0 (+' . env('APP_URL', 'https://testiapp.org') . ')'),
         'cache_days' => 30,
     ],
 ];

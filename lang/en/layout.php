@@ -69,7 +69,7 @@ return [
     'back_to_site'     => 'Back to the site',
     'guest' => [
         'tagline'       => 'God is still at work.',
-        'intro'         => 'TestiApp gathers testimonies from the community to encourage, build up and give glory to God.',
+        'intro'         => 'My Testimony gathers testimonies from the community to encourage, build up and give glory to God.',
         'read_title'    => 'Read, listen, watch',
         'read_text'     => 'Testimonies in text, audio and video.',
         'lives_title'   => 'Follow live streams',

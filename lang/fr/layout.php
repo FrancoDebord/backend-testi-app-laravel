@@ -69,7 +69,7 @@ return [
     'back_to_site'     => 'Retour au site',
     'guest' => [
         'tagline'       => 'Dieu agit encore.',
-        'intro'         => 'TestiApp rassemble les témoignages de la communauté pour encourager, édifier et rendre gloire à Dieu.',
+        'intro'         => 'My Testimony rassemble les témoignages de la communauté pour encourager, édifier et rendre gloire à Dieu.',
         'read_title'    => 'Lire, écouter, regarder',
         'read_text'     => 'Des témoignages en texte, audio et vidéo.',
         'lives_title'   => 'Suivre les directs',

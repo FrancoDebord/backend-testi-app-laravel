@@ -56,7 +56,7 @@
                         </span>
                     </td>
                     <td class="table-td hidden whitespace-nowrap 2xl:table-cell">{{ $t->type->label() }}</td>
-                    <td class="table-td hidden 2xl:table-cell">@if($t->category)<span class="{{ $t->category->presentation()['badge'] }}">{{ $t->category->name }}</span>@else<span class="text-slate-400">—</span>@endif</td>
+                    <td class="table-td hidden 2xl:table-cell">@if($t->category)<span class="{{ $t->category->presentation()['badge'] }}">{{ $t->category->displayName() }}</span>@else<span class="text-slate-400">—</span>@endif</td>
                     @if($tabs)<td class="table-td max-w-36"><span class="block truncate">{{ $t->user?->display_name }}</span></td>@endif
                     <td class="table-td whitespace-nowrap">{{ $t->created_at->format('d/m/Y') }}</td>
                     <td class="table-td"><span class="{{ $t->status->badgeClass() }}">{{ $t->status->label() }}</span></td>

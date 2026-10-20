@@ -2,7 +2,7 @@
 
 ## But
 
-Quand quelqu'un touche un [lien de partage](lien-de-partage.md) (`{APP_URL}/testimonies/{id}`) sur un téléphone où l'application TestiApp est installée, le témoignage doit s'ouvrir **dans l'application** plutôt que dans le navigateur. Sans l'application, le lien ouvre simplement la page web.
+Quand quelqu'un touche un [lien de partage](lien-de-partage.md) (`{APP_URL}/testimonies/{id}`) sur un téléphone où l'application My Testimony est installée, le témoignage doit s'ouvrir **dans l'application** plutôt que dans le navigateur. Sans l'application, le lien ouvre simplement la page web.
 
 Android (App Links) et iOS (Universal Links) n'autorisent cela que si **le site déclare lui-même l'application** dans deux fichiers publics. Le serveur les fournit.
 

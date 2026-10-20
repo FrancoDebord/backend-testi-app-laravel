@@ -32,7 +32,7 @@ class ShareMeta
         if (!TestimonyShareImage::isShareable($testimony)) {
             return self::site();
         }
-        $author = $testimony->user?->display_name ?: 'TestiApp';
+        $author = $testimony->user?->display_name ?: 'My Testimony';
         $isVideo = $testimony->type === TestimonyType::Video || $testimony->isYouTube();
         $title = trim((string) $testimony->title);
 
@@ -95,7 +95,7 @@ class ShareMeta
         if (!$live->isVisibleTo(null)) {
             return self::site();
         }
-        $host = $live->host?->display_name ?: 'TestiApp';
+        $host = $live->host?->display_name ?: 'My Testimony';
 
         return [
             'title'       => trim((string) $live->title) . ' - ' . $host,

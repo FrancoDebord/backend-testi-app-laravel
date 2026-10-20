@@ -180,7 +180,7 @@
                 <select id="category" name="category" required class="form-input">
                     <option value="">{{ __('testimonies.create.category_choose') }}</option>
                     @foreach($categories as $cat)
-                    <option value="{{ $cat->slug }}" @selected(old('category') === $cat->slug)>{{ $cat->name }}</option>
+                    <option value="{{ $cat->slug }}" @selected(old('category') === $cat->slug)>{{ $cat->displayName() }}</option>
                     @endforeach
                 </select>
                 @error('category')<p class="form-error">{{ $message }}</p>@enderror

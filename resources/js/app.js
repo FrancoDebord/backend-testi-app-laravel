@@ -15,7 +15,7 @@ if (document.querySelector('form[data-bunny-upload]')) import('./bunny-upload').
 
 /*
 |--------------------------------------------------------------------------
-| Interface commune TestiApp (charte ARISE & SHINE Krea) — JavaScript natif
+| Interface commune My Testimony (charte ARISE & SHINE Krea) — JavaScript natif
 |--------------------------------------------------------------------------
 */
 
@@ -180,6 +180,19 @@ function setButtonLoading(button, label) {
     button.append(spinner, text);
 }
 
+// Un bouton désactivé n'est pas envoyé avec le formulaire : sa valeur (name/value, ex. le
+// sélecteur de langue « locale=en ») est recopiée dans un champ caché avant l'indicateur.
+function keepSubmitterValue(form, submitter) {
+    if (!submitter?.name || submitter.form !== form) return;
+    form.querySelectorAll('input[data-submitter-copy]').forEach((el) => el.remove());
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = submitter.name;
+    input.value = submitter.value;
+    input.dataset.submitterCopy = '1';
+    form.append(input);
+}
+
 function resetLoading() {
     document.getElementById('loading-overlay')?.setAttribute('hidden', '');
     document.querySelectorAll('[data-loading]').forEach((button) => {
@@ -196,6 +209,7 @@ document.addEventListener('submit', (e) => {
 
     const method = (form.getAttribute('method') || 'get').toLowerCase();
     const submitter = e.submitter || form.querySelector('[type="submit"]');
+    keepSubmitterValue(form, submitter);
 
     if (form.hasAttribute('data-loading-inline') || method === 'get') {
         setButtonLoading(submitter, form.dataset.loadingLabel || t('app.searching'));

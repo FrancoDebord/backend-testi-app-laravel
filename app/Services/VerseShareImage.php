@@ -216,7 +216,7 @@ class VerseShareImage
         // Pied : nom de l'app.
         $footSize = 12 * $s;
         $footY = $H - $pad;
-        $this->text($gd, $sans, $footSize, $pad, $footY, $ink, 'ARISE & SHINE Krea · TestiApp');
+        $this->text($gd, $sans, $footSize, $pad, $footY, $ink, 'ARISE & SHINE Krea · My Testimony');
 
         // Verset : taille de l'app, réduite de 1 en 1 jusqu'à ce que le texte tienne (min 18).
         $text = '« ' . trim($verse->verse_text) . ' »';

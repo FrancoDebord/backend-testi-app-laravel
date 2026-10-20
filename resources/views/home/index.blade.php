@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Accueil')
 @php
-    // Accueil selon la maquette « Témoignages de Gloire » et la charte ARISE & SHINE Krea.
+    // Accueil selon la maquette « My Testimony » et la charte ARISE & SHINE Krea.
     // Voir docs/fonctionnalites/accueil.md. Les blocs n'apparaissent que sur la première page sans filtre ;
     // avec un filtre ou une autre page : seulement la liste des témoignages.
     $typeFilters = ['' => 'Tous', 'video' => 'Vidéos', 'audio' => 'Audios', 'text' => 'Textes'];
@@ -61,12 +61,12 @@
 
 
 @section('content')
-<h1 class="sr-only">Accueil — Témoignages de Gloire</h1>
+<h1 class="sr-only">Accueil — My Testimony</h1>
 
 @if($showShelves)
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
 
-    {{-- ── Bandeau « Témoignages de Gloire » et chiffres clés ─────────────── --}}
+    {{-- ── Bandeau « My Testimony » et chiffres clés ─────────────── --}}
     <section class="relative isolate overflow-hidden rounded-2xl border border-slate-200 shadow-card" aria-labelledby="home-hero-title">
         {{-- Illustration : lever de soleil, montagnes, personne les bras levés (couleurs de la charte) --}}
         <svg class="absolute inset-0 -z-10 h-full w-full" viewBox="0 0 1200 400" preserveAspectRatio="xMaxYMin slice" aria-hidden="true" focusable="false">
@@ -103,7 +103,7 @@
         <div class="absolute inset-0 -z-10 bg-gradient-to-b from-white/70 via-white/20 to-transparent sm:bg-gradient-to-r sm:from-white/80 sm:via-white/30" aria-hidden="true"></div>
 
         <div class="flex min-h-[27rem] flex-col p-5 sm:p-8 lg:min-h-[25rem]">
-            <h2 id="home-hero-title" class="text-[28px] leading-tight font-extrabold text-primary-600 sm:text-4xl lg:text-[44px]">Témoignages de Gloire</h2>
+            <h2 id="home-hero-title" class="text-[28px] leading-tight font-extrabold text-primary-600 sm:text-4xl lg:text-[44px]"><span class="text-primary-600">My</span> <span class="text-accent-500">Testimony</span></h2>
             <p class="mt-1 text-base font-medium text-primary-700 sm:text-lg">Des vies transformées pour la gloire de Dieu</p>
             <p class="pointer-events-none absolute top-6 right-6 hidden -rotate-6 text-right text-4xl leading-none text-primary-600 md:block lg:text-5xl font-script" aria-hidden="true">Dieu<br>agit encore !</p>
 
@@ -171,7 +171,7 @@
                         <a href="{{ route('home', ['category' => $cat->slug]) }}" class="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-primary-200 hover:bg-primary-50">
                             <span class="{{ $look['soft'] }} {{ $look['text'] }} flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden="true"><i class="fa-solid {{ $look['icon'] }}"></i></span>
                             <span class="min-w-0">
-                                <span class="block truncate text-sm font-semibold text-primary-700">{{ $cat->name }}</span>
+                                <span class="block truncate text-sm font-semibold text-primary-700">{{ $cat->displayName() }}</span>
                                 <span class="block text-[11px] text-slate-500">{{ $n($cat->published_count) }} témoignage{{ $cat->published_count > 1 ? 's' : '' }}</span>
                             </span>
                         </a>

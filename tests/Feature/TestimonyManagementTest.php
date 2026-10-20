@@ -218,42 +218,74 @@ class TestimonyManagementTest extends TestCase
 
     // ─── À la une ────────────────────────────────────────────────────────────
 
-    public function test_featured_endpoint_orders_manual_items_respects_dates_and_fills_with_recent(): void
+    public function test_featured_endpoint_includes_newest_orders_by_publication_and_fills_with_recent(): void
     {
-        $second = $this->testimony('approved', ['is_featured' => true, 'featured_order' => 2]);
-        $first  = $this->testimony('approved', ['is_featured' => true, 'featured_order' => 1]);
-        $future = $this->testimony('approved', ['is_featured' => true, 'featured_order' => 0, 'featured_from' => now()->addDay()]);
-        $ended  = $this->testimony('approved', ['is_featured' => true, 'featured_order' => 0, 'featured_until' => now()->subDay()]);
+        $mOld   = $this->testimony('approved', ['is_featured' => true, 'featured_order' => 1, 'approved_at' => now()->subDays(5)]);
+        $mMid   = $this->testimony('approved', ['is_featured' => true, 'featured_order' => 2, 'approved_at' => now()->subDays(2)]);
+        $future = $this->testimony('approved', ['is_featured' => true, 'featured_order' => 0, 'featured_from' => now()->addDay(), 'approved_at' => now()->subDays(3)]);
+        $ended  = $this->testimony('approved', ['is_featured' => true, 'featured_order' => 0, 'featured_until' => now()->subDay(), 'approved_at' => now()->subDays(4)]);
         $recent = $this->testimony('approved', ['approved_at' => now()->subHour()]);
         $this->testimony('pending'); // jamais
 
         $data = collect($this->guest()->getJson('/api/v1/testimonies/featured')->assertOk()->json('data'));
-        $this->assertSame([$first->id, $second->id], $data->where('featured_source', 'manual')->pluck('id')->values()->all());
-        $this->assertSame(['featured'], $data->firstWhere('id', $first->id)['badges']);
-        $filled = $data->where('featured_source', 'recent');
-        $this->assertTrue($filled->pluck('id')->contains($recent->id));
-        $this->assertTrue($filled->pluck('id')->contains($future->id)); // pas encore à la une : complément récent, sans badge
-        $this->assertSame([], $filled->firstWhere('id', $recent->id)['badges']);
-        $this->assertNotContains('featured', $filled->pluck('badges')->flatten()->all());
-        $this->assertCount(5, $data); // 2 manuels + 3 récents (future, ended, recent), jamais le témoignage en attente
-        $this->assertNotNull($ended);
+        // Du plus récemment publié au plus ancien, manuels et compléments mêlés ; le plus récent en tête.
+        $this->assertSame([$recent->id, $mMid->id, $future->id, $ended->id, $mOld->id], $data->pluck('id')->all());
+        $this->assertSame(['recent', 'manual', 'recent', 'recent', 'manual'], $data->pluck('featured_source')->all());
+        $this->assertSame(['featured'], $data->firstWhere('id', $mMid->id)['badges']);
+        $this->assertSame([], $data->firstWhere('id', $recent->id)['badges']);
+        $this->assertNotContains('featured', $data->where('featured_source', 'recent')->pluck('badges')->flatten()->all());
 
-        // Manuel strict.
+        // Manuel strict : le plus récent entre quand même.
         config(['testimonies.featured_fill_recent' => false]);
         Cache::flush();
         $strict = collect($this->guest()->getJson('/api/v1/testimonies/featured')->json('data'));
-        $this->assertSame([$first->id, $second->id], $strict->pluck('id')->all());
+        $this->assertSame([$recent->id, $mMid->id, $mOld->id], $strict->pluck('id')->all());
+
+        // Assez de manuels pour la limite : le plus récent prend la première place.
+        config(['testimonies.featured_limit' => 2]);
+        Cache::flush();
+        $limited = collect($this->guest()->getJson('/api/v1/testimonies/featured')->json('data'));
+        $this->assertSame([$recent->id, $mMid->id], $limited->pluck('id')->all());
 
         // ?featured=1 sur la liste : mises à la une manuelles actives seulement.
         $ids = collect($this->guest()->getJson('/api/v1/testimonies?featured=1')->json('data'))->pluck('id');
-        $this->assertEqualsCanonicalizing([$first->id, $second->id], $ids->all());
+        $this->assertEqualsCanonicalizing([$mOld->id, $mMid->id], $ids->all());
+    }
+
+    public function test_newest_testimony_manually_featured_keeps_manual_source(): void
+    {
+        $older  = $this->testimony('approved', ['approved_at' => now()->subDay()]);
+        $newest = $this->testimony('approved', ['is_featured' => true, 'approved_at' => now()->subMinute()]);
+
+        $data = collect($this->guest()->getJson('/api/v1/testimonies/featured')->json('data'));
+        $this->assertSame([$newest->id, $older->id], $data->pluck('id')->all());
+        $this->assertSame(['manual', 'recent'], $data->pluck('featured_source')->all());
+    }
+
+    public function test_approved_and_deleted_testimonies_update_the_featured_list_right_away(): void
+    {
+        $old = $this->testimony('approved', ['is_featured' => true, 'approved_at' => now()->subDays(3)]);
+        config(['testimonies.featured_fill_recent' => false, 'testimonies.featured_limit' => 1]);
+        $this->guest()->getJson('/api/v1/testimonies/featured')->assertJsonPath('data.0.id', $old->id);
+
+        // Approbation : le nouveau témoignage apparaît aussitôt (cache vidé).
+        $pending = $this->testimony('pending');
+        $this->as($this->modo)->postJson("/api/v1/moderation/{$pending->id}/approve")->assertOk();
+        $this->guest()->getJson('/api/v1/testimonies/featured')->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $pending->id)->assertJsonPath('data.0.featured_source', 'recent');
+
+        // Suppression : il disparaît aussitôt.
+        $pending->fresh()->delete();
+        $this->guest()->getJson('/api/v1/testimonies/featured')->assertJsonPath('data.0.id', $old->id);
     }
 
     public function test_featured_list_is_cached_and_refreshed_when_featuring(): void
     {
         $t = $this->testimony('approved');
         config(['testimonies.featured_fill_recent' => false]);
-        $this->guest()->getJson('/api/v1/testimonies/featured')->assertJsonCount(0, 'data');
+        // Le plus récent publié est toujours à la une (source « recent » tant qu'il n'est pas mis à la une).
+        $this->guest()->getJson('/api/v1/testimonies/featured')->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.featured_source', 'recent');
 
         $this->as($this->modo)->post("/moderation/{$t->id}/une", ['featured' => 1, 'featured_order' => 3])->assertRedirect();
         $this->guest()->getJson('/api/v1/testimonies/featured')->assertJsonCount(1, 'data')

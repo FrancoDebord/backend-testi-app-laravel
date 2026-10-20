@@ -130,7 +130,7 @@ return [
     ],
     'login'                               => [
         'title'       => 'Connexion',
-        'intro'       => 'Heureux de vous revoir. Accédez à votre espace TestiApp.',
+        'intro'       => 'Heureux de vous revoir. Accédez à votre espace My Testimony.',
         'loading'     => 'Connexion…',
         'forgot'      => 'Mot de passe oublié ?',
         'reveal_what' => 'le mot de passe',

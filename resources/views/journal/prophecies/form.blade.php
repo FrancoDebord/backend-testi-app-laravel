@@ -98,7 +98,7 @@
         <section class="space-y-4 p-5 sm:p-6" aria-labelledby="reminder-title">
             <div>
                 <h2 id="reminder-title" class="card-title">Rappel de prière</h2>
-                <p class="mt-1 text-sm text-slate-500">Le rappel est envoyé par l'application TestiApp sur votre téléphone, à l'heure du téléphone. Il s'arrête quand la parole est accomplie.</p>
+                <p class="mt-1 text-sm text-slate-500">Le rappel est envoyé par l'application My Testimony sur votre téléphone, à l'heure du téléphone. Il s'arrête quand la parole est accomplie.</p>
             </div>
             <fieldset>
                 <legend class="sr-only">Fréquence du rappel</legend>

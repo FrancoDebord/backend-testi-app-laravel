@@ -26,6 +26,12 @@
                 <input id="new-name" type="text" name="name" value="{{ $fromCreate ? old('name') : '' }}" required maxlength="50" class="form-input">
                 @if($fromCreate)@error('name')<p class="form-error">{{ $message }}</p>@enderror @endif
             </div>
+            <div class="lg:col-span-2">
+                <label for="new-name-en" class="form-label">{{ __('admin.categories.name_en') }}</label>
+                <input id="new-name-en" type="text" name="name_en" value="{{ $fromCreate ? old('name_en') : '' }}" maxlength="100" class="form-input" placeholder="Healing">
+                <p class="form-hint">{{ __('admin.categories.name_en_hint') }}</p>
+                @if($fromCreate)@error('name_en')<p class="form-error">{{ $message }}</p>@enderror @endif
+            </div>
             <div>
                 <label for="new-slug" class="form-label">Identifiant *</label>
                 <input id="new-slug" type="text" name="slug" value="{{ $fromCreate ? old('slug') : '' }}" required maxlength="30" pattern="[a-z0-9\-]+"
@@ -63,6 +69,7 @@
         $catEditData = fn ($cat) => [
             'action' => route('admin.categories.update', $cat->id),
             'name' => $cat->name,
+            'name_en' => $cat->name_en,
             'icon' => $cat->icon,
             'color' => $cat->color,
             'display_order' => $cat->display_order,
@@ -79,6 +86,7 @@
                 <span class="{{ $cat->is_active ? 'badge-active' : 'badge-draft' }}">{{ $cat->is_active ? 'Active' : 'Inactive' }}</span>
             </div>
             <dl class="mt-3 space-y-1 text-sm">
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">{{ __('admin.categories.english') }}</dt><dd class="min-w-0 break-words text-right text-slate-900">{{ $cat->name_en ?: '—' }}</dd></div>
                 <div class="flex justify-between gap-4"><dt class="text-slate-500">Identifiant</dt><dd class="truncate font-mono text-xs text-slate-900">{{ $cat->slug }}</dd></div>
                 <div class="flex justify-between gap-4"><dt class="text-slate-500">Ordre</dt><dd class="text-slate-900">{{ $cat->display_order }}</dd></div>
                 <div class="flex justify-between gap-4"><dt class="text-slate-500">Témoignages</dt><dd class="text-slate-900">{{ number_format($cat->testimony_count, 0, ',', ' ') }}</dd></div>
@@ -102,6 +110,7 @@
                     <tr>
                         <th class="table-th">Ordre</th>
                         <th class="table-th">Catégorie</th>
+                        <th class="table-th">{{ __('admin.categories.english') }}</th>
                         <th class="table-th">Identifiant</th>
                         <th class="table-th text-right">Témoignages</th>
                         <th class="table-th">Statut</th>
@@ -113,6 +122,7 @@
                     <tr class="hover:bg-slate-50">
                         <td class="table-td text-slate-500">{{ $cat->display_order }}</td>
                         <td class="table-td font-medium text-slate-900">{{ $cat->name }}</td>
+                        <td class="table-td text-slate-600">{{ $cat->name_en ?: '—' }}</td>
                         <td class="table-td font-mono text-xs text-slate-500">{{ $cat->slug }}</td>
                         <td class="table-td text-right">{{ number_format($cat->testimony_count, 0, ',', ' ') }}</td>
                         <td class="table-td"><span class="{{ $cat->is_active ? 'badge-active' : 'badge-draft' }}">{{ $cat->is_active ? 'Active' : 'Inactive' }}</span></td>
@@ -152,6 +162,11 @@
                 <label for="edit-name" class="form-label">Nom *</label>
                 <input id="edit-name" type="text" name="name" required maxlength="50" class="form-input">
             </div>
+            <div class="sm:col-span-2">
+                <label for="edit-name-en" class="form-label">{{ __('admin.categories.name_en') }}</label>
+                <input id="edit-name-en" type="text" name="name_en" maxlength="100" class="form-input">
+                <p class="form-hint">{{ __('admin.categories.name_en_hint') }}</p>
+            </div>
             <div>
                 <label for="edit-icon" class="form-label">Icône (appli mobile)</label>
                 <input id="edit-icon" type="text" name="icon" class="form-input">
@@ -186,6 +201,7 @@ document.addEventListener('click', function (e) {
     const form = document.getElementById('category-edit-form');
     form.action = data.action;
     document.getElementById('edit-name').value = data.name ?? '';
+    document.getElementById('edit-name-en').value = data.name_en ?? '';
     document.getElementById('edit-icon').value = data.icon ?? '';
     document.getElementById('edit-color').value = data.color ?? '';
     document.getElementById('edit-order').value = data.display_order ?? '';
