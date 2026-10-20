@@ -67,6 +67,7 @@ class PushNotifications
         // Équipe de modération
         'testimony_resubmitted'         => 'push_moderation',
         'video_stuck'                   => 'push_moderation',
+        'account_deletion_requested'    => 'push_moderation',
     ];
 
     /** Catégories exposées dans GET/PUT users/me/settings (toutes activées par défaut). */

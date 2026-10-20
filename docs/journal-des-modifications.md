@@ -4,6 +4,20 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-20 — Politique de confidentialité et suppression de compte publiques (Google Play)
+
+- **Utilisateurs** :
+  - la **politique de confidentialité** se lit sans compte, en français (`/confidentialite`) et en anglais (`/privacy`), avec un lien vers l'autre langue ; lien « Politique de confidentialité » dans le pied de page de toutes les pages, sur la connexion, l'inscription et sous le bouton Google ;
+  - page publique **suppression de compte** (`/suppression-compte`, `/delete-account`) : ce qui est supprimé et les délais ; connecté, bouton de suppression immédiate après confirmation (mot de passe s'il y en a un) ; sans compte, formulaire e-mail ou téléphone (5 demandes par heure, champ piège) qui prévient les super-administrateurs ; lien depuis *Paramètres* ;
+  - inscription : case **« J'accepte la politique de confidentialité »** obligatoire ;
+  - la suppression du compte est désormais **définitive** (plus de suppression douce) : profil, témoignages et vidéos Bunny, sujets et sessions de prière, paroles prophétiques, événements, préférences, jetons FCM et Sanctum, fichiers stockés. Les super-administrateurs ne peuvent pas se supprimer ainsi ;
+  - *Administration › Demandes de suppression* : liste des demandes ; super-administrateurs : supprimer le compte ou classer sans suite.
+- **API** : `GET /legal/privacy?lang=fr|en` (public) → `data: { title, updated_at, html, url }` ; `DELETE /me` (nouveau) et `DELETE /users/me` : suppression définitive, `{ password }` ou `{ confirm: true }`, 403 pour un super-administrateur et au nom d'un compte administré ; `POST /auth/register` exige `accepted_privacy: true` (422) ; `auth/google`, `auth/social`, `auth/phone` acceptent `accepted_privacy` (facultatif) ; `UserResource` expose `accepted_privacy_at` ; nouvelle notification `account_deletion_requested` (catégorie push `push_moderation`).
+- **Développeurs** : texte unique dans `resources/legal/privacy.{fr,en}.md` (nouveau `privacy.en.md`), rendu par `App\Services\PrivacyPolicy` (`Str::markdown`, tableaux) ; `AccountDeletion`, `AccountDeletionRequests`, modèle `AccountDeletionRequest` ; contrôleurs `Web\LegalController`, `Web\AccountDeletionRequestController`, `Api\LegalController` (remplace `UserController::deleteAccount`) ; `GoogleSignIn::authenticate($idToken, $acceptedPrivacy)` ; `AccountDelegation::isOwnerOnly` couvre `DELETE me` et la page de suppression ; `lang/{fr,en}/privacy.php`. Anubis (Protection DDoS LWS) bloque toute requête de navigateur sans JavaScript et renvoie 406 à `curl -A "Mozilla/5.0"` : à régler dans le panneau LWS, pas dans le code. Tests : `PrivacyAndAccountDeletionTest` (12) ; `AppContractTest`, `CountryNameTest`, `OrganizationAccountTest`, `PhoneNumberTest`, `WebOrganizationRegistrationTest` mis à jour (consentement, suppression définitive).
+- **Déploiement** : migration `2026_10_20_200001_add_privacy_consent_and_account_deletion_requests`, dossier `resources/legal/`, recompilation des assets et copie de `public/build/`, `php artisan optimize:clear` et `view:cache`, exclusion des pages publiques dans la protection LWS ([README §4](README.md#confidentialité-et-suppression-de-compte-2026-10-20)).
+
+---
+
 ## 2026-10-20 — Nom « My Testimony », témoignages du plus récent au plus ancien, catégories en anglais
 
 - **Utilisateurs** :

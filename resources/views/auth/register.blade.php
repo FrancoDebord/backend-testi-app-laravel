@@ -114,6 +114,15 @@
                 <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" class="form-input">
             </div>
         </div>
+        {{-- Consentement obligatoire, enregistré dans users.accepted_privacy_at (docs/fonctionnalites/confidentialite-et-suppression.md) --}}
+        @php($privacyLink = '<a href="' . e(\App\Services\PrivacyPolicy::url(app()->getLocale())) . '" target="_blank" rel="noopener" class="font-semibold text-primary-600 hover:text-primary-700 hover:underline">' . e(__('privacy.consent.link')) . '</a>')
+        <div>
+            <label class="flex items-start gap-2 text-sm text-slate-700">
+                <input type="checkbox" name="accepted_privacy" value="1" required class="mt-0.5 rounded" @checked(old('accepted_privacy'))>
+                <span>{!! __('privacy.consent.label', ['link' => $privacyLink]) !!}</span>
+            </label>
+            @error('accepted_privacy')<p class="form-error">{{ $message }}</p>@enderror
+        </div>
         <button type="submit" class="btn-cta w-full">{{ __('account.register.submit') }}</button>
     </form>
 

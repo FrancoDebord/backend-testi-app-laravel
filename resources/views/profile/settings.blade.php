@@ -215,4 +215,18 @@
     </div>
 </section>
 @endif
+
+{{-- Supprimer le compte : page publique, aussi utilisée sans connexion (docs/fonctionnalites/confidentialite-et-suppression.md) --}}
+<section class="card mx-auto mt-6 max-w-2xl">
+    <div class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
+            <h2 class="card-title">{{ __('privacy.delete_link') }}</h2>
+            <p class="text-sm text-slate-500">{{ __('privacy.deletion.irreversible') }}</p>
+        </div>
+        <div class="flex shrink-0 flex-wrap gap-2">
+            <a href="{{ \App\Services\PrivacyPolicy::url(app()->getLocale()) }}" class="btn-ghost btn-sm">{{ __('privacy.link') }}</a>
+            <a href="{{ route(app()->getLocale() === 'en' ? 'account-deletion.en' : 'account-deletion') }}" class="btn-secondary btn-sm"><i class="fa-solid fa-trash-can text-error-600" aria-hidden="true"></i>{{ __('privacy.delete_link') }}</a>
+        </div>
+    </div>
+</section>
 @endsection

@@ -31,7 +31,8 @@ class GoogleAuthController extends Controller
         ], ['id_token.required' => __('account.google.missing_token')]);
 
         try {
-            [$user, $isNewUser] = $google->authenticate((string) $request->input('id_token'));
+            // accepted_privacy : case cochée dans l'application avant la création du compte (facultatif ici).
+            [$user, $isNewUser] = $google->authenticate((string) $request->input('id_token'), $request->boolean('accepted_privacy'));
         } catch (GoogleSignInException $e) {
             return $this->error($e->getMessage(), $e->status);
         }

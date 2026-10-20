@@ -225,25 +225,4 @@ class UserController extends Controller
 
         return $this->success($settings->fresh(), __('profile.api.settings_updated'));
     }
-
-    public function deleteAccount(Request $request): JsonResponse
-    {
-        $user = $request->user();
-        // Compte créé par téléphone ou Google/Facebook : pas de mot de passe, confirmation explicite.
-        if (empty($user->password)) {
-            $request->validate(['confirm' => 'accepted'], ['confirm.accepted' => __('profile.api.confirm_delete')]);
-        } else {
-            $request->validate(['password' => 'required|string']);
-            if (!password_verify($request->password, $user->password)) {
-                return $this->error(__('profile.api.wrong_password'), 403);
-            }
-        }
-
-        $request->user()->tokens()->delete();
-        // Plus aucun push vers les appareils d'un compte supprimé (suppression douce : pas de cascade).
-        $request->user()->deviceTokens()->delete();
-        $request->user()->delete();
-
-        return $this->success(null, __('profile.api.deleted'));
-    }
 }

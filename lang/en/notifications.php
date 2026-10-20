@@ -17,6 +17,7 @@ return [
         'pending_correction'     => 'Correction requested',
         'testimony_resubmitted'  => 'Testimony to review',
         'video_stuck'            => 'Video stuck at Bunny',
+        'account_deletion_requested' => 'Account deletion request',
         'organization_verified'  => 'Organization verified',
         'organization_rejected'  => 'Verification declined',
         'account_verified'       => 'Account verified',

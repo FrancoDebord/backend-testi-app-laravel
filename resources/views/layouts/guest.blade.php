@@ -72,8 +72,10 @@
 </main>
 
 <footer class="border-t border-slate-200 bg-white">
-    <p class="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-slate-500 sm:px-6">
-        © {{ date('Y') }} My Testimony — ARISE &amp; SHINE Krea
+    <p class="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-4 text-center text-xs text-slate-500 sm:px-6">
+        <span>© {{ date('Y') }} My Testimony — ARISE &amp; SHINE Krea</span>
+        {{-- docs/fonctionnalites/confidentialite-et-suppression.md --}}
+        <a href="{{ \App\Services\PrivacyPolicy::url(app()->getLocale()) }}" class="hover:text-slate-900">{{ __('privacy.link') }}</a>
     </p>
 </footer>
 

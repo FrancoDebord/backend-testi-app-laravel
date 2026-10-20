@@ -21,6 +21,9 @@ class RegisterRequest extends FormRequest
             'email'        => ['required', 'email', 'unique:users,email'],
             'password'     => ['required', 'string', 'min:8', 'confirmed'],
             'country'      => ['nullable', 'string', 'max:100'],
+            // Consentement obligatoire : true, enregistré dans users.accepted_privacy_at à l'heure du serveur
+            // (docs/fonctionnalites/confidentialite-et-suppression.md)
+            'accepted_privacy' => ['accepted'],
         ]
         // Téléphone de contact (indicatif + numéro) : facultatif ici, pour ne pas bloquer les versions
         // de l'application qui ne l'envoient pas encore. docs/fonctionnalites/telephone.md
@@ -30,7 +33,7 @@ class RegisterRequest extends FormRequest
 
     public function messages(): array
     {
-        return PhoneNumber::MESSAGES;
+        return PhoneNumber::MESSAGES + ['accepted_privacy.accepted' => __('privacy.consent.required')];
     }
 
     public function attributes(): array

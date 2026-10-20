@@ -17,6 +17,7 @@ return [
         'pending_correction'     => 'Correction demandée',
         'testimony_resubmitted'  => 'Témoignage à relire',
         'video_stuck'            => 'Vidéo bloquée chez Bunny',
+        'account_deletion_requested' => 'Demande de suppression de compte',
         'organization_verified'  => 'Organisation vérifiée',
         'organization_rejected'  => 'Vérification refusée',
         'account_verified'       => 'Compte vérifié',

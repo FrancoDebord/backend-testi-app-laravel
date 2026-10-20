@@ -13,6 +13,7 @@ use App\Http\Controllers\Web\FeedController;
 use App\Http\Controllers\Web\UserSearchController;
 use App\Http\Controllers\Web\HomeController;
 use App\Http\Controllers\Web\JournalController;
+use App\Http\Controllers\Web\LegalController;
 use App\Http\Controllers\Web\ProphecyController;
 use App\Http\Controllers\Web\ModerationController;
 use App\Http\Controllers\Web\NotificationController;
@@ -105,6 +106,17 @@ Route::get('/.well-known/apple-app-site-association', function () {
         ],
     ], 200, [], JSON_UNESCAPED_SLASHES);
 })->name('applinks.ios');
+
+// ── Confidentialité et suppression de compte ─ docs/fonctionnalites/confidentialite-et-suppression.md ──
+// Publiques, sans connexion (exigence Google Play). Langue : ?lang=, sinon la langue choisie, sinon celle de l'adresse.
+Route::get('/confidentialite',     [LegalController::class, 'privacy'])->defaults('default', 'fr')->name('legal.privacy');
+Route::get('/privacy',             [LegalController::class, 'privacy'])->defaults('default', 'en')->name('legal.privacy.en');
+Route::get('/suppression-compte',  [LegalController::class, 'accountDeletion'])->defaults('default', 'fr')->name('account-deletion');
+Route::get('/delete-account',      [LegalController::class, 'accountDeletion'])->defaults('default', 'en')->name('account-deletion.en');
+// Demande sans connexion : 5 par heure et par adresse IP, plus un champ piège contre les robots.
+Route::post('/suppression-compte', [LegalController::class, 'requestDeletion'])->middleware('throttle:5,60')->name('account-deletion.request');
+// Personne connectée : suppression immédiate après confirmation.
+Route::delete('/suppression-compte', [LegalController::class, 'destroyAccount'])->middleware(['auth', 'throttle:10,1'])->name('account-deletion.destroy');
 
 // ── Public ────────────────────────────────────────────────────────────────
 Route::get('/',                     [HomeController::class, 'index'])->name('home');
@@ -449,6 +461,10 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin
     Route::post('/types-evenements/{id}/move',   [\App\Http\Controllers\Web\EventTypeController::class, 'move'])->whereNumber('id')->name('event-types.move');
     Route::post('/types-evenements/{id}/toggle', [\App\Http\Controllers\Web\EventTypeController::class, 'toggle'])->whereNumber('id')->name('event-types.toggle');
     Route::delete('/types-evenements/{id}',      [\App\Http\Controllers\Web\EventTypeController::class, 'destroy'])->whereNumber('id')->name('event-types.destroy');
+    // Demandes de suppression de compte faites sans connexion ─ docs/fonctionnalites/confidentialite-et-suppression.md
+    Route::get('/demandes-suppression',                 [\App\Http\Controllers\Web\AccountDeletionRequestController::class, 'index'])->name('deletion-requests.index');
+    Route::delete('/demandes-suppression/{id}/compte',  [\App\Http\Controllers\Web\AccountDeletionRequestController::class, 'deleteAccount'])->whereUuid('id')->name('deletion-requests.delete-account');
+    Route::post('/demandes-suppression/{id}/classer',   [\App\Http\Controllers\Web\AccountDeletionRequestController::class, 'reject'])->whereUuid('id')->name('deletion-requests.reject');
     Route::get('/settings',                  [AdminController::class, 'settings'])->name('settings');
     Route::put('/settings',                  [AdminController::class, 'updateSettings'])->name('settings.update');
     Route::get('/documentation/{page?}',     [DocumentationController::class, 'show'])

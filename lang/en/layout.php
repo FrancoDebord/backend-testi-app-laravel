@@ -38,6 +38,7 @@ return [
         'dashboard'         => 'Dashboard',
         'users'             => 'Users',
         'verifications'     => 'Account verification',
+        'deletion_requests' => 'Deletion requests',
         'content'           => 'Content',
         'categories'        => 'Categories',
         'event_types'       => 'Event types',

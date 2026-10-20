@@ -32,12 +32,12 @@ L'auteur et la modération peuvent toujours commenter. Un commentaire refusé re
 
 `TestimonyResource` expose `canComment` pour la personne connectée, afin que l'application masque la zone de saisie. Code : `Testimony::acceptsCommentsFrom()`.
 
-## Supprimer le compte (`DELETE users/me`)
+## Supprimer le compte (`DELETE me` ou `DELETE users/me`)
 
 - Compte avec mot de passe (e-mail) : envoyer `{ password }` (403 si le mot de passe est incorrect).
 - Compte **sans mot de passe** (téléphone, Google, Facebook) : envoyer `{ confirm: true }` (422 `errors.confirm` sinon).
 
-Le compte est supprimé (suppression douce) et ses jetons sont révoqués.
+Depuis le 2026-10-20, la suppression est **définitive** : profil, témoignages (vidéos Bunny comprises), sujets de prière, paroles prophétiques, préférences, jetons et fichiers. Les super-administrateurs ne peuvent pas se supprimer ainsi (403). Détails : [confidentialite-et-suppression.md](confidentialite-et-suppression.md).
 
 `UserResource` (profil de la personne connectée : `auth/me`, connexion) expose `has_password`. L'application s'en sert pour demander le mot de passe ou une simple confirmation, et pour afficher ou non le formulaire « Changer le mot de passe » (`POST auth/change-password`).
 

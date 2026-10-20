@@ -58,6 +58,8 @@
                 ['label' => __('layout.nav.dashboard'), 'icon' => 'fa-chart-simple', 'url' => route('admin.dashboard'),        'active' => request()->routeIs('admin.dashboard')],
                 ['label' => __('layout.nav.users'),    'icon' => 'fa-users',        'url' => route('admin.users.index'),      'active' => request()->routeIs('admin.users.*')],
                 ['label' => __('layout.nav.verifications'), 'icon' => 'fa-user-check', 'url' => route('admin.verifications.index'), 'active' => request()->routeIs('admin.verifications.*')],
+                // Demandes de suppression de compte sans connexion (docs/fonctionnalites/confidentialite-et-suppression.md)
+                ['label' => __('layout.nav.deletion_requests'), 'icon' => 'fa-user-xmark', 'url' => route('admin.deletion-requests.index'), 'active' => request()->routeIs('admin.deletion-requests.*')],
                 ['label' => __('layout.nav.content'),         'icon' => 'fa-file-lines',   'url' => route('admin.content.index'),    'active' => request()->routeIs('admin.content.*')],
                 ['label' => __('layout.nav.categories'),      'icon' => 'fa-tags',         'url' => route('admin.categories.index'), 'active' => request()->routeIs('admin.categories.*')],
                 ['label' => __('layout.nav.event_types'),     'icon' => 'fa-calendar-check', 'url' => route('admin.event-types.index'), 'active' => request()->routeIs('admin.event-types.*')],
@@ -346,6 +348,8 @@
                     <a href="{{ route('explore') }}" class="hover:text-slate-900">{{ __('layout.nav.explore') }}</a>
                     <a href="{{ route('videos.index') }}" class="hover:text-slate-900">{{ __('layout.nav.videos') }}</a>
                     <a href="{{ route('bible.reader') }}" class="hover:text-slate-900">{{ __('layout.nav.bible') }}</a>
+                    {{-- Page publique, exigée par les magasins d'applications (docs/fonctionnalites/confidentialite-et-suppression.md) --}}
+                    <a href="{{ \App\Services\PrivacyPolicy::url(app()->getLocale()) }}" class="hover:text-slate-900">{{ __('privacy.link') }}</a>
                 </p>
                 <div class="sm:hidden">@include('components.locale-switcher')</div>
             </div>

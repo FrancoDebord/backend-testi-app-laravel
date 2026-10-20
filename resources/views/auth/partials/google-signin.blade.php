@@ -10,6 +10,8 @@
         <span class="flex-1 border-t border-slate-200"></span>{{ __('account.login.or') }}<span class="flex-1 border-t border-slate-200"></span>
     </div>
     <div id="google-signin-button" class="mt-5 flex min-h-10 justify-center"></div>
+    {{-- Un compte peut être créé par ce bouton : consentement enregistré (docs/fonctionnalites/confidentialite-et-suppression.md) --}}
+    <p class="mt-3 text-center text-xs text-slate-500">{!! __('privacy.consent.google', ['link' => '<a href="' . e(\App\Services\PrivacyPolicy::url(app()->getLocale())) . '" target="_blank" rel="noopener" class="font-semibold text-primary-600 hover:underline">' . e(__('privacy.consent.link')) . '</a>']) !!}</p>
     <form id="google-signin-form" method="POST" action="{{ route('login.google') }}" hidden>
         @csrf
         <input type="hidden" name="credential">

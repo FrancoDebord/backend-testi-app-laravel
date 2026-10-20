@@ -23,6 +23,7 @@ Serveur Laravel de **My Testimony** (AIRID) : site web de partage de témoignage
 | [Sessions de prière](fonctionnalites/sessions-de-priere.md) | Sessions programmées par tout compte, inscriptions « Je serai là », rappel 15 min avant ; la salle est un direct LiveKit ouvert par l'hôte (commentaires, intervenants) |
 | [Paroles prophétiques](fonctionnalites/paroles-prophetiques.md) | Carnet privé (application) : garder les paroles reçues (texte ou audio), journal de prière, rappels, proclamation, témoignage de l'accomplissement et parole rendue publique avec lui |
 | [Messages pour inciter à témoigner](fonctionnalites/encouragements.md) | Versets (Psaume 78:4, Apocalypse 12:11…) et invitations sur les pages et dans les fils, bouton Témoigner |
+| [Confidentialité et suppression de compte](fonctionnalites/confidentialite-et-suppression.md) | Politique de confidentialité publique FR / EN (`/confidentialite`, `/privacy`, `GET /legal/privacy`) tirée de `resources/legal/privacy.{fr,en}.md` ; page publique `/suppression-compte` (suppression immédiate connecté, demande sans compte) ; `DELETE /me` définitif (données, fichiers, vidéos Bunny) ; consentement `accepted_privacy_at` à l'inscription ; anti-robot LWS |
 | [Réglages, compte et Mes témoignages](fonctionnalites/reglages-et-compte.md) | API de l'application : lire et modifier les réglages, « Qui peut commenter » appliqué, suppression d'un compte sans mot de passe, renommer un témoignage, motif de refus, verset long, partages par les invités |
 | [Pourquoi témoigner ?](fonctionnalites/pourquoi-temoigner.md) | Bloc en accordéon : 7 raisons bibliques de témoigner et leurs versets, sur l'accueil, Publier, Mes témoignages, la lecture d'un témoignage et l'inscription |
 | [Intervenants dans un direct](fonctionnalites/lives-intervenants.md) | File des demandes, invitation, passage à l'antenne (micro, caméra facultative) en médaillon, une personne à la fois |
@@ -283,6 +284,19 @@ suivre le lien symbolique créé par `storage:link`.
 - **recompilation des assets** (`resources/js` lit ses textes dans `window.I18N`), puis copie de `public/build/` sur le serveur ;
 - `php artisan optimize:clear` puis `php artisan view:cache` (les traductions sont lues à chaque requête ; avec `config:cache`, rien de plus) ;
 - `APP_LOCALE` peut rester tel quel : le français est imposé par défaut. Aucune nouvelle variable d'environnement.
+
+### Confidentialité et suppression de compte (2026-10-20)
+
+[confidentialite-et-suppression.md](fonctionnalites/confidentialite-et-suppression.md) :
+
+- migration `2026_10_20_200001_add_privacy_consent_and_account_deletion_requests` (`users.accepted_privacy_at`, table `account_deletion_requests`) : `php artisan migrate --force` ;
+- déployer le dossier `resources/legal/` (texte de la politique) et `lang/{fr,en}/privacy.php` ;
+- **recompilation des assets** (nouvelles classes dans les vues), puis copie de `public/build/` sur le serveur ;
+- `php artisan optimize:clear`, `php artisan view:cache`, et `php artisan route:cache` si les routes sont mises en cache ;
+- **panneau LWS** : exclure de la « Protection DDoS » (Anubis) les chemins `/confidentialite`, `/privacy`, `/suppression-compte`, `/delete-account` et `/api/`, puis vérifier `curl -A "Mozilla/5.0" https://temoignage.as-krea.com/confidentialite` (200 attendu) ;
+- compléter les éléments entre crochets des deux fichiers de la politique avant de la déclarer dans Google Play Console (URL : `https://temoignage.as-krea.com/privacy` ou `/confidentialite` ; suppression : `/delete-account`).
+
+Aucune variable d'environnement. **Application** : `POST /auth/register` exige désormais `accepted_privacy: true` (422 sinon).
 
 ### Dépendances PHP
 

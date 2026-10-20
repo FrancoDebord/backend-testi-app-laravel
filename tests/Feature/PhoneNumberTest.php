@@ -17,7 +17,7 @@ class PhoneNumberTest extends TestCase
     {
         return $this->post('/register', array_merge([
             'account_type' => 'individual', 'display_name' => 'Jean Dupont', 'email' => 'jean@example.com',
-            'password' => 'secret123', 'password_confirmation' => 'secret123', 'country' => 'Bénin',
+            'password' => 'secret123', 'password_confirmation' => 'secret123', 'accepted_privacy' => true, 'country' => 'Bénin',
         ], $extra));
     }
 
@@ -157,7 +157,7 @@ class PhoneNumberTest extends TestCase
         // Inscription depuis l'application : indicatif + numéro national.
         $this->postJson('/api/v1/auth/register', [
             'first_name' => 'Awa', 'last_name' => 'K', 'display_name' => 'Awa K', 'email' => 'awa2@example.com',
-            'password' => 'secret123', 'password_confirmation' => 'secret123', 'country' => "Côte d'Ivoire",
+            'password' => 'secret123', 'password_confirmation' => 'secret123', 'accepted_privacy' => true, 'country' => "Côte d'Ivoire",
             'phone_country' => 'ci', 'phone' => '07 07 07 07 07',
         ])->assertCreated()
             ->assertJsonPath('data.user.phone', '+2250707070707')
@@ -167,13 +167,13 @@ class PhoneNumberTest extends TestCase
         // Sans numéro (anciennes versions de l'application) : toujours accepté, même pour une organisation.
         $this->postJson('/api/v1/auth/register', [
             'account_type' => 'organization', 'first_name' => 'Église', 'last_name' => '', 'display_name' => 'Église',
-            'email' => 'eglise2@example.com', 'password' => 'secret123', 'password_confirmation' => 'secret123',
+            'email' => 'eglise2@example.com', 'password' => 'secret123', 'password_confirmation' => 'secret123', 'accepted_privacy' => true,
             'organization_name' => 'Église', 'organization_type' => 'church', 'organization_city' => 'Abidjan',
         ])->assertCreated();
 
         $this->postJson('/api/v1/auth/register', [
             'first_name' => 'B', 'last_name' => 'B', 'display_name' => 'B', 'email' => 'b@example.com',
-            'password' => 'secret123', 'password_confirmation' => 'secret123', 'phone_country' => 'ci', 'phone' => '12',
+            'password' => 'secret123', 'password_confirmation' => 'secret123', 'accepted_privacy' => true, 'phone_country' => 'ci', 'phone' => '12',
         ])->assertStatus(422)->assertJsonValidationErrors('phone');
 
         // Profil depuis l'application : même format, converti en international.

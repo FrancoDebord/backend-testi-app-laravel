@@ -35,6 +35,8 @@ class UserResource extends JsonResource
             // Compte avec mot de passe (e-mail) : faux pour un compte téléphone / Google / Facebook.
             // L'application choisit ainsi mot de passe ou confirmation (suppression, changement).
             'has_password'     => $private ? !empty($this->password) : null,
+            // Date d'acceptation de la politique de confidentialité (null : compte antérieur au 2026-10-20 ou créé sans la case)
+            'accepted_privacy_at' => $private ? $this->accepted_privacy_at?->toIso8601String() : null,
             'avatar_url'       => $this->avatar_url,
             'cover_url'        => $this->cover_url, // photo de couverture (docs/fonctionnalites/photo-de-couverture.md)
             'country'          => $this->country,

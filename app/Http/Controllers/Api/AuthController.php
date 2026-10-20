@@ -62,6 +62,7 @@ class AuthController extends Controller
             'country'      => $request->country,
             'phone'        => $phone,
             'phone_country' => $phone ? strtolower($request->phone_country) : null,
+            'accepted_privacy_at' => now(),
             'role'         => UserRole::Utilisateur->value,
             // Explicite : sans cela, UserResource lisait un statut null (valeur par défaut SQL non rechargée).
             'status'       => UserAccountStatus::Active->value,
@@ -120,6 +121,8 @@ class AuthController extends Controller
                 'phone_verified_at' => now(),
                 'firebase_uid' => $uid,
                 'country'      => $request->country,
+                // Case cochée dans l'application (facultatif ici) : docs/fonctionnalites/confidentialite-et-suppression.md
+                'accepted_privacy_at' => $request->boolean('accepted_privacy') ? now() : null,
                 'role'         => UserRole::Utilisateur->value,
                 'status'       => UserAccountStatus::Active->value,
             ]);

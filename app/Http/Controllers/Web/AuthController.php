@@ -77,7 +77,8 @@ class AuthController extends Controller
         $request->validate(['credential' => 'required|string|max:4096'], ['credential.required' => __('account.google.interrupted')]);
 
         try {
-            [$user] = $google->authenticate((string) $request->input('credential'));
+            // Mention « En continuant avec Google, vous acceptez la politique de confidentialité » sous le bouton.
+            [$user] = $google->authenticate((string) $request->input('credential'), true);
         } catch (GoogleSignInException $e) {
             return redirect()->route('login')->withErrors(['email' => $e->getMessage()]);
         }
@@ -114,8 +115,11 @@ class AuthController extends Controller
             'email'                 => 'required|email|unique:users,email',
             'password'              => 'required|string|min:8|confirmed',
             'country'               => ['nullable', 'string', 'max:100', Rule::in(Countries::all())],
+            // Case « J'accepte la politique de confidentialité » (docs/fonctionnalites/confidentialite-et-suppression.md)
+            'accepted_privacy'      => 'accepted',
         ] + PhoneNumber::rules('required_if:account_type,organization') + OrganizationAccounts::registerRules(), PhoneNumber::MESSAGES + [
             'country.in'                    => __('account.register.country_in'),
+            'accepted_privacy.accepted'     => __('privacy.consent.required'),
             'display_name.required_unless'  => __('account.register.display_name_required'),
             'organization_name.required_if' => __('account.register.organization_name_required'),
         ], [
@@ -139,6 +143,7 @@ class AuthController extends Controller
             'country'      => $data['country'] ?? null,
             'phone'        => $phone,
             'phone_country' => $phone ? $data['phone_country'] : null,
+            'accepted_privacy_at' => now(),
             'role'         => UserRole::Utilisateur->value,
             // Explicite, comme l'API : sans cela, le statut lu restait null.
             'status'       => UserAccountStatus::Active->value,

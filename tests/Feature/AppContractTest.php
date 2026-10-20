@@ -104,7 +104,8 @@ class AppContractTest extends TestCase
         $this->actingAs($phoneUser)->getJson('/api/v1/auth/me')->assertOk()->assertJsonPath('data.has_password', false);
         $this->actingAs($phoneUser)->deleteJson('/api/v1/users/me')->assertUnprocessable()->assertJsonValidationErrors('confirm');
         $this->actingAs($phoneUser)->deleteJson('/api/v1/users/me', ['confirm' => true])->assertOk();
-        $this->assertSoftDeleted('users', ['id' => $phoneUser->id]);
+        // Suppression définitive depuis le 2026-10-20 (docs/fonctionnalites/confidentialite-et-suppression.md).
+        $this->assertDatabaseMissing('users', ['id' => $phoneUser->id]);
 
         $member = $this->user('membre');
         $this->actingAs($member)->getJson('/api/v1/auth/me')->assertJsonPath('data.has_password', true);

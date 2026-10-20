@@ -72,6 +72,9 @@
         {{ __('account.login.no_account') }}
         <a href="{{ route('register') }}" class="font-semibold text-primary-600 hover:text-primary-700 hover:underline">{{ __('account.register.title') }}</a>
     </p>
+    <p class="mt-3 text-center text-xs text-slate-500">
+        <a href="{{ \App\Services\PrivacyPolicy::url(app()->getLocale()) }}" class="hover:text-slate-900 hover:underline">{{ __('privacy.link') }}</a>
+    </p>
 </div>
 @endsection
 

@@ -21,6 +21,9 @@ enum NotificationType: string
     case TestimonyResubmitted = 'testimony_resubmitted';
     // Vidéo Bunny en traitement depuis plus de 30 minutes : super-administrateurs (docs/fonctionnalites/videos-bunny-stream.md)
     case VideoStuck = 'video_stuck';
+    // Demande de suppression de compte faite sans connexion : super-administrateurs
+    // (docs/fonctionnalites/confidentialite-et-suppression.md)
+    case AccountDeletionRequested = 'account_deletion_requested';
     // Comptes organisation (docs/fonctionnalites/comptes-organisation.md)
     case OrganizationVerified = 'organization_verified';
     case OrganizationRejected = 'organization_rejected';
@@ -56,6 +59,7 @@ enum NotificationType: string
             self::PendingCorrection,
             self::TestimonyResubmitted,
             self::VideoStuck,
+            self::AccountDeletionRequested,
             self::OrganizationVerified,
             self::OrganizationRejected,
             self::AccountVerified,

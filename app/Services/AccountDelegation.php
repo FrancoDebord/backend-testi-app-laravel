@@ -116,7 +116,9 @@ class AccountDelegation
     {
         $path = Str::after($request->path(), 'api/v1/');
         // Supprimer le compte.
-        if ($request->isMethod('DELETE') && $path === 'users/me') return true;
+        if ($request->isMethod('DELETE') && in_array($path, ['users/me', 'me'], true)) return true;
+        // Site : page publique de suppression du compte (docs/fonctionnalites/confidentialite-et-suppression.md).
+        if (in_array($path, ['suppression-compte', 'delete-account'], true)) return true;
         foreach (self::OWNER_ONLY as $pattern) {
             if (Str::is($pattern, $path)) return true;
         }

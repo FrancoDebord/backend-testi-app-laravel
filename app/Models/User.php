@@ -33,7 +33,9 @@ class User extends Authenticatable implements \Illuminate\Contracts\Translation\
         'avatar_url', 'cover_url', 'country', 'bio', 'role', 'status', 'is_active',
         // Langue du compte (fr | en) : push et e-mails (docs/fonctionnalites/langues.md)
         'locale',
-        'email_verified_at', 'testimony_count', 'like_count', 'prayer_count',
+        'email_verified_at', 'testimony_count',
+        // Consentement à la politique de confidentialité (docs/fonctionnalites/confidentialite-et-suppression.md)
+        'accepted_privacy_at', 'like_count', 'prayer_count',
         'follower_count', 'following_count',
         // Comptes organisation (docs/fonctionnalites/comptes-organisation.md).
         // verification_status / verified_* ne sont modifiés que par le serveur.
@@ -49,6 +51,7 @@ class User extends Authenticatable implements \Illuminate\Contracts\Translation\
         return [
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
+            'accepted_privacy_at' => 'datetime',
             'password'          => 'hashed',
             'is_active'         => 'boolean',
             'role'              => UserRole::class,

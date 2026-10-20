@@ -110,6 +110,9 @@ Route::prefix('v1')->group(function () {
     });
 
     // ── Categories (public) ─────────────────────────────────────────────
+    // Politique de confidentialité, sans connexion : ?lang=fr|en ─ docs/fonctionnalites/confidentialite-et-suppression.md
+    Route::get('legal/privacy', [\App\Http\Controllers\Api\LegalController::class, 'privacy'])->middleware('throttle:60,1');
+
     Route::get('categories',        [CategoryController::class, 'index']);
     Route::get('categories/{slug}', [CategoryController::class, 'show']);
     // Types d'événements (actifs ; ?all=1 pour les administrateurs) ─ docs/fonctionnalites/types-evenements.md
@@ -357,6 +360,8 @@ Route::prefix('v1')->group(function () {
         // Profil connecté : /me (forme courte) ─ langue des push et e-mails : { locale: fr|en } (docs/fonctionnalites/langues.md)
         Route::get('me',                  [AuthController::class, 'me']);
         Route::put('me',                  [UserController::class, 'updateMe']);
+        // Supprimer mon compte et toutes mes données ({ password } ou { confirm: true }) ─ docs/fonctionnalites/confidentialite-et-suppression.md
+        Route::delete('me',               [\App\Http\Controllers\Api\LegalController::class, 'destroyMe'])->middleware('throttle:10,1');
         // Mon témoignage de conversion (null s'il n'existe pas) ─ docs/fonctionnalites/temoignage-de-conversion.md
         Route::get('me/conversion-testimony', [\App\Http\Controllers\Api\ConversionTestimonyController::class, 'mine']);
         // Notification de test vers tous mes appareils, résultat par jeton ─ docs/fonctionnalites/notifications-push.md
@@ -382,7 +387,8 @@ Route::prefix('v1')->group(function () {
         Route::get('users/me/location',    [\App\Http\Controllers\Api\LocationController::class, 'show']);
         Route::put('users/me/location',    [\App\Http\Controllers\Api\LocationController::class, 'update'])->middleware('throttle:20,1');
         Route::delete('users/me/location', [\App\Http\Controllers\Api\LocationController::class, 'destroy']);
-        Route::delete('users/me',         [UserController::class, 'deleteAccount']);
+        // Suppression définitive du compte et de ses données ─ docs/fonctionnalites/confidentialite-et-suppression.md
+        Route::delete('users/me',         [\App\Http\Controllers\Api\LegalController::class, 'destroyMe']);
         Route::post('users/{id}/follow',  [UserController::class, 'follow'])->middleware('throttle:30,1');
         Route::delete('users/{id}/unfollow', [UserController::class, 'unfollow']);
 

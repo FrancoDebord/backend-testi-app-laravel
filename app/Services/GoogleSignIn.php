@@ -22,7 +22,7 @@ class GoogleSignIn
      * @return array{0: User, 1: bool} le compte et s'il vient d'être créé
      * @throws GoogleSignInException jeton refusé (401), compte supprimé (403), e-mail lié à un autre compte Google (409)
      */
-    public function authenticate(string $idToken): array
+    public function authenticate(string $idToken, bool $acceptedPrivacy = false): array
     {
         $claims   = $this->verify($idToken);
         $googleId = (string) $claims['sub'];
@@ -41,13 +41,15 @@ class GoogleSignIn
         }
 
         if (!$user) {
-            $user = DB::transaction(function () use ($claims, $googleId, $email, $avatar) {
+            $user = DB::transaction(function () use ($claims, $googleId, $email, $avatar, $acceptedPrivacy) {
                 $user = User::create([
                     'display_name'      => trim((string) ($claims['name'] ?? '')) ?: strstr($email, '@', true),
                     'email'             => $email,
                     'google_id'         => $googleId,
                     'avatar_url'        => $avatar,
                     'email_verified_at' => now(),
+                    // Consentement à la politique de confidentialité (docs/fonctionnalites/confidentialite-et-suppression.md)
+                    'accepted_privacy_at' => $acceptedPrivacy ? now() : null,
                     'role'              => UserRole::Utilisateur->value,
                     'status'            => UserAccountStatus::Active->value,
                     'is_active'         => true,

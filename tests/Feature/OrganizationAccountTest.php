@@ -38,7 +38,7 @@ class OrganizationAccountTest extends TestCase
             'display_name'          => 'Église de la Grâce',
             'email'                 => 'eglise@example.com',
             'password'              => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password_confirmation' => 'secret123', 'accepted_privacy' => true,
             'organization_name'     => 'Église de la Grâce',
             'organization_type'     => 'church',
             'organization_city'     => 'Cotonou',
@@ -60,7 +60,7 @@ class OrganizationAccountTest extends TestCase
     {
         $this->postJson('/api/v1/auth/register', [
             'first_name' => 'Jean', 'last_name' => 'Dupont', 'display_name' => 'Jean Dupont',
-            'email' => 'jean@example.com', 'password' => 'secret123', 'password_confirmation' => 'secret123',
+            'email' => 'jean@example.com', 'password' => 'secret123', 'password_confirmation' => 'secret123', 'accepted_privacy' => true,
         ])->assertCreated()
           ->assertJsonPath('data.user.account_type', 'individual')
           ->assertJsonPath('data.user.is_verified', false)

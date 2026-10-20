@@ -17,7 +17,7 @@ class CountryNameTest extends TestCase
     {
         $this->post('/register', [
             'account_type' => 'individual', 'display_name' => 'Jean Dupont', 'email' => 'jean@example.com',
-            'password' => 'secret123', 'password_confirmation' => 'secret123', 'country' => self::COUNTRY,
+            'password' => 'secret123', 'password_confirmation' => 'secret123', 'accepted_privacy' => true, 'country' => self::COUNTRY,
         ])->assertSessionHasNoErrors();
 
         $this->assertSame(self::COUNTRY, User::where('email', 'jean@example.com')->value('country'));
@@ -27,7 +27,7 @@ class CountryNameTest extends TestCase
     {
         $this->postJson('/api/v1/auth/register', [
             'first_name' => 'Jean', 'last_name' => 'Dupont', 'display_name' => 'Jean Dupont', 'email' => 'jean@example.com',
-            'password' => 'secret123', 'password_confirmation' => 'secret123', 'country' => self::COUNTRY,
+            'password' => 'secret123', 'password_confirmation' => 'secret123', 'accepted_privacy' => true, 'country' => self::COUNTRY,
         ])->assertSuccessful();
 
         $this->assertSame(self::COUNTRY, User::where('email', 'jean@example.com')->value('country'));
@@ -75,7 +75,7 @@ class CountryNameTest extends TestCase
     {
         $this->from('/register')->post('/register', [
             'account_type' => 'individual', 'display_name' => 'Jean Dupont', 'email' => 'jean@example.com',
-            'password' => 'secret123', 'password_confirmation' => 'secret123', 'country' => 'Atlantide',
+            'password' => 'secret123', 'password_confirmation' => 'secret123', 'accepted_privacy' => true, 'country' => 'Atlantide',
         ])->assertRedirect('/register')->assertSessionHasErrors(['country' => 'Choisissez un pays dans la liste.']);
 
         $this->assertDatabaseMissing('users', ['email' => 'jean@example.com']);

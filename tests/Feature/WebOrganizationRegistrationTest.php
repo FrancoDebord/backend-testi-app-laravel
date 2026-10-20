@@ -24,7 +24,7 @@ class WebOrganizationRegistrationTest extends TestCase
             'display_name'          => '',
             'email'                 => 'eglise@example.com',
             'password'              => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password_confirmation' => 'secret123', 'accepted_privacy' => true,
             'organization_name'     => '  Église de la Grâce ',
             'organization_type'     => 'church',
             'organization_city'     => 'Cotonou',
@@ -53,7 +53,7 @@ class WebOrganizationRegistrationTest extends TestCase
             'display_name'          => 'Jean Dupont',
             'email'                 => 'jean@example.com',
             'password'              => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password_confirmation' => 'secret123', 'accepted_privacy' => true,
             // Champs organisation remplis sans JavaScript : ignorés pour une personne.
             'organization_name'     => 'Ne doit pas être enregistré',
         ])->assertRedirect(route('home'));
@@ -74,7 +74,7 @@ class WebOrganizationRegistrationTest extends TestCase
             'display_name'          => 'Marie',
             'email'                 => 'marie@example.com',
             'password'              => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password_confirmation' => 'secret123', 'accepted_privacy' => true,
         ])->assertRedirect(route('home'));
 
         $this->assertSame(AccountType::Individual, User::where('email', 'marie@example.com')->first()->account_type);
@@ -145,7 +145,7 @@ class WebOrganizationRegistrationTest extends TestCase
             'account_type'          => 'individual',
             'email'                 => 'jean@example.com',
             'password'              => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password_confirmation' => 'secret123', 'accepted_privacy' => true,
         ])->assertSessionHasErrors(['display_name'])
           ->assertSessionDoesntHaveErrors(['organization_name']);
     }

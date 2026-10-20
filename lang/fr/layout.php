@@ -38,6 +38,7 @@ return [
         'dashboard'         => 'Tableau de bord',
         'users'             => 'Utilisateurs',
         'verifications'     => 'Vérification des comptes',
+        'deletion_requests' => 'Demandes de suppression',
         'content'           => 'Contenu',
         'categories'        => 'Catégories',
         'event_types'       => 'Types d’événements',
