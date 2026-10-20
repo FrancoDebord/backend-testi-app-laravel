@@ -15,7 +15,8 @@ use App\Support\NotificationText;
  */
 final class AccountDeletionRequests
 {
-    public function submit(string $contact, ?string $message, ?string $ip): AccountDeletionRequest
+    /** @param string $type AccountDeletionRequest::TYPE_ACCOUNT | TYPE_PARTIAL (certaines données, précisées dans $message) */
+    public function submit(string $contact, ?string $message, ?string $ip, string $type = AccountDeletionRequest::TYPE_ACCOUNT): AccountDeletionRequest
     {
         $contact = trim($contact);
         $isEmail = str_contains($contact, '@');
@@ -26,6 +27,7 @@ final class AccountDeletionRequests
             : User::where('phone', $value)->first();
 
         $request = AccountDeletionRequest::create([
+            'type'         => in_array($type, AccountDeletionRequest::TYPES, true) ? $type : AccountDeletionRequest::TYPE_ACCOUNT,
             'contact'      => mb_substr($value, 0, 190),
             'contact_type' => $isEmail ? 'email' : 'phone',
             'user_id'      => $user?->id,
@@ -61,9 +63,9 @@ final class AccountDeletionRequests
     private function notifySuperAdmins(AccountDeletionRequest $request): void
     {
         $text = NotificationText::fields(
-            $request->user_id ? 'privacy.deletion.notify_admin_known' : 'privacy.deletion.notify_admin_unknown',
+            'privacy.deletion.notify_admin_' . ($request->isPartial() ? 'partial_' : '') . ($request->user_id ? 'known' : 'unknown'),
             ['contact' => $request->contact],
-            ['account_deletion_request_id' => $request->id, 'user_id' => $request->user_id],
+            ['account_deletion_request_id' => $request->id, 'user_id' => $request->user_id, 'request_type' => $request->type],
         );
 
         foreach (self::recipients() as $admin) {

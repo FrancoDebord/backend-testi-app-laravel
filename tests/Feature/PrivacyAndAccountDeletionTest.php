@@ -81,7 +81,7 @@ class PrivacyAndAccountDeletionTest extends TestCase
             ->assertSee('name="contact"', false);
         $this->get('/delete-account')->assertOk()
             ->assertSee('Delete your My Testimony account')
-            ->assertSee('Request deletion without signing in');
+            ->assertSee('Make a request')->assertSee('Delete some data');
     }
 
     // ── API ─────────────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ class PrivacyAndAccountDeletionTest extends TestCase
         $super  = $this->superAdmin();
         $member = $this->user('membre', ['phone' => '+22990000002']);
 
-        $this->from('/suppression-compte')->post('/suppression-compte', ['contact' => 'MEMBRE@example.com', 'message' => 'Merci'])
+        $this->from('/suppression-compte')->post('/suppression-compte', ['type' => 'account', 'contact' => 'MEMBRE@example.com', 'message' => 'Merci'])
             ->assertRedirect('/suppression-compte')->assertSessionHas('success');
 
         $request = AccountDeletionRequest::firstOrFail();
@@ -233,9 +233,9 @@ class PrivacyAndAccountDeletionTest extends TestCase
         $this->assertFalse(AppNotification::where('recipient_id', $member->id)->exists());
 
         // Téléphone saisi librement ; contact inconnu : même réponse (aucune information sur les comptes existants).
-        $this->post('/suppression-compte', ['contact' => '00229 90 00 00 02'])->assertSessionHas('success');
+        $this->post('/suppression-compte', ['type' => 'account', 'contact' => '00229 90 00 00 02'])->assertSessionHas('success');
         $this->assertSame($member->id, AccountDeletionRequest::where('contact', '+22990000002')->value('user_id'));
-        $this->post('/suppression-compte', ['contact' => 'inconnu@example.com'])->assertSessionHas('success');
+        $this->post('/suppression-compte', ['type' => 'account', 'contact' => 'inconnu@example.com'])->assertSessionHas('success');
         $this->assertNull(AccountDeletionRequest::where('contact', 'inconnu@example.com')->value('user_id'));
 
         // Le compte n'est pas supprimé tant qu'un super-administrateur n'a pas traité la demande.
@@ -244,15 +244,56 @@ class PrivacyAndAccountDeletionTest extends TestCase
 
     public function test_guest_request_is_validated_protected_by_a_honeypot_and_throttled(): void
     {
-        $this->from('/suppression-compte')->post('/suppression-compte', ['contact' => 'pas un contact'])
+        $this->from('/suppression-compte')->post('/suppression-compte', ['type' => 'account', 'contact' => 'pas un contact'])
             ->assertSessionHasErrors('contact');
-        $this->post('/suppression-compte', ['contact' => 'robot@example.com', 'website' => 'http://spam'])->assertSessionHas('success');
+        $this->post('/suppression-compte', ['type' => 'account', 'contact' => 'robot@example.com', 'website' => 'http://spam'])->assertSessionHas('success');
         $this->assertSame(0, AccountDeletionRequest::count());
 
         for ($i = 0; $i < 3; $i++) {
-            $this->post('/suppression-compte', ['contact' => "p{$i}@example.com"])->assertRedirect();
+            $this->post('/suppression-compte', ['type' => 'account', 'contact' => "p{$i}@example.com"])->assertRedirect();
         }
-        $this->post('/suppression-compte', ['contact' => 'trop@example.com'])->assertStatus(429);
+        $this->post('/suppression-compte', ['type' => 'account', 'contact' => 'trop@example.com'])->assertStatus(429);
+    }
+
+    public function test_partial_deletion_section_and_request(): void
+    {
+        $super  = $this->superAdmin();
+        $member = $this->user('membre');
+
+        $this->get('/suppression-compte')->assertOk()
+            ->assertSee('Supprimer certaines données sans supprimer votre compte')
+            ->assertSee('menu « ⋮ »')
+            ->assertSee('Les notifications se désactivent dans Paramètres.')
+            ->assertSee('value="partial"', false)
+            ->assertSee('value="account"', false);
+        $this->get('/delete-account')->assertOk()->assertSee('Delete some data without deleting your account');
+
+        // Suppression partielle : préciser les données est obligatoire.
+        $this->from('/suppression-compte')->post('/suppression-compte', ['type' => 'partial', 'contact' => 'membre@example.com'])
+            ->assertSessionHasErrors('message');
+        $this->from('/suppression-compte')->post('/suppression-compte', ['type' => 'autre', 'contact' => 'membre@example.com'])
+            ->assertSessionHasErrors('type');
+
+        $this->post('/suppression-compte', ['type' => 'partial', 'contact' => 'membre@example.com', 'message' => 'Ma photo de profil'])
+            ->assertSessionHas('success', __('privacy.deletion.partial_sent'));
+        $request = AccountDeletionRequest::firstOrFail();
+        $this->assertSame('partial', $request->type);
+        $this->assertSame('Ma photo de profil', $request->message);
+        $this->assertSame('privacy.deletion.notify_admin_partial_known',
+            AppNotification::where('recipient_id', $super->id)->firstOrFail()->payload['i18n']['key']);
+
+        // Jamais de suppression du compte depuis une demande partielle : seulement « Marquer comme traitée ».
+        $this->actingAs($super)->get('/admin/demandes-suppression')->assertOk()->assertSee('Suppression partielle')->assertSee('Marquer comme traitée');
+        $this->actingAs($super)->delete("/admin/demandes-suppression/{$request->id}/compte")->assertNotFound();
+        $this->actingAs($super)->post("/admin/demandes-suppression/{$request->id}/traitee")->assertSessionHas('success');
+        $this->assertSame('done', $request->fresh()->status);
+        $this->assertDatabaseHas('users', ['id' => $member->id]);
+
+        // Connecté : le formulaire reste proposé, suppression partielle cochée par défaut.
+        $html = $this->actingAs($member)->get('/suppression-compte')->assertOk()
+            ->assertSee('id="account-delete-form"', false)->getContent();
+        $this->assertMatchesRegularExpression('/value="partial"[^>]*checked/', $html);
+        $this->assertDoesNotMatchRegularExpression('/value="account"[^>]*checked/', $html);
     }
 
     public function test_super_admin_deletes_the_account_of_a_request(): void
@@ -260,7 +301,7 @@ class PrivacyAndAccountDeletionTest extends TestCase
         $super  = $this->superAdmin();
         $admin  = $this->user('admin', ['role' => 'administrateur']);
         $member = $this->user('membre');
-        $this->post('/suppression-compte', ['contact' => 'membre@example.com']);
+        $this->post('/suppression-compte', ['type' => 'account', 'contact' => 'membre@example.com']);
         $request = AccountDeletionRequest::firstOrFail();
 
         $this->actingAs($admin)->get('/admin/demandes-suppression')->assertOk()->assertSee('membre@example.com');

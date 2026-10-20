@@ -66,13 +66,14 @@ Réponse 200 `{ success: true, data: null, message: "Compte et données supprim�
 La page explique ce qui est supprimé et les délais (immédiat en étant connecté ; 30 jours pour une demande ; 90 jours pour les sauvegardes ; 12 mois pour les journaux techniques).
 
 - **Connecté** : bouton « Supprimer définitivement mon compte », fenêtre de confirmation (`openConfirmModal`), mot de passe demandé pour un compte qui en a un (`DELETE /suppression-compte`, route `account-deletion.destroy`). La personne est déconnectée puis revient sur la page avec un message.
-- **Sans connexion** : formulaire e-mail ou téléphone + message facultatif (`POST /suppression-compte`, route `account-deletion.request`). Protection : 5 demandes par heure et par adresse IP (`throttle:5,60`) et champ piège invisible `website` (rempli : réponse identique, rien d'enregistré). La réponse est la même qu'un compte corresponde ou non.
+- **Supprimer certaines données sans supprimer votre compte** (section ajoutée le 2026-10-20) : dans l'application, chaque témoignage, sujet de prière ou parole prophétique enregistrée se supprime depuis son menu « ⋮ » ; les notifications se désactivent dans Paramètres ; pour toute autre donnée (photo de profil, historique de prière, données de vérification), écrire à l'adresse de contact (`privacy.deletion.contact_email`, à compléter comme dans la politique) ou utiliser le formulaire en choisissant « Supprimer certaines données ». Le lien de la section ouvre le formulaire avec ce choix coché (`?type=partial`).
+- **Formulaire de demande** (`POST /suppression-compte`, route `account-deletion.request`), affiché à tous : choix `type` = `account` (« Supprimer mon compte », coché par défaut sans connexion) ou `partial` (« Supprimer certaines données », coché par défaut en étant connecté), e-mail ou téléphone, champ libre « Précisions » (`message`, **obligatoire** pour `partial`). Protection : 5 demandes par heure et par adresse IP (`throttle:5,60`) et champ piège invisible `website` (rempli : réponse identique, rien d'enregistré). La réponse est la même qu'un compte corresponde ou non.
 
-La demande est enregistrée dans `account_deletion_requests` (contact normalisé : e-mail en minuscules, téléphone au format `+229…` ; compte reconnu dans `user_id`) et chaque super-administrateur actif (à défaut, chaque administrateur) reçoit une notification `account_deletion_requested` (push, catégorie `push_moderation`).
+La demande est enregistrée dans `account_deletion_requests` (`type` account | partial, contact normalisé : e-mail en minuscules, téléphone au format `+229…` ; compte reconnu dans `user_id`) et chaque super-administrateur actif (à défaut, chaque administrateur) reçoit une notification `account_deletion_requested` (push, catégorie `push_moderation` ; texte « Demande de suppression partielle… » pour `partial`, `payload.request_type`).
 
 ### Administration : *Administration › Demandes de suppression*
 
-`/admin/demandes-suppression` (administrateurs) : demandes en attente d'abord, contact, compte reconnu (lien vers sa fiche), message. **Super-administrateurs** seulement : « Supprimer le compte » (même suppression complète, demande passée « Traitée ») ou « Classer sans suite ».
+`/admin/demandes-suppression` (administrateurs) : demandes en attente d'abord, contact, compte reconnu (lien vers sa fiche), message. Pastille « Compte entier » ou « Suppression partielle ». **Super-administrateurs** seulement : pour une demande de compte, « Supprimer le compte » (même suppression complète, demande passée « Traitée ») ; pour une suppression partielle, les données sont retirées à la main puis « Marquer comme traitée » (`POST …/{id}/traitee` ; « Supprimer le compte » y répond 404) ; dans les deux cas, « Classer sans suite ».
 
 ## Consentement à l'inscription
 
@@ -130,8 +131,8 @@ curl -s -A "Mozilla/5.0" https://temoignage.as-krea.com/confidentialite | grep -
 - `app/Models/AccountDeletionRequest.php`, `NotificationType::AccountDeletionRequested`
 - `resources/views/legal/privacy.blade.php`, `legal/account-deletion.blade.php`, `admin/deletion-requests.blade.php`
 - `lang/{fr,en}/privacy.php`
-- migration `2026_10_20_200001_add_privacy_consent_and_account_deletion_requests`
+- migrations `2026_10_20_200001_add_privacy_consent_and_account_deletion_requests`, `2026_10_20_300001_add_type_to_account_deletion_requests`
 
 ## Tests
 
-`tests/Feature/PrivacyAndAccountDeletionTest.php` : pages publiques FR/EN et liens, API, suppression complète (données, fichiers, vidéo Bunny, jetons), confirmation, super-administrateur, suppression depuis la page, demande sans connexion (notification, piège, limite), traitement par un super-administrateur, consentement à l'inscription.
+`tests/Feature/PrivacyAndAccountDeletionTest.php` : pages publiques FR/EN et liens, API, suppression complète (données, fichiers, vidéo Bunny, jetons), confirmation, super-administrateur, suppression depuis la page, demande sans connexion (notification, piège, limite), suppression partielle (section, précisions obligatoires, « Marquer comme traitée »), traitement par un super-administrateur, consentement à l'inscription.

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountDeletionRequest;
 use App\Services\AccountDeletion;
 use App\Services\AccountDeletionRequests;
 use App\Services\PrivacyPolicy;
@@ -10,6 +11,7 @@ use App\Support\Locales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -59,20 +61,22 @@ class LegalController extends Controller
         }
 
         $data = $request->validate([
-            'contact' => ['required', 'string', 'max:190', function ($attribute, $value, $fail) {
+            'contact' => ['required', 'string', 'max:190', function ($_, $value, $fail) {
                 $isEmail = filter_var(trim($value), FILTER_VALIDATE_EMAIL) !== false;
                 $isPhone = preg_match('/^\+?[\d\s().-]{8,20}$/', trim($value)) === 1;
                 if (!$isEmail && !$isPhone) {
                     $fail(__('privacy.deletion.contact_invalid'));
                 }
             }],
-            'message' => ['nullable', 'string', 'max:1000'],
-        ]);
+            'type'    => ['required', Rule::in(AccountDeletionRequest::TYPES)],
+            // Suppression partielle : préciser les données à supprimer.
+            'message' => ['nullable', 'required_if:type,' . AccountDeletionRequest::TYPE_PARTIAL, 'string', 'max:1000'],
+        ], ['message.required_if' => __('privacy.deletion.message_required')]);
 
-        $requests->submit($data['contact'], $data['message'] ?? null, $request->ip());
+        $requests->submit($data['contact'], $data['message'] ?? null, $request->ip(), $data['type']);
 
         // Même message, qu'un compte corresponde ou non : la page ne révèle pas quels comptes existent.
-        return back()->with('success', __('privacy.deletion.request_sent'));
+        return back()->with('success', __($data['type'] === AccountDeletionRequest::TYPE_PARTIAL ? 'privacy.deletion.partial_sent' : 'privacy.deletion.request_sent'));
     }
 
     /** Personne connectée : suppression immédiate et définitive, après confirmation. */

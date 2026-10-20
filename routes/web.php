@@ -464,6 +464,7 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin
     // Demandes de suppression de compte faites sans connexion ─ docs/fonctionnalites/confidentialite-et-suppression.md
     Route::get('/demandes-suppression',                 [\App\Http\Controllers\Web\AccountDeletionRequestController::class, 'index'])->name('deletion-requests.index');
     Route::delete('/demandes-suppression/{id}/compte',  [\App\Http\Controllers\Web\AccountDeletionRequestController::class, 'deleteAccount'])->whereUuid('id')->name('deletion-requests.delete-account');
+    Route::post('/demandes-suppression/{id}/traitee',   [\App\Http\Controllers\Web\AccountDeletionRequestController::class, 'markDone'])->whereUuid('id')->name('deletion-requests.done');
     Route::post('/demandes-suppression/{id}/classer',   [\App\Http\Controllers\Web\AccountDeletionRequestController::class, 'reject'])->whereUuid('id')->name('deletion-requests.reject');
     Route::get('/settings',                  [AdminController::class, 'settings'])->name('settings');
     Route::put('/settings',                  [AdminController::class, 'updateSettings'])->name('settings.update');

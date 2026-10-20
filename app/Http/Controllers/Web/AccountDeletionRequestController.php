@@ -31,7 +31,8 @@ class AccountDeletionRequestController extends Controller
         abort_unless($request->user()->isSuperAdmin(), 403, __('privacy.admin.super_admin_only'));
         $deletionRequest = AccountDeletionRequest::with('user')->findOrFail($id);
         $user = $deletionRequest->user;
-        abort_unless($deletionRequest->status === AccountDeletionRequest::STATUS_PENDING && $user, 404);
+        // Suppression partielle : les données sont retirées à la main, puis la demande est marquée traitée.
+        abort_unless($deletionRequest->status === AccountDeletionRequest::STATUS_PENDING && $user && !$deletionRequest->isPartial(), 404);
 
         if (!AccountDeletion::allowed($user)) {
             return back()->with('error', __('privacy.deletion.super_admin_forbidden'));
@@ -42,6 +43,16 @@ class AccountDeletionRequestController extends Controller
         $deletionRequest->forceFill(['status' => AccountDeletionRequest::STATUS_DONE, 'handled_by' => $request->user()->id, 'handled_at' => now()])->save();
 
         return back()->with('success', __('privacy.admin.deleted'));
+    }
+
+    /** Suppression partielle faite : demande marquée « Traitée ». */
+    public function markDone(Request $request, string $id): RedirectResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403, __('privacy.admin.super_admin_only'));
+        $deletionRequest = AccountDeletionRequest::pending()->findOrFail($id);
+        $deletionRequest->forceFill(['status' => AccountDeletionRequest::STATUS_DONE, 'handled_by' => $request->user()->id, 'handled_at' => now()])->save();
+
+        return back()->with('success', __('privacy.admin.marked_done'));
     }
 
     public function reject(Request $request, string $id): RedirectResponse

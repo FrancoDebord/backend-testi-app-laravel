@@ -52,20 +52,40 @@ return [
         'done'           => 'Votre compte et vos données ont été supprimés.',
         'super_admin_forbidden' => 'Un compte super-administrateur ne peut pas être supprimé de cette façon. Retirez d’abord ce statut (php artisan users:super-admin).',
 
-        'request_title'  => 'Demander la suppression sans vous connecter',
-        'request_intro'  => 'Indiquez l’adresse e-mail ou le numéro de téléphone de votre compte. Nous vérifierons la demande avant de supprimer le compte.',
+        // Supprimer certaines données sans supprimer le compte
+        'partial_title'  => 'Supprimer certaines données sans supprimer votre compte',
+        'partial_items'  => [
+            'Dans l’application, chaque témoignage, sujet de prière ou parole prophétique enregistrée peut être supprimé depuis son menu « ⋮ ».',
+            'Les notifications se désactivent dans Paramètres.',
+        ],
+        'partial_other'  => 'Pour toute autre donnée (photo de profil, historique de prière, données de vérification), écrivez à :email ou utilisez le formulaire de cette page en choisissant « Supprimer certaines données » (suppression partielle).',
+        // Adresse de contact : à compléter, comme dans resources/legal/privacy.fr.md
+        'contact_email'  => '[adresse e-mail de contact]',
+
+        'request_title'  => 'Faire une demande',
+        'request_intro'  => 'Indiquez l’adresse e-mail ou le numéro de téléphone de votre compte. Nous vérifierons la demande avant de la traiter.',
+        'type_legend'    => 'Votre demande',
+        'type_account'   => 'Supprimer mon compte',
+        'type_account_hint' => 'Le compte et toutes ses données.',
+        'type_partial'   => 'Supprimer certaines données',
+        'type_partial_hint' => 'Suppression partielle : le compte est conservé.',
         'contact'        => 'E-mail ou téléphone du compte',
         'contact_placeholder' => 'vous@exemple.com ou +229 01 90 00 00 00',
         'contact_invalid' => 'Saisissez une adresse e-mail ou un numéro de téléphone valide.',
-        'message'        => 'Message (facultatif)',
+        'message'        => 'Précisions',
+        'message_hint'   => 'Obligatoire pour une suppression partielle : indiquez les données à supprimer.',
+        'message_required' => 'Précisez les données à supprimer.',
         'request_submit' => 'Envoyer la demande',
         'request_sent'   => 'Votre demande a été enregistrée. Elle sera traitée sous 30 jours au plus ; nous pourrons vous contacter pour vérifier qu’il s’agit bien de votre compte.',
+        'partial_sent'   => 'Votre demande de suppression partielle a été enregistrée. Elle sera traitée sous 30 jours au plus ; nous pourrons vous contacter pour vérifier qu’il s’agit bien de votre compte.',
         'or_login'       => 'Vous avez encore accès à votre compte ?',
         'login'          => 'Connectez-vous',
         'login_suffix'   => 'pour le supprimer immédiatement.',
 
         'notify_admin_known'   => 'Demande de suppression du compte lié à :contact.',
         'notify_admin_unknown' => 'Demande de suppression pour :contact (aucun compte reconnu).',
+        'notify_admin_partial_known'   => 'Demande de suppression partielle de données du compte lié à :contact.',
+        'notify_admin_partial_unknown' => 'Demande de suppression partielle de données pour :contact (aucun compte reconnu).',
 
         'api' => [
             'deleted' => 'Compte et données supprimés.',
@@ -84,6 +104,9 @@ return [
         'statuses'    => ['pending' => 'En attente', 'done' => 'Traitée', 'rejected' => 'Refusée'],
         'delete'      => 'Supprimer le compte',
         'reject'      => 'Classer sans suite',
+        'mark_done'   => 'Marquer comme traitée',
+        'marked_done' => 'Demande marquée comme traitée.',
+        'types'       => ['account' => 'Compte entier', 'partial' => 'Suppression partielle'],
         'confirm_delete' => 'Le compte « :name » et toutes ses données seront supprimés définitivement.',
         'deleted'     => 'Compte supprimé.',
         'rejected'    => 'Demande classée sans suite.',

@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-20 — Suppression partielle de données sur /suppression-compte
+
+- **Utilisateurs** : nouvelle section « Supprimer certaines données sans supprimer votre compte » (menu « ⋮ » de chaque témoignage, sujet de prière ou parole prophétique dans l'application ; notifications dans Paramètres ; autres données — photo de profil, historique de prière, données de vérification — par e-mail ou par le formulaire). Le formulaire, désormais affiché aussi en étant connecté, propose « Supprimer mon compte » ou « Supprimer certaines données », avec un champ « Précisions » obligatoire pour la suppression partielle. *Administration › Demandes de suppression* : pastille du type ; « Marquer comme traitée » pour une suppression partielle (jamais de suppression du compte depuis ce type de demande).
+- **Développeurs** : `account_deletion_requests.type`, `AccountDeletionRequest::TYPE_*` / `isPartial()`, `AccountDeletionRequests::submit(..., $type)`, route `admin.deletion-requests.done`, clés `privacy.deletion.partial_*`, `type_*`, `contact_email`, `notify_admin_partial_*`. Tests : `PrivacyAndAccountDeletionTest` (13, dont `test_partial_deletion_section_and_request`).
+- **Déploiement** : migration `2026_10_20_300001_add_type_to_account_deletion_requests`, `php artisan view:cache`, recompilation des assets et copie de `public/build/` ; compléter `privacy.deletion.contact_email` ([confidentialite-et-suppression.md](fonctionnalites/confidentialite-et-suppression.md)).
+
+---
+
 ## 2026-10-20 — Politique de confidentialité et suppression de compte publiques (Google Play)
 
 - **Utilisateurs** :

@@ -14,13 +14,18 @@ class AccountDeletionRequest extends Model
 {
     use HasUuids;
 
+    // Suppression du compte entier, ou de certaines données seulement (précisées dans le message).
+    public const TYPE_ACCOUNT = 'account';
+    public const TYPE_PARTIAL = 'partial';
+    public const TYPES = [self::TYPE_ACCOUNT, self::TYPE_PARTIAL];
+
     public const STATUS_PENDING  = 'pending';
     public const STATUS_DONE     = 'done';
     public const STATUS_REJECTED = 'rejected';
 
-    protected $fillable = ['contact', 'contact_type', 'user_id', 'message', 'ip_address', 'status', 'handled_by', 'handled_at'];
+    protected $fillable = ['type', 'contact', 'contact_type', 'user_id', 'message', 'ip_address', 'status', 'handled_by', 'handled_at'];
 
-    protected $attributes = ['status' => self::STATUS_PENDING];
+    protected $attributes = ['type' => self::TYPE_ACCOUNT, 'status' => self::STATUS_PENDING];
 
     protected function casts(): array
     {
@@ -35,6 +40,11 @@ class AccountDeletionRequest extends Model
     public function handler(): BelongsTo
     {
         return $this->belongsTo(User::class, 'handled_by');
+    }
+
+    public function isPartial(): bool
+    {
+        return $this->type === self::TYPE_PARTIAL;
     }
 
     public function scopePending($query)

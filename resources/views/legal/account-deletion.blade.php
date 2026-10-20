@@ -40,6 +40,20 @@
         </div>
     </section>
 
+    {{-- Supprimer certaines données sans supprimer le compte --}}
+    <section class="card p-5 sm:p-6" aria-labelledby="partial-title">
+        <h2 id="partial-title" class="card-title">{{ __('privacy.deletion.partial_title') }}</h2>
+        <ul class="mt-3 list-disc space-y-1.5 pl-5 text-sm text-slate-700">
+            @foreach(__('privacy.deletion.partial_items') as $line)
+            <li>{{ $line }}</li>
+            @endforeach
+            <li>{{ __('privacy.deletion.partial_other', ['email' => __('privacy.deletion.contact_email')]) }}</li>
+        </ul>
+        <a href="{{ request()->fullUrlWithQuery(['type' => 'partial']) }}#request-title" class="btn-ghost btn-sm mt-4">
+            <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>{{ __('privacy.deletion.type_partial') }}
+        </a>
+    </section>
+
     @if($user)
     {{-- Connecté : suppression immédiate après la fenêtre de confirmation. --}}
     <section class="card p-5 sm:p-6" aria-labelledby="connected-title">
@@ -72,8 +86,11 @@
         </form>
         @endif
     </section>
-    @else
-    {{-- Sans connexion : demande enregistrée, traitée par un super-administrateur. --}}
+    @endif
+
+    {{-- Demande (compte entier ou certaines données), traitée par un super-administrateur. Connecté : suppression
+         partielle proposée d'abord, le compte entier se supprime tout de suite au-dessus. --}}
+    @php($requestType = old('type', request()->query('type') === 'partial' || $user ? 'partial' : 'account'))
     <section class="card p-5 sm:p-6" aria-labelledby="request-title">
         <h2 id="request-title" class="card-title">{{ __('privacy.deletion.request_title') }}</h2>
         <p class="text-secondary mt-1">{{ __('privacy.deletion.request_intro') }}</p>
@@ -86,26 +103,43 @@
                 <label for="website">Website</label>
                 <input id="website" type="text" name="website" tabindex="-1" autocomplete="off">
             </div>
+            <fieldset>
+                <legend class="form-label">{{ __('privacy.deletion.type_legend') }}</legend>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    @foreach(['account' => 'fa-user-xmark', 'partial' => 'fa-eraser'] as $type => $icon)
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50">
+                        <input type="radio" name="type" value="{{ $type }}" class="mt-1" @checked($requestType === $type)>
+                        <span>
+                            <span class="block font-medium text-slate-900"><i class="fa-solid {{ $icon }} mr-1 text-slate-400" aria-hidden="true"></i>{{ __('privacy.deletion.type_' . $type) }}</span>
+                            <span class="block text-xs text-slate-500">{{ __('privacy.deletion.type_' . $type . '_hint') }}</span>
+                        </span>
+                    </label>
+                    @endforeach
+                </div>
+                @error('type')<p class="form-error">{{ $message }}</p>@enderror
+            </fieldset>
             <div>
                 <label for="contact" class="form-label">{{ __('privacy.deletion.contact') }}</label>
-                <input id="contact" type="text" name="contact" value="{{ old('contact') }}" required maxlength="190" autocomplete="email"
+                <input id="contact" type="text" name="contact" value="{{ old('contact', $user?->email ?? $user?->phone) }}" required maxlength="190" autocomplete="email"
                        class="form-input" placeholder="{{ __('privacy.deletion.contact_placeholder') }}">
                 @error('contact')<p class="form-error">{{ $message }}</p>@enderror
             </div>
             <div>
                 <label for="message" class="form-label">{{ __('privacy.deletion.message') }}</label>
-                <textarea id="message" name="message" rows="3" maxlength="1000" class="form-input">{{ old('message') }}</textarea>
+                <textarea id="message" name="message" rows="3" maxlength="1000" class="form-input" aria-describedby="message-hint">{{ old('message') }}</textarea>
+                <p id="message-hint" class="form-hint">{{ __('privacy.deletion.message_hint') }}</p>
                 @error('message')<p class="form-error">{{ $message }}</p>@enderror
             </div>
             <button type="submit" class="btn-primary w-full sm:w-auto">{{ __('privacy.deletion.request_submit') }}</button>
         </form>
 
+        @guest
         <p class="mt-6 border-t border-slate-200 pt-4 text-sm text-slate-600">
             {{ __('privacy.deletion.or_login') }}
             <a href="{{ route('login') }}" class="font-semibold text-primary-600 hover:text-primary-700 hover:underline">{{ __('privacy.deletion.login') }}</a>
             {{ __('privacy.deletion.login_suffix') }}
         </p>
+        @endguest
     </section>
-    @endif
 </div>
 @endsection

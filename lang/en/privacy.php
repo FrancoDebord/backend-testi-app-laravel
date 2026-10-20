@@ -52,20 +52,40 @@ return [
         'done'           => 'Your account and your data have been deleted.',
         'super_admin_forbidden' => 'A super administrator account cannot be deleted this way. Remove that status first (php artisan users:super-admin).',
 
-        'request_title'  => 'Request deletion without signing in',
-        'request_intro'  => 'Enter the e-mail address or phone number of your account. We will check the request before deleting the account.',
+        // Delete some data without deleting the account
+        'partial_title'  => 'Delete some data without deleting your account',
+        'partial_items'  => [
+            'In the app, each testimony, prayer request or saved prophetic word can be deleted from its “⋮” menu.',
+            'Notifications can be turned off in Settings.',
+        ],
+        'partial_other'  => 'For any other data (profile photo, prayer history, verification data), write to :email or use the form on this page and choose “Delete some data” (partial deletion).',
+        // Contact address: to be filled in, as in resources/legal/privacy.en.md
+        'contact_email'  => '[contact e-mail address]',
+
+        'request_title'  => 'Make a request',
+        'request_intro'  => 'Enter the e-mail address or phone number of your account. We will check the request before processing it.',
+        'type_legend'    => 'Your request',
+        'type_account'   => 'Delete my account',
+        'type_account_hint' => 'The account and all its data.',
+        'type_partial'   => 'Delete some data',
+        'type_partial_hint' => 'Partial deletion: the account is kept.',
         'contact'        => 'Account e-mail or phone',
         'contact_placeholder' => 'you@example.com or +229 01 90 00 00 00',
         'contact_invalid' => 'Enter a valid e-mail address or phone number.',
-        'message'        => 'Message (optional)',
+        'message'        => 'Details',
+        'message_hint'   => 'Required for a partial deletion: tell us which data to delete.',
+        'message_required' => 'Tell us which data to delete.',
         'request_submit' => 'Send the request',
         'request_sent'   => 'Your request has been recorded. It will be processed within 30 days at most; we may contact you to check that the account is yours.',
+        'partial_sent'   => 'Your partial deletion request has been recorded. It will be processed within 30 days at most; we may contact you to check that the account is yours.',
         'or_login'       => 'Can you still access your account?',
         'login'          => 'Sign in',
         'login_suffix'   => 'to delete it immediately.',
 
         'notify_admin_known'   => 'Deletion request for the account linked to :contact.',
         'notify_admin_unknown' => 'Deletion request for :contact (no matching account).',
+        'notify_admin_partial_known'   => 'Partial data deletion request for the account linked to :contact.',
+        'notify_admin_partial_unknown' => 'Partial data deletion request for :contact (no matching account).',
 
         'api' => [
             'deleted' => 'Account and data deleted.',
@@ -84,6 +104,9 @@ return [
         'statuses'    => ['pending' => 'Pending', 'done' => 'Processed', 'rejected' => 'Rejected'],
         'delete'      => 'Delete the account',
         'reject'      => 'Close without action',
+        'mark_done'   => 'Mark as processed',
+        'marked_done' => 'Request marked as processed.',
+        'types'       => ['account' => 'Whole account', 'partial' => 'Partial deletion'],
         'confirm_delete' => 'The account “:name” and all its data will be permanently deleted.',
         'deleted'     => 'Account deleted.',
         'rejected'    => 'Request closed without action.',

@@ -289,12 +289,12 @@ suivre le lien symbolique créé par `storage:link`.
 
 [confidentialite-et-suppression.md](fonctionnalites/confidentialite-et-suppression.md) :
 
-- migration `2026_10_20_200001_add_privacy_consent_and_account_deletion_requests` (`users.accepted_privacy_at`, table `account_deletion_requests`) : `php artisan migrate --force` ;
+- migrations `2026_10_20_200001_add_privacy_consent_and_account_deletion_requests` (`users.accepted_privacy_at`, table `account_deletion_requests`) et `2026_10_20_300001_add_type_to_account_deletion_requests` (`type` account | partial) : `php artisan migrate --force` ;
 - déployer le dossier `resources/legal/` (texte de la politique) et `lang/{fr,en}/privacy.php` ;
 - **recompilation des assets** (nouvelles classes dans les vues), puis copie de `public/build/` sur le serveur ;
 - `php artisan optimize:clear`, `php artisan view:cache`, et `php artisan route:cache` si les routes sont mises en cache ;
 - **panneau LWS** : exclure de la « Protection DDoS » (Anubis) les chemins `/confidentialite`, `/privacy`, `/suppression-compte`, `/delete-account` et `/api/`, puis vérifier `curl -A "Mozilla/5.0" https://temoignage.as-krea.com/confidentialite` (200 attendu) ;
-- compléter les éléments entre crochets des deux fichiers de la politique avant de la déclarer dans Google Play Console (URL : `https://temoignage.as-krea.com/privacy` ou `/confidentialite` ; suppression : `/delete-account`).
+- compléter les éléments entre crochets des deux fichiers de la politique et l'adresse `privacy.deletion.contact_email` de `lang/{fr,en}/privacy.php` avant de la déclarer dans Google Play Console (URL : `https://temoignage.as-krea.com/privacy` ou `/confidentialite` ; suppression : `/delete-account`).
 
 Aucune variable d'environnement. **Application** : `POST /auth/register` exige désormais `accepted_privacy: true` (422 sinon).
 

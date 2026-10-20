@@ -20,6 +20,7 @@
     @foreach($requests as $item)
     <li class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
         <div class="min-w-0 flex-1">
+            <p class="mb-1"><span class="{{ $item->isPartial() ? 'badge-blue' : 'badge-orange' }}">{{ __('privacy.admin.types.' . $item->type) }}</span></p>
             <p class="truncate text-sm font-semibold text-slate-900">
                 <i class="fa-solid {{ $item->contact_type === 'email' ? 'fa-envelope' : 'fa-phone' }} mr-1 text-slate-400" aria-hidden="true"></i>{{ $item->contact }}
             </p>
@@ -39,7 +40,12 @@
         <div class="flex shrink-0 flex-wrap items-center gap-2">
             <span class="{{ match ($item->status) { 'done' => 'badge-validated', 'rejected' => 'badge-rejected', default => 'badge-pending' } }}">{{ __('privacy.admin.statuses.' . $item->status) }}</span>
             @if($isSuperAdmin && $item->status === 'pending')
-                @if($item->user)
+                @if($item->isPartial())
+                <form method="POST" action="{{ route('admin.deletion-requests.done', $item->id) }}">
+                    @csrf
+                    <button type="submit" class="btn-secondary btn-sm"><i class="fa-solid fa-check" aria-hidden="true"></i>{{ __('privacy.admin.mark_done') }}</button>
+                </form>
+                @elseif($item->user)
                 <form id="delete-account-{{ $item->id }}" method="POST" action="{{ route('admin.deletion-requests.delete-account', $item->id) }}">
                     @csrf @method('DELETE')
                     <button type="button" class="btn-secondary btn-sm"
