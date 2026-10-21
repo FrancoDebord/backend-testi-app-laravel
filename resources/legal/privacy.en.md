@@ -8,7 +8,7 @@ My Testimony is a mobile application (Android: `com.askrea.temoignage`, iOS) and
 
 It is published by **ARISE AND SHINE KREA** (“we”), [postal address], Benin.
 
-Contact for any question about your data: **[contact e-mail address]**
+Contact for any question about your data: **arise.shinekrea@gmail.com**
 
 ## 2. In short
 
@@ -30,7 +30,7 @@ Depending on the sign-in method you choose:
 
 - **Google**: your name, your e-mail address, your profile photo and a Google account identifier. We never receive your Google password.
 - **E-mail address**: your name, your e-mail address and your password, stored in an encrypted (hashed) form that we cannot read.
-- **Phone number**: your number, verified by a code sent by SMS [via Firebase Authentication: to be confirmed].
+- **Phone number**: The same way as the authentication with mail address.
 
 We also record the account type (person or organization), the application language and, if you add one, your profile photo.
 
@@ -58,7 +58,7 @@ If you allow them, we store a notification identifier (token) specific to your d
 
 Device model, system and application version, IP address, server error and connection logs. They are used for security and for the proper operation of the service.
 
-[To be confirmed. If the application uses location: “With your permission, the application uses your location for [specific purpose]. You can withdraw this permission at any time in your phone settings.” Otherwise, delete this paragraph and remove the location permission from the application.]
+If the application uses location: “With your permission, the application uses your location for the personalization of the testimonies to show on your feed page. You can withdraw this permission at any time in your phone settings.” Otherwise, delete this paragraph and remove the location permission from the application.
 
 **We do not collect** your contacts, your messages or your banking data.
 
@@ -126,14 +126,14 @@ At any time, you can:
 - object to or restrict certain processing;
 - withdraw your consent, for example by turning off notifications or removing a testimony.
 
-To exercise these rights, write to **[contact e-mail address]** from the address linked to your account, or stating your phone number. We reply within **30 days**.
+To exercise these rights, write to **arise.shinekrea@gmail.com** from the address linked to your account, or stating your phone number. We reply within **30 days**.
 
 If you believe your rights are not being respected, you can contact Benin's **Personal Data Protection Authority (Autorité de Protection des Données à caractère Personnel, APDP)**, or the data protection authority of your country.
 
 ## 11. Deleting your account
 
 - **In the application**: Settings → Account → **Delete my account**.
-- **Without the application**: on the page https://temoignage.as-krea.com/delete-account, or by e-mail to [contact e-mail address].
+- **Without the application**: on the page https://temoignage.as-krea.com/delete-account, or by e-mail to arise.shinekrea@gmail.com.
 
 Deletion erases your profile, your testimonies, your prayer requests, your saved prophetic words, your preferences and your notification tokens, within the periods stated in point 8.
 
@@ -148,4 +148,4 @@ We may update this policy. The date of the last update appears at the top of the
 ## 14. Contact
 
 **ARISE AND SHINE KREA**
-[contact e-mail address] · [postal address] · https://temoignage.as-krea.com
+arise.shinekrea@gmail.com · +229 01 96 04 53 92 · https://temoignage.as-krea.com

@@ -8,7 +8,7 @@ My Testimony est une application mobile (Android : `com.askrea.temoignage`, iOS)
 
 Elle est éditée par **ARISE AND SHINE KREA** (« nous »), [adresse postale], Bénin.
 
-Contact pour toute question sur vos données : **[adresse e-mail de contact]**
+Contact pour toute question sur vos données : **arise.shinekrea@gmail.com**
 
 ## 2. En bref
 
@@ -30,7 +30,7 @@ Selon le mode de connexion que vous choisissez :
 
 - **Google** : votre nom, votre adresse e-mail, votre photo de profil et un identifiant de compte Google. Nous ne recevons jamais votre mot de passe Google.
 - **Adresse e-mail** : votre nom, votre adresse e-mail et votre mot de passe, enregistré sous forme chiffrée (hachée) que nous ne pouvons pas lire.
-- **Numéro de téléphone** : votre numéro, vérifié par un code envoyé par SMS [via Firebase Authentication : à vérifier].
+- **Numéro de téléphone** : Exactement comme l'authentification par adresse email, vous mettez votre numéro de téléphone et le mot de passe.
 
 Nous enregistrons aussi le type de compte (personne ou organisation), la langue de l'application et, si vous l'ajoutez, votre photo de profil.
 
@@ -58,7 +58,7 @@ Si vous les autorisez, nous enregistrons un identifiant de notification (jeton) 
 
 Modèle de l'appareil, version du système et de l'application, adresse IP, journaux d'erreurs et de connexion du serveur. Ils servent à la sécurité et au bon fonctionnement du service.
 
-[À vérifier. Si l'application utilise la localisation : « Avec votre autorisation, l'application utilise votre position pour [finalité précise]. Vous pouvez retirer cette autorisation à tout moment dans les réglages de votre téléphone. » Sinon, supprimez ce paragraphe et retirez la permission de localisation de l'application.]
+Si l'application utilise la localisation : « Avec votre autorisation, l'application utilise votre position pour personnaliser les témoignages qui sont plus proches de vous. Vous pouvez retirer cette autorisation à tout moment dans les réglages de votre téléphone. » Sinon, supprimez ce paragraphe et retirez la permission de localisation de l'application.]
 
 **Nous ne collectons pas** vos contacts, vos messages ni vos données bancaires.
 
@@ -133,7 +133,7 @@ Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir l'**Au
 ## 11. Supprimer votre compte
 
 - **Dans l'application** : Paramètres → Compte → **Supprimer mon compte**.
-- **Sans l'application** : sur la page https://temoignage.as-krea.com/suppression-compte, ou par e-mail à [adresse e-mail de contact].
+- **Sans l'application** : sur la page https://temoignage.as-krea.com/suppression-compte, ou par e-mail à arise.shinekrea@gmail.com.
 
 La suppression efface votre profil, vos témoignages, vos sujets de prière, vos paroles prophétiques enregistrées, vos préférences et vos jetons de notification, dans les délais indiqués au point 8.
 
@@ -148,4 +148,4 @@ Nous pouvons mettre à jour cette politique. La date de dernière mise à jour f
 ## 14. Contact
 
 **ARISE AND SHINE KREA**
-[adresse e-mail de contact] · [adresse postale] · https://temoignage.as-krea.com
+arise.shinekrea@gmail.com · +229 01 96 04 53 92 · https://temoignage.as-krea.com
