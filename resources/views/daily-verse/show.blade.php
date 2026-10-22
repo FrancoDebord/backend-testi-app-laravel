@@ -14,7 +14,8 @@
     $text        = $current['text'] ?? $verse->verse_text;
     $shown       = '« ' . trim($text) . ' »';
     $versionName = $current ? $current['name'] : 'Texte du jour';
-    $reference   = $parsed['label'] ?? $verse->reference;
+    // Référence dans la langue de la version affichée (« John 3:16 » en KJV), sinon en français.
+    $reference   = $current['reference'] ?? $parsed['label'] ?? $verse->reference;
     $liked       = in_array('like', $myReactions, true);
     $prayed      = in_array('pray', $myReactions, true);
     $pageUrl     = route('daily-verse.show', $date ? ['date' => $date] : []);
@@ -165,7 +166,7 @@
             </li>
             @foreach($versions as $v)
             <li class="rounded-lg bg-slate-50 p-4">
-                <p class="text-xs font-semibold text-slate-500">{{ $v['code'] }} · {{ $v['name'] }}</p>
+                <p class="text-xs font-semibold text-slate-500">{{ $v['code'] }} · {{ $v['name'] }} · {{ $v['reference'] }}</p>
                 @if($v['available'])
                 <p class="mt-1 text-[15px] leading-relaxed break-words text-slate-900">
                     @foreach($v['verses'] as $line)

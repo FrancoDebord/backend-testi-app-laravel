@@ -142,12 +142,15 @@ class BibleReference
         return self::NAMES_FR[$book] ?? "Livre {$book}";
     }
 
-    /** « Jérémie 29:11 », « Jean 3:16-18 ». */
-    public static function label(array $ref): string
+    /**
+     * « Jérémie 29:11 », « Jean 3:16-18 ». $bookName : nom du livre dans la langue d'une traduction
+     * (bible_books.name, « John ») ; par défaut le nom français.
+     */
+    public static function label(array $ref, ?string $bookName = null): string
     {
         $verses = $ref['verseEnd'] > $ref['verseStart'] ? "{$ref['verseStart']}-{$ref['verseEnd']}" : (string) $ref['verseStart'];
 
-        return self::bookName($ref['book']) . " {$ref['chapter']}:{$verses}";
+        return ($bookName ?: self::bookName($ref['book'])) . " {$ref['chapter']}:{$verses}";
     }
 
     /** Même livre, même chapitre et versets qui se recoupent. */

@@ -26,7 +26,8 @@ Lecture publique ; les actions demandent un compte (invité : connexion proposé
 - Pour chaque traduction, les versets de la plage présents dans `bible_verses` ; **`available: false`** si aucun (version non sélectionnable, barrée dans l'application, grisée sur le site). Une plage partiellement présente montre les versets présents.
 - Le **texte du jour** reste toujours disponible (version par défaut). Les accolades d'édition de certaines sources (KJV : « {is} ») sont retirées.
 - **Version préférée** : application → stockage sécurisé de l'appareil (`daily_verse_translation`) ; site → session (`?version=KJV`, `?version=ORIGINAL` pour revenir au texte du jour). Si la version préférée n'a pas ce passage, le texte du jour s'affiche avec un message.
-- **Comparer** : toutes les versions l'une sous l'autre (site `?comparer=1`).
+- **Comparer** : toutes les versions l'une sous l'autre (site `?comparer=1`), chacune avec sa référence.
+- **Nom du livre dans la langue de la version** (2026-10-22) : chaque version porte `bookName` et `reference`, construits avec le nom du livre de **sa** traduction (`bible_books.name` : « Jean 3:16 » en LSG, « John 3:16 » en KJV ; nom français si la traduction n'a pas ce livre). Le site affiche la référence de la version choisie (premier écran, mode lecture, partage, « Témoigner »). `parsed.bookName` / `parsed.label` restent en français (référence du texte du jour). API : `GET /daily-verse/{id}/versions` et `GET /daily-verse?translation=` (`translation.reference`). Application : même règle (`VerseVersion.reference`, et hors connexion le nom du livre de la Bible téléchargée) ; une Bible téléchargée garde les noms reçus au téléchargement. Pour que les noms soient justes, chaque traduction doit être importée avec les noms de sa langue (voir [versions de la Bible](versions-de-la-bible.md)) ; le lecteur `/bible` et `GET /bible/…` les utilisent déjà.
 - **Hors connexion (application)** : le passage est relu dans les **Bibles téléchargées** sur l'appareil (même analyse de la référence, `lib/features/daily_verse/models/verse_reference.dart`). Sans Bible téléchargée : texte du jour + invitation à en télécharger une. Le verset lui-même vient du cache du jour (`dailyVerseProvider`) ; s'il n'y a ni réseau ni cache, le verset de secours (Jérémie 29:11, `id = 0`) s'affiche et la participation est indiquée « disponible une fois en ligne ».
 
 ## Participation
@@ -74,9 +75,13 @@ Versions (`GET /daily-verse/{id}/versions`) :
   "original": { "code": null, "name": "Texte du jour", "text": "Car Dieu a tant aimé le monde…" },
   "defaultTranslation": "LSG",
   "versions": [
-    { "code": "LSG", "name": "Louis Segond 1910", "language": "fr", "langName": "Français", "available": true,
+    { "code": "LSG", "name": "Louis Segond 1910", "language": "fr", "langName": "Français",
+      "bookName": "Jean", "reference": "Jean 3:16-17", "available": true,
       "text": "Car Dieu a tant aimé… Dieu, en effet, …", "verses": [{ "verse": 16, "text": "…" }, { "verse": 17, "text": "…" }] },
-    { "code": "BBE", "name": "BBE", "language": null, "langName": null, "available": false, "text": null, "verses": [] }
+    { "code": "KJV", "name": "King James Version", "language": "en", "langName": "English",
+      "bookName": "John", "reference": "John 3:16-17", "available": true, "text": "For God so loved the world…", "verses": [] },
+    { "code": "BBE", "name": "BBE", "language": null, "langName": null,
+      "bookName": "John", "reference": "John 3:16-17", "available": false, "text": null, "verses": [] }
   ]
 }
 ```
@@ -120,7 +125,7 @@ php artisan verse:import storage/dailyverse/versets_du_jour.json --start=2026-10
 |---|---|
 | `--start=AAAA-MM-JJ` | Programme (`scheduled_date`) un verset par jour à partir de cette date, en sautant les dates déjà prises. Les versets qui ont déjà une date la gardent. Sans `--start` : aucune date, les versets entrent dans la rotation des versets actifs |
 | `--bible-file=storage/bible/french.json` | Texte pris dans un fichier Bible « un objet par verset » quand l'entrée n'a pas de `texte` |
-| `--translation=LSG` | Sinon, texte pris dans `bible_verses` (attention : en base locale, `LSG` n'est pas la Louis Segond, voir [versions de la Bible](versions-de-la-bible.md)) |
+| `--translation=LSG` | Sinon, texte pris dans `bible_verses` (vérifier que `LSG` est bien la Louis Segond, voir [versions de la Bible](versions-de-la-bible.md)) |
 | `--save-texts` | Écrit les textes trouvés dans le fichier (champ `texte`) : le fichier suffit ensuite pour importer ailleurs |
 | `--dry-run` | Contrôle et rapport, sans écriture |
 

@@ -85,7 +85,8 @@ class DailyVerseTest extends TestCase
 
         $this->getJson('/api/v1/daily-verse?translation=kjv')->assertOk()
             ->assertJsonPath('data.translation.code', 'KJV')
-            ->assertJsonPath('data.translation.text', 'For God so loved the world');
+            ->assertJsonPath('data.translation.text', 'For God so loved the world')
+            ->assertJsonPath('data.translation.reference', 'John 3:16-17');
     }
 
     public function test_versions_return_each_translation_and_flag_partial_ones(): void
@@ -98,6 +99,9 @@ class DailyVerseTest extends TestCase
         $this->assertCount(2, $versions['LSG']['verses']);
         $this->assertTrue($versions['LSG']['available']);
         $this->assertCount(1, $versions['KJV']['verses']); // passage incomplet : seuls les versets présents
+        // Nom du livre dans la langue de chaque version.
+        $this->assertSame(['Jean', 'Jean 3:16-17'], [$versions['LSG']['bookName'], $versions['LSG']['reference']]);
+        $this->assertSame(['John', 'John 3:16-17'], [$versions['KJV']['bookName'], $versions['KJV']['reference']]);
 
         // Version absente du serveur : liste vide, pas d'erreur.
         $this->getJson('/api/v1/daily-verse/versions?translation=XYZ')->assertOk()->assertJsonCount(0, 'data.versions');
@@ -229,7 +233,7 @@ class DailyVerseTest extends TestCase
             ->assertSee('Comparer')
             ->assertSee('Connectez-vous', false);
 
-        $this->get('/verset-du-jour?version=KJV')->assertOk()->assertSee('For God so loved the world');
+        $this->get('/verset-du-jour?version=KJV')->assertOk()->assertSee('For God so loved the world')->assertSee('John 3:16-17');
         // Version mémorisée en session.
         $this->get('/verset-du-jour')->assertSee('For God so loved the world');
         $this->get('/verset-du-jour?comparer=1')->assertOk()->assertSee("Dieu, en effet, n'a pas envoyé son Fils");

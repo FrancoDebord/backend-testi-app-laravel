@@ -4,6 +4,16 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-22 — Verset du jour : nom du livre dans la langue de la version
+
+- **Utilisateurs** : sur la page du verset du jour, la référence suit la version choisie (« John 3:16 » en KJV, « Jean 3:16 » en Louis Segond) ; dans « Comparer », chaque version affiche sa référence.
+- **API** : chaque élément de `versions` (`GET /daily-verse/{id}/versions`, et `translation` de `GET /daily-verse?translation=`) a deux nouveaux champs, `bookName` et `reference`, dans la langue de la traduction. `parsed` reste en français. L'application peut afficher `reference` de la version choisie.
+- **Développeurs** : `BibleReference::label($ref, $bookName)` ; `DailyVerses::versions()` lit `bible_books.name` de chaque traduction. Tests : `DailyVerseTest` complété.
+- **Application** (`testi_app`) : `VerseVersion.bookName` / `reference` lus ; l'écran du verset du jour (verset, partage, écoute, design, « Témoigner », « Comparer ») affiche la référence de la version choisie ; hors connexion, nom du livre lu dans la Bible téléchargée (`getBooks`) ; `VerseReference.parse` accepte « Jude 24-25 », « 3 Jean 3 ». Serveur ancien sans ces champs : référence française comme avant. Tests : `test/daily_verse_test.dart`.
+- **Déploiement** : `php artisan view:cache`. Aucune migration.
+
+---
+
 ## 2026-10-22 — 424 versets du jour classés par thème
 
 - **Utilisateurs** : à partir du lendemain de la mise en ligne, un nouveau verset du jour chaque jour pendant 14 mois, thème après thème (18 thèmes autour du témoignage, Louis Segond 1910). Le thème s'affiche dans l'historique et l'API (`themeLabel`).

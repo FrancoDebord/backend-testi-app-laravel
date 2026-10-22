@@ -90,7 +90,9 @@ Codes suggérés :
 
 `LSG`, `KJV` et `ASV` existent déjà (en base ou dans `config/bible.php`) : réimporter avec `--fresh` remplace la version actuelle.
 
-> **LSG en base locale (constaté le 2026-10-22)** : le texte de `LSG` n'est pas celui de Louis Segond (Jean 3:16 : « … tant aimé ceux qu'il a disposés … », texte de `old/fr_apee.json`) et ses livres portent des noms anglais (« Genesis »). `php artisan bible:import-verses LSG storage/bible/french.json --fresh` le remplace par la Louis Segond 1910 avec les noms français. Vérifier la base du serveur avant de le faire en production.
+> **LSG** : une ancienne base locale contenait sous `LSG` le texte de `old/fr_apee.json` avec des noms de livres anglais (« Genesis »). `php artisan bible:import-verses LSG storage/bible/french.json --fresh` la remplace par la Louis Segond 1910 avec les noms français (fait en local, vérifié le 2026-10-22 : 66 noms français). Vérifier la base du serveur (Jean 3:16 doit commencer par « Car Dieu a tant aimé le monde ») avant de le faire en production.
+>
+> **Noms des livres** : chaque traduction garde ses propres noms (`bible_books.name`), affichés dans le lecteur `/bible`, l'API et, depuis le 2026-10-22, la référence de chaque version du [verset du jour](verset-du-jour.md). Importer une traduction anglaise avec `--lang=en` (ou un fichier dont `language` vaut `English`) pour avoir « John », et `--names-from=<CODE>` pour une langue sans noms intégrés.
 
 Les fichiers de `storage/bible/` (≈ 10 Mo chacun) ne sont pas dans git : copier sur le serveur ceux à importer.
 

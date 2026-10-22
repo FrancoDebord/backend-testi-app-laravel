@@ -87,11 +87,19 @@ class DailyVerses
                 ->orderBy('verse')->get()->groupBy('translation')
             : collect();
 
-        $versions = $translations->values()->map(function (array $t) use ($rows) {
+        // Nom du livre dans la langue de chaque traduction (« Jean » en LSG, « John » en KJV).
+        $bookNames = $ref
+            ? BibleBook::whereIn('translation', $translations->keys())->where('number', $ref['book'])->pluck('name', 'translation')
+            : collect();
+
+        $versions = $translations->values()->map(function (array $t) use ($rows, $ref, $bookNames, $verse) {
             $verses = ($rows[$t['code']] ?? collect())->map(fn (BibleVerse $v) => ['verse' => $v->verse, 'text' => self::clean($v->text)])->values();
+            $bookName = $ref ? ($bookNames[$t['code']] ?? BibleReference::bookName($ref['book'])) : null;
 
             return [
                 ...$t,
+                'bookName'  => $bookName,
+                'reference' => $ref ? BibleReference::label($ref, $bookName) : $verse->reference,
                 'available' => $verses->isNotEmpty(),
                 'text'      => $verses->isNotEmpty() ? $verses->pluck('text')->implode(' ') : null,
                 'verses'    => $verses->all(),
