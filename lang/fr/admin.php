@@ -9,6 +9,8 @@ return [
         'organization_rejected'    => 'Vérification refusée. Le compte a été prévenu.',
         'own_role'                 => 'Vous ne pouvez pas modifier votre propre rôle.',
         'user_updated'             => 'Utilisateur mis à jour.',
+        'user_deleted'             => 'Compte supprimé définitivement.',
+        'own_account_delete'       => 'Vous ne pouvez pas supprimer votre propre compte ici.',
         'category_created'         => 'Catégorie créée.',
         'category_updated'         => 'Catégorie mise à jour.',
         'category_deleted'         => 'Catégorie supprimée.',

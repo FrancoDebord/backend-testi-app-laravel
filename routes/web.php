@@ -431,6 +431,8 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin
     Route::get('/users',                     [AdminController::class, 'users'])->name('users.index');
     Route::get('/users/{id}',                [AdminController::class, 'showUser'])->name('users.show');
     Route::put('/users/{id}',                [AdminController::class, 'updateUser'])->name('users.update');
+    // Suppression définitive d'un compte (super-administrateurs) ─ docs/fonctionnalites/confidentialite-et-suppression.md
+    Route::delete('/users/{id}',             [AdminController::class, 'deleteUser'])->whereUuid('id')->name('users.destroy');
     // Types de témoignages autorisés pour ce profil ─ docs/fonctionnalites/types-de-temoignages.md
     Route::put('/users/{id}/publication',    [AdminController::class, 'updatePublishing'])->whereUuid('id')->name('users.publishing.update');
     // Comptes organisation ─ docs/fonctionnalites/comptes-organisation.md

@@ -41,6 +41,11 @@ Les statuts existants sont repris : `draft` (carnet privé), `pending`, `approve
 - les abonnés sont prévenus à la première publication seulement ;
 - les mentions sont notifiées à chaque approbation, sans doublon.
 
+**Approuver un témoignage rejeté** : possible à tout moment, mêmes effets (motif de refus effacé, auteur prévenu, compteur `testimony_count` incrémenté). Sur le site :
+- bouton « Approuver » (avec confirmation) sur chaque ligne de l'onglet « Refusés » de `/moderation` et sur les témoignages rejetés d'*Administration › Contenu* ; il renvoie à la même page (`POST /moderation/{id}/approve` avec `return=back`) ;
+- « Modérer » ouvre aussi la fiche d'un témoignage rejeté depuis *Administration › Contenu* ;
+- toujours possibles : « Approuver et publier » sur la fiche et l'action groupée « Approuver » de l'onglet « Refusés ».
+
 **Refuser** :
 - l'API accepte `reason` (code `RejectionReason`), `rejection_reason` (texte libre), ou les deux ; sans aucun des deux → **422** ;
 - le site exige un code, avec une précision facultative ;
@@ -187,6 +192,8 @@ Le service est `App\Services\AdminAudit::record()`. `moderation_logs` reste tenu
 - l'agrégation quotidienne ;
 - le back-office (onglets, actions groupées, 403) ;
 - le super-administrateur (commande uniquement, audit).
+
+`php artisan test --filter=AdminUserDeletionAndReapprovalTest` : approbation d'un témoignage rejeté depuis les listes.
 
 ## Limites connues
 

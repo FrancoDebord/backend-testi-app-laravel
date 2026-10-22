@@ -70,9 +70,10 @@
             </dl>
             <div class="mt-3 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
                 <a href="{{ route('testimonies.show', $t->id) }}" target="_blank" rel="noopener" class="action-btn-view"><i class="fa-regular fa-eye"></i>Voir</a>
-                @if($t->status->value === 'pending')
+                @if(in_array($t->status->value, ['pending', 'rejected'], true))
                 <a href="{{ route('moderation.show', $t->id) }}" class="action-btn-edit"><i class="fa-solid fa-shield-halved"></i>Modérer</a>
                 @endif
+                @include('moderation.partials.approve-rejected', ['item' => $t, 'formId' => 'approve-m-' . $t->id])
             </div>
         </li>
         @endforeach
@@ -108,9 +109,10 @@
                         <td class="table-td">
                             <div class="flex justify-end gap-2">
                                 <a href="{{ route('testimonies.show', $t->id) }}" target="_blank" rel="noopener" class="action-btn-view" title="Voir" aria-label="Voir"><i class="fa-regular fa-eye"></i></a>
-                                @if($t->status->value === 'pending')
+                                @if(in_array($t->status->value, ['pending', 'rejected'], true))
                                 <a href="{{ route('moderation.show', $t->id) }}" class="action-btn-edit"><i class="fa-solid fa-shield-halved"></i>Modérer</a>
                                 @endif
+                                @include('moderation.partials.approve-rejected', ['item' => $t, 'formId' => 'approve-d-' . $t->id])
                             </div>
                         </td>
                     </tr>

@@ -149,11 +149,16 @@ class ModerationController extends Controller
 
     // ─── Actions sur un témoignage ───────────────────────────────────────────
 
-    public function approve(string $id): RedirectResponse
+    /** Aussi pour un témoignage rejeté. `return=back` : retour à la page d'origine (liste, Administration › Contenu). */
+    public function approve(Request $request, string $id): RedirectResponse
     {
         $testimony = $this->find($id);
         Gate::authorize('moderate', $testimony);
         $this->moderation->approve($testimony, Auth::user());
+
+        if ($request->input('return') === 'back') {
+            return back()->with('success', __('moderation.flash.approved'));
+        }
 
         return $this->back(__('moderation.flash.approved'));
     }

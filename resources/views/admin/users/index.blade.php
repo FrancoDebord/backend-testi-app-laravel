@@ -11,6 +11,8 @@
     $roles    = ['visiteur' => 'Visiteur', 'utilisateur' => 'Utilisateur', 'moderateur' => 'Modérateur', 'administrateur' => 'Administrateur'];
     $statuses = ['active' => 'Actif', 'suspended' => 'Suspendu', 'banned' => 'Banni'];
     $activeFilters = (request('role') ? 1 : 0) + (request('status') ? 1 : 0);
+    // Suppression définitive : super-administrateurs (docs/fonctionnalites/confidentialite-et-suppression.md)
+    $canDeleteUsers = auth()->user()->isSuperAdmin();
     // Onglets : docs/fonctionnalites/comptes-organisation.md
     // [libellé, libellé court affiché sous 640 px]
     $tabs = [
@@ -106,8 +108,9 @@
                 <div class="flex justify-between gap-4"><dt class="text-slate-500">Rôle</dt><dd class="text-slate-900">{{ $user->role->label() }}</dd></div>
                 <div class="flex justify-between gap-4"><dt class="text-slate-500">Inscrit le</dt><dd class="text-slate-900">{{ $user->created_at->format('d/m/Y') }}</dd></div>
             </dl>
-            <div class="mt-3 flex justify-end border-t border-slate-100 pt-3">
+            <div class="mt-3 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
                 <a href="{{ route('admin.users.show', $user->id) }}" class="action-btn-edit"><i class="fa-solid fa-pen"></i>Gérer</a>
+                @include('admin.users.partials.delete-button', ['formId' => 'delete-user-m-' . $user->id])
             </div>
         </li>
         @endforeach
@@ -150,8 +153,9 @@
                         <td class="table-td"><span class="{{ $user->status->badgeClass() }}">{{ $user->status->label() }}</span></td>
                         <td class="table-td hidden whitespace-nowrap text-slate-500 xl:table-cell">{{ $user->created_at->format('d/m/Y') }}</td>
                         <td class="table-td">
-                            <div class="flex justify-end">
+                            <div class="flex justify-end gap-2">
                                 <a href="{{ route('admin.users.show', $user->id) }}" class="action-btn-edit"><i class="fa-solid fa-pen"></i>Gérer</a>
+                                @include('admin.users.partials.delete-button', ['formId' => 'delete-user-d-' . $user->id])
                             </div>
                         </td>
                     </tr>

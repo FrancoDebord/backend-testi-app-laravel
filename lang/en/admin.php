@@ -9,6 +9,8 @@ return [
         'organization_rejected'    => 'Verification declined. The account has been notified.',
         'own_role'                 => 'You cannot change your own role.',
         'user_updated'             => 'User updated.',
+        'user_deleted'             => 'Account permanently deleted.',
+        'own_account_delete'       => 'You cannot delete your own account here.',
         'category_created'         => 'Category created.',
         'category_updated'         => 'Category updated.',
         'category_deleted'         => 'Category deleted.',

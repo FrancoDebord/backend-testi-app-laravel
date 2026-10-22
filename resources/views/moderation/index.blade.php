@@ -138,6 +138,7 @@
             <div class="mt-3 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
                 <a href="{{ route('moderation.show', $item->id) }}" class="action-btn-view"><i class="fa-regular fa-eye"></i>{{ __('moderation.index.review') }}</a>
                 @if($tab !== 'pending' && $tab !== 'trash')<a href="{{ route('moderation.stats', $item->id) }}" class="action-btn-view"><i class="fa-solid fa-chart-line"></i>{{ __('moderation.common.statistics') }}</a>@endif
+                @include('moderation.partials.approve-rejected', ['formId' => 'approve-m-' . $item->id])
             </div>
         </li>
         @endforeach
@@ -191,6 +192,7 @@
                                 @if($tab !== 'pending' && $tab !== 'trash')
                                 <a href="{{ route('moderation.stats', $item->id) }}" class="action-btn-view" title="{{ __('moderation.common.statistics') }}" aria-label="{{ __('moderation.common.statistics') }}"><i class="fa-solid fa-chart-line"></i></a>
                                 @endif
+                                @include('moderation.partials.approve-rejected', ['formId' => 'approve-d-' . $item->id])
                             </div>
                         </td>
                     </tr>

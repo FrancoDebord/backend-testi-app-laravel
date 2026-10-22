@@ -4,6 +4,16 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-22 — Supprimer un utilisateur depuis l'administration, approuver un témoignage rejeté depuis les listes
+
+- **Utilisateurs (administration)** :
+  - *Administration › Utilisateurs* : bouton **Supprimer** (corbeille) dans la liste et carte « Supprimer le compte » sur la fiche, réservés aux super-administrateurs ; confirmation, puis suppression définitive du compte et de toutes ses données (comme la suppression par le titulaire). Impossible pour son propre compte et pour un super-administrateur ;
+  - témoignages rejetés : bouton **Approuver** dans l'onglet « Refusés » de la modération et dans *Administration › Contenu* (où « Modérer » est aussi proposé pour un témoignage rejeté). Le témoignage est publié et l'auteur prévenu.
+- **Développeurs** : route `DELETE /admin/users/{id}` (`admin.users.destroy`, `AdminController::deleteUser`) ; `AccountDeletion::delete($user, $actor, $reason)` (motif d'audit facultatif) ; `ModerationController::approve` accepte `return=back` ; vues partielles `admin/users/partials/delete-button` et `moderation/partials/approve-rejected` ; clés `admin.flash.user_deleted`, `own_account_delete`, `moderation.index.approve`, `approve_rejected` (fr, en). Tests : `AdminUserDeletionAndReapprovalTest` (3). Pages : [confidentialité et suppression](fonctionnalites/confidentialite-et-suppression.md), [gestion des témoignages](fonctionnalites/gestion-des-temoignages.md).
+- **Déploiement** : `php artisan view:cache` et `php artisan route:cache` si les routes sont en cache. Aucune migration ; aucune nouvelle classe CSS.
+
+---
+
 ## 2026-10-22 — Ajouter une version de la Bible : commande `bible:import-verses` et documentation
 
 - **Développeurs** :

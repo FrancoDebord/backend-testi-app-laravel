@@ -75,6 +75,17 @@ La demande est enregistrée dans `account_deletion_requests` (`type` account | p
 
 `/admin/demandes-suppression` (administrateurs) : demandes en attente d'abord, contact, compte reconnu (lien vers sa fiche), message. Pastille « Compte entier » ou « Suppression partielle ». **Super-administrateurs** seulement : pour une demande de compte, « Supprimer le compte » (même suppression complète, demande passée « Traitée ») ; pour une suppression partielle, les données sont retirées à la main puis « Marquer comme traitée » (`POST …/{id}/traitee` ; « Supprimer le compte » y répond 404) ; dans les deux cas, « Classer sans suite ».
 
+### Administration : *Administration › Utilisateurs*
+
+Les **super-administrateurs** peuvent supprimer un compte sans demande préalable :
+
+- liste des utilisateurs : bouton corbeille à côté de « Gérer » (fiche mobile et tableau) ;
+- fiche du compte : carte « Supprimer le compte » en bas de page. Les autres administrateurs voient la carte avec la mention « Réservé aux super-administrateurs. » et sans bouton.
+
+Confirmation par `openConfirmModal` (nom du compte et nombre de témoignages), puis `DELETE /admin/users/{id}` (`admin.users.destroy`, `AdminController::deleteUser`) : même suppression complète que par le titulaire (`AccountDeletion`), retour à la liste avec « Compte supprimé définitivement. ». Journal d'audit `user.deleted`, auteur = le super-administrateur, motif « Suppression depuis l'administration ».
+
+Refusés : un administrateur non super-administrateur (403), son propre compte, un autre super-administrateur (message d'erreur ; le bouton n'est pas affiché).
+
 ## Consentement à l'inscription
 
 Colonne `users.accepted_privacy_at` (date et heure du serveur, jamais envoyée par le client).
@@ -130,9 +141,12 @@ curl -s -A "Mozilla/5.0" https://temoignage.as-krea.com/confidentialite | grep -
 - `app/Http/Controllers/Web/LegalController.php`, `Web/AccountDeletionRequestController.php`, `Api/LegalController.php`
 - `app/Models/AccountDeletionRequest.php`, `NotificationType::AccountDeletionRequested`
 - `resources/views/legal/privacy.blade.php`, `legal/account-deletion.blade.php`, `admin/deletion-requests.blade.php`
+- Suppression depuis l'administration : `Web/AdminController::deleteUser`, `resources/views/admin/users/show.blade.php`, `admin/users/index.blade.php`, `admin/users/partials/delete-button.blade.php`
 - `lang/{fr,en}/privacy.php`
 - migrations `2026_10_20_200001_add_privacy_consent_and_account_deletion_requests`, `2026_10_20_300001_add_type_to_account_deletion_requests`
 
 ## Tests
 
 `tests/Feature/PrivacyAndAccountDeletionTest.php` : pages publiques FR/EN et liens, API, suppression complète (données, fichiers, vidéo Bunny, jetons), confirmation, super-administrateur, suppression depuis la page, demande sans connexion (notification, piège, limite), suppression partielle (section, précisions obligatoires, « Marquer comme traitée »), traitement par un super-administrateur, consentement à l'inscription.
+
+`tests/Feature/AdminUserDeletionAndReapprovalTest.php` : suppression depuis *Administration › Utilisateurs* (bouton, données supprimées, audit) et refus (administrateur simple, son propre compte, autre super-administrateur).

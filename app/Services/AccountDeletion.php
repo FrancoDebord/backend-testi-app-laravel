@@ -32,10 +32,11 @@ final class AccountDeletion
     }
 
     /**
-     * @param User|null $actor super-administrateur qui traite une demande ; null : le titulaire lui-même
+     * @param User|null $actor super-administrateur qui traite une demande ou supprime depuis la fiche ; null : le titulaire lui-même
+     * @param string|null $reason motif consigné dans le journal d'audit (par défaut selon $actor)
      * @throws \DomainException super-administrateur
      */
-    public function delete(User $user, ?User $actor = null): void
+    public function delete(User $user, ?User $actor = null, ?string $reason = null): void
     {
         if (!self::allowed($user)) {
             throw new \DomainException(__('privacy.deletion.super_admin_forbidden'));
@@ -121,7 +122,7 @@ final class AccountDeletion
         FeaturedTestimonies::forget();
         // Aucune donnée personnelle dans le journal : seulement l'identifiant et des nombres.
         AdminAudit::record($actor, 'user.deleted', $user->id, $summary, null,
-            $actor ? 'Demande de suppression traitée' : 'Suppression par le titulaire', 'user');
+            $reason ?? ($actor ? 'Demande de suppression traitée' : 'Suppression par le titulaire'), 'user');
     }
 
     /** Fichier du disque public désigné par une URL « …/storage/{chemin} » (les URL externes sont ignorées). */

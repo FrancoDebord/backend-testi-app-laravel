@@ -310,6 +310,29 @@
                 @endforelse
             </ul>
         </section>
+
+        {{-- Suppression définitive (super-administrateurs) ─ docs/fonctionnalites/confidentialite-et-suppression.md --}}
+        @php($deleteBlocked = match (true) {
+            !auth()->user()->isSuperAdmin()                  => 'Réservé aux super-administrateurs.',
+            auth()->id() === $user->id                       => __('admin.flash.own_account_delete'),
+            !\App\Services\AccountDeletion::allowed($user)   => 'Un compte super-administrateur ne peut pas être supprimé.',
+            default                                          => null,
+        })
+        <section class="card p-5 sm:p-6" aria-labelledby="user-delete-title">
+            <h2 id="user-delete-title" class="card-title">Supprimer le compte</h2>
+            <p class="mt-1 text-sm text-slate-600">Le compte et toutes ses données sont supprimés définitivement : profil, témoignages et vidéos, sujets et sessions de prière, paroles prophétiques, événements, fichiers envoyés. Cette action est irréversible.</p>
+            @if($deleteBlocked)
+            <p class="mt-3 text-sm text-slate-500">{{ $deleteBlocked }}</p>
+            @else
+            <form id="user-delete-form" method="POST" action="{{ route('admin.users.destroy', $user->id) }}" class="mt-4" data-loading-label="Suppression…">
+                @csrf @method('DELETE')
+                <button type="button" class="btn-secondary text-error-700"
+                        onclick="openConfirmModal('user-delete-form', @js('Le compte « ' . $user->display_name . ' » et ses ' . $user->testimony_count . ' témoignage(s) seront supprimés définitivement, avec toutes ses données. Cette action est irréversible.'), 'Supprimer ce compte', 'Supprimer définitivement', 'fa-trash-can')">
+                    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>Supprimer le compte
+                </button>
+            </form>
+            @endif
+        </section>
     </div>
 </div>
 @endsection

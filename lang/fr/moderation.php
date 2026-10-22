@@ -107,6 +107,8 @@ return [
         'select'              => 'Sélectionner « :title »',
         'deleted_on'          => 'Supprimé le',
         'review'              => 'Examiner',
+        'approve'             => 'Approuver',
+        'approve_rejected'    => '« :title » a été rejeté. Il sera publié immédiatement et son auteur prévenu.',
         'selection'           => 'Sélection',
         'order_period'        => 'Ordre / période',
         'actions'             => 'Actions',

@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\ModerationLog;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Services\AccountDeletion;
 use App\Services\OrganizationAccounts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -190,6 +191,28 @@ class AdminController extends Controller
         }
 
         return back()->with('success', __('admin.flash.user_updated'));
+    }
+
+    /**
+     * Suppression définitive d'un compte depuis l'administration (super-administrateurs) : mêmes effets que
+     * la suppression par le titulaire. Ni son propre compte, ni un super-administrateur.
+     * Voir docs/fonctionnalites/confidentialite-et-suppression.md
+     */
+    public function deleteUser(Request $request, string $id, AccountDeletion $deletion): RedirectResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403, __('privacy.admin.super_admin_only'));
+        $user = User::findOrFail($id);
+
+        if ($user->id === $request->user()->id) {
+            return back()->with('error', __('admin.flash.own_account_delete'));
+        }
+        if (!AccountDeletion::allowed($user)) {
+            return back()->with('error', __('privacy.deletion.super_admin_forbidden'));
+        }
+
+        $deletion->delete($user, $request->user(), 'Suppression depuis l’administration');
+
+        return redirect()->route('admin.users.index')->with('success', __('admin.flash.user_deleted'));
     }
 
     public function content(Request $request): View
