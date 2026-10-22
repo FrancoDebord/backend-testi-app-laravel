@@ -4,6 +4,18 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-22 — Ajouter une version de la Bible : commande `bible:import-verses` et documentation
+
+- **Développeurs** :
+  - nouvelle commande `php artisan bible:import-verses <CODE> <fichier.json> [--dry-run] [--fresh] [--lang=] [--names-from=]` pour les fichiers « un objet par verset » de `storage/bible/` (que `bible:import` ne lit pas). Contrôle avant écriture d'après le schéma réel des tables (longueur du code, plages des colonnes, taille du texte), noms et abréviations des livres en français ou en anglais, `testament` converti en `OT` / `NT`, écriture en une transaction, recomptage après import. Les 22 fichiers actuels passent le contrôle ;
+  - `App\Support\BibleBookNames` : noms et abréviations des 66 livres, désormais aussi utilisés par `bible:import` (comportement inchangé) ;
+  - nouvelle page [versions-de-la-bible.md](fonctionnalites/versions-de-la-bible.md) : `bible:import-verses`, `bible:import`, `bible:fetch`, `bible:sources`, déclaration dans `config/bible.php`, codes suggérés pour chaque fichier ;
+  - constat : en base locale, `LSG` contient le texte de `old/fr_apee.json` avec des noms de livres anglais ; `storage/bible/french.json` est la Louis Segond 1910.
+  - Tests : `ImportBibleVersesTest` (6).
+- **Déploiement** : aucune migration ni variable. Copier sur le serveur les fichiers JSON à importer (hors git), puis lancer la commande (voir la page).
+
+---
+
 ## 2026-10-20 — Suppression partielle de données sur /suppression-compte
 
 - **Utilisateurs** : nouvelle section « Supprimer certaines données sans supprimer votre compte » (menu « ⋮ » de chaque témoignage, sujet de prière ou parole prophétique dans l'application ; notifications dans Paramètres ; autres données — photo de profil, historique de prière, données de vérification — par e-mail ou par le formulaire). Le formulaire, désormais affiché aussi en étant connecté, propose « Supprimer mon compte » ou « Supprimer certaines données », avec un champ « Précisions » obligatoire pour la suppression partielle. *Administration › Demandes de suppression* : pastille du type ; « Marquer comme traitée » pour une suppression partielle (jamais de suppression du compte depuis ce type de demande).

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\BibleBook;
 use App\Models\BibleVerse;
+use App\Support\BibleBookNames;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -37,42 +38,6 @@ class ImportBible extends Command
         {--fresh     : Supprime les données existantes avant import}';
 
     protected $description = 'Importe une traduction de la Bible depuis un fichier JSON';
-
-    // Noms des 66 livres en français (fallback si absent du JSON)
-    private const BOOK_NAMES_FR = [
-        1=>'Genèse',2=>'Exode',3=>'Lévitique',4=>'Nombres',5=>'Deutéronome',
-        6=>'Josué',7=>'Juges',8=>'Ruth',9=>'1 Samuel',10=>'2 Samuel',
-        11=>'1 Rois',12=>'2 Rois',13=>'1 Chroniques',14=>'2 Chroniques',15=>'Esdras',
-        16=>'Néhémie',17=>'Esther',18=>'Job',19=>'Psaumes',20=>'Proverbes',
-        21=>'Ecclésiaste',22=>'Cantique des Cantiques',23=>'Ésaïe',24=>'Jérémie',25=>'Lamentations',
-        26=>'Ézéchiel',27=>'Daniel',28=>'Osée',29=>'Joël',30=>'Amos',
-        31=>'Abdias',32=>'Jonas',33=>'Michée',34=>'Nahoum',35=>'Habacuc',
-        36=>'Sophonie',37=>'Aggée',38=>'Zacharie',39=>'Malachie',
-        40=>'Matthieu',41=>'Marc',42=>'Luc',43=>'Jean',44=>'Actes',
-        45=>'Romains',46=>'1 Corinthiens',47=>'2 Corinthiens',48=>'Galates',49=>'Éphésiens',
-        50=>'Philippiens',51=>'Colossiens',52=>'1 Thessaloniciens',53=>'2 Thessaloniciens',54=>'1 Timothée',
-        55=>'2 Timothée',56=>'Tite',57=>'Philémon',58=>'Hébreux',59=>'Jacques',
-        60=>'1 Pierre',61=>'2 Pierre',62=>'1 Jean',63=>'2 Jean',64=>'3 Jean',
-        65=>'Jude',66=>'Apocalypse',
-    ];
-
-    // Noms en anglais (pour KJV)
-    private const BOOK_NAMES_EN = [
-        1=>'Genesis',2=>'Exodus',3=>'Leviticus',4=>'Numbers',5=>'Deuteronomy',
-        6=>'Joshua',7=>'Judges',8=>'Ruth',9=>'1 Samuel',10=>'2 Samuel',
-        11=>'1 Kings',12=>'2 Kings',13=>'1 Chronicles',14=>'2 Chronicles',15=>'Ezra',
-        16=>'Nehemiah',17=>'Esther',18=>'Job',19=>'Psalms',20=>'Proverbs',
-        21=>'Ecclesiastes',22=>'Song of Solomon',23=>'Isaiah',24=>'Jeremiah',25=>'Lamentations',
-        26=>'Ezekiel',27=>'Daniel',28=>'Hosea',29=>'Joel',30=>'Amos',
-        31=>'Obadiah',32=>'Jonah',33=>'Micah',34=>'Nahum',35=>'Habakkuk',
-        36=>'Zephaniah',37=>'Haggai',38=>'Zechariah',39=>'Malachi',
-        40=>'Matthew',41=>'Mark',42=>'Luke',43=>'John',44=>'Acts',
-        45=>'Romans',46=>'1 Corinthians',47=>'2 Corinthians',48=>'Galatians',49=>'Ephesians',
-        50=>'Philippians',51=>'Colossians',52=>'1 Thessalonians',53=>'2 Thessalonians',54=>'1 Timothy',
-        55=>'2 Timothy',56=>'Titus',57=>'Philemon',58=>'Hebrews',59=>'James',
-        60=>'1 Peter',61=>'2 Peter',62=>'1 John',63=>'2 John',64=>'3 John',
-        65=>'Jude',66=>'Revelation',
-    ];
 
     private const ABBREV_FR = [
         'gn'=>'Gn','ex'=>'Ex','lv'=>'Lv','nb'=>'Nb','dt'=>'Dt',
@@ -125,7 +90,7 @@ class ImportBible extends Command
         }
 
         $isEnglish  = in_array($translation, ['KJV', 'ESV', 'NIV', 'NKJV']);
-        $namesMap   = $isEnglish ? self::BOOK_NAMES_EN : self::BOOK_NAMES_FR;
+        $namesMap   = $isEnglish ? BibleBookNames::EN : BibleBookNames::FR;
 
         $totalVerses = 0;
         $bar = $this->output->createProgressBar(count($json));
