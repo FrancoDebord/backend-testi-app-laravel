@@ -4,6 +4,20 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-22 — 424 versets du jour classés par thème
+
+- **Utilisateurs** : à partir du lendemain de la mise en ligne, un nouveau verset du jour chaque jour pendant 14 mois, thème après thème (18 thèmes autour du témoignage, Louis Segond 1910). Le thème s'affiche dans l'historique et l'API (`themeLabel`).
+- **Développeurs** :
+  - commande `php artisan verse:import <fichier> [--start=] [--bible-file=] [--translation=LSG] [--save-texts] [--dry-run]` : contrôle complet avant écriture, texte depuis le fichier, un fichier Bible ou `bible_verses`, mise à jour par référence (sans doublon), programmation jour après jour ;
+  - `storage/dailyverse/versets_du_jour.json` complété du champ `texte` (Louis Segond de `storage/bible/french.json`) ;
+  - `daily_verses.theme` en 150 caractères ; `DailyVerse::themeLabel()` renvoie le libellé importé quand ce n'est pas un code connu ;
+  - `BibleReference::parse` accepte « Jude 24-25 », « 3 Jean 3 », « Philémon 6 » (livres d'un chapitre) ;
+  - import local fait : 413 créés, 11 mis à jour, programmés du 23/10/2026 au 09/12/2027.
+  - Tests : `ImportDailyVersesTest` (4).
+- **Déploiement** : migrations `2026_10_22_100001_widen_daily_verses_theme` et `2026_10_22_100002_import_versets_du_jour` (import automatique par `POST /_deploy`, sans SSH) ; déployer `storage/dailyverse/versets_du_jour.json`. Voir [README §4](README.md#versets-du-jour-par-thème-2026-10-22).
+
+---
+
 ## 2026-10-22 — Supprimer un utilisateur depuis l'administration, approuver un témoignage rejeté depuis les listes
 
 - **Utilisateurs (administration)** :

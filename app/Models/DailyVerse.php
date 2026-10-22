@@ -94,10 +94,11 @@ class DailyVerse extends Model
                     ->toArray();
     }
 
+    /** Code connu (faithfulness…) → libellé traduit ; libellé importé (verse:import) → tel quel. */
     public function themeLabel(): string
     {
         $themes = __('models.daily_verse_theme');
 
-        return $themes[$this->theme] ?? $themes['default'];
+        return $themes[$this->theme] ?? ($this->theme ?: $themes['default']);
     }
 }

@@ -104,8 +104,38 @@ Commentaire :
 - Fournisseurs : `dailyVerseVersionsProvider`, `dailyVerseCommentsProvider`, `dailyVersePrayerRequestsProvider`, `dailyVerseTestimoniesProvider` (sans nouvel essai automatique : bouton « Réessayer »), `preferredVerseTranslationProvider`.
 - `DailyVerse.fromJson` lit maintenant `counts.likes` / `counts.prayers` / `myReactions` (les compteurs de la bannière restaient à 0).
 
+## Importer des versets du jour par thème (`verse:import`, 2026-10-22)
+
+Source : `storage/dailyverse/versets_du_jour.json` (424 versets, Louis Segond, 18 thèmes, de « Le témoignage en justice et le faux témoignage » à « Pierre, Jean, Jude, Apocalypse »). Chaque entrée : `id`, `testament`, `theme`, `livre`, `chapitre`, `versets` (« 16 » ou « 15-16 », 2 versets au plus), `nb_versets`, `reference`, et depuis le 2026-10-22 **`texte`** (texte Louis Segond 1910 tiré de `storage/bible/french.json`).
+
+```bash
+# Contrôle sans écrire
+php artisan verse:import storage/dailyverse/versets_du_jour.json --dry-run
+
+# Import, un verset par jour à partir d'une date, dans l'ordre du fichier (thème après thème)
+php artisan verse:import storage/dailyverse/versets_du_jour.json --start=2026-10-23
+```
+
+| Option | Effet |
+|---|---|
+| `--start=AAAA-MM-JJ` | Programme (`scheduled_date`) un verset par jour à partir de cette date, en sautant les dates déjà prises. Les versets qui ont déjà une date la gardent. Sans `--start` : aucune date, les versets entrent dans la rotation des versets actifs |
+| `--bible-file=storage/bible/french.json` | Texte pris dans un fichier Bible « un objet par verset » quand l'entrée n'a pas de `texte` |
+| `--translation=LSG` | Sinon, texte pris dans `bible_verses` (attention : en base locale, `LSG` n'est pas la Louis Segond, voir [versions de la Bible](versions-de-la-bible.md)) |
+| `--save-texts` | Écrit les textes trouvés dans le fichier (champ `texte`) : le fichier suffit ensuite pour importer ailleurs |
+| `--dry-run` | Contrôle et rapport, sans écriture |
+
+- **Thème** : enregistré tel quel dans `daily_verses.theme` (colonne passée de 50 à 150 caractères, migration `2026_10_22_100001_widen_daily_verses_theme`). `themeLabel()` (API `themeLabel`, historique, page) traduit les anciens codes (`faithfulness`…) et renvoie sinon le libellé importé.
+- **Référence** : contrôlée par `BibleReference::parse`, qui accepte désormais les livres d'un seul chapitre sans numéro de chapitre (« Jude 24-25 », « 3 Jean 3 », « Philémon 6 » = chapitre 1) quand la chaîne entière est la référence ; la recherche de références dans un texte libre (`findAll`) n'est pas modifiée.
+- **Doublons** : un verset de même référence est mis à jour (texte, thème, actif) ; ses réactions, commentaires et sa date sont gardés. Relancer la commande ne crée rien de plus. Une erreur (référence non reconnue, texte introuvable, référence en double dans le fichier) annule tout l'import.
+- **Fait en local le 2026-10-22** : 413 versets créés, 11 mis à jour (déjà présents, gardent leur date de juin), programmés du 23/10/2026 au 09/12/2027.
+
+**En ligne (sans SSH)** : la migration `2026_10_22_100002_import_versets_du_jour`, lancée une fois par `POST /_deploy`, appelle `verse:import` sur le fichier déployé avec `--start` = lendemain du déploiement (Africa/Porto-Novo). Les textes étant dans le fichier, ni `storage/bible/` ni la table `bible_verses` ne servent. Elle ne fait rien pendant les tests ni si le fichier manque, et échoue (déploiement à relancer) si l'import échoue. Avec SSH, la commande ci-dessus fait la même chose.
+
+**Effet à connaître** : tant qu'un jour n'a pas de verset programmé, le verset affiché est choisi d'après la date parmi **tous** les versets actifs. Ajouter des versets change donc le verset du **jour de l'import** et celui des jours passés non programmés dans l'historique (`/verset-du-jour/historique`). Commentaires, réactions et requêtes restent rattachés à leur verset. À partir du lendemain, chaque jour a son verset programmé.
+
 ## Tests
 
+- Import : `php artisan test --filter=ImportDailyVersesTest` (textes depuis un fichier Bible ou `bible_verses`, thème, `--save-texts` puis import depuis le fichier seul, pas de doublon, `--start` et dates prises, erreur sans écriture, livres d'un chapitre).
 - Serveur : `php artisan test --filter=DailyVerseTest` (analyse des références, versions complètes / partielles / absentes, référence non reconnue, réactions, commentaires et droits, mentions, signalements et retrait, requêtes liées et visibilité, témoignages liés, stabilité du verset sans programmation, pages du site).
 - Application : `flutter test test/daily_verse_test.dart` (analyse des références, lecture des réponses, changement de version, version absente, « Comparer », onglets, hors connexion, verset de secours, mode lecture, 320 / 390 px × 1 / 1,3 sans débordement).
 

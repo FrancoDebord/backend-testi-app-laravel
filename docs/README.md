@@ -286,6 +286,16 @@ suivre le lien symbolique créé par `storage:link`.
 - `php artisan optimize:clear` puis `php artisan view:cache` (les traductions sont lues à chaque requête ; avec `config:cache`, rien de plus) ;
 - `APP_LOCALE` peut rester tel quel : le français est imposé par défaut. Aucune nouvelle variable d'environnement.
 
+### Versets du jour par thème (2026-10-22)
+
+[verset-du-jour.md](fonctionnalites/verset-du-jour.md#importer-des-versets-du-jour-par-thème-verse-import-2026-10-22) :
+
+- migration `2026_10_22_100001_widen_daily_verses_theme` (`daily_verses.theme` en 150 caractères) ;
+- migration de données `2026_10_22_100002_import_versets_du_jour` : importe `storage/dailyverse/versets_du_jour.json` (à déployer, textes inclus) et programme un verset par jour à partir du lendemain. Lancée par `POST /_deploy` (`migrate --force`), aucune commande à taper ;
+- contrôle après déploiement : `https://…/verset-du-jour/2026-10-23` (ou le lendemain du déploiement) affiche « Exode 20:16 » et le thème « Le témoignage en justice et le faux témoignage ».
+
+Le verset du jour du déploiement et l'historique des jours passés non programmés peuvent changer une fois (voir la page). Aucune variable d'environnement ni recompilation des assets.
+
 ### Confidentialité et suppression de compte (2026-10-20)
 
 [confidentialite-et-suppression.md](fonctionnalites/confidentialite-et-suppression.md) :

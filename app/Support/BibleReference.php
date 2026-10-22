@@ -71,10 +71,31 @@ class BibleReference
 
     private static ?array $lookup = null;
 
-    /** Première référence trouvée dans le texte, ou null. */
+    /** Livres d'un seul chapitre : Abdias, Philémon, 2 Jean, 3 Jean, Jude. */
+    private const SINGLE_CHAPTER = [31, 57, 63, 64, 65];
+
+    /**
+     * Première référence trouvée dans le texte, ou null. Une référence seule d'un livre d'un chapitre
+     * peut omettre le chapitre : « Jude 24-25 », « 3 Jean 3 » (= chapitre 1).
+     */
     public static function parse(?string $text): ?array
     {
-        return self::findAll($text)[0] ?? null;
+        return self::findAll($text)[0] ?? self::parseSingleChapter($text);
+    }
+
+    private static function parseSingleChapter(?string $text): ?array
+    {
+        if (blank($text) || !preg_match('/^\s*(.+?)\s+(\d{1,3})(?:\s*(?:[-–—]|à|to)\s*(\d{1,3}))?\s*$/u', $text, $m)) {
+            return null;
+        }
+        $book = self::bookNumber($m[1]);
+        if (!in_array($book, self::SINGLE_CHAPTER, true) || (int) $m[2] < 1) {
+            return null;
+        }
+        $start = (int) $m[2];
+        $end   = isset($m[3]) && $m[3] !== '' ? (int) $m[3] : $start;
+
+        return ['book' => $book, 'chapter' => 1, 'verseStart' => $start, 'verseEnd' => max($start, $end)];
     }
 
     /** Toutes les références d'un texte libre (ordre du texte). */
