@@ -2,7 +2,7 @@
 
 ## But
 
-Chaque compte (personne ou organisation) peut illustrer le bandeau de son profil par une photo de couverture, comme sur les réseaux sociaux. Sans photo, le bandeau garde son fond neutre.
+Chaque compte (personne ou organisation) peut illustrer le bandeau de son profil par une photo de couverture, comme sur les réseaux sociaux. Sans photo, le bandeau du profil prend le bleu de la charte avec une étoile ([page de profil](profil.md)).
 
 ## Utilisation
 

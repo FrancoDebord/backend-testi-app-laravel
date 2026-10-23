@@ -8,7 +8,7 @@ Chacun peut **confier un besoin de prière** à la communauté (« Priez les uns
 - laissent un **message d'encouragement** (verset facultatif) ;
 - et, quand Dieu répond, l'auteur marque la requête **exaucée** et peut **témoigner**.
 
-Disponible sur le **site** (`/priere/requetes`, menu latéral « Requêtes de prière ») et dans l'**application** (menu latéral). Une requête peut être **rattachée à un événement** : elle apparaît alors sur la page de l'événement (bloc « Prière »).
+Disponible sur le **site** (`/priere/requetes`, menu latéral « Requêtes de prière ») et dans l'**application** (menu latéral). Une requête peut être **rattachée à un événement** : elle apparaît alors sur la page de l'événement (bloc « Prière »). Elle peut aussi être **confiée depuis le témoignage de quelqu'un** (bouton « Confier un sujet de prière » sur la page du témoignage) : par exemple une personne qui vit la même épreuve que celle racontée demande la prière, et sa requête renvoie au témoignage.
 
 ## Règles
 
@@ -23,6 +23,7 @@ Disponible sur le **site** (`/priere/requetes`, menu latéral « Requêtes de pr
 | **Encouragements** | Messages de 2 à 1 000 caractères + référence biblique facultative. Possibles si la requête est visible, non retirée, et pas privée (sauf pour l'auteur). L'auteur de la requête est **prévenu** (notification `prayer_encouragement`, push selon la préférence « prières »). Suppression : l'auteur du message, l'auteur de la requête, la modération. |
 | **Exaucée** | L'auteur seul : `status = answered`, `answered_at`, note facultative (`answer_note`). Remise « en attente » possible tant qu'aucun témoignage n'est rattaché. **Témoigner** ouvre Publier ; le témoignage peut ensuite être rattaché par `PUT /prayer/requests/{id}` `{ testimony_id }` (témoignage de l'auteur ; la requête passe exaucée). |
 | **Événement** | `event_id` : événement **publié** et visible (ou géré par l'auteur). |
+| **Depuis un témoignage** | `source_testimony_id`, à la création seulement : témoignage **publié** (approuvé, public, vidéo prête), de n'importe quel auteur, y compris soi (sinon **422** « Témoignage introuvable. »). Distinct de `testimony_id` (témoignage de l'exaucement, écrit par l'auteur de la requête). Le lien « Après le témoignage « … » » n'est montré que tant que le témoignage reste publié : retiré du public, mis à la corbeille ou supprimé, il disparaît et la requête reste. L'auteur du témoignage n'est pas prévenu. |
 | **Signalement** | Toute personne connectée sauf l'auteur, une fois par requête (raisons : contenu inapproprié, propos haineux, spam, autre ; précision facultative). Au **3e signalement non traité**, la requête est **retirée automatiquement** en attendant la modération. |
 | **Modération** | Modérateurs et administrateurs : **retirer** (motif montré à l'auteur), **rétablir** / **garder** (classe les signalements), **supprimer**. Une requête retirée n'est plus visible que de son auteur (avec le motif) et de la modération. |
 | **Suppression** | L'auteur ou la modération (suppression douce). |
@@ -31,7 +32,7 @@ Disponible sur le **site** (`/priere/requetes`, menu latéral « Requêtes de pr
 
 | Table | Contenu |
 |---|---|
-| `prayer_requests` | `user_id`, `event_id`, `body`, `visibility`, `is_anonymous`, `status` (`open` / `answered`), `answered_at`, `answer_note`, `testimony_id`, `prayer_count`, `message_count`, `report_count`, `hidden_at`, `hidden_by`, `hidden_reason` ; suppression douce |
+| `prayer_requests` | `user_id`, `event_id`, `daily_verse_id`, `source_testimony_id`, `body`, `visibility`, `is_anonymous`, `status` (`open` / `answered`), `answered_at`, `answer_note`, `testimony_id`, `prayer_count`, `message_count`, `report_count`, `hidden_at`, `hidden_by`, `hidden_reason` ; suppression douce |
 | `prayer_request_prayers` | `prayer_request_id`, `user_id` (unique) |
 | `prayer_request_messages` | `prayer_request_id`, `user_id`, `body`, `bible_reference` ; suppression douce |
 | `prayer_request_reports` | `prayer_request_id`, `reporter_id` (unique), `reason`, `comment`, `reviewed_at` |
@@ -44,7 +45,7 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 |---|---|---|
 | GET | `prayer/requests` | Liste paginée (20 par défaut, `limit` ≤ 50). `scope` = `all` (défaut : tout ce que je peux voir) · `feed` (publiques récentes, pour « Pour vous ») · `following` (comptes que je suis, publiques + abonnés, **sans anonymes**, pour « Mon fil ») · `mine` · `event` (avec `event_id`). `status` = `open` / `answered`. `meta` : `currentPage`, `lastPage`, `total`, `perPage`, `scope`, `canCreate`. Public (selon la visibilité). |
 | GET | `prayer/requests/{id}` | Détail (404 si non visible) |
-| POST | `prayer/requests` | `{ body, visibility?, is_anonymous?, event_id? }` (connecté) |
+| POST | `prayer/requests` | `{ body, visibility?, is_anonymous?, event_id?, source_testimony_id? }` (connecté) |
 | PUT · DELETE | `prayer/requests/{id}` | Modifier (`body`, `visibility`, `is_anonymous`, `event_id`, `testimony_id`) · supprimer |
 | POST | `prayer/requests/{id}/pray/start` | Commence (ou recommence) le temps de prière : `{ startedAt, requiredSeconds, confirmableAt }` |
 | POST | `prayer/requests/{id}/pray` | « Je prie » : bascule, ou `{ prayed: true/false }` ; renvoie la requête. Ajout : temps de prière écoulé exigé (422 sinon) |
@@ -65,6 +66,7 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
   "status": "open|answered", "isAnswered": false, "answeredAt": null, "answerNote": null, "testimonyId": null,
   "prayerCount": 12, "messageCount": 3, "hasPrayed": false,
   "event": { "id": "uuid", "title": "…" } | null,
+  "sourceTestimony": { "id": "uuid", "title": "…" } | null,
   "isMine": false, "isHidden": false, "hiddenReason": null, "reportCount": null,
   "canEdit": false, "canDelete": false, "canReport": true, "canModerate": false, "canMessage": true,
   "webUrl": "https://…/priere/requetes/{id}", "createdAt": "ISO 8601", "updatedAt": "ISO 8601"
@@ -78,7 +80,7 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 | Méthode | Route | Rôle |
 |---|---|---|
 | GET | `/priere/requetes` `?onglet=miennes&statut=exaucees` | Toutes / mes requêtes, filtre « Exaucées » ; verset Jacques 5:16 |
-| GET · POST | `/priere/requetes/nouvelle` `?evenement=` · `/priere/requetes` | Confier une requête (visibilité, anonyme ; rattachée à l'événement si `?evenement=`) |
+| GET · POST | `/priere/requetes/nouvelle` `?evenement=` `?temoignage=` · `/priere/requetes` | Confier une requête (visibilité, anonyme ; rattachée à l'événement si `?evenement=`, au témoignage publié si `?temoignage=`, rappelé en haut du formulaire ; « Annuler » ramène au témoignage) |
 | GET · DELETE | `/priere/requetes/{id}` | Détail (« Je prie », encouragements, exaucement, signalement) · supprimer |
 | POST | `/priere/requetes/{id}/je-prie/commencer` | Temps de prière (JSON, nom `prayer.requests.pray.start`) |
 | POST | `/priere/requetes/{id}/je-prie` | Bascule « Je prie » (ajout : après l'écran « Temps de prière ») |
@@ -109,7 +111,9 @@ Les anciennes versions de l'application, qui appellent directement `…/pray`, r
 
 ## Fichiers
 
-`app/Models/PrayerRequest.php`, `PrayerRequestPrayer.php`, `PrayerRequestMessage.php`, `PrayerRequestReport.php` · `app/Services/PrayerRequests.php` (règles communes) · `app/Http/Controllers/Api/PrayerRequestController.php` · `app/Http/Controllers/Web/PrayerRequestController.php` · `app/Http/Resources/PrayerRequestResource.php` · vues `resources/views/prayer/requests/`, `prayer/partials/feed-card`, `prayer/partials/event-section`, `prayer/moderation` · migration `2026_10_05_400001_create_prayer_tables` · tests `tests/Feature/PrayerTest.php`, `PrayerFocusTest.php` · application `lib/features/prayer/`, `test/prayer_test.dart`.
+Page d'un témoignage (`resources/views/videos/partials/watch.blade.php`) : bouton « Confier un sujet de prière » (témoignage publié et public ; la connexion est demandée au clic). La requête (page et carte des fils) affiche « Après le témoignage « … » ».
+
+`app/Models/PrayerRequest.php` (relation `sourceTestimony`, publiés seulement), `PrayerRequestPrayer.php`, `PrayerRequestMessage.php`, `PrayerRequestReport.php` · `app/Services/PrayerRequests.php` (règles communes) · `app/Http/Controllers/Api/PrayerRequestController.php` · `app/Http/Controllers/Web/PrayerRequestController.php` · `app/Http/Resources/PrayerRequestResource.php` · vues `resources/views/prayer/requests/`, `prayer/partials/feed-card`, `prayer/partials/event-section`, `prayer/moderation` · migration `2026_10_05_400001_create_prayer_tables` · tests `tests/Feature/PrayerTest.php`, `PrayerFocusTest.php` · application `lib/features/prayer/`, `test/prayer_test.dart`.
 
 ## Limites connues
 

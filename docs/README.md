@@ -46,6 +46,7 @@ Serveur Laravel de **My Testimony** (AIRID) : site web de partage de témoignage
 | [Types de témoignages autorisés](fonctionnalites/types-de-temoignages.md) | Interrupteurs globaux texte / audio / vidéo / lien YouTube (Administration › Paramètres › Publication), exceptions par profil (Par défaut / Autorisé / Interdit), refus 403, `allowed_testimony_types`, `GET /me/publishing`, `/admin/users/{id}/publishing` |
 | [Direct avec une caméra IP](fonctionnalites/lives-camera-ip.md) | Caméra IP, OBS ou encodeur (RTMP, ou adresse du flux) via LiveKit Ingress ; aperçu et lancement depuis le studio |
 | [Page d'accueil](fonctionnalites/accueil.md) | Maquette « My Testimony » : bandeau et chiffres, actions rapides, récents, catégories, statistiques, modération et gestion des contenus selon le rôle |
+| [Page de profil](fonctionnalites/profil.md) | Profil du site : carte d'en-tête, statistiques, « Mon espace » (raccourcis, Se déconnecter) sur son propre profil |
 | [Photo de couverture](fonctionnalites/photo-de-couverture.md) | Bandeau du profil illustré par une photo (site et application) : ajout, remplacement, retrait |
 | [Suivre et Communauté](fonctionnalites/abonnements.md) | Bouton Suivre (site et application), page Communauté (organisations, personnes), **comptes à suivre** (suggestions), abonnés prévenus des témoignages et directs, menu latéral de l'application |
 | [Mentions « @ »](fonctionnalites/mentions.md) | Mentionner un compte dans un commentaire (témoignages, directs, messages de prière) : autocomplétion sur les vrais comptes, notification, mention cliquable (site et application) |
@@ -163,6 +164,10 @@ Les versions allégées des médias ([qualites-media.md](fonctionnalites/qualite
 - lancer en permanence (Supervisor / systemd) : `php artisan queue:work --tries=2 --timeout=1900` ; sans processus permanent possible, cron chaque minute : `php artisan queue:work --stop-when-empty --timeout=1900` ;
 - après chaque déploiement : `php artisan queue:restart` ;
 - une fois (rattrapage des médias existants) : `php artisan media:transcode --missing`.
+
+Page de profil (2026-10-23) : aucune migration ; **recompiler et copier `public/build/`** (nouvelles classes du profil), puis `php artisan view:cache`.
+
+Migration du 2026-10-23 (sujet de prière depuis un témoignage) : `2026_10_23_100001_add_source_testimony_to_prayer_requests` (`prayer_requests.source_testimony_id`, [requêtes de prière](fonctionnalites/requetes-de-priere.md)). Lancer `php artisan migrate --force`, puis `php artisan view:cache`. Aucun asset à recompiler.
 
 Carnet privé et paroles prophétiques sur le site (2026-10-05) : **aucune migration** ; **recompilation et copie de `public/build/`** et `php artisan view:cache`.
 

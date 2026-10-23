@@ -41,7 +41,7 @@ class PrayerRequest extends Model
     }
 
     protected $fillable = [
-        'user_id', 'event_id', 'daily_verse_id', 'body', 'visibility', 'is_anonymous', 'status', 'answered_at', 'answer_note',
+        'user_id', 'event_id', 'daily_verse_id', 'source_testimony_id', 'body', 'visibility', 'is_anonymous', 'status', 'answered_at', 'answer_note',
         'testimony_id', 'prayer_count', 'message_count', 'report_count', 'hidden_at', 'hidden_by', 'hidden_reason',
     ];
 
@@ -75,6 +75,16 @@ class PrayerRequest extends Model
         return $this->belongsTo(DailyVerse::class);
     }
 
+    /**
+     * Témoignage (de quelqu'un d'autre, le plus souvent) depuis lequel la requête a été confiée.
+     * Publiés seulement : un témoignage retiré du public ou mis à la corbeille n'est plus montré.
+     */
+    public function sourceTestimony(): BelongsTo
+    {
+        return $this->belongsTo(Testimony::class, 'source_testimony_id')->published();
+    }
+
+    /** Témoignage de l'exaucement, écrit par l'auteur de la requête. */
     public function testimony(): BelongsTo
     {
         return $this->belongsTo(Testimony::class);

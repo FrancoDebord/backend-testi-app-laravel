@@ -127,6 +127,8 @@ return [
         'up_next_colon'          => ':',
         'play_now'               => 'Play now',
         'followers'              => '{0} followers|{1} follower|[2,*] followers',
+        'prayer_request'         => 'Share a prayer request',
+        'prayer_request_title'   => 'Share a prayer request inspired by this testimony',
         'repost'                 => 'Share on My Testimony',
         'reposted'               => 'Shared on My Testimony',
         'save'                   => 'Save',

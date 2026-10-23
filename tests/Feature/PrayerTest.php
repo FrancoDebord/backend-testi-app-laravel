@@ -229,6 +229,46 @@ class PrayerTest extends TestCase
         $this->actingAs($this->friend)->get(route('events.show', $event->id))->assertOk()->assertSee('Confier une requête');
     }
 
+    public function test_requete_confiee_depuis_le_temoignage_de_quelqu_un(): void
+    {
+        $testimony = \App\Models\Testimony::create([
+            'user_id' => $this->stranger->id, 'title' => 'Guérie du cancer', 'type' => 'text', 'category_slug' => 'guerison',
+            'body_text' => 'Dieu m\'a guérie.', 'visibility' => 'public', 'status' => 'approved', 'approved_at' => now(),
+        ]);
+
+        // Site : bouton sur le témoignage, formulaire prérempli, publication.
+        $create = route('prayer.requests.create', ['temoignage' => $testimony->id]);
+        $this->actingAs($this->author)->get(route('testimonies.show', $testimony->id))->assertOk()->assertSee($create, false);
+        $this->actingAs($this->author)->get($create)->assertOk()->assertSee('Guérie du cancer')
+            ->assertSee('name="source_testimony_id" value="' . $testimony->id . '"', false);
+        $this->actingAs($this->author)->post(route('prayer.requests.store'), [
+            'body' => 'Priez pour moi aussi : même diagnostic depuis mars.', 'visibility' => 'public', 'source_testimony_id' => $testimony->id,
+        ])->assertRedirect();
+        $prayer = PrayerRequest::where('source_testimony_id', $testimony->id)->sole();
+        $this->assertNull($prayer->testimony_id); // pas le témoignage de l'exaucement
+        $this->get(route('prayer.requests.show', $prayer->id))->assertOk()->assertSee('Après le témoignage « Guérie du cancer »');
+
+        // API : champ accepté et renvoyé.
+        $this->guest()->getJson("/api/v1/prayer/requests/{$prayer->id}")->assertOk()
+            ->assertJsonPath('data.sourceTestimony', ['id' => $testimony->id, 'title' => 'Guérie du cancer']);
+
+        // Témoignage inconnu ou non publié : refusé.
+        $pending = \App\Models\Testimony::create([
+            'user_id' => $this->stranger->id, 'title' => 'En attente', 'type' => 'text', 'category_slug' => 'guerison',
+            'body_text' => 'Texte.', 'visibility' => 'public', 'status' => 'pending',
+        ]);
+        foreach ([(string) \Illuminate\Support\Str::uuid(), $pending->id] as $id) {
+            $this->actingAs($this->friend)->postJson('/api/v1/prayer/requests', [
+                'body' => 'Priez pour ma famille, merci beaucoup.', 'source_testimony_id' => $id,
+            ])->assertStatus(422);
+        }
+
+        // Témoignage mis à la corbeille : le lien disparaît, la requête reste.
+        $testimony->delete();
+        $this->guest()->getJson("/api/v1/prayer/requests/{$prayer->id}")->assertOk()->assertJsonPath('data.sourceTestimony', null);
+        $this->get(route('prayer.requests.show', $prayer->id))->assertOk()->assertDontSee('Après le témoignage');
+    }
+
     // ─── Sessions ────────────────────────────────────────────────────────────
 
     private function createSession(array $extra = [], ?User $host = null): PrayerSession

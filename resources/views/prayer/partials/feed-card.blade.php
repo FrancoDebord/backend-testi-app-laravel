@@ -55,6 +55,11 @@
         <i class="fa-regular fa-calendar mr-1" aria-hidden="true"></i>{{ $prayerItem->event->title }}
     </a>
     @endif
+    @if($prayerItem->source_testimony_id && $prayerItem->sourceTestimony)
+    <a href="{{ route('testimonies.show', $prayerItem->source_testimony_id) }}" class="truncate text-xs font-medium text-primary-700 hover:underline">
+        <i class="fa-solid fa-book-open mr-1" aria-hidden="true"></i>Après le témoignage « {{ $prayerItem->sourceTestimony->title }} »
+    </a>
+    @endif
 
     <footer class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
         @if($viewer && !$prayerItem->isHidden())

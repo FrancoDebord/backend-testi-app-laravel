@@ -60,6 +60,16 @@ return [
         'events_upcoming' => 'Upcoming and ongoing',
         'events_past'     => 'Past events',
         'reposts'         => 'Shares',
+        'member_since'    => 'Member since :date',
+        'add_bio'         => 'Add an introduction',
+        'logout'          => 'Sign out',
+        'shortcuts'       => [
+            'title'    => 'My space',
+            'mine'     => 'My testimonies',
+            'saved'    => 'Saved',
+            'journal'  => 'Private journal',
+            'settings' => 'Settings',
+        ],
     ],
     'edit'             => [
         'title'                        => 'Edit my profile',

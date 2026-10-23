@@ -34,6 +34,7 @@ class PrayerRequests
         'visibility.in'      => 'Choisissez qui peut voir la requête.',
         'event_id.uuid'      => 'Événement introuvable.',
         'daily_verse_id.exists' => 'Verset du jour introuvable.',
+        'source_testimony_id.uuid' => 'Témoignage introuvable.',
         'message.required'   => "Écrivez votre message d'encouragement.",
         'message.max'        => '1 000 caractères au plus.',
         'reason.required'    => 'Choisissez la raison du signalement.',
@@ -55,6 +56,8 @@ class PrayerRequests
             'event_id'     => ['sometimes', 'nullable', 'uuid'],
             'daily_verse_id' => ['sometimes', 'nullable', 'integer', 'exists:daily_verses,id'],
             'testimony_id' => ['sometimes', 'nullable', 'uuid'],
+            // Témoignage depuis lequel la requête est confiée (à la création seulement).
+            'source_testimony_id' => ['sometimes', 'nullable', 'uuid'],
         ];
     }
 
@@ -79,7 +82,7 @@ class PrayerRequests
     /** Requête de liste (les plus récentes d'abord). `status` = open | answered. */
     public function list(?User $viewer, string $scope = 'all', ?string $eventId = null, ?string $status = null, ?int $dailyVerseId = null): Builder
     {
-        $q = PrayerRequest::query()->with(['user', 'event'])->withPrayedBy($viewer)->latest();
+        $q = PrayerRequest::query()->with(['user', 'event', 'sourceTestimony:id,title'])->withPrayedBy($viewer)->latest();
 
         match ($scope) {
             'feed'      => $q->where('visibility', PrayerRequest::PUBLIC)->whereNull('hidden_at'),
@@ -110,7 +113,7 @@ class PrayerRequests
     /** Requête visible de $viewer, sinon 404. */
     public function find(?User $viewer, string $id): PrayerRequest
     {
-        $request = Str::isUuid($id) ? PrayerRequest::with(['user', 'event'])->withPrayedBy($viewer)->find($id) : null;
+        $request = Str::isUuid($id) ? PrayerRequest::with(['user', 'event', 'sourceTestimony:id,title'])->withPrayedBy($viewer)->find($id) : null;
         if (!$request || !$request->isVisibleTo($viewer)) {
             throw new PrayerActionException('Requête de prière introuvable.', 404);
         }
@@ -134,7 +137,8 @@ class PrayerRequests
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
             'event_id'     => $this->eventFor($user, $data['event_id'] ?? null)?->id,
             'daily_verse_id' => filled($data['daily_verse_id'] ?? null) ? (int) $data['daily_verse_id'] : null,
-        ])->load(['user', 'event']);
+            'source_testimony_id' => $this->sourceTestimonyFor($data['source_testimony_id'] ?? null)?->id,
+        ])->load(['user', 'event', 'sourceTestimony:id,title']);
 
         Mentions::notifyPrayerRequest($request);
 
@@ -414,6 +418,18 @@ class PrayerRequests
     // ─── Outils ──────────────────────────────────────────────────────────────
 
     /** Événement de rattachement : publié et visible (ou géré par l'auteur). */
+    /** Témoignage publié depuis lequel la requête est confiée (docs/fonctionnalites/requetes-de-priere.md). */
+    public function sourceTestimonyFor(?string $testimonyId): ?Testimony
+    {
+        if (blank($testimonyId)) return null;
+        $testimony = Str::isUuid($testimonyId) ? Testimony::published()->find($testimonyId) : null;
+        if (!$testimony) {
+            throw new PrayerActionException('Témoignage introuvable.', 422);
+        }
+
+        return $testimony;
+    }
+
     private function eventFor(User $user, ?string $eventId): ?Event
     {
         if (blank($eventId)) return null;

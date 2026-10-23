@@ -4,6 +4,24 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-23 — Page de profil redessinée, bouton « Se déconnecter »
+
+- **Utilisateurs** : la page de profil (`/profiles/{id}`) est regroupée dans une carte : bandeau bleu de la charte quand il n'y a pas de photo de couverture, avatar à cheval sur le bandeau, pays et « Membre depuis », présentation, statistiques en tuiles (abonnés et abonnements cliquables sur son profil). Sur son propre profil, un bloc « Mon espace » rassemble Mes témoignages, Sauvegardes, Carnet privé, la vérification du compte, « Raconter ma conversion », Paramètres et un bouton **Se déconnecter**. Les titres de section ne ressemblent plus à des onglets.
+- **Développeurs** : `resources/views/profile/show.blade.php` réécrite (mêmes données du contrôleur) ; traductions `profile.show.member_since`, `add_bio`, `logout`, `shortcuts.*`. Nouvelle page [profil.md](fonctionnalites/profil.md). Test : `FollowTest` complété (Mon espace et déconnexion sur son profil seulement).
+- **Déploiement** : **recompiler et copier `public/build/`** (nouvelles classes Tailwind), puis `php artisan view:cache`. Aucune migration.
+
+---
+
+## 2026-10-23 — Sujet de prière confié depuis un témoignage
+
+- **Utilisateurs** : sur la page d'un témoignage publié, un bouton « Confier un sujet de prière » ouvre le formulaire de requête de prière, avec le rappel du témoignage. La requête publiée affiche « Après le témoignage « … » » (page et cartes des fils), avec un lien vers le témoignage tant qu'il reste publié. Sans compte : connexion demandée, puis retour au formulaire.
+- **API** : `POST /prayer/requests` accepte `source_testimony_id` (témoignage publié, sinon 422) ; `PrayerRequestResource` renvoie `sourceTestimony: { id, title } | null`.
+- **Développeurs** : colonne `prayer_requests.source_testimony_id`, relation `PrayerRequest::sourceTestimony()` (publiés seulement), `PrayerRequests::sourceTestimonyFor()`, `?temoignage=` sur `/priere/requetes/nouvelle`. Distinct de `testimony_id` (exaucement). Test : `PrayerTest::test_requete_confiee_depuis_le_temoignage_de_quelqu_un`.
+- **Application** (`testi_app`) : bouton « Confier un sujet de prière » sous les réactions de l'écran du témoignage (affichage classique et immersif ; connexion demandée en invité), formulaire avec le rappel du témoignage (`/prayer-requests/new?testimony=&title=`), lien « Après le témoignage « … » » sur la carte et le détail de la requête.
+- **Déploiement** : migration `2026_10_23_100001_add_source_testimony_to_prayer_requests` (`php artisan migrate --force`), puis `php artisan view:cache`. Aucun asset à recompiler.
+
+---
+
 ## 2026-10-23 — Suppression définitive depuis la corbeille
 
 - **Utilisateurs** (super-administrateurs) : dans l'onglet Corbeille de `/moderation`, chaque témoignage a un bouton « Supprimer » (suppression définitive, avec confirmation), et la liste des actions groupées propose « Supprimer définitivement ». Les modérateurs et administrateurs ordinaires ne voient pas ces actions (inchangé : restauration seulement).

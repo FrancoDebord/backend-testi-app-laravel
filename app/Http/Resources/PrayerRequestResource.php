@@ -53,6 +53,9 @@ class PrayerRequestResource extends JsonResource
             'messageCount' => $this->message_count,
             'hasPrayed'   => $this->hasPrayed($viewer),
             'event'       => $this->event_id && $this->event ? ['id' => $this->event_id, 'title' => $this->event->title] : null,
+            // Témoignage depuis lequel la requête a été confiée, tant qu'il reste publié (sinon null).
+            'sourceTestimony' => $this->source_testimony_id && $this->sourceTestimony
+                ? ['id' => $this->source_testimony_id, 'title' => $this->sourceTestimony->title] : null,
             'dailyVerseId' => $this->daily_verse_id, // verset du jour de rattachement (docs/fonctionnalites/verset-du-jour.md)
             'isMine'      => $isAuthor,
             // Retrait par la modération : seuls l'auteur et la modération voient la requête et ce motif.

@@ -107,7 +107,10 @@ class FollowTest extends TestCase
         $this->actingAs($me)->get("/profiles/{$church->id}")->assertOk()
             ->assertSee('data-follow-form', false)
             ->assertSee('Suivre');
-        $this->actingAs($me)->get("/profiles/{$me->id}")->assertOk()->assertDontSee('data-follow-form', false);
+        $this->actingAs($me)->get("/profiles/{$me->id}")->assertOk()->assertDontSee('data-follow-form', false)
+            // Mon espace : raccourcis et déconnexion sur son propre profil seulement (docs/fonctionnalites/profil.md).
+            ->assertSee('id="my-space-title"', false)->assertSee('Se déconnecter')->assertSee(route('profile.settings'), false);
+        $this->actingAs($me)->get("/profiles/{$church->id}")->assertDontSee('id="my-space-title"', false)->assertDontSee('Se déconnecter');
 
         $this->actingAs($me)->postJson("/profiles/{$church->id}/follow")->assertOk()
             ->assertJsonPath('following', true)

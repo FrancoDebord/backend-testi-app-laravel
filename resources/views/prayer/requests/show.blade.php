@@ -72,6 +72,11 @@
                 <i class="fa-regular fa-calendar" aria-hidden="true"></i>{{ $prayer->event->title }}
             </a>
             @endif
+            @if($prayer->source_testimony_id && $prayer->sourceTestimony)
+            <a href="{{ route('testimonies.show', $prayer->source_testimony_id) }}" class="mt-3 flex min-w-0 items-center gap-1 text-sm font-medium text-primary-700 hover:underline">
+                <i class="fa-solid fa-book-open shrink-0" aria-hidden="true"></i><span class="truncate">Après le témoignage « {{ $prayer->sourceTestimony->title }} »</span>
+            </a>
+            @endif
 
             @if($prayer->isAnswered())
             <div class="card-insight mt-4 p-4">

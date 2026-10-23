@@ -28,10 +28,14 @@
     <form method="POST" action="{{ route('prayer.requests.store') }}" class="card divide-y divide-slate-100" data-loading-label="Publication…">
         @csrf
         @if($event)<input type="hidden" name="event_id" value="{{ $event->id }}">@endif
+        @if($testimony)<input type="hidden" name="source_testimony_id" value="{{ $testimony->id }}">@endif
 
         <section class="space-y-4 p-5 sm:p-6">
             @if($event)
             <p class="alert-info text-sm"><i class="fa-regular fa-calendar mt-0.5" aria-hidden="true"></i><span>Rattachée à l'événement <strong>{{ $event->title }}</strong> : elle apparaîtra sur sa page.</span></p>
+            @endif
+            @if($testimony)
+            <p class="alert-info text-sm"><i class="fa-solid fa-book-open mt-0.5" aria-hidden="true"></i><span>Confiée après le témoignage <strong class="break-words">{{ $testimony->title }}</strong> de {{ $testimony->user?->display_name }} : un lien vers ce témoignage figurera sur votre requête.</span></p>
             @endif
             <div>
                 <label for="body" class="form-label">Votre requête *</label>
@@ -65,7 +69,7 @@
         </section>
 
         <div class="flex flex-col-reverse gap-2 p-5 sm:flex-row sm:justify-end sm:p-6">
-            <a href="{{ $event ? route('events.show', $event->id) : route('prayer.requests.index') }}" class="btn-secondary">Annuler</a>
+            <a href="{{ $event ? route('events.show', $event->id) : ($testimony ? route('testimonies.show', $testimony->id) : route('prayer.requests.index')) }}" class="btn-secondary">Annuler</a>
             <button type="submit" class="btn-primary"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>Publier ma requête</button>
         </div>
     </form>

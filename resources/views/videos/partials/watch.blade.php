@@ -25,10 +25,13 @@
     $rateLabel = fn ($rate) => rtrim(rtrim(\App\Support\Locales::number($rate, 2), '0'), ',.');
     $canReport = Auth::check() && Auth::id() !== $testimony->user_id;
     $inJournal = $testimony->isInJournal();
-    // Partage interne « X a partagé » (docs/fonctionnalites/partage-interne.md) : témoignage publié et public, pas le sien.
-    $canRepost = $canReport && !$inJournal
+    $isPublic  = !$inJournal
         && $testimony->status === \App\Enums\TestimonyStatus::Approved
         && $testimony->visibility === \App\Enums\TestimonyVisibility::Public;
+    // Partage interne « X a partagé » (docs/fonctionnalites/partage-interne.md) : témoignage publié et public, pas le sien.
+    $canRepost = $canReport && $isPublic;
+    // Sujet de prière confié depuis ce témoignage (docs/fonctionnalites/requetes-de-priere.md) : connexion demandée au clic.
+    $canPrayerRequest = $isPublic;
     $myRepost  = $canRepost ? $testimony->reposts()->where('user_id', Auth::id())->first() : null;
     // Lecture (docs/fonctionnalites/affichage-et-lecture.md) : qualités, en boucle, lecture automatique du suivant.
     $hasPlayer  = in_array($type, ['video', 'audio'], true) && $testimony->media_url;
@@ -324,6 +327,12 @@
                         <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>{{ __('videos.watch.share') }}
                     </button>
                     @endunless
+                    @if($canPrayerRequest)
+                    {{-- Confier un sujet de prière depuis ce témoignage (docs/fonctionnalites/requetes-de-priere.md) --}}
+                    <a href="{{ route('prayer.requests.create', ['temoignage' => $testimony->id]) }}" class="chip" title="{{ __('videos.watch.prayer_request_title') }}">
+                        <i class="fa-solid fa-hand-holding-heart" aria-hidden="true"></i>{{ __('videos.watch.prayer_request') }}
+                    </a>
+                    @endif
                     @if($canRepost)
                     <button type="button" class="{{ $myRepost ? 'chip-active' : 'chip' }}" data-modal-open="repost-modal" aria-pressed="{{ $myRepost ? 'true' : 'false' }}">
                         <i class="fa-solid fa-retweet" aria-hidden="true"></i>{{ $myRepost ? __('videos.watch.reposted') : __('videos.watch.repost') }}

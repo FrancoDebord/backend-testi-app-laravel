@@ -127,6 +127,8 @@ return [
         'up_next_colon'          => ' :',
         'play_now'               => 'Lire maintenant',
         'followers'              => '{0} abonné|{1} abonné|[2,*] abonnés',
+        'prayer_request'         => 'Confier un sujet de prière',
+        'prayer_request_title'   => 'Confier un sujet de prière inspiré de ce témoignage',
         'repost'                 => 'Partager sur My Testimony',
         'reposted'               => 'Partagé sur My Testimony',
         'save'                   => 'Sauvegarder',

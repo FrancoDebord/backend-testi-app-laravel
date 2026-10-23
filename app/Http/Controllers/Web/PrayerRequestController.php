@@ -37,9 +37,13 @@ class PrayerRequestController extends Controller
     {
         $eventId = $request->query('evenement');
         $event   = $eventId && Str::isUuid($eventId) ? Event::find($eventId) : null;
+        // Confiée depuis un témoignage publié (?temoignage=) : rappelé sur la requête.
+        $testimonyId = $request->query('temoignage');
+        $testimony   = $testimonyId && Str::isUuid($testimonyId) ? \App\Models\Testimony::published()->with('user')->find($testimonyId) : null;
 
         return view('prayer.requests.create', [
-            'event' => $event?->isVisibleTo(Auth::user()) ? $event : null,
+            'event'     => $event?->isVisibleTo(Auth::user()) ? $event : null,
+            'testimony' => $testimony,
         ]);
     }
 
