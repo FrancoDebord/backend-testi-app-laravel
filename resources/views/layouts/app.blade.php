@@ -287,31 +287,54 @@
     <main class="{{ $fullBleed ? '' : 'px-4 py-6 sm:px-6 lg:px-8' }} min-w-0 flex-1">
     <div class="{{ $fullBleed ? '' : 'mx-auto w-full max-w-[1280px]' }}">
 
+        {{-- En-tête de page (docs/interface.md › En-tête de page) : carte, icône ($headerIcon, sinon celle de l'entrée
+             active du menu), fil d'Ariane, titre, trait jaune, description ; formes décoratives sur grand écran. --}}
         @if($header)
-        <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-            <div class="min-w-0">
-                @if(count($breadcrumbs))
-                <nav aria-label="{{ __('layout.breadcrumb') }}" class="mb-2">
-                    <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-                        @foreach($breadcrumbs as $crumb)
-                        <li class="flex min-w-0 items-center gap-2">
-                            @if(!$loop->first)<i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>@endif
-                            @if(!empty($crumb['url']))
-                                <a href="{{ $crumb['url'] }}" class="hover:text-slate-900 hover:underline">{{ $crumb['label'] }}</a>
-                            @else
-                                <span class="max-w-60 truncate text-slate-700" aria-current="page">{{ $crumb['label'] }}</span>
-                            @endif
-                        </li>
-                        @endforeach
-                    </ol>
-                </nav>
-                @endif
-                <h1 class="text-2xl font-bold break-words text-primary-600 sm:text-[28px]">{{ $header }}</h1>
-                @if($subheader)<p class="mt-1 text-sm text-slate-500">{{ $subheader }}</p>@endif
+        @php
+            $pageIcon = $headerIcon ?? collect($navGroups)->flatMap(fn ($g) => $g['visible'] ? $g['items'] : [])->firstWhere('active', true)['icon'] ?? null;
+        @endphp
+        <div class="{{ $fullBleed ? 'mx-4 mt-4 sm:mx-6' : '' }} relative mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white px-4 py-5 shadow-soft sm:px-6 sm:py-6">
+            <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-64 md:block" aria-hidden="true">
+                <span class="absolute -top-16 -right-10 h-44 w-44 rounded-full bg-primary-50"></span>
+                <span class="absolute -right-4 -bottom-14 h-28 w-28 rounded-full bg-sun-50"></span>
+                <i class="fa-solid fa-star absolute top-6 right-24 text-sm text-sun-400"></i>
             </div>
-            @hasSection('headerActions')
-            <div class="flex flex-wrap items-center gap-2">@yield('headerActions')</div>
-            @endif
+            <div class="relative flex flex-wrap items-start justify-between gap-4">
+                <div class="flex min-w-0 flex-1 items-start gap-4">
+                    @if($pageIcon)
+                    <span class="hidden h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-lg text-white shadow-soft sm:flex" aria-hidden="true">
+                        <i class="fa-solid {{ $pageIcon }}"></i>
+                    </span>
+                    @endif
+                    <div class="min-w-0 flex-1">
+                        @if(count($breadcrumbs))
+                        <nav aria-label="{{ __('layout.breadcrumb') }}" class="mb-1.5">
+                            <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                                @foreach($breadcrumbs as $crumb)
+                                <li class="flex min-w-0 items-center gap-2">
+                                    @if(!$loop->first)<i class="fa-solid fa-chevron-right text-[10px] text-slate-300" aria-hidden="true"></i>@endif
+                                    @if(!empty($crumb['url']))
+                                        <a href="{{ $crumb['url'] }}" class="hover:text-primary-600 hover:underline">{{ $crumb['label'] }}</a>
+                                    @else
+                                        <span class="max-w-60 truncate font-medium text-slate-700" aria-current="page">{{ $crumb['label'] }}</span>
+                                    @endif
+                                </li>
+                                @endforeach
+                            </ol>
+                        </nav>
+                        @endif
+                        <h1 class="flex items-center gap-3 text-2xl font-bold break-words text-primary-600 sm:text-[28px]">
+                            @if($pageIcon)<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-sm text-white sm:hidden" aria-hidden="true"><i class="fa-solid {{ $pageIcon }}"></i></span>@endif
+                            <span class="min-w-0">{{ $header }}</span>
+                        </h1>
+                        <span class="mt-2 block h-1 w-10 rounded-full bg-sun-400" aria-hidden="true"></span>
+                        @if($subheader)<p class="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-[15px]">{{ $subheader }}</p>@endif
+                    </div>
+                </div>
+                @hasSection('headerActions')
+                <div class="flex flex-wrap items-center gap-2">@yield('headerActions')</div>
+                @endif
+            </div>
         </div>
         @endif
 

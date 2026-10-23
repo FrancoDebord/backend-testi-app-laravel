@@ -174,6 +174,7 @@ Layout principal : `layouts/app.blade.php` (menu latéral + barre supérieure + 
         ['label' => 'Section', 'url' => route('…')],
         ['label' => 'Page actuelle'],
     ];
+    // $headerIcon = 'fa-users'; // facultatif : sinon icône de l'entrée active du menu
     // $fullBleed = true;   // page sans marges (ex. lecteur Bible)
 @endphp
 
@@ -182,6 +183,7 @@ Layout principal : `layouts/app.blade.php` (menu latéral + barre supérieure + 
 @push('scripts') … @endpush
 ```
 
+- **En-tête de page** (`$header`) : carte blanche (bordure fine, `shadow-soft`) avec, à gauche, une tuile d'icône bleue (`primary-600`, icône blanche ; dans le titre sur mobile), le fil d'Ariane, le titre, un trait jaune `sun-400` de 40 px et la description (`$subheader`, 14–15 px, `slate-600`). À droite : `headerActions`, et dès 768 px deux disques décoratifs (`primary-50`, `sun-50`) et une étoile, masqués aux lecteurs d'écran. Icône : `$headerIcon`, sinon celle de l'entrée active de `$navGroups`, sinon aucune tuile.
 - **Menu latéral** : ajouter la page dans `$navGroups` en haut de `layouts/app.blade.php`. Chaque groupe a une condition `visible` (connexion, `canModerate()`, `isAdmin()`), et chaque entrée a `label`, `icon` (Font Awesome), `url` et `active`.
 - **Pages sans connexion** (connexion, inscription, mot de passe oublié) : `@extends('layouts.guest')`. Le layout affiche le panneau de marque (dès 1024 px) ou un bandeau illustré, puis la carte du formulaire (`card p-6 sm:p-8`, titre `text-h3`, sous-titre `text-secondary`). Paysage vagues et soleil : `@include('layouts.partials.krea-landscape', ['class' => '…', 'viewBox' => '0 50 400 150'])` (le cadrage est facultatif).
 - **Messages** : `session('success')`, `session('status')`, `session('error')` et `withErrors(['error' => …])` sont affichés automatiquement en haut du contenu.

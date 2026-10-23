@@ -4,6 +4,22 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-23 — Page de lecture d'un témoignage redessinée
+
+- **Utilisateurs** (`/testimonies/{id}`, `/videos/{id}`) : en-tête clair avec badges (catégorie, conversion), titre en grand, vues, date et durée de lecture, et l'auteur dans un encadré avec Suivre. Pour un texte, cet en-tête ouvre l'article au lieu d'arriver après le texte. Réactions et actions regroupées dans une seule carte (réactions en haut, actions dessous). Verset en encadré jaune, mots-clés en étiquettes, commentaires dans une carte. Dans « À regarder également » et les listes compactes, un témoignage texte a une miniature jaune avec guillemets au lieu d'un rectangle gris.
+- **Développeurs** : nouveau partiel `videos/partials/watch-heading` ; `videos/partials/watch` réorganisé sans changer les attributs utilisés par le JavaScript (`data-reactions`, `data-save`, `data-share`, `data-views-label`, `data-follower-count`, lecteur, lecture à voix haute) ; `videos/partials/row` (miniature des textes). Voir [videos.md](fonctionnalites/videos.md).
+- **Déploiement** : **recompiler et copier `public/build/`**, puis `php artisan view:cache`. Aucune migration.
+
+---
+
+## 2026-10-23 — En-tête des pages redessiné
+
+- **Utilisateurs** : toutes les pages à titre (vérification du compte, Mes abonnés, Mes abonnements, modération, administration, paramètres…) ont un en-tête en carte : icône de la page dans une tuile bleue, fil d'Ariane, titre, trait jaune, description plus lisible, formes décoratives discrètes aux couleurs de la charte sur grand écran. Boutons d'en-tête inchangés, à droite.
+- **Développeurs** : en-tête dans `resources/views/layouts/app.blade.php` ; nouvelle variable facultative `$headerIcon` (sinon icône de l'entrée active du menu). Pages hors menu : `profile/verification` (`fa-circle-check`), `community/followers` (`fa-users`). Voir [interface.md](interface.md) › En-tête de page.
+- **Déploiement** : **recompiler et copier `public/build/`**, puis `php artisan view:cache`. Aucune migration.
+
+---
+
 ## 2026-10-23 — Page de profil redessinée, bouton « Se déconnecter »
 
 - **Utilisateurs** : la page de profil (`/profiles/{id}`) est regroupée dans une carte : bandeau bleu de la charte quand il n'y a pas de photo de couverture, avatar à cheval sur le bandeau, pays et « Membre depuis », présentation, statistiques en tuiles (abonnés et abonnements cliquables sur son profil). Sur son propre profil, un bloc « Mon espace » rassemble Mes témoignages, Sauvegardes, Carnet privé, la vérification du compte, « Raconter ma conversion », Paramètres et un bouton **Se déconnecter**. Les titres de section ne ressemblent plus à des onglets.

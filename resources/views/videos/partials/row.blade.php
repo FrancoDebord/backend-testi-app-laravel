@@ -17,7 +17,7 @@
         'text'  => ['fa-book-open', __('videos.row.read')],
         default => ['fa-play', __('videos.row.watch')],
     };
-    $thumbIcon = ['text' => 'fa-file-lines', 'audio' => 'fa-microphone'][$type] ?? 'fa-play';
+    $thumbIcon = ['text' => 'fa-quote-left', 'audio' => 'fa-microphone'][$type] ?? 'fa-play';
     $summary   = $testimony->body_text ? Str::limit($testimony->body_plain, 400) : null;
     // narrow : colonne étroite (« À regarder également ») → petite miniature à toutes les largeurs.
     $narrow    = ($narrow ?? false) === true;
@@ -25,7 +25,7 @@
 <article class="min-w-0" data-row>
     <div class="{{ $narrow ? 'gap-3' : 'gap-3 sm:gap-4' }} flex items-center p-3">
         <a href="{{ $url }}" tabindex="-1" aria-hidden="true"
-           class="{{ $type === 'text' ? 'bg-slate-100 text-slate-400' : 'bg-slate-900 text-slate-600' }} {{ $narrow ? 'w-28' : 'w-28 sm:w-40' }} relative flex aspect-video shrink-0 items-center justify-center overflow-hidden rounded-lg">
+           class="{{ $type === 'text' ? 'bg-sun-50 text-sun-400' : 'bg-slate-900 text-slate-600' }} {{ $narrow ? 'w-28' : 'w-28 sm:w-40' }} relative flex aspect-video shrink-0 items-center justify-center overflow-hidden rounded-lg">
             @if($testimony->cover_url)
                 <img src="{{ $testimony->cover_url }}" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
             @else

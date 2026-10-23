@@ -165,6 +165,10 @@ Les versions allégées des médias ([qualites-media.md](fonctionnalites/qualite
 - après chaque déploiement : `php artisan queue:restart` ;
 - une fois (rattrapage des médias existants) : `php artisan media:transcode --missing`.
 
+Page de lecture d'un témoignage (2026-10-23) : aucune migration ; **recompiler et copier `public/build/`**, puis `php artisan view:cache`.
+
+En-tête des pages (2026-10-23, `layouts/app`) : aucune migration ; **recompiler et copier `public/build/`**, puis `php artisan view:cache`.
+
 Page de profil (2026-10-23) : aucune migration ; **recompiler et copier `public/build/`** (nouvelles classes du profil), puis `php artisan view:cache`.
 
 Migration du 2026-10-23 (sujet de prière depuis un témoignage) : `2026_10_23_100001_add_source_testimony_to_prayer_requests` (`prayer_requests.source_testimony_id`, [requêtes de prière](fonctionnalites/requetes-de-priere.md)). Lancer `php artisan migrate --force`, puis `php artisan view:cache`. Aucun asset à recompiler.

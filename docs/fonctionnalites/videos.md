@@ -51,9 +51,11 @@ Menu latéral : **Découvrir → Vidéos**. Lien aussi dans le pied de page.
 - **Vidéo** : lecteur HTML5 natif (lecture, pause, volume, plein écran, barre de progression, clavier). Un short s'affiche au format vertical. Message clair si le fichier ne peut pas être lu.
 - **Audio** : couverture (ou pictogramme) et lecteur audio.
 - **Réglages de lecture** sous le lecteur (vidéo et audio) : **Vitesse** (0,75× à 2×), **Qualité** (Auto, versions allégées, origine), **En boucle**, **Lecture auto** du suivant avec bandeau « À suivre ». Détails : [affichage et lecture](affichage-et-lecture.md).
-- **Texte** : le témoignage mis en forme (gras, italique, émojis) et la durée de lecture estimée.
-- Sous le lecteur : titre, auteur (avatar, abonnés), **Partager** (partage natif du téléphone, sinon copie du lien `share_url`), **Sauvegarder**, réactions avec compteurs, puis la description (repliée au-delà de 280 caractères, « Afficher plus »), verset biblique, mots-clés.
-- **Commentaires** : « Ajouter un commentaire… » → **Publier**. Le commentaire apparaît immédiatement. Pour chaque commentaire : Répondre, Modifier et Supprimer (avec confirmation `openConfirmModal`) selon les droits.
+- **Texte** : une seule carte « article » : en-tête (voir ci-dessous), bandeau « Écouter le témoignage », puis le texte mis en forme (gras, italique, émojis).
+- **En-tête** (partiel `videos/partials/watch-heading`) : badges (catégorie, conversion, replay d'un direct), titre en grand, vues, date de publication et durée de lecture (texte) avec icônes, détails de la conversion, puis l'auteur dans un encadré (avatar, abonnés, Suivre). En tête de l'article pour un texte, sous le lecteur pour une vidéo ou un audio.
+- **Réactions et actions** : une carte, réactions avec compteurs en haut (J'aime, Je prie, Feu), puis, sous un trait, **Partager** (partage natif du téléphone, sinon copie du lien `share_url`), Confier un sujet de prière, Partager sur My Testimony, **Sauvegarder**, carnet privé, suppression et signalement selon les droits.
+- **Détails** (carte, affichée seulement si elle a du contenu) : événement, description (vidéo et audio, repliée au-delà de 280 caractères, « Afficher plus »), verset biblique en encadré jaune, mots-clés en étiquettes, preuves.
+- **Commentaires** (carte) : « Ajouter un commentaire… » → **Publier**. Le commentaire apparaît immédiatement. Pour chaque commentaire : Répondre, Modifier et Supprimer (avec confirmation `openConfirmModal`) selon les droits.
 - **À regarder également** : colonne de droite à partir de 1 280 px, sous les commentaires en dessous.
 
 ## Présentation commune aux autres pages
@@ -65,7 +67,7 @@ Sans changer les adresses, le reste du site reprend cette présentation :
 | Accueil | `/` | Pastilles type + catégories (`type`, `category`), verset du jour ; sur la première page sans filtre : **En direct** (4), **À la une** (une grande carte + 4), étagère **Shorts** (12, lien « Tout voir » vers `/videos?tab=shorts`) ; puis « Derniers témoignages » |
 | Explorer | `/explore` | Recherche, onglets de type, pastilles de tri et de catégorie ; mêmes paramètres qu'avant |
 | Témoignage | `/testimonies/{id}` | **Même page de lecture** que `/videos/{id}` (partiel `videos/partials/watch`), liens « À regarder également » vers `/testimonies/{id}`. Les règles d'accès de cette page sont inchangées ; la vue est comptée à l'ouverture (une par personne toutes les 6 h) |
-| Profil | `/profiles/{id}` | Présentation « chaîne » : bandeau, avatar, statistiques, S'abonner / Modifier le profil, grille de témoignages |
+| Profil | `/profiles/{id}` | Carte d'en-tête, statistiques, « Mon espace » pour soi, grille de témoignages : [page de profil](profil.md) |
 | Sauvegardes, Mes témoignages | `/profile/saved`, `/mes-temoignages` | Grille de cartes ; sur « Mes témoignages », la pastille indique le statut (en attente, refusé…) |
 | Directs | `/lives` | Cartes de direct (statut, durée, diffuseur) |
 | Barre du haut | toutes les pages | Champ de recherche vers Explorer (loupe sur mobile) |
@@ -87,7 +89,7 @@ Carte unique : `components/testimony-card` (ouvre `/testimonies/{id}`) inclut `v
 | Vues | `app/Services/ViewCounter.php` (cache, `Cache::add` atomique) |
 | Portées et règles | `app/Models/Testimony.php` : `shorts()`, `longVideos()`, `liveReplays()`, `search()`, `isShort()`, `isVisibleTo()`, `viewsLabel()`, `readingMinutes()`, relation `liveSession()` |
 | Pages | `resources/views/videos/index.blade.php`, `resources/views/videos/show.blade.php` et `resources/views/testimonies/show.blade.php` (même partiel `watch`) |
-| Partiels | `resources/views/videos/partials/` : `watch` (page de lecture), `card` (carte), `cards` (page de cartes), `live-card` (direct), `recommendation`, `comment`, `comments` |
+| Partiels | `resources/views/videos/partials/` : `watch` (page de lecture), `watch-heading` (en-tête : badges, titre, informations, auteur), `row` (ligne compacte ; miniature d'un texte : fond jaune clair et guillemets), `card` (carte), `cards` (page de cartes), `live-card` (direct), `recommendation`, `comment`, `comments` |
 | JavaScript | `resources/js/videos.js` (importé par `app.js`) : afficher plus, miniatures différées, prévisualisation, lecteur et vues, réactions, sauvegarde, partage, commentaires |
 
 ### Routes

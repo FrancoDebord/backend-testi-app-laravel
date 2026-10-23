@@ -3,6 +3,7 @@
 @php
     // Vérification des comptes personnels : docs/fonctionnalites/verification-des-comptes.md
     $header      = 'Faire vérifier mon compte';
+    $headerIcon  = 'fa-circle-check';
     $subheader   = 'Le badge « Compte vérifié » confirme votre identité auprès de la communauté.';
     $breadcrumbs = [
         ['label' => 'Accueil', 'url' => route('home')],

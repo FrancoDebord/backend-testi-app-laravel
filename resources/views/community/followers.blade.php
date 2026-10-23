@@ -4,6 +4,7 @@
     // « Mes abonnés » : comptes qui me suivent (docs/fonctionnalites/abonnements.md).
     // Bouton « Suivre en retour » pour ceux que je ne suis pas encore.
     $header      = 'Mes abonnés';
+    $headerIcon  = 'fa-users';
     $subheader   = 'Les comptes qui vous suivent : ils sont prévenus de vos témoignages et de vos directs.';
     $breadcrumbs = [
         ['label' => 'Accueil', 'url' => route('home')],

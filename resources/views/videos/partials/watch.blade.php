@@ -192,11 +192,12 @@
 
             @else
                 <article class="card overflow-hidden">
+                    <header class="p-5 pb-4 sm:p-8 sm:pb-6">@include('videos.partials.watch-heading')</header>
                     @if($testimony->cover_url)
                     <img src="{{ $testimony->cover_url }}" alt="" class="max-h-96 w-full object-cover">
                     @endif
                     {{-- Lecture à voix haute (resources/js/tts.js) : affichée seulement si le navigateur sait lire. --}}
-                    <div class="border-b border-primary-100 bg-primary-50 px-5 py-3 sm:px-8" role="group" aria-label="{{ __('videos.watch.tts') }}"
+                    <div class="border-y border-primary-100 bg-primary-50 px-5 py-3 sm:px-8" role="group" aria-label="{{ __('videos.watch.tts') }}"
                          data-tts data-tts-source="testimony-body" data-tts-title="{{ $testimony->title }}"
                          data-tts-verse="{{ $testimony->bible_verse ? trim($testimony->bible_verse . ($testimony->bible_ref ? ' — ' . $testimony->bible_ref : '')) : '' }}" hidden>
                         <div class="flex flex-wrap items-center gap-2">
@@ -288,40 +289,27 @@
             @endif
             @endif
 
-            {{-- ── Titre et informations ────────────────────────────────── --}}
-            {{-- Témoignage de conversion : badge, année, lieu, verset ; « Modifier » pour l'auteur (docs/fonctionnalites/temoignage-de-conversion.md) --}}
-            @if($testimony->isConversion())
-            @php $conversion = $testimony->conversionDetails(); @endphp
-            <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-sun-50 px-4 py-3 text-sm text-slate-700">
-                <span class="badge-yellow"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.kind_conversion') }}</span>
-                @if($conversion['year'])<span><i class="fa-regular fa-calendar mr-1 text-slate-400" aria-hidden="true"></i>{{ __('conversion.converted_in', ['year' => $conversion['year']]) }}</span>@endif
-                @if($conversion['place'])<span><i class="fa-solid fa-location-dot mr-1 text-slate-400" aria-hidden="true"></i>{{ __('conversion.converted_at', ['place' => $conversion['place']]) }}</span>@endif
-                @if($conversion['verse'])<span><i class="fa-solid fa-book-bible mr-1 text-slate-400" aria-hidden="true"></i>{{ $conversion['verse'] }}</span>@endif
-                @if(auth()->id() === $testimony->user_id)
-                <a href="{{ route('testimonies.conversion.edit') }}" class="btn-ghost btn-sm ml-auto"><i class="fa-solid fa-pen" aria-hidden="true"></i>{{ __('conversion.edit') }}</a>
-                @endif
-            </div>
-            @endif
-            <h1 class="mt-4 text-lg leading-snug font-semibold break-words text-primary-600 sm:text-xl">{{ $testimony->title }}</h1>
+            {{-- ── Titre et informations (vidéo, audio ; pour un texte, en tête de l'article) ── --}}
+            @unless($type === 'text')
+            <div class="mt-5">@include('videos.partials.watch-heading')</div>
+            @endunless
 
-            <div class="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-                <div class="flex min-w-0 items-center gap-3">
-                    <a href="{{ route('profiles.show', $testimony->user->id) }}" class="shrink-0 rounded-full" tabindex="-1" aria-hidden="true">
-                        @include('components.avatar', ['user' => $testimony->user, 'size' => 'md'])
-                    </a>
-                    <div class="min-w-0">
-                        <p class="flex min-w-0 items-center gap-1.5">
-                            <a href="{{ route('profiles.show', $testimony->user->id) }}" class="block truncate text-sm font-semibold text-slate-900 hover:underline">{{ $testimony->user->display_name }}</a>
-                            @include('components.verified-badge', ['user' => $testimony->user])
-                        </p>
-                        <p class="text-xs text-slate-500"><span data-follower-count="{{ $testimony->user->id }}">{{ \App\Support\Locales::number($testimony->user->follower_count ?? 0) }}</span> {{ trans_choice('videos.watch.followers', (int) ($testimony->user->follower_count ?? 0)) }}</p>
-                    </div>
-                    <div class="shrink-0">
-                        @include('components.follow-button', ['user' => $testimony->user, 'following' => $isFollowingAuthor ?? false, 'small' => true])
-                    </div>
+            {{-- ── Réactions et actions ─────────────────────────────────── --}}
+            <div class="card mt-4 p-3 sm:p-4">
+                <div class="flex flex-wrap items-center gap-2" data-reactions="{{ route('testimonies.reactions.store', $testimony->id) }}"
+                     data-login-url="{{ route('login') }}" data-authenticated="{{ Auth::check() ? '1' : '0' }}"
+                     @auth data-pray-start="{{ route('testimonies.prayer.start', $testimony->id) }}" data-pray-subject="{{ $testimony->title }}"
+                     data-pray-excerpt="{{ Str::limit(trim(preg_replace('/\s+/u', ' ', strip_tags((string) $testimony->body_text))), 220) }}" @endauth>
+                    @foreach($reactionDefs as [$rType, $rIcon, $rLabel])
+                    @php $pressed = $rType === 'pray' ? $isPraying : in_array($rType, $userReactions, true); @endphp
+                    <button type="button" class="{{ $pressed ? 'chip-active' : 'chip' }}" data-reaction="{{ $rType }}" aria-pressed="{{ $pressed ? 'true' : 'false' }}" @if($rType === 'pray') data-pray @endif>
+                        <i class="fa-solid {{ $rIcon }}" aria-hidden="true"></i>{{ $rLabel }}
+                        @if($rType === 'like')<span class="tabular-nums" data-count="like_count">{{ \App\Support\Locales::number($testimony->like_count) }}</span>@endif
+                        @if($rType === 'pray')<span class="tabular-nums" data-count="prayer_count">{{ \App\Support\Locales::number($testimony->prayer_count) }}</span>@endif
+                    </button>
+                    @endforeach
                 </div>
-
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
                     @unless($inJournal)
                     <button type="button" class="chip" data-share="{{ $shareUrl }}" data-share-title="{{ $testimony->title }}">
                         <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>{{ __('videos.watch.share') }}
@@ -368,61 +356,40 @@
                 </div>
             </div>
 
-            {{-- ── Réactions ────────────────────────────────────────────── --}}
-            <div class="mt-4 flex flex-wrap items-center gap-2" data-reactions="{{ route('testimonies.reactions.store', $testimony->id) }}"
-                 data-login-url="{{ route('login') }}" data-authenticated="{{ Auth::check() ? '1' : '0' }}"
-                 @auth data-pray-start="{{ route('testimonies.prayer.start', $testimony->id) }}" data-pray-subject="{{ $testimony->title }}"
-                 data-pray-excerpt="{{ Str::limit(trim(preg_replace('/\s+/u', ' ', strip_tags((string) $testimony->body_text))), 220) }}" @endauth>
-                @foreach($reactionDefs as [$rType, $rIcon, $rLabel])
-                @php $pressed = $rType === 'pray' ? $isPraying : in_array($rType, $userReactions, true); @endphp
-                <button type="button" class="{{ $pressed ? 'chip-active' : 'chip' }}" data-reaction="{{ $rType }}" aria-pressed="{{ $pressed ? 'true' : 'false' }}" @if($rType === 'pray') data-pray @endif>
-                    <i class="fa-solid {{ $rIcon }}" aria-hidden="true"></i>{{ $rLabel }}
-                    @if($rType === 'like')<span class="tabular-nums" data-count="like_count">{{ \App\Support\Locales::number($testimony->like_count) }}</span>@endif
-                    @if($rType === 'pray')<span class="tabular-nums" data-count="prayer_count">{{ \App\Support\Locales::number($testimony->prayer_count) }}</span>@endif
-                </button>
-                @endforeach
-            </div>
-
             {{-- ── Description ──────────────────────────────────────────── --}}
-            <section class="mt-4 rounded-xl bg-slate-100 p-4 text-sm" aria-label="{{ __('videos.watch.description') }}">
-                <p class="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold text-slate-900">
-                    <span data-views-label>{{ $testimony->viewsLabel() }}</span>
-                    @if($publishedAt)<time datetime="{{ $publishedAt->toIso8601String() }}">{{ $publishedAt->translatedFormat(__('videos.watch.published_format')) }}</time>@endif
-                    @if($testimony->category)
-                    <a href="{{ route('videos.index', ['category' => $testimony->category->slug]) }}" class="font-medium text-slate-600 hover:text-slate-900 hover:underline">{{ $testimony->category->displayName() }}</a>
-                    @endif
-                    @if($testimony->liveSession)
-                    <span class="font-medium text-slate-600"><i class="fa-solid fa-tower-broadcast mr-1 text-slate-400" aria-hidden="true"></i>{{ __('videos.watch.live_replay') }}</span>
-                    @endif
-                    @if($type === 'text')<span class="font-medium text-slate-600">{{ __('videos.common.reading', ['minutes' => $testimony->readingMinutes()]) }}</span>@endif
-                </p>
+            @php
+                $showEvent  = $testimony->event_id && $testimony->event?->isVisibleTo(Auth::user());
+                $hasDetails = $type !== 'text' || $showEvent || $testimony->bible_verse || !empty($testimony->tags) || $proofList->isNotEmpty();
+            @endphp
+            @if($hasDetails)
+            <section class="card mt-4 space-y-3 p-4 text-sm sm:p-5" aria-label="{{ __('videos.watch.description') }}">
                 {{-- Témoignage officiel d'un événement (docs/fonctionnalites/evenements.md) --}}
-                @if($testimony->event_id && $testimony->event?->isVisibleTo(Auth::user()))
-                <p class="mt-2 text-slate-700">
+                @if($showEvent)
+                <p class="text-slate-700">
                     <i class="fa-solid fa-calendar-days mr-1 text-primary-600" aria-hidden="true"></i>{{ __('videos.watch.event') }}
                     <a href="{{ route('events.show', $testimony->event_id) }}" class="font-semibold text-primary-600 hover:underline">{{ $testimony->event->title }}</a>
                 </p>
                 @endif
 
                 @if($description)
-                <div id="video-description" class="{{ $longDesc ? 'line-clamp-4' : '' }} mt-2 break-words whitespace-pre-line text-slate-700 [&_strong]:font-semibold">{{ $testimony->body_html }}</div>
+                <div id="video-description" class="{{ $longDesc ? 'line-clamp-4' : '' }} text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-700 [&_strong]:font-semibold">{{ $testimony->body_html }}</div>
                 @if($longDesc)
-                <button type="button" class="mt-1 text-sm font-semibold text-slate-900 hover:underline" data-expand="video-description" aria-expanded="false" aria-controls="video-description">{{ __('videos.common.show_more') }}</button>
+                <button type="button" class="-mt-1 text-sm font-semibold text-primary-600 hover:underline" data-expand="video-description" aria-expanded="false" aria-controls="video-description">{{ __('videos.common.show_more') }}</button>
                 @endif
                 @elseif($type !== 'text')
-                <p class="mt-2 text-slate-500">{{ __('videos.common.no_description') }}</p>
+                <p class="text-slate-500">{{ __('videos.common.no_description') }}</p>
                 @endif
 
                 @if($testimony->bible_verse)
-                <blockquote class="mt-3 border-l-2 border-slate-300 pl-3">
-                    <p class="text-slate-700 italic">{{ __('videos.index.quoted', ['q' => $testimony->bible_verse]) }}</p>
-                    @if($testimony->bible_ref)<p class="mt-1 text-xs font-medium text-slate-500">{{ $testimony->bible_ref }}</p>@endif
+                <blockquote class="rounded-lg border-l-4 border-sun-400 bg-sun-50 px-4 py-3">
+                    <p class="flex gap-2 text-[15px] text-slate-800"><i class="fa-solid fa-book-bible mt-1 text-sun-700" aria-hidden="true"></i><span class="italic">{{ __('videos.index.quoted', ['q' => $testimony->bible_verse]) }}</span></p>
+                    @if($testimony->bible_ref)<p class="mt-1 pl-6 text-xs font-semibold text-sun-700">{{ $testimony->bible_ref }}</p>@endif
                 </blockquote>
                 @endif
 
                 @if(!empty($testimony->tags))
-                <p class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-slate-600">
-                    @foreach($testimony->tags as $tag)<span>#{{ $tag }}</span>@endforeach
+                <p class="flex flex-wrap gap-1.5">
+                    @foreach($testimony->tags as $tag)<span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">#{{ $tag }}</span>@endforeach
                 </p>
                 @endif
 
@@ -430,6 +397,7 @@
                 @include('testimonies.partials.proofs', ['testimony' => $testimony, 'proofs' => $proofList])
                 @endif
             </section>
+            @endif
 
             {{-- ── Parole prophétique accomplie (docs/fonctionnalites/paroles-prophetiques.md) ── --}}
             {{-- Montrée si l'auteur l'a rendue publique ; l'auteur la voit toujours, avec un lien vers la parole de son carnet. --}}
@@ -488,8 +456,8 @@
             @endif
 
             {{-- ── Commentaires ─────────────────────────────────────────── --}}
-            <section class="mt-8" aria-labelledby="comments-title" id="commentaires">
-                <h2 id="comments-title" class="text-base font-semibold text-primary-600">
+            <section class="card mt-8 scroll-mt-20 p-4 sm:p-6" aria-labelledby="comments-title" id="commentaires">
+                <h2 id="comments-title" class="card-title text-lg">
                     {{ __('videos.watch.comments') }} <span class="font-normal text-slate-500">· <span data-comment-count>{{ \App\Support\Locales::number($testimony->comment_count) }}</span></span>
                 </h2>
 
