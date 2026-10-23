@@ -112,7 +112,7 @@ Avec `?after=` (synchronisation par différence), le tri par `updated_at` reste 
 
 - **Mise à la corbeille** (suppression douce) : par l'auteur ou un administrateur depuis l'API (inchangé), et par la modération depuis le back-office. Restauration possible pendant **30 jours**.
 - **Visibilité** : un témoignage dans la corbeille n'apparaît nulle part ailleurs (fil, listes, onglets de modération, « les plus vus » du tableau de bord). Il reste consultable, restaurable et supprimable définitivement depuis l'onglet Corbeille et sa fiche. Ses vues passées restent comptées dans les tendances globales.
-- **Suppression définitive** : réservée au **super-administrateur**, ou faite automatiquement par `testimonies:purge-trash` (chaque nuit) au-delà de 30 jours.
+- **Suppression définitive** : réservée au **super-administrateur**, ou faite automatiquement par `testimonies:purge-trash` (chaque nuit) au-delà de 30 jours. Le super-administrateur la lance depuis la fiche, depuis chaque ligne de l'onglet Corbeille (bouton « Supprimer ») ou en action groupée « Supprimer définitivement » (témoignages de la corbeille seulement ; les autres cochés sont ignorés). Une fenêtre de confirmation précise que l'action est irréversible. Les autres profils ne voient ni le bouton ni l'action.
 - **Vidéo Bunny** : depuis ce lot, elle est supprimée **à la suppression définitive seulement**. Avant, elle l'était dès la mise à la corbeille, ce qui la rendait impossible à restaurer.
 
 ### Super-administrateur
@@ -144,7 +144,7 @@ Chaque attribution ou retrait est consigné dans `admin_audit_logs`.
 
 | Page | Contenu |
 |---|---|
-| `/moderation` | Onglets En attente, Approuvés, Refusés, À la une et Corbeille ; recherche (titre, texte, auteur) ; filtres type, catégorie et label. Actions groupées selon l'onglet : approuver, refuser avec motif, mettre à la une, retirer de la une, corbeille, restaurer |
+| `/moderation` | Onglets En attente, Approuvés, Refusés, À la une et Corbeille ; recherche (titre, texte, auteur) ; filtres type, catégorie et label. Actions groupées selon l'onglet : approuver, refuser avec motif, mettre à la une, retirer de la une, corbeille, restaurer ; dans la Corbeille, suppression définitive par ligne et groupée (super-administrateur) |
 | `/moderation/{id}` | Fiche : aperçu (vidéo Bunny en MP4 de repli, ou état de l'encodage), preuves, statistiques sur 30 jours, historique (audit et relectures) ; boutons approuver, refuser ou dépublier, une (ordre, dates), label (administrateurs), corbeille, restaurer, suppression définitive (super-administrateur) |
 | `/moderation/{id}/statistiques?jours=7\|30\|90` | Courbes d'audience et de participation, évolution par rapport à la période précédente, détail par jour |
 | `/moderation/tableau-de-bord?jours=7\|30\|90` | Tendances globales, témoignages les plus vus, file d'attente, compteurs (publiés, label, une, corbeille) |

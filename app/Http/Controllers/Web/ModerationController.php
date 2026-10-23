@@ -250,15 +250,16 @@ class ModerationController extends Controller
     }
 
     /**
-     * POST /moderation/actions-groupees  { ids[], action: approve|reject|feature|unfeature|trash|restore, reason?, rejection_reason? }
+     * POST /moderation/actions-groupees  { ids[], action: approve|reject|feature|unfeature|trash|restore|force_delete, reason?, rejection_reason? }
      * Chaque témoignage est vérifié par la policy ; ceux qui ne s'y prêtent pas sont ignorés et comptés.
+     * `force_delete` : témoignages de la corbeille seulement, super-administrateur (policy forceDelete).
      */
     public function bulk(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'ids'              => ['required', 'array', 'min:1', 'max:100'],
             'ids.*'            => ['string'],
-            'action'           => ['required', Rule::in(['approve', 'reject', 'feature', 'unfeature', 'trash', 'restore'])],
+            'action'           => ['required', Rule::in(['approve', 'reject', 'feature', 'unfeature', 'trash', 'restore', 'force_delete'])],
             'reason'           => ['nullable', 'required_if:action,reject', Rule::enum(RejectionReason::class)],
             'rejection_reason' => ['nullable', 'string', 'max:1000'],
         ], [
@@ -273,9 +274,10 @@ class ModerationController extends Controller
             $ability = match ($data['action']) {
                 'approve', 'reject'      => 'moderate',
                 'feature', 'unfeature'   => 'feature',
+                'force_delete'           => 'forceDelete',
                 default                  => $data['action'],
             };
-            if (!Gate::forUser($user)->allows($ability, $t)) {
+            if (!Gate::forUser($user)->allows($ability, $t) || ($data['action'] === 'force_delete' && !$t->trashed())) {
                 $skipped++;
                 continue;
             }
@@ -287,6 +289,7 @@ class ModerationController extends Controller
                     'unfeature' => $this->moderation->setFeatured($t, $user, false),
                     'trash'     => $this->moderation->trash($t, $user),
                     'restore'   => $this->moderation->restore($t, $user),
+                    'force_delete' => $this->moderation->forceDelete($t, $user),
                 };
                 $done++;
             } catch (ContentActionException) {

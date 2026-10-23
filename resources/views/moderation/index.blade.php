@@ -20,6 +20,9 @@
         'trash'    => ['restore' => __('moderation.bulk_actions.restore')],
     };
     $isSuper = auth()->user()->isSuperAdmin();
+    if ($tab === 'trash' && $isSuper) {
+        $bulkActions['force_delete'] = __('moderation.bulk_actions.force_delete');
+    }
 @endphp
 
 @section('headerActions')
@@ -106,7 +109,9 @@
         </div>
         @endif
         <button type="button" class="btn-primary btn-sm"
-                onclick="openConfirmModal('bulk-form', @js(__('moderation.index.bulk_confirm')), @js(__('moderation.index.bulk_confirm_title')), @js(__('moderation.index.bulk_confirm_button')), 'fa-list-check')">
+                onclick="document.getElementById('bulk-action').value === 'force_delete'
+                    ? openConfirmModal('bulk-form', @js(__('moderation.index.bulk_force_delete_confirm')), @js(__('moderation.show.force_delete')), @js(__('moderation.show.force_delete')), 'fa-trash')
+                    : openConfirmModal('bulk-form', @js(__('moderation.index.bulk_confirm')), @js(__('moderation.index.bulk_confirm_title')), @js(__('moderation.index.bulk_confirm_button')), 'fa-list-check')">
             {{ __('moderation.index.bulk_apply') }}
         </button>
         @error('ids')<p class="form-error w-full">{{ $message }}</p>@enderror
@@ -139,6 +144,7 @@
                 <a href="{{ route('moderation.show', $item->id) }}" class="action-btn-view"><i class="fa-regular fa-eye"></i>{{ __('moderation.index.review') }}</a>
                 @if($tab !== 'pending' && $tab !== 'trash')<a href="{{ route('moderation.stats', $item->id) }}" class="action-btn-view"><i class="fa-solid fa-chart-line"></i>{{ __('moderation.common.statistics') }}</a>@endif
                 @include('moderation.partials.approve-rejected', ['formId' => 'approve-m-' . $item->id])
+                @include('moderation.partials.force-delete', ['formId' => 'force-delete-m-' . $item->id])
             </div>
         </li>
         @endforeach
@@ -193,6 +199,7 @@
                                 <a href="{{ route('moderation.stats', $item->id) }}" class="action-btn-view" title="{{ __('moderation.common.statistics') }}" aria-label="{{ __('moderation.common.statistics') }}"><i class="fa-solid fa-chart-line"></i></a>
                                 @endif
                                 @include('moderation.partials.approve-rejected', ['formId' => 'approve-d-' . $item->id])
+                                @include('moderation.partials.force-delete', ['formId' => 'force-delete-d-' . $item->id])
                             </div>
                         </td>
                     </tr>

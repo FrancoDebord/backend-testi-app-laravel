@@ -45,6 +45,7 @@ return [
         'feature'   => 'Feature',
         'unfeature' => 'Remove from featured',
         'restore'   => 'Restore',
+        'force_delete' => 'Delete permanently',
     ],
 
     'common' => [
@@ -104,6 +105,10 @@ return [
         'bulk_confirm_title'  => 'Bulk action',
         'bulk_confirm_button' => 'Apply',
         'bulk_apply'          => 'Apply to selection',
+        'force_delete_short'        => 'Delete',
+        'force_delete_item'         => 'Permanently delete “:title”',
+        'force_delete_item_confirm' => '“:title”, its comments, its statistics and its video will be permanently deleted. This action cannot be undone.',
+        'bulk_force_delete_confirm' => 'The selected testimonies, their comments, statistics and videos will be permanently deleted. This action cannot be undone.',
         'select'              => 'Select ":title"',
         'deleted_on'          => 'Deleted on',
         'review'              => 'Review',

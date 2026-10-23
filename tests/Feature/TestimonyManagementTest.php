@@ -351,6 +351,30 @@ class TestimonyManagementTest extends TestCase
         $this->assertDatabaseMissing('testimonies', ['id' => $recent->id]);
     }
 
+    public function test_trash_tab_offers_permanent_deletion_to_super_admin_only(): void
+    {
+        $trashed = $this->testimony('approved', ['title' => 'Dans la corbeille']);
+        $trashed->delete();
+        $live = $this->testimony('approved', ['title' => 'Toujours public']);
+        $super = $this->superAdmin();
+
+        // Bouton par ligne et action groupée : super-administrateur seulement.
+        $this->as($super)->get('/moderation?onglet=trash')->assertOk()
+            ->assertSee(route('moderation.force-delete', $trashed->id))->assertSee('value="force_delete"', false);
+        $this->as($this->admin)->get('/moderation?onglet=trash')->assertOk()
+            ->assertDontSee(route('moderation.force-delete', $trashed->id))->assertDontSee('value="force_delete"', false);
+
+        // Action groupée refusée à un administrateur ordinaire : rien n'est supprimé.
+        $this->as($this->admin)->post('/moderation/actions-groupees', ['ids' => [$trashed->id], 'action' => 'force_delete'])->assertRedirect();
+        $this->assertSoftDeleted($trashed);
+
+        // Super-administrateur : seuls les témoignages de la corbeille sont supprimés.
+        $this->as($super)->post('/moderation/actions-groupees', ['ids' => [$trashed->id, $live->id], 'action' => 'force_delete'])->assertRedirect();
+        $this->assertDatabaseMissing('testimonies', ['id' => $trashed->id]);
+        $this->assertNotSoftDeleted($live);
+        $this->assertDatabaseHas('admin_audit_logs', ['action' => 'testimony.force_deleted', 'subject_id' => $trashed->id, 'actor_id' => $super->id]);
+    }
+
     // ─── Statistiques ────────────────────────────────────────────────────────
 
     public function test_views_are_deduplicated_per_person_or_device_for_30_minutes(): void

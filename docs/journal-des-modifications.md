@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-23 — Suppression définitive depuis la corbeille
+
+- **Utilisateurs** (super-administrateurs) : dans l'onglet Corbeille de `/moderation`, chaque témoignage a un bouton « Supprimer » (suppression définitive, avec confirmation), et la liste des actions groupées propose « Supprimer définitivement ». Les modérateurs et administrateurs ordinaires ne voient pas ces actions (inchangé : restauration seulement).
+- **Développeurs** : action `force_delete` dans `POST /moderation/actions-groupees` (policy `forceDelete` et témoignage dans la corbeille, sinon ignoré) ; partiel `moderation.partials.force-delete` ; traductions `moderation.bulk_actions.force_delete`, `moderation.index.force_delete_*`, `bulk_force_delete_confirm`. Test : `TestimonyManagementTest::test_trash_tab_offers_permanent_deletion_to_super_admin_only`.
+- **Déploiement** : `php artisan view:cache`. Aucune migration, aucun asset à recompiler.
+
+---
+
 ## 2026-10-23 — Témoignages supprimés masqués hors corbeille
 
 - **Utilisateurs** (modérateurs, administrateurs) : un témoignage mis à la corbeille ne figure plus parmi les « témoignages les plus vus » du tableau de bord `/moderation/tableau-de-bord`. Il reste dans l'onglet Corbeille, où on peut le restaurer ou le supprimer définitivement.

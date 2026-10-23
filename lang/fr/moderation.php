@@ -45,6 +45,7 @@ return [
         'feature'   => 'Mettre à la une',
         'unfeature' => 'Retirer de la une',
         'restore'   => 'Restaurer',
+        'force_delete' => 'Supprimer définitivement',
     ],
 
     'common' => [
@@ -104,6 +105,10 @@ return [
         'bulk_confirm_title'  => 'Action groupée',
         'bulk_confirm_button' => 'Appliquer',
         'bulk_apply'          => 'Appliquer à la sélection',
+        'force_delete_short'        => 'Supprimer',
+        'force_delete_item'         => 'Supprimer définitivement « :title »',
+        'force_delete_item_confirm' => '« :title », ses commentaires, ses statistiques et sa vidéo seront supprimés définitivement. Cette action est irréversible.',
+        'bulk_force_delete_confirm' => 'Les témoignages cochés, leurs commentaires, leurs statistiques et leurs vidéos seront supprimés définitivement. Cette action est irréversible.',
         'select'              => 'Sélectionner « :title »',
         'deleted_on'          => 'Supprimé le',
         'review'              => 'Examiner',
