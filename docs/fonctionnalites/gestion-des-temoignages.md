@@ -111,6 +111,7 @@ Avec `?after=` (synchronisation par différence), le tri par `updated_at` reste 
 ## Corbeille
 
 - **Mise à la corbeille** (suppression douce) : par l'auteur ou un administrateur depuis l'API (inchangé), et par la modération depuis le back-office. Restauration possible pendant **30 jours**.
+- **Visibilité** : un témoignage dans la corbeille n'apparaît nulle part ailleurs (fil, listes, onglets de modération, « les plus vus » du tableau de bord). Il reste consultable, restaurable et supprimable définitivement depuis l'onglet Corbeille et sa fiche. Ses vues passées restent comptées dans les tendances globales.
 - **Suppression définitive** : réservée au **super-administrateur**, ou faite automatiquement par `testimonies:purge-trash` (chaque nuit) au-delà de 30 jours.
 - **Vidéo Bunny** : depuis ce lot, elle est supprimée **à la suppression définitive seulement**. Avant, elle l'était dès la mise à la corbeille, ce qui la rendait impossible à restaurer.
 

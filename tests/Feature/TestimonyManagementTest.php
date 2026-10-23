@@ -411,6 +411,11 @@ class TestimonyManagementTest extends TestCase
         // Back-office : statistiques du témoignage et tableau de bord.
         $this->as($this->modo)->get("/moderation/{$t->id}/statistiques?jours=7")->assertOk()->assertSee('Audience');
         $this->as($this->modo)->get('/moderation/tableau-de-bord?jours=30')->assertOk()->assertSee($t->title);
+
+        // Mis à la corbeille : absent des plus vus, toujours dans l'onglet Corbeille.
+        $t->delete();
+        $this->as($this->modo)->get('/moderation/tableau-de-bord?jours=30')->assertOk()->assertDontSee($t->title);
+        $this->as($this->modo)->get('/moderation?onglet=trash')->assertOk()->assertSee($t->title);
     }
 
     // ─── Back-office et permissions ──────────────────────────────────────────

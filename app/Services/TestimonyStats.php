@@ -186,7 +186,7 @@ class TestimonyStats
         ];
     }
 
-    /** Témoignages les plus vus sur la période (agrégats + aujourd'hui). */
+    /** Témoignages les plus vus sur la période (agrégats + aujourd'hui), hors corbeille (consultable dans l'onglet Corbeille). */
     public function top(int $days, int $limit = 10): Collection
     {
         $from = CarbonImmutable::parse(self::today())->subDays($days - 1)->toDateString();
@@ -200,7 +200,7 @@ class TestimonyStats
                 'comments' => $base['comments'] + $r['comments'], 'shares' => $base['shares'] + $r['shares']];
         }
         $ranked = $views->sortByDesc(fn ($r) => $r['views'] * 1000000 + $r['reactions'])->take($limit);
-        $models = Testimony::withTrashed()->with('user')->whereIn('id', $ranked->keys())->get()->keyBy('id');
+        $models = Testimony::with('user')->whereIn('id', $ranked->keys())->get()->keyBy('id');
 
         return $ranked->map(fn ($r, $id) => $models->has($id) ? ['testimony' => $models[$id], ...$r] : null)->filter()->values();
     }

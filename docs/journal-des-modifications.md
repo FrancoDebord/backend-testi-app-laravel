@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-23 — Témoignages supprimés masqués hors corbeille
+
+- **Utilisateurs** (modérateurs, administrateurs) : un témoignage mis à la corbeille ne figure plus parmi les « témoignages les plus vus » du tableau de bord `/moderation/tableau-de-bord`. Il reste dans l'onglet Corbeille, où on peut le restaurer ou le supprimer définitivement.
+- **Développeurs** : `TestimonyStats::top()` n'utilise plus `withTrashed()`. Test : `TestimonyManagementTest::test_daily_aggregation_counts_views_viewers_reactions_comments_shares` complété.
+- **Déploiement** : aucune migration, aucun asset à recompiler.
+
+---
+
 ## 2026-10-22 — Verset du jour : nom du livre dans la langue de la version
 
 - **Utilisateurs** : sur la page du verset du jour, la référence suit la version choisie (« John 3:16 » en KJV, « Jean 3:16 » en Louis Segond) ; dans « Comparer », chaque version affiche sa référence.
