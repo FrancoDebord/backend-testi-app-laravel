@@ -71,4 +71,4 @@ Serveur : `App\Services\Locations`, `App\Support\Place`, `App\Support\Continents
 - Sans GPS, la précision s'arrête à la ville saisie et au pays du profil (pas de région).
 - Le géocodage dépend de Nominatim (service gratuit à usage modéré) ; pour un fort trafic, héberger son propre Nominatim (`GEOCODER_URL`).
 - Les étiquettes « À Cotonou » des cartes ne sont affichées que dans l'application ; le site affiche la mention en tête de Mon fil.
-- L'accueil du site garde « Témoignages récents » dans l'ordre chronologique ; seules les requêtes de prière qui y sont insérées sont classées par zone.
+- L'accueil du site garde « Témoignages récents » dans l'ordre chronologique ; seule la section « Prières récentes » est classée par zone.

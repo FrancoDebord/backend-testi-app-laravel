@@ -1,8 +1,9 @@
 {{--
     Accueil : « Témoignages récents » (ou « Résultats » avec un filtre), filtres par type,
     choix de l'affichage, cartes encadrées (videos/partials/tile) ou lignes compactes, pagination.
-    Variables de la vue parente : $feed, $typeFilters, $hasFilters, $activeCategory ; $title ;
-    $inserts : requêtes de prière insérées dans la liste (videos/partials/cards).
+    Variables de la vue parente : $feed, $typeFilters, $hasFilters, $activeCategory ; $title.
+    Les requêtes de prière ont leur propre section (home/partials/recent-prayers) : la grille ne contient
+    que des témoignages, toutes les cartes ont donc la même hauteur.
 --}}
 <section class="card p-5" aria-labelledby="home-feed">
     <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -31,14 +32,6 @@
             'actionUrl'   => Auth::check() ? route('publish') : null,
             'actionLabel' => 'Publier un témoignage',
         ])
-        {{-- Pas de témoignage : les requêtes de prière restent visibles. --}}
-        @if(collect($inserts ?? [])->isNotEmpty())
-        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach($inserts as $insert)
-                @include('feed.partials.insert', ['insert' => $insert])
-            @endforeach
-        </div>
-        @endif
     @else
         <div class="mb-4">
             @include('components.testimony-list', [
@@ -46,7 +39,6 @@
                 'routeName' => 'testimonies.show',
                 'variant'   => 'tile',
                 'encourage' => true,
-                'inserts'   => $inserts ?? [],
                 'gridClass' => 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4',
             ])
         </div>

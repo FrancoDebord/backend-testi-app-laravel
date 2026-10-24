@@ -300,7 +300,7 @@
                 <i class="fa-solid fa-star absolute top-6 right-24 text-sm text-sun-400"></i>
             </div>
             <div class="relative flex flex-wrap items-start justify-between gap-4">
-                <div class="flex min-w-0 flex-1 items-start gap-4">
+                <div class="flex min-w-0 flex-1 basis-64 items-start gap-4">
                     @if($pageIcon)
                     <span class="hidden h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-lg text-white shadow-soft sm:flex" aria-hidden="true">
                         <i class="fa-solid {{ $pageIcon }}"></i>

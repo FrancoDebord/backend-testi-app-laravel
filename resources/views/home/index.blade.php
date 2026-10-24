@@ -154,6 +154,9 @@
 
         @include('home.partials.recent', ['title' => 'Témoignages récents'])
 
+        {{-- Prières récentes, séparées des témoignages (masqué s'il n'y en a pas) --}}
+        @include('home.partials.recent-prayers', ['prayers' => $recentPrayers])
+
         {{-- Catégories populaires + statistiques globales --}}
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
             <section class="card p-5" aria-labelledby="home-categories-title">

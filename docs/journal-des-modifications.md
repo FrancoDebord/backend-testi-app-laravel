@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-24 — Accueil : « Prières récentes » à part ; en-tête des pages sur mobile
+
+- **Utilisateurs** : sur l'accueil, les requêtes de prière ne sont plus mêlées aux « Témoignages récents » (leur carte, plus haute, étirait toute la rangée) ; elles ont leur propre section « Prières récentes » (3 cartes sur mobile, 4 sur tablette, 6 sur grand écran, texte raccourci, lien vers toutes les requêtes). Sur mobile, les boutons d'en-tête de page (ex. « Événements à venir » sur `/evenements/passes`) passent sous le titre au lieu de le serrer contre le bord.
+- **Développeurs** : `HomeController@index` fournit `$recentPrayers` (6, première page sans filtre) à la place de `$inserts` ; nouveau partiel `home/partials/recent-prayers` ; `home/partials/recent` n'insère plus rien. En-tête : `basis-64` sur le bloc du titre (`layouts/app.blade.php`). Voir [accueil.md](fonctionnalites/accueil.md), [interface.md](interface.md).
+- **Déploiement** : **recompiler et copier `public/build/`** (nouvelle classe `basis-64`), puis `php artisan view:cache`. Aucune migration.
+
+---
+
 ## 2026-10-23 — Page de lecture d'un témoignage redessinée
 
 - **Utilisateurs** (`/testimonies/{id}`, `/videos/{id}`) : en-tête clair avec badges (catégorie, conversion), titre en grand, vues, date et durée de lecture, et l'auteur dans un encadré avec Suivre. Pour un texte, cet en-tête ouvre l'article au lieu d'arriver après le texte. Réactions et actions regroupées dans une seule carte (réactions en haut, actions dessous). Verset en encadré jaune, mots-clés en étiquettes, commentaires dans une carte. Dans « À regarder également » et les listes compactes, un témoignage texte a une miniature jaune avec guillemets au lieu d'un rectangle gris.

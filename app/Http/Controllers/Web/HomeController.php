@@ -53,12 +53,13 @@ class HomeController extends Controller
 
         // Blocs de la page d'accueil : première page, sans filtre.
         $showShelves = !$category && !$type && $feed->onFirstPage();
-        // Requêtes de prière publiques récentes, insérées dans « Témoignages récents » (sans filtre).
-        $inserts = !$category && !$type
+        // Requêtes de prière publiques récentes : section « Prières récentes », séparée des témoignages
+        // pour que les cartes de la grille gardent la même hauteur.
+        $recentPrayers = $showShelves
             // les plus proches d'abord (zone de la personne ou langue du navigateur : localisation.md)
-            ? app(\App\Services\FeedInserts::class)->rankByPlace('prayerRequests', app(PrayerRequests::class)->list($viewer, 'feed')->limit(30)->get(), $viewer, 10)
+            ? app(\App\Services\FeedInserts::class)->rankByPlace('prayerRequests', app(PrayerRequests::class)->list($viewer, 'feed')->limit(30)->get(), $viewer, 6)
             : collect();
-        $data = compact('feed', 'categories', 'category', 'type', 'showShelves', 'inserts');
+        $data = compact('feed', 'categories', 'category', 'type', 'showShelves', 'recentPrayers');
 
         if (!$showShelves) {
             return view('home.index', $data + [
