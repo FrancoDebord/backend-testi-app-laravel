@@ -90,7 +90,7 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 | GET | `/priere/moderation` `?filtre=retirees` | Modération : signalées / retirées (menu Modération → « Requêtes de prière signalées ») |
 | POST | `/priere/moderation/{id}/retirer` · `/retablir` | Retirer (motif) · rétablir / garder |
 
-**Partiel réutilisable** : `@include('prayer.partials.feed-card', ['request' => $prayerRequest])` (carte avec « Je prie » et encouragements, pour les fils). Charger `user`, `event` et `withPrayedBy($viewer)`. Page d'un événement : `prayer.partials.event-section` (sessions à venir + 3 dernières requêtes, « Confier une requête »).
+**Partiel réutilisable** : `@include('prayer.partials.feed-card', ['request' => $prayerRequest])` (carte avec « Je prie » et encouragements, pour les fils ; le badge « Exaucée » se place sous la ligne « Requête de prière · date », jamais à droite du nom, pour ne pas écraser le texte dans les cartes étroites). Charger `user`, `event` et `withPrayedBy($viewer)`. Page d'un événement : `prayer.partials.event-section` (sessions à venir + 3 dernières requêtes, « Confier une requête »).
 
 ## Temps de prière
 

@@ -36,10 +36,11 @@
                 · <i class="fa-solid {{ $prayerItem->visibility === 'private' ? 'fa-lock' : 'fa-user-group' }}" aria-hidden="true"></i> {{ \App\Models\PrayerRequest::visibilityLabels()[$prayerItem->visibility] }}
                 @endif
             </p>
+            {{-- Sous la ligne d'information et non à droite du nom : sur une carte étroite, le badge écrasait la colonne du texte. --}}
+            @if($prayerItem->isAnswered())
+            <span class="badge-validated mt-1.5">Exaucée</span>
+            @endif
         </div>
-        @if($prayerItem->isAnswered())
-        <span class="badge-validated shrink-0"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>Exaucée</span>
-        @endif
     </header>
 
     @if($prayerItem->isHidden())

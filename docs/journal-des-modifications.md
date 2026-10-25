@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-25 — Carte de requête de prière : badge « Exaucée » sous l'en-tête
+
+- **Utilisateurs** : sur l'accueil (« Prières récentes ») et dans les autres listes, une requête exaucée n'a plus son nom et sa date coincés en colonne étroite à côté du badge « Exaucée » ; le badge passe sous la ligne « Requête de prière · date ».
+- **Développeurs** : `resources/views/prayer/partials/feed-card.blade.php` (badge déplacé dans la colonne du texte, icône redondante avec la pastille retirée). Voir [requetes-de-priere.md](fonctionnalites/requetes-de-priere.md).
+- **Déploiement** : `php artisan view:cache`. Aucune recompilation (classes déjà présentes), aucune migration.
+
+---
+
 ## 2026-10-24 — Accueil : « Prières récentes » à part ; en-tête des pages sur mobile
 
 - **Utilisateurs** : sur l'accueil, les requêtes de prière ne sont plus mêlées aux « Témoignages récents » (leur carte, plus haute, étirait toute la rangée) ; elles ont leur propre section « Prières récentes » (3 cartes sur mobile, 4 sur tablette, 6 sur grand écran, texte raccourci, lien vers toutes les requêtes). Sur mobile, les boutons d'en-tête de page (ex. « Événements à venir » sur `/evenements/passes`) passent sous le titre au lieu de le serrer contre le bord.
