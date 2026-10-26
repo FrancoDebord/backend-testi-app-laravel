@@ -26,9 +26,10 @@ Publications concernées : témoignages, verset du jour, requêtes de prière, �
 
 Le popup (`#reaction-people-modal`, dans `layouts/partials/global-ui.blade.php`) montre :
 
-1. des onglets « Toutes 12 », « J'aime 8 », « Je prie 5 »… (icône Font Awesome, libellé, effectif) ;
+1. des onglets « Toutes 12 », « J'aime 8 », « Je prie 5 »… (icône Font Awesome, libellé, effectif), puis **« Commentaires 4 »** (« Encouragements » pour une requête de prière) quand il y en a ;
 2. les personnes : avatar, nom (lien vers le profil), coche vérifiée, icônes de leurs réactions ;
-3. « Afficher plus » ajoute la page suivante à la liste.
+3. onglet « Commentaires » : qui a commenté et son message (avatar, nom, date, texte limité à 300 caractères), les plus récents d'abord ;
+4. « Afficher plus » ajoute la page suivante à la liste.
 
 Le contenu est rendu par le serveur (`GET /reactions/{kind}/{id}?type=&page=`, route `reactions.people`) et chargé par `resources/js/app.js` ; tout bouton `[data-reaction-people="url"]` ouvre le popup. Le contenu est rechargé à chaque ouverture (à jour après une réaction).
 
@@ -42,7 +43,9 @@ Le contenu est rendu par le serveur (`GET /reactions/{kind}/{id}?type=&page=`, r
 | GET | `events/{id}/reactions/people` |
 | GET | `prayer/sessions/{id}/reactions/people` |
 
-Paramètres : `type` (facultatif) = `all`, un groupe (`appreciation`, `prayer`) ou une réaction (`like`, `pray`, `fire`…) ; `page`. Type inconnu : 422. Publique ; la personne connectée (jeton `sanctum`) est prise en compte pour les publications réservées.
+Paramètres : `type` (facultatif) = `all`, un groupe (`appreciation`, `prayer`), une réaction (`like`, `pray`, `fire`…) ou `comments` ; `page`. Type inconnu : 422.
+
+`type=comments` renvoie `comments` au lieu de `people` : `[{ id, body, createdAt, user { id, displayName, initials, avatarUrl, isVerified, … } }]`, les plus récents d'abord. Commentaires pris en compte : témoignage (`comments`, réponses comprises), verset du jour (`daily_verse_comments` non retirés), requête de prière (encouragements, `prayer_request_messages`), événement (`event_comments`) ; aucun pour une session de prière. Comptes actifs seulement, commentaires supprimés exclus. `summary.commentsCount` donne leur nombre. Publique ; la personne connectée (jeton `sanctum`) est prise en compte pour les publications réservées.
 
 Réponse :
 
@@ -51,7 +54,7 @@ Réponse :
   "success": true,
   "data": {
     "summary": {
-      "total": 3, "likesCount": 2, "prayersCount": 2,
+      "total": 3, "likesCount": 2, "prayersCount": 2, "commentsCount": 4,
       "types": [
         { "type": "like", "group": "appreciation", "label": "J'aime", "emoji": "👍", "icon": "fa-thumbs-up", "count": 1 },
         { "type": "pray", "group": "prayer", "label": "Je prie", "emoji": "🙏", "icon": "fa-hands-praying", "count": 2 }
@@ -76,7 +79,7 @@ Réponse :
 | `app/Services/ReactionPeople.php` | Publication visible (`find`), effectifs (`summary`), personnes (`people`), icônes (`ICONS`) |
 | `app/Http/Controllers/Api/ReactionPeopleController.php` | Route de l'API |
 | `app/Http/Controllers/Web/ReactionPeopleController.php` | Contenu du popup |
-| `resources/views/reactions/people.blade.php`, `reactions/partials/people-rows.blade.php` | Onglets, personnes, « Afficher plus » |
+| `resources/views/reactions/people.blade.php`, `reactions/partials/people-rows.blade.php`, `reactions/partials/comment-rows.blade.php` | Onglets, personnes, commentaires, « Afficher plus » |
 | `resources/views/layouts/partials/global-ui.blade.php` | Popup |
 | `resources/js/app.js` | Ouverture, onglets, pages suivantes |
 | `lang/{fr,en}/reactions.php` (`people`), `lang/{fr,en}/js.php` (`app.reaction_people_error`) | Textes |

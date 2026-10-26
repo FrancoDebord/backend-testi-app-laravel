@@ -19,6 +19,8 @@ return [
         'tabs'         => 'Réactions par type',
         'empty'        => 'Personne n\'a encore réagi.',
         'empty_type'   => 'Personne pour cette réaction.',
+        'comments'     => 'Commentaires',
+        'encouragements' => 'Encouragements',
         'more'         => 'Afficher plus',
         'close'        => 'Fermer',
         'invalid_type' => 'Type de réaction inconnu.',

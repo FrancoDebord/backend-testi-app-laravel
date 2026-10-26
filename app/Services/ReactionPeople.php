@@ -4,7 +4,11 @@ namespace App\Services;
 
 use App\Enums\ReactionType;
 use App\Enums\UserAccountStatus;
+use App\Models\Comment;
 use App\Models\DailyVerse;
+use App\Models\DailyVerseComment;
+use App\Models\EventComment;
+use App\Models\PrayerRequestMessage;
 use App\Models\Testimony;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +21,8 @@ use Illuminate\Support\Str;
  * « Qui a réagi ? » : effectif de chaque réaction (j'aime, je prie…) d'une publication et liste des
  * personnes, pour l'API et le popup du site. Seuls les comptes actifs sont comptés et listés.
  * Requête de prière : le « Je prie » dédié (prayer_request_prayers) est compté comme la réaction `pray`.
- * Voir docs/fonctionnalites/qui-a-reagi.md
+ * Onglet « Commentaires » (filtre `comments`) : commentaires visibles de comptes actifs, les plus récents d'abord
+ * (requête de prière : ses encouragements). Voir docs/fonctionnalites/qui-a-reagi.md
  */
 class ReactionPeople
 {
@@ -55,16 +60,18 @@ class ReactionPeople
         return $subject;
     }
 
-    /** Filtre valide : null (toutes), un groupe (appreciation, prayer) ou un type de réaction. */
+    /** Filtre valide : null (toutes), un groupe (appreciation, prayer), un type de réaction ou `comments`. */
     public static function isFilter(?string $filter): bool
     {
-        return $filter === null || in_array($filter, ['all', 'appreciation', 'prayer'], true) || ReactionType::tryFrom($filter) !== null;
+        return $filter === null || in_array($filter, ['all', 'appreciation', 'prayer', 'comments'], true) || ReactionType::tryFrom($filter) !== null;
     }
 
     /**
      * Effectifs : personnes au total, par groupe et par réaction (réactions présentes seulement, dans l'ordre de ReactionType).
      *
-     * @return array{total: int, likesCount: int, prayersCount: int, types: list<array{type: string, group: string, label: string, emoji: string, icon: string, count: int}>}
+     * `commentsCount` : commentaires visibles (onglet « Commentaires »).
+     *
+     * @return array{total: int, likesCount: int, prayersCount: int, commentsCount: int, types: list<array{type: string, group: string, label: string, emoji: string, icon: string, count: int}>}
      */
     public function summary(string $kind, Model $subject): array
     {
@@ -88,6 +95,7 @@ class ReactionPeople
             'total'        => $this->base($kind, $subject)->distinct()->count('r.user_id'),
             'likesCount'   => $groupCount('appreciation'),
             'prayersCount' => $groupCount('prayer'),
+            'commentsCount' => $this->commentQuery($kind, $subject)?->count() ?? 0,
             'types'        => $types,
         ];
     }
@@ -129,6 +137,42 @@ class ReactionPeople
                 'prayerTimes' => (int) ($theirRows[$row->user_id] ?? collect())->whereIn('type', $prayerTypes)->max('prayer_times'),
                 'reactedAt' => $row->reacted_at ? \Illuminate\Support\Carbon::parse($row->reacted_at)->toIso8601String() : null,
             ])->values());
+    }
+
+    /**
+     * Commentaires de la publication, les plus récents d'abord (onglet « Commentaires »).
+     *
+     * @return LengthAwarePaginator<array{id: string, user: User, body: string, createdAt: ?string}>
+     */
+    public function comments(string $kind, Model $subject, int $page = 1, int $perPage = self::PER_PAGE): LengthAwarePaginator
+    {
+        $query = $this->commentQuery($kind, $subject);
+        if (!$query) {
+            return new LengthAwarePaginator([], 0, $perPage, max(1, $page));
+        }
+
+        $paginator = $query->with('user')->latest()->paginate($perPage, ['*'], 'page', max(1, $page));
+
+        return $paginator->setCollection($paginator->getCollection()->map(fn (Model $c) => [
+            'id'        => (string) $c->id,
+            'user'      => $c->user,
+            'body'      => Mentions::plain((string) $c->body),
+            'createdAt' => $c->created_at?->toIso8601String(),
+        ]));
+    }
+
+    /** Commentaires visibles de comptes actifs (null : pas de commentaires pour ce type, ex. session de prière). */
+    private function commentQuery(string $kind, Model $subject): ?\Illuminate\Database\Eloquent\Builder
+    {
+        $query = match ($kind) {
+            'testimony'      => Comment::where('testimony_id', $subject->id),
+            'daily_verse'    => DailyVerseComment::where('daily_verse_id', $subject->id)->whereNull('hidden_at'),
+            'prayer_request' => PrayerRequestMessage::where('prayer_request_id', $subject->id),
+            'event'          => EventComment::where('event_id', $subject->id),
+            default          => null,
+        };
+
+        return $query?->whereHas('user', fn ($u) => $u->where('status', UserAccountStatus::Active->value));
     }
 
     /** Libellé d'une réaction (« Je prie » plutôt que « Prière »). */

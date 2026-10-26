@@ -10,8 +10,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * GET {publication}/{id}/reactions/people?type=all|appreciation|prayer|like|pray…&page= :
- * effectif de chaque réaction et personnes qui ont réagi. Voir docs/fonctionnalites/qui-a-reagi.md
+ * GET {publication}/{id}/reactions/people?type=all|appreciation|prayer|like|pray…|comments&page= :
+ * effectif de chaque réaction et personnes qui ont réagi ; type=comments : `comments` (qui a commenté, et quoi).
+ * Voir docs/fonctionnalites/qui-a-reagi.md
  */
 class ReactionPeopleController extends Controller
 {
@@ -28,6 +29,26 @@ class ReactionPeopleController extends Controller
         $subject = $people->find($kind, $id, auth('sanctum')->user());
         if (!$subject) return $this->notFound();
 
+        $userFields = fn (User $u) => [
+            'id'          => $u->id,
+            'displayName' => $u->display_name,
+            'initials'    => $u->initials,
+            'avatarUrl'   => $u->avatar_url,
+            'isVerified'  => (bool) $u->isVerified(),
+            ...User::approvalFieldsFor($u),
+        ];
+
+        if ($filter === 'comments') {
+            $page = $people->comments($kind, $subject, (int) $request->query('page', 1));
+
+            return $this->paginated([
+                'summary'  => $people->summary($kind, $subject),
+                'comments' => collect($page->items())->map(fn (array $c) => [
+                    'id' => $c['id'], 'body' => $c['body'], 'createdAt' => $c['createdAt'], 'user' => $userFields($c['user']),
+                ])->values(),
+            ], $this->meta($page));
+        }
+
         $page = $people->people($kind, $subject, $filter, (int) $request->query('page', 1));
 
         return $this->paginated([
@@ -43,11 +64,16 @@ class ReactionPeopleController extends Controller
                 'prayerTimes' => $row['prayerTimes'], // nombre de fois que la personne a prié (docs/fonctionnalites/prier-plusieurs-fois.md)
                 'reactedAt'   => $row['reactedAt'],
             ])->values(),
-        ], [
+        ], $this->meta($page));
+    }
+
+    private function meta(\Illuminate\Pagination\LengthAwarePaginator $page): array
+    {
+        return [
             'currentPage' => $page->currentPage(),
             'lastPage'    => $page->lastPage(),
             'perPage'     => $page->perPage(),
             'total'       => $page->total(),
-        ]);
+        ];
     }
 }

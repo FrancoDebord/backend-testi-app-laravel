@@ -19,6 +19,8 @@ return [
         'tabs'         => 'Reactions by type',
         'empty'        => 'No one has reacted yet.',
         'empty_type'   => 'No one for this reaction.',
+        'comments'     => 'Comments',
+        'encouragements' => 'Encouragements',
         'more'         => 'Show more',
         'close'        => 'Close',
         'invalid_type' => 'Unknown reaction type.',

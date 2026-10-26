@@ -104,6 +104,30 @@ class ReactionPeopleTest extends TestCase
             ->assertJsonPath('data.people.0.displayName', 'Ama')->assertJsonCount(1, 'data.people');
     }
 
+    public function test_onglet_commentaires(): void
+    {
+        $t = $this->testimony($this->user('Auteur'));
+        $ama = $this->user('Ama');
+        $this->react($ama, $t, 'like');
+        \App\Models\Comment::create(['testimony_id' => $t->id, 'user_id' => $ama->id, 'body' => 'Gloire à Dieu pour toi']);
+        \App\Models\Comment::create(['testimony_id' => $t->id, 'user_id' => $this->user('Banni', ['status' => 'suspended'])->id, 'body' => 'Message masqué']);
+
+        // Onglet avec l'effectif (comptes actifs seulement), puis qui a commenté et quoi.
+        $this->get("/reactions/testimony/{$t->id}")->assertOk()->assertSeeInOrder(["J'aime", 'Commentaires', '1'], false);
+        $this->get("/reactions/testimony/{$t->id}?type=comments")->assertOk()
+            ->assertSee('Ama')->assertSee('Gloire à Dieu pour toi')->assertDontSee('Message masqué');
+        $this->getJson("/api/v1/testimonies/{$t->id}/reactions/people?type=comments")->assertOk()
+            ->assertJsonPath('data.summary.commentsCount', 1)
+            ->assertJsonPath('data.comments.0.body', 'Gloire à Dieu pour toi')
+            ->assertJsonPath('data.comments.0.user.displayName', 'Ama');
+
+        // Requête de prière : ses encouragements.
+        $prayer = PrayerRequest::create(['user_id' => $ama->id, 'body' => 'Pour ma famille', 'visibility' => 'public']);
+        \App\Models\PrayerRequestMessage::create(['prayer_request_id' => $prayer->id, 'user_id' => $this->user('Kofi')->id, 'body' => 'Courage, Dieu est fidèle']);
+        $this->get("/reactions/prayer_request/{$prayer->id}")->assertOk()->assertSee('Encouragements');
+        $this->get("/reactions/prayer_request/{$prayer->id}?type=comments")->assertOk()->assertSee('Courage, Dieu est fidèle');
+    }
+
     public function test_verset_du_jour(): void
     {
         $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => now()->toDateString(), 'is_active' => true]);

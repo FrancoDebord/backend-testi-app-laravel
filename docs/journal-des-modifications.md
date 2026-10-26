@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-26 — Qui a réagi ? : onglet « Commentaires »
+
+- **Utilisateurs** (site) : le popup « Qui a réagi ? » a un onglet **« Commentaires »** avec leur nombre (« Encouragements » pour une requête de prière). On y voit qui a commenté et son message, les plus récents d'abord, 30 à la fois.
+- **Développeurs** : `ReactionPeople::comments` (témoignages, verset du jour, requêtes, événements ; comptes actifs, commentaires supprimés ou retirés exclus) ; `summary.commentsCount` ; API `…/reactions/people?type=comments` (`comments`). Tests `ReactionPeopleTest::test_onglet_commentaires`. Voir [qui-a-reagi.md](fonctionnalites/qui-a-reagi.md).
+- **Déploiement** : `php artisan view:cache`. Aucune migration.
+
+---
+
 ## 2026-10-26 — Sujets de prière : qui a prié et prier plusieurs fois depuis les cartes
 
 - **Utilisateurs** (site) : les cartes des sujets de prière ont maintenant les mêmes actions que la page d'une requête :

@@ -23,10 +23,18 @@ class ReactionPeopleController extends Controller
         $subject = $people->find($kind, $id, $request->user());
         abort_unless($subject, 404);
 
-        $page = $people->people($kind, $subject, $filter, (int) $request->query('page', 1));
+        // Onglet « Commentaires » : qui a commenté, et quoi.
+        $isComments = $filter === 'comments';
+        $page = $isComments
+            ? $people->comments($kind, $subject, (int) $request->query('page', 1))
+            : $people->people($kind, $subject, $filter, (int) $request->query('page', 1));
+        $rows = $isComments ? 'reactions.partials.comment-rows' : 'reactions.partials.people-rows';
 
         // Page suivante : seulement les lignes, ajoutées à la liste déjà affichée.
-        return view($page->currentPage() > 1 ? 'reactions.partials.people-rows' : 'reactions.people', [
+        return view($page->currentPage() > 1 ? $rows : 'reactions.people', [
+            'rows'    => $rows,
+            // Requête de prière : ses encouragements.
+            'commentsLabel' => __($kind === 'prayer_request' ? 'reactions.people.encouragements' : 'reactions.people.comments'),
             'summary' => $people->summary($kind, $subject),
             'page'    => $page,
             'filter'  => $filter,
