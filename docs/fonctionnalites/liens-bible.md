@@ -18,8 +18,8 @@ Partager un verset ou un passage par un lien. Touché sur un téléphone où l'a
 | `…/bible/KJV/john/3/16` | John 3:16, King James |
 | `…/bible/LSG/1-corinthiens/13` | 1 Corinthiens 13, chapitre entier (sans versets) |
 
-- **Traduction** : code de la version (`LSG`, `KJV`, `BDS`… ; voir [versions-de-la-bible.md](versions-de-la-bible.md)).
-- **Livre** : nom en minuscules, sans accents, espaces remplacées par des tirets. Anglais pour une traduction anglaise (`language: en` dans `config/bible.php`), français pour toutes les autres (y compris yoruba, fon, goun). Liste : `slug` de `GET /api/v1/bible/books`.
+- **Traduction** : code de la version tel qu'en base (`LSG`, `KJV`, `EN_NLT`… ; lettres, chiffres, `_`, `-`, `.`, 30 caractères au plus ; voir [versions-de-la-bible.md](versions-de-la-bible.md)).
+- **Livre** : nom en minuscules, sans accents, espaces remplacées par des tirets. Anglais pour une traduction anglaise (`language: en` dans `config/bible.php` ; version non déclarée : Genèse nommée « Genesis » en base, `BibleReference::isEnglish`, aussi renvoyé comme `language: en` par `GET /api/v1/bible/translations`), français pour toutes les autres (y compris yoruba, fon, goun). Liste : `slug` de `GET /api/v1/bible/books`.
 - **Versets** : facultatifs ; `16`, `16-18`, `16,18-20`.
 
 `SHARE_URL` : adresse publique, comme les [liens de partage des témoignages](lien-de-partage.md).

@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-26 — Liens Bible : versions dont le code contient « _ » (EN_NLT…)
+
+- **Utilisateurs** : les liens vers une version comme `EN_NLT` (`/bible/EN_NLT/1/1/2,4-7`) répondaient « Not Found » ; ils s'ouvrent maintenant, avec les noms de livres anglais (`/bible/EN_NLT/genesis/1/2,4-7`).
+- **Développeurs** : la route `bible.passage` accepte un code de version avec `_`, `-`, `.` (30 caractères au plus) ; `BibleReference::isEnglish` reconnaît une version anglaise absente de `config/bible.php` à ses noms de livres (Genèse = « Genesis ») ; `GET /api/v1/bible/translations` renvoie alors `language: en` (noms anglais dans les liens de l'application). Tests `BibleLinksTest`. Voir [liens-bible.md](fonctionnalites/liens-bible.md).
+- **Déploiement** : `php artisan optimize:clear` puis `php artisan optimize` (route). Aucune migration, aucune recompilation.
+
+---
+
 ## 2026-10-26 — Bible : changer de version ne mène plus à « introuvable »
 
 - **Utilisateurs** (site) : après une sélection de versets, changer de version garde le passage et la sélection. Si la version choisie n'a pas ce livre, ce chapitre ou ces versets (numérotations différentes entre versions), la page affiche le passage le plus proche avec un avertissement, au lieu de « Not Found » : même passage en Louis Segond, dernier chapitre du livre, ou chapitre entier. Même chose pour un lien partagé vers une version retirée du serveur.

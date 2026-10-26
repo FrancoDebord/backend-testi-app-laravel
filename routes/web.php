@@ -124,7 +124,7 @@ Route::get('/explore',              [ExploreController::class, 'index'])->name('
 Route::get('/bible',                [BibleController::class, 'reader'])->name('bible.reader');
 // Lien partageable d'un passage, ouvert aussi dans l'application : /bible/LSG/jean/3/16-18 (docs/fonctionnalites/liens-bible.md)
 Route::get('/bible/{translation}/{book}/{chapter}/{verses?}', [BibleController::class, 'passage'])
-    ->where(['translation' => '[A-Za-z0-9]{2,10}', 'book' => '[^/]{1,40}', 'chapter' => '[0-9]{1,3}', 'verses' => '[0-9,-]{1,200}'])
+    ->where(['translation' => '[A-Za-z0-9_.-]{1,30}', 'book' => '[^/]{1,40}', 'chapter' => '[0-9]{1,3}', 'verses' => '[0-9,-]{1,200}'])
     ->name('bible.passage');
 // Verset du jour en plein écran : versions, prière, commentaires, témoignages (docs/fonctionnalites/verset-du-jour.md)
 Route::get('/verset-du-jour/historique', [\App\Http\Controllers\Web\DailyVerseController::class, 'history'])->name('daily-verse.history');

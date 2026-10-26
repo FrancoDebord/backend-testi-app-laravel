@@ -121,6 +121,21 @@ class BibleLinksTest extends TestCase
             ->assertSee("Ces versets n'existent pas dans ce chapitre de la version KJV");
     }
 
+    public function test_code_de_version_avec_tiret_bas_non_declare(): void
+    {
+        // Version importée sous « EN_NLT », absente de config/bible.php : anglaise d'après ses noms de livres.
+        BibleBook::create(['translation' => 'EN_NLT', 'number' => 1, 'name' => 'Genesis', 'abbreviation' => 'Gen', 'testament' => 'OT', 'chapters_count' => 50]);
+        foreach (range(1, 8) as $v) {
+            BibleVerse::create(['translation' => 'EN_NLT', 'book' => 1, 'chapter' => 1, 'verse' => $v, 'text' => "Genesis verse {$v}"]);
+        }
+
+        $this->get('/bible/EN_NLT/1/1/2,4-7')->assertRedirect('/bible/EN_NLT/genesis/1/2,4-7');
+        $this->get('/bible/EN_NLT/genesis/1/2,4-7')->assertOk()->assertSee('Genesis 1:2, 4-7', false);
+        $this->get('/bible/en_nlt/genese/1/2')->assertRedirect('/bible/EN_NLT/genesis/1/2');
+        $this->getJson('/api/v1/bible/books?translation=EN_NLT')->assertJsonPath('data.0.slug', 'genesis');
+        $this->getJson('/api/v1/bible/translations')->assertJsonFragment(['code' => 'EN_NLT', 'language' => 'en']);
+    }
+
     public function test_un_lien_invalide_renvoie_404(): void
     {
         $this->get('/bible/LSG/inconnu/3/16')->assertNotFound();

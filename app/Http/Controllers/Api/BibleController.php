@@ -191,7 +191,8 @@ class BibleController extends Controller
 
     private function translationLanguage(string $code): string
     {
-        return config("bible.translations.{$code}.language", 'unknown');
+        // Version non déclarée : anglaise si ses livres portent les noms anglais (liens /bible, docs/fonctionnalites/liens-bible.md).
+        return config("bible.translations.{$code}.language") ?? (BibleReference::isEnglish($code) ? 'en' : 'unknown');
     }
 
     // GET /bible/search?q=amour&translation=LSG&book=1&limit=20

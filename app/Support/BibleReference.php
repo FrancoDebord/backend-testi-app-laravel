@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\BibleBook;
 use Illuminate\Support\Str;
 
 /**
@@ -176,10 +177,28 @@ class BibleReference
     /** Nom du livre dans un lien : anglais pour une traduction anglaise, sinon français (« 1-corinthiens »). */
     public static function slug(int $book, ?string $translation = null): string
     {
-        $english = $translation !== null && config('bible.translations.' . strtoupper($translation) . '.language') === 'en';
+        $english = $translation !== null && self::isEnglish($translation);
         $name = $english ? (self::NAMES_EN[$book] ?? null) : (self::NAMES_FR[$book] ?? null);
 
         return $name === null ? (string) $book : Str::slug($name);
+    }
+
+    /** @var array<string, bool> Versions absentes de config/bible.php, déjà examinées pendant la requête. */
+    private static array $englishByNames = [];
+
+    /**
+     * Version anglaise : `language` de config/bible.php, sinon (version importée sans y être
+     * déclarée, ex. EN_NLT) Genèse nommée « Genesis » en base.
+     */
+    public static function isEnglish(string $translation): bool
+    {
+        $code = strtoupper($translation);
+        $language = config("bible.translations.{$code}.language");
+        if ($language !== null) {
+            return $language === 'en';
+        }
+
+        return self::$englishByNames[$code] ??= BibleBook::where('translation', $code)->where('number', 1)->value('name') === self::NAMES_EN[1];
     }
 
     /**
