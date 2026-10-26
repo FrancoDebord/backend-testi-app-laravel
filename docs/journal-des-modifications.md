@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-26 — Bible : changer de version ne mène plus à « introuvable »
+
+- **Utilisateurs** (site) : après une sélection de versets, changer de version garde le passage et la sélection. Si la version choisie n'a pas ce livre, ce chapitre ou ces versets (numérotations différentes entre versions), la page affiche le passage le plus proche avec un avertissement, au lieu de « Not Found » : même passage en Louis Segond, dernier chapitre du livre, ou chapitre entier. Même chose pour un lien partagé vers une version retirée du serveur.
+- **Développeurs** : `Web\BibleController@passage` (`translationWithBook`, redirections 302 avec `session('warning')`) ; le layout affiche maintenant `session('warning')` (`alert-warning`). 404 seulement pour un livre inconnu, présent dans aucune version, ou des versets mal écrits. Tests `BibleLinksTest`. Voir [liens-bible.md](fonctionnalites/liens-bible.md).
+- **Déploiement** : `php artisan view:cache`. Aucune migration, aucune recompilation.
+
+---
+
 ## 2026-10-26 — Bible du site : partager un ou plusieurs versets choisis
 
 - **Utilisateurs** (site, lecture de la Bible) : toucher un verset le sélectionne, en toucher d'autres les ajoute, contigus ou non (« Jean 3:16-18, 20 »). Une barre en bas propose **Partager**, **Copier le texte** (versets numérotés, référence et lien), **Copier le lien** et effacer. L'adresse de la page suit la sélection. Le bouton Partager de l'en-tête partage la sélection, sinon le chapitre.

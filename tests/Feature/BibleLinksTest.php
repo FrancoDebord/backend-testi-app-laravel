@@ -98,16 +98,34 @@ class BibleLinksTest extends TestCase
         // Ancienne adresse du lecteur.
         $this->get('/bible?translation=LSG&book=43&chapter=3')->assertRedirect('/bible/LSG/jean/3');
         // Versets absents du chapitre : le chapitre entier.
-        $this->get('/bible/LSG/jean/3/90')->assertRedirect('/bible/LSG/jean/3');
+        $this->get('/bible/LSG/jean/3/90')->assertRedirect('/bible/LSG/jean/3')->assertSessionHas('warning');
+    }
+
+    public function test_changer_de_version_garde_le_passage_ou_le_plus_proche(): void
+    {
+        // Sélection gardée : le script envoie le numéro du livre, le serveur donne le nom de la version.
+        $this->get('/bible/KJV/43/3/16-18,20')->assertRedirect('/bible/KJV/john/3/16-18,20');
+        $this->get('/bible/KJV/john/3/16-18,20')->assertOk()->assertSee('John 3:16-18, 20', false);
+
+        // Livre absent de la version choisie : même passage en Louis Segond.
+        $this->get('/bible/KJV/1-corinthians/13/4')->assertRedirect('/bible/LSG/1-corinthiens/13/4')
+            ->assertSessionHas('warning', "Ce livre n'existe pas dans la version KJV : passage affiché dans la version LSG.");
+        // Version absente (lien ancien ou version retirée) : Louis Segond.
+        $this->get('/bible/XYZ/jean/3/16')->assertRedirect('/bible/LSG/jean/3/16')->assertSessionHas('warning');
+        // Chapitre au-delà du dernier de cette version : dernier chapitre.
+        $this->get('/bible/LSG/jean/22/1')->assertRedirect('/bible/LSG/jean/21')
+            ->assertSessionHas('warning', 'Ce livre compte 21 chapitres dans la version LSG : dernier chapitre affiché.');
+        // Versets absents dans cette version : chapitre entier, message affiché.
+        $this->get('/bible/KJV/john/3/17')->assertRedirect('/bible/KJV/john/3');
+        $this->followingRedirects()->get('/bible/KJV/john/3/17')->assertOk()
+            ->assertSee("Ces versets n'existent pas dans ce chapitre de la version KJV");
     }
 
     public function test_un_lien_invalide_renvoie_404(): void
     {
         $this->get('/bible/LSG/inconnu/3/16')->assertNotFound();
-        $this->get('/bible/LSG/jean/22/1')->assertNotFound();      // Jean a 21 chapitres
-        $this->get('/bible/XYZ/jean/3/16')->assertNotFound();      // traduction absente
         $this->get('/bible/LSG/jean/3/18-16')->assertNotFound();
-        $this->get('/bible/LSG/genese/1')->assertNotFound();       // livre absent de la traduction
+        $this->get('/bible/LSG/genese/1')->assertNotFound();       // livre présent dans aucune version
     }
 
     public function test_l_api_donne_les_liens_et_le_nom_des_livres_dans_les_liens(): void

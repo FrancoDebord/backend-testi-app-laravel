@@ -44,7 +44,34 @@ class BibleController extends Controller
             return redirect($canonical, 301);
         }
 
+        // Passage absent de cette version (changement de version, lien vers une version retirée) :
+        // le plus proche, avec un avertissement, plutôt qu'une page introuvable.
+        $chapters = BibleBook::where('translation', $code)->pluck('chapters_count', 'number');
+        if (!$chapters->has($number)) {
+            $fallback = $this->translationWithBook($number, $code);
+            abort_if(!$fallback, 404);
+            $message = $chapters->isEmpty()
+                ? "La version {$code} n'est pas disponible : passage affiché dans la version {$fallback}."
+                : "Ce livre n'existe pas dans la version {$code} : passage affiché dans la version {$fallback}.";
+
+            return redirect(BibleReference::passagePath($fallback, $number, $chapter, $ranges))->with('warning', $message);
+        }
+        if ($chapter > $chapters[$number]) {
+            $last = (int) $chapters[$number];
+
+            return redirect(BibleReference::passagePath($code, $number, $last))
+                ->with('warning', "Ce livre compte {$last} chapitres dans la version {$code} : dernier chapitre affiché.");
+        }
+
         return $this->render($code, $number, $chapter, $ranges, true);
+    }
+
+    /** Version qui contient ce livre : Louis Segond de préférence, sinon la première trouvée. */
+    private function translationWithBook(int $book, string $except): ?string
+    {
+        $codes = BibleBook::where('number', $book)->where('translation', '!=', $except)->orderBy('translation')->pluck('translation');
+
+        return $codes->contains('LSG') ? 'LSG' : $codes->first();
     }
 
     private function render(string $translation, int $bookNumber, int $chapter, array $ranges = [], bool $strict = false)
@@ -72,7 +99,8 @@ class BibleController extends Controller
         // Versets demandés qui existent dans ce chapitre ; aucun : le chapitre entier.
         $selected = array_values(array_intersect(BibleReference::versesIn($ranges), $verses->pluck('verse')->all()));
         if ($ranges && !$selected && $currentBook) {
-            return redirect(BibleReference::passagePath($translation, $currentBook->number, $chapter));
+            return redirect(BibleReference::passagePath($translation, $currentBook->number, $chapter))
+                ->with('warning', "Ces versets n'existent pas dans ce chapitre de la version {$translation} : chapitre entier affiché.");
         }
 
         // Chapitre précédent / suivant

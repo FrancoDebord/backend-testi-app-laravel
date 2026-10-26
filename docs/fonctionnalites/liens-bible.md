@@ -28,11 +28,18 @@ Partager un verset ou un passage par un lien. Touché sur un téléphone où l'a
 
 Le serveur accepte aussi le numéro du livre (`/bible/LSG/43/3/16`), un nom anglais ou français quelle que soit la traduction, les abréviations (`jn`, `1-co`, `ps`), les accents, la traduction en minuscules et des versets dans le désordre. Il **redirige (301)** vers le lien canonique : `/bible/lsg/43/3/17,16` → `/bible/LSG/jean/3/16-17`. L'ancienne adresse du lecteur `/bible?translation=LSG&book=43&chapter=3` est redirigée de la même façon.
 
+Passage absent de la version demandée (changement de version après une sélection, lien vers une version retirée du serveur) : redirection (302) vers le passage le plus proche, avec un avertissement en haut de la page (`session('warning')`, `alert-warning`) — jamais une page introuvable pour un livre reconnu (2026-10-26) :
+
 | Cas | Réponse |
 |---|---|
-| Livre inconnu, traduction absente, chapitre au-delà du dernier, livre absent de la traduction, plage à l'envers (`18-16`) | 404 |
-| Versets tous absents du chapitre (`/jean/3/90`) | Redirection vers le chapitre entier |
+| Version absente du serveur (`/bible/XYZ/jean/3/16`) | Même passage en `LSG` (sinon première version qui a le livre) : « La version XYZ n'est pas disponible… » |
+| Livre absent de la version | Même passage en `LSG` (sinon première version qui a le livre) : « Ce livre n'existe pas dans la version … » |
+| Chapitre au-delà du dernier de la version (`/jean/22`, Malachie 4 dans une version en 3 chapitres) | Dernier chapitre : « Ce livre compte 21 chapitres dans la version LSG… » |
+| Versets tous absents du chapitre dans cette version (`/jean/3/90`, numérotation différente) | Chapitre entier : « Ces versets n'existent pas dans ce chapitre… » |
 | Plage qui dépasse la fin du chapitre (`/jean/3/35-99`) | Versets existants mis en avant |
+| Livre inconnu, livre présent dans aucune version, plage à l'envers (`18-16`) | 404 |
+
+Changement de version dans le lecteur : la sélection est gardée (`/bible/{nouvelle version}/{numéro du livre}/{chapitre}/{versets}`, puis redirection vers le nom du livre dans cette version).
 
 ## Site
 

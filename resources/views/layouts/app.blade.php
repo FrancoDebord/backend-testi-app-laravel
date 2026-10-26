@@ -343,6 +343,7 @@
             $flashMessages = array_filter([
                 ['alert-success', 'fa-circle-check', session('success')],
                 ['alert-success', 'fa-circle-check', session('status')],
+                ['alert-warning', 'fa-triangle-exclamation', session('warning')],
                 ['alert-error', 'fa-circle-exclamation', session('error') ?: $errors->first('error')],
             ], fn ($m) => filled($m[2]));
         @endphp
