@@ -242,8 +242,21 @@ class PrayerFocusTest extends TestCase
         $this->actingAs($this->reader)->from($show)->post(route('prayer.requests.pray', $this->prayer->id))->assertSessionHas('success');
         $this->assertSame(1, (int) $this->prayer->fresh()->prayer_count);
 
-        // Retirer sa prière sur le site : immédiat.
+        // Prier encore : nouveau temps de prière exigé ; une prière de plus, compteur (personnes) inchangé.
+        // Voir docs/fonctionnalites/prier-plusieurs-fois.md
+        $this->actingAs($this->reader)->from($show)->post(route('prayer.requests.pray', $this->prayer->id))->assertSessionHas('error');
+        $this->actingAs($this->reader)->postJson(route('prayer.requests.pray.start', $this->prayer->id))->assertOk();
+        $this->wait(300);
         $this->actingAs($this->reader)->from($show)->post(route('prayer.requests.pray', $this->prayer->id))->assertSessionHas('success');
+        $this->assertSame(1, (int) $this->prayer->fresh()->prayer_count);
+        $this->assertSame(2, $this->prayer->fresh()->prayerTimesOf($this->reader));
+        $this->actingAs($this->reader)->get($show)->assertSee('Vous avez prié 2 fois')->assertSee('Retirer ma dernière prière');
+
+        // Retirer sa dernière prière : immédiat, une à la fois.
+        $this->actingAs($this->reader)->from($show)->post(route('prayer.requests.pray', $this->prayer->id), ['last' => 1])->assertSessionHas('success');
+        $this->assertSame(1, $this->prayer->fresh()->prayerTimesOf($this->reader));
+        $this->assertSame(1, (int) $this->prayer->fresh()->prayer_count);
+        $this->actingAs($this->reader)->from($show)->post(route('prayer.requests.pray', $this->prayer->id), ['last' => 1])->assertSessionHas('success');
         $this->assertSame(0, (int) $this->prayer->fresh()->prayer_count);
     }
 
@@ -290,9 +303,19 @@ class PrayerFocusTest extends TestCase
         $this->actingAs($this->reader)->postJson($url, ['type' => 'pray'], $headers)->assertOk()
             ->assertJson(['reacted' => true, 'is_prayed' => true, 'prayer_count' => 1]);
 
-        // Déjà en prière : le bouton retire la prière immédiatement.
+        // Déjà en prière : un nouvel appui ajoute une prière, après un nouveau temps de prière
+        // (docs/fonctionnalites/prier-plusieurs-fois.md).
+        $this->actingAs($this->reader)->postJson($url, ['type' => 'pray'], $headers)->assertStatus(422);
+        $this->actingAs($this->reader)->postJson(route('testimonies.prayer.start', $this->testimony->id))->assertOk();
+        $this->wait(300);
         $this->actingAs($this->reader)->postJson($url, ['type' => 'pray'], $headers)->assertOk()
-            ->assertJson(['reacted' => false, 'is_prayed' => false, 'prayer_count' => 0]);
+            ->assertJson(['reacted' => true, 'is_prayed' => true, 'prayer_count' => 1, 'my_prayer_times' => 2]);
+
+        // Retirer la dernière prière : immédiat, une à la fois.
+        $this->actingAs($this->reader)->postJson($url, ['type' => 'pray', 'remove_last' => true], $headers)->assertOk()
+            ->assertJson(['reacted' => true, 'is_prayed' => true, 'prayer_count' => 1, 'my_prayer_times' => 1]);
+        $this->actingAs($this->reader)->postJson($url, ['type' => 'pray', 'remove_last' => true], $headers)->assertOk()
+            ->assertJson(['reacted' => false, 'is_prayed' => false, 'prayer_count' => 0, 'my_prayer_times' => 0]);
         $this->assertSame(0, Reaction::where('user_id', $this->reader->id)->count());
     }
 

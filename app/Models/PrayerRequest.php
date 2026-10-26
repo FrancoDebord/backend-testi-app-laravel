@@ -164,6 +164,15 @@ class PrayerRequest extends Model
         return $this->prayers()->where('user_id', $user->id)->exists();
     }
 
+    /** Nombre de fois que $user a prié pour la requête (0 s'il ne prie pas) : docs/fonctionnalites/prier-plusieurs-fois.md */
+    public function prayerTimesOf(?User $user): int
+    {
+        if ($user === null) return 0;
+        if (array_key_exists('my_prayer_times', $this->attributes)) return (int) $this->attributes['my_prayer_times'];
+
+        return (int) $this->prayers()->where('user_id', $user->id)->value('prayer_times');
+    }
+
     // ---------- Portées ----------
 
     /** Requêtes visibles de $user dans les listes (hors modération) : même règle que isVisibleTo(). */
@@ -185,11 +194,12 @@ class PrayerRequest extends Model
         });
     }
 
-    /** Ajoute `has_prayed` pour éviter une requête par carte. */
+    /** Ajoute `has_prayed` et `my_prayer_times` pour éviter une requête par carte. */
     public function scopeWithPrayedBy(Builder $q, ?User $user): Builder
     {
         if (!$user) return $q;
 
-        return $q->withExists(['prayers as has_prayed' => fn ($p) => $p->where('user_id', $user->id)]);
+        return $q->withExists(['prayers as has_prayed' => fn ($p) => $p->where('user_id', $user->id)])
+            ->withSum(['prayers as my_prayer_times' => fn ($p) => $p->where('user_id', $user->id)], 'prayer_times');
     }
 }

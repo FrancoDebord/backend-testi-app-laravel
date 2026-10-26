@@ -89,13 +89,20 @@ class PrayerRequestController extends Controller
     /** « Je prie » : bascule, ou `prayed` = true | false pour fixer l'état. */
     public function pray(Request $request, string $id): JsonResponse
     {
-        $request->validate(['prayed' => 'sometimes|boolean']);
+        // again : prier encore ; { prayed: false, last: true } : retirer la dernière prière (docs/fonctionnalites/prier-plusieurs-fois.md).
+        $request->validate(['prayed' => 'sometimes|boolean', 'again' => 'sometimes|boolean', 'last' => 'sometimes|boolean']);
 
         return $this->attempt(function () use ($request, $id) {
             $prayer = $this->requests->find($request->user(), $id);
-            $prayed = $this->requests->setPrayed($prayer, $request->user(), $request->has('prayed') ? $request->boolean('prayed') : null);
+            if ($request->boolean('last') && $request->has('prayed') && !$request->boolean('prayed')) {
+                $times = $this->requests->removeLastPrayer($prayer, $request->user());
+                $prayed = $times > 0;
+            } else {
+                $prayed = $this->requests->setPrayed($prayer, $request->user(), $request->has('prayed') ? $request->boolean('prayed') : null, $request->boolean('again'));
+                $times = $prayer->getAttribute('my_prayer_times');
+            }
 
-            return $this->success(new PrayerRequestResource($prayer->refresh()->load(['user', 'event'])->setAttribute('has_prayed', $prayed)),
+            return $this->success(new PrayerRequestResource($prayer->refresh()->load(['user', 'event'])->setAttribute('has_prayed', $prayed)->setAttribute('my_prayer_times', $times)),
                 $prayed ? 'Merci de prier pour cette requête.' : 'Prière retirée.');
         });
     }

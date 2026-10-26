@@ -89,10 +89,10 @@ class ContentInteractions
     {
         $kind = self::kindOf($subject);
         $mine = $viewer
-            ? ContentReaction::where('user_id', $viewer->id)->where('subject_type', $kind)->where('subject_id', $subject->id)->get()->map(fn (ContentReaction $r) => $r->type)
+            ? ContentReaction::where('user_id', $viewer->id)->where('subject_type', $kind)->where('subject_id', $subject->id)->get()
             : collect();
-        $appreciation = $mine->first(fn (ReactionType $t) => $t->group() === 'appreciation');
-        $prayer = $mine->first(fn (ReactionType $t) => $t->group() === 'prayer');
+        $appreciation = $mine->first(fn (ContentReaction $r) => $r->type->group() === 'appreciation')?->type;
+        $prayer = $mine->first(fn (ContentReaction $r) => $r->type->group() === 'prayer');
         $repost = $this->highlightFor($subject, $viewer);
 
         return [
@@ -102,7 +102,9 @@ class ContentInteractions
                 'prayersCount'     => (int) ($subject->prayer_count ?? 0),
                 'repostsCount'     => (int) ($subject->repost_count ?? 0),
                 'myReaction'       => $appreciation?->value,
-                'myPrayerReaction' => $prayer?->value,
+                'myPrayerReaction' => $prayer?->type->value,
+                // Nombre de fois que la personne a prié (docs/fonctionnalites/prier-plusieurs-fois.md).
+                'myPrayerTimes'    => (int) ($prayer?->prayer_times ?? 0),
                 'isRepostedByMe'   => $viewer !== null && (int) ($subject->repost_count ?? 0) > 0
                     && ContentRepost::where('user_id', $viewer->id)->where('subject_type', $kind)->where('subject_id', $subject->id)->exists(),
                 'canRepost'        => $viewer !== null && $viewer->id !== self::ownerId($subject) && $this->isShareable($subject),
@@ -156,15 +158,19 @@ class ContentInteractions
 
     // ─── Réactions ───────────────────────────────────────────────────────────
 
-    /** Pose la réaction (idempotent). Retourne vrai si c'est une nouvelle réaction du groupe. */
-    public function react(User $user, Model $subject, ReactionType $type): bool
+    /**
+     * Pose la réaction (idempotent). Retourne vrai si c'est une nouvelle réaction du groupe.
+     * `$again` (prier encore) : la personne prie déjà → une prière de plus (prayer_times), après un nouveau temps
+     * de prière ; prayer_count (personnes) ne change pas. Voir docs/fonctionnalites/prier-plusieurs-fois.md
+     */
+    public function react(User $user, Model $subject, ReactionType $type, bool $again = false): bool
     {
         $kind = self::kindOf($subject);
         if ($kind === 'prayer_request' && $type->group() === 'prayer') {
             throw new ContentActionException(__('reactions.content.use_pray'), 422);
         }
 
-        $created = DB::transaction(function () use ($user, $subject, $kind, $type) {
+        $created = DB::transaction(function () use ($user, $subject, $kind, $type, $again) {
             $subject::whereKey($subject->id)->lockForUpdate()->first();
             $mine = ContentReaction::where('user_id', $user->id)->where('subject_type', $kind)->where('subject_id', $subject->id)
                 ->whereIn('type', ReactionType::valuesOfGroup($type->group()))->get();
@@ -175,6 +181,13 @@ class ContentInteractions
             // Passer de pray à amen, ou prier de nouveau, n'est jamais bloqué (docs/fonctionnalites/temps-de-priere.md).
             if ($type->group() === 'prayer' && $mine->isEmpty()) {
                 app(PrayerFocus::class)->ensureCompleted($user, $kind, (string) $subject->id);
+            }
+            // Prier encore : même réaction gardée, une prière de plus.
+            if ($again && $type->group() === 'prayer' && $mine->isNotEmpty()) {
+                app(PrayerFocus::class)->ensureCompleted($user, $kind, (string) $subject->id);
+                $mine->sortByDesc('prayer_times')->first()->increment('prayer_times');
+
+                return false;
             }
 
             if ($others->isNotEmpty()) {
@@ -222,6 +235,22 @@ class ContentInteractions
             }
         });
         $subject->refresh();
+    }
+
+    /** Retire la dernière prière de la personne (une de moins, ou plus de réaction « je prie »). Renvoie les prières restantes. */
+    public function removeLastPrayer(User $user, Model $subject): int
+    {
+        $kind = self::kindOf($subject);
+        $current = ContentReaction::where('user_id', $user->id)->where('subject_type', $kind)->where('subject_id', $subject->id)
+            ->whereIn('type', ReactionType::valuesOfGroup('prayer'))->orderByDesc('prayer_times')->first();
+        if (!$current) return 0;
+        if ($current->prayer_times <= 1) {
+            $this->unreact($user, $subject, 'prayer');
+            return 0;
+        }
+        $current->decrement('prayer_times');
+
+        return $current->prayer_times;
     }
 
     /** Bascule (site) : retire la réaction si c'est déjà celle-là, sinon la pose. Vrai si posée. */

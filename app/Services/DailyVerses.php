@@ -123,15 +123,21 @@ class DailyVerses
      * Ajouter « Je prie » (`pray`) exige un temps de prière écoulé (PrayerFocus, 422) ; `like` et `amen`
      * ne sont pas concernés, retirer n'est jamais bloqué (docs/fonctionnalites/temps-de-priere.md).
      */
-    public function setReaction(DailyVerse $verse, User $user, string $type, ?bool $on = null): bool
+    public function setReaction(DailyVerse $verse, User $user, string $type, ?bool $on = null, bool $again = false): bool
     {
         $field = self::REACTIONS[$type] ?? throw new PrayerActionException('Réaction inconnue.', 422);
         $this->ensureActive($user);
+        $again = $again && $type === 'pray';
 
-        return DB::transaction(function () use ($verse, $user, $type, $on, $field) {
+        return DB::transaction(function () use ($verse, $user, $type, $on, $field, $again) {
             $existing = DailyVerseReaction::where(['daily_verse_id' => $verse->id, 'user_id' => $user->id, 'type' => $type])->first();
-            $target   = $on ?? !$existing;
-            if ($target && !$existing) {
+            $target   = $again ?: ($on ?? !$existing);
+            if ($target && $existing && $again) {
+                // Prier encore : une prière de plus (prayer_count, nombre de personnes, ne change pas).
+                // Voir docs/fonctionnalites/prier-plusieurs-fois.md
+                app(PrayerFocus::class)->ensureCompleted($user, 'daily_verse', (string) $verse->id);
+                $existing->increment('prayer_times');
+            } elseif ($target && !$existing) {
                 if ($type === 'pray') {
                     app(PrayerFocus::class)->ensureCompleted($user, 'daily_verse', (string) $verse->id);
                 }
@@ -144,6 +150,25 @@ class DailyVerses
 
             return $target;
         });
+    }
+
+    /** Retire la dernière prière (« Je prie ») de la personne : une de moins, ou plus de réaction. Renvoie les prières restantes. */
+    public function removeLastPrayer(DailyVerse $verse, User $user): int
+    {
+        $existing = DailyVerseReaction::where(['daily_verse_id' => $verse->id, 'user_id' => $user->id, 'type' => 'pray'])->first();
+        if (!$existing || $existing->prayer_times <= 1) {
+            $this->setReaction($verse, $user, 'pray', false);
+            return 0;
+        }
+        $existing->decrement('prayer_times');
+
+        return $existing->prayer_times;
+    }
+
+    /** Nombre de fois que la personne a prié sur le verset (0 si elle ne prie pas). */
+    public function prayerTimes(DailyVerse $verse, ?User $user): int
+    {
+        return $user ? (int) DailyVerseReaction::where(['daily_verse_id' => $verse->id, 'user_id' => $user->id, 'type' => 'pray'])->value('prayer_times') : 0;
     }
 
     /**

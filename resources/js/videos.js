@@ -432,6 +432,26 @@ function setPressed(button, on) {
     button.setAttribute('aria-pressed', on ? 'true' : 'false');
 }
 
+/** « Vous avez prié N fois » sous les réactions (docs/fonctionnalites/prier-plusieurs-fois.md). */
+function showPrayerTimes(group, times) {
+    const row = group.parentElement?.querySelector('[data-prayer-times-row]');
+    if (!row || times === undefined) return;
+    row.hidden = !times;
+    if (times) row.querySelector('[data-prayer-times-label]').textContent = tn('videos.prayed_times', times);
+}
+
+/** État renvoyé par le serveur : boutons, compteurs, nombre de prières. */
+function applyReactionState(group, data) {
+    // Une réaction par groupe (j'aime / je prie) : l'ancienne du même groupe est remplacée.
+    if (Array.isArray(data.my_reactions)) {
+        group.querySelectorAll('[data-reaction]').forEach((b) => setPressed(b, b.hasAttribute('data-pray')
+            ? Boolean(data.is_prayed)
+            : data.my_reactions.includes(b.dataset.reaction)));
+    }
+    group.querySelectorAll('[data-count]').forEach((el) => (el.textContent = formatCount(data[el.dataset.count] ?? 0)));
+    showPrayerTimes(group, data.my_prayer_times);
+}
+
 document.addEventListener('click', async (e) => {
     const button = e.target.closest('[data-reaction]');
     if (!button) return;
@@ -442,9 +462,10 @@ document.addEventListener('click', async (e) => {
     }
     if (button.disabled) return;
     button.disabled = true;
-    const isPrayButton = button.hasAttribute('data-pray');
-    // Ajouter une prière : temps de prière d'abord (docs/fonctionnalites/temps-de-priere.md). Retirer : immédiat.
-    if (isPrayButton && button.getAttribute('aria-pressed') !== 'true' && group.dataset.prayStart) {
+    const isPray = button.hasAttribute('data-pray');
+    // « Je prie » ajoute une prière à chaque appui, toujours après le temps de prière
+    // (docs/fonctionnalites/temps-de-priere.md, prier-plusieurs-fois.md).
+    if (isPray && group.dataset.prayStart) {
         const ok = await prayerFocus({
             startUrl: group.dataset.prayStart,
             kind: 'testimony',
@@ -456,34 +477,40 @@ document.addEventListener('click', async (e) => {
             return;
         }
     }
-    // « Je prie » comme dans l'application : bouton et compteur changent tout de suite, puis l'état du serveur
+    // Bouton et compteur (personnes) changent tout de suite pour une première prière, puis l'état du serveur
     // fait foi ; en cas d'échec, l'état d'avant est rétabli.
-    const isPray = isPrayButton;
     const prayCount = group.querySelector('[data-count="prayer_count"]');
     const before = isPray ? { pressed: button.getAttribute('aria-pressed') === 'true', count: prayCount?.textContent } : null;
-    if (isPray) {
-        const praying = !before.pressed;
-        setPressed(button, praying);
-        if (prayCount) {
-            const current = parseInt((before.count || '0').replace(/\D/g, ''), 10) || 0;
-            prayCount.textContent = formatCount(Math.max(0, current + (praying ? 1 : -1)));
-        }
+    if (isPray && !before.pressed) {
+        setPressed(button, true);
+        if (prayCount) prayCount.textContent = formatCount((parseInt((before.count || '0').replace(/\D/g, ''), 10) || 0) + 1);
     }
     try {
         const data = await request(group.dataset.reactions, { method: 'POST', data: { type: button.dataset.reaction } });
         setPressed(button, data.reacted);
-        // Une réaction par groupe (j'aime / je prie) : l'ancienne du même groupe est remplacée.
-        if (Array.isArray(data.my_reactions)) {
-            group.querySelectorAll('[data-reaction]').forEach((b) => setPressed(b, b.hasAttribute('data-pray')
-                ? Boolean(data.is_prayed)
-                : data.my_reactions.includes(b.dataset.reaction)));
-        }
-        group.querySelectorAll('[data-count]').forEach((el) => (el.textContent = formatCount(data[el.dataset.count] ?? 0)));
+        applyReactionState(group, data);
     } catch (error) {
         if (isPray) {
             setPressed(button, before.pressed);
             if (prayCount) prayCount.textContent = before.count;
         }
+        flash(error.message, 'error');
+    } finally {
+        button.disabled = false;
+    }
+});
+
+// « Retirer ma dernière prière » : immédiat, sans temps de prière.
+document.addEventListener('click', async (e) => {
+    const button = e.target.closest('[data-pray-remove-last]');
+    if (!button || button.disabled) return;
+    const group = button.closest('.card')?.querySelector('[data-reactions]');
+    if (!group) return;
+    button.disabled = true;
+    try {
+        const data = await request(group.dataset.reactions, { method: 'POST', data: { type: 'pray', remove_last: true } });
+        applyReactionState(group, data);
+    } catch (error) {
         flash(error.message, 'error');
     } finally {
         button.disabled = false;

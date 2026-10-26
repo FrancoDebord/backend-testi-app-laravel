@@ -10,6 +10,28 @@ return [
     'worship' => 'Worship God',
     'fire'    => 'Fire',
 
+    // "Who reacted?" popup (App\Services\ReactionPeople, docs/fonctionnalites/qui-a-reagi.md)
+    'people' => [
+        'open'         => 'Who reacted?',
+        'open_prayers' => 'See who is praying',
+        'title'        => 'Reactions',
+        'all'          => 'All',
+        'tabs'         => 'Reactions by type',
+        'empty'        => 'No one has reacted yet.',
+        'empty_type'   => 'No one for this reaction.',
+        'more'         => 'Show more',
+        'close'        => 'Close',
+        'invalid_type' => 'Unknown reaction type.',
+    ],
+
+    // Praying several times (docs/fonctionnalites/prier-plusieurs-fois.md)
+    'prayer_times' => [
+        'prayed'      => '{1} You prayed once|[2,*] You prayed :count times',
+        'remove_last' => 'Remove my last prayer',
+        'pray_again'  => 'Pray again',
+        'times'       => '{1} once|[2,*] :count times',
+    ],
+
     'api' => [
         'added'   => 'Reaction added',
         'saved'   => 'Reaction saved',

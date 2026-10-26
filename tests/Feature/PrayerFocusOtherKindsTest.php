@@ -145,8 +145,15 @@ class PrayerFocusOtherKindsTest extends TestCase
         $this->actingAs($this->reader)->from($page)->post(route('daily-verse.react', $verse->id), ['type' => 'pray'])->assertSessionHas('success');
         $this->assertSame(1, (int) $verse->fresh()->prayer_count);
 
-        // Retirer (bascule) : immédiat.
+        // Prier encore (nouveau temps de prière), puis retirer la dernière prière : docs/fonctionnalites/prier-plusieurs-fois.md
+        $this->assertStartJson($this->actingAs($this->reader)->postJson(route('daily-verse.pray.start', $verse->id)));
+        $this->wait(300);
         $this->actingAs($this->reader)->from($page)->post(route('daily-verse.react', $verse->id), ['type' => 'pray'])->assertSessionHas('success');
+        $this->assertSame(1, (int) $verse->fresh()->prayer_count);
+        $this->assertSame(2, app(\App\Services\DailyVerses::class)->prayerTimes($verse, $this->reader));
+        $this->actingAs($this->reader)->from($page)->post(route('daily-verse.react', $verse->id), ['type' => 'pray', 'last' => 1])->assertSessionHas('success');
+        $this->assertSame(1, app(\App\Services\DailyVerses::class)->prayerTimes($verse, $this->reader));
+        $this->actingAs($this->reader)->from($page)->post(route('daily-verse.react', $verse->id), ['type' => 'pray', 'last' => 1])->assertSessionHas('success');
         $this->assertSame(0, (int) $verse->fresh()->prayer_count);
     }
 

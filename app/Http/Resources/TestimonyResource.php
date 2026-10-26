@@ -16,9 +16,8 @@ class TestimonyResource extends JsonResource
         $viewer = $request->user() ?? $request->user('sanctum');
         $userId = $viewer?->id;
         // Réactions de la personne : une « j'aime » et une « je prie » au plus (docs/fonctionnalites/reactions.md).
-        $myTypes = $userId
-            ? $this->reactions()->where('user_id', $userId)->get()->map(fn ($r) => $r->type)
-            : collect();
+        $myReactions = $userId ? $this->reactions()->where('user_id', $userId)->get() : collect();
+        $myTypes = $myReactions->map(fn ($r) => $r->type);
         $appreciation = $myTypes->first(fn (ReactionType $t) => $t->group() === 'appreciation');
         $prayer       = $myTypes->first(fn (ReactionType $t) => $t->group() === 'prayer');
         // Vidéo Bunny Stream ou ancienne vidéo LWS (docs/fonctionnalites/videos-bunny-stream.md).
@@ -101,6 +100,8 @@ class TestimonyResource extends JsonResource
             // Réaction « j'aime » choisie (like, love, fire) et réaction de prière (pray, amen, worship).
             'myReaction'       => $appreciation?->value,
             'myPrayerReaction' => $prayer?->value,
+            // Nombre de fois que la personne a prié (docs/fonctionnalites/prier-plusieurs-fois.md).
+            'myPrayerTimes'    => (int) $myReactions->filter(fn ($r) => $r->type->group() === 'prayer')->max('prayer_times'),
             // Supprimer : l'auteur ou un administrateur (jamais un modérateur).
             'canDelete'       => $this->resource->canBeDeletedBy($viewer),
             'isBookmarkedByMe' => $userId ? $this->isSavedBy($userId) : false,

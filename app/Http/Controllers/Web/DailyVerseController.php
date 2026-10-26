@@ -118,12 +118,24 @@ class DailyVerseController extends Controller
         return response()->json(['success' => true, 'data' => $styles->update(Auth::user(), $data), 'message' => __('api.preferences_saved')]);
     }
 
+    /** J'aime (bascule) ; « Je prie » : une prière de plus à chaque fois, last=1 retire la dernière (docs/fonctionnalites/prier-plusieurs-fois.md). */
     public function react(Request $request, int $id): RedirectResponse
     {
-        $request->validate(['type' => 'required|in:like,pray,amen']);
+        $request->validate(['type' => 'required|in:like,pray,amen', 'last' => 'sometimes|boolean']);
 
         return $this->attempt(function () use ($request, $id) {
-            $active = $this->verses->setReaction($this->find($id), Auth::user(), $request->input('type'));
+            $verse = $this->find($id);
+            if ($request->input('type') === 'pray') {
+                if ($request->boolean('last')) {
+                    $this->verses->removeLastPrayer($verse, Auth::user());
+
+                    return back()->with('success', 'Dernière prière retirée.');
+                }
+                $this->verses->setReaction($verse, Auth::user(), 'pray', true, again: true);
+
+                return back()->with('success', 'Merci, votre prière est enregistrée.');
+            }
+            $active = $this->verses->setReaction($verse, Auth::user(), $request->input('type'));
 
             return back()->with('success', $active ? 'Merci, votre réaction est enregistrée.' : 'Réaction retirée.');
         });

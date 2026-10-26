@@ -24,6 +24,19 @@
     </div>
 </div>
 
+{{-- Popup « Qui a réagi ? » : bouton [data-reaction-people="url"], contenu chargé par resources/js/app.js (docs/fonctionnalites/qui-a-reagi.md) --}}
+<div id="reaction-people-modal" data-modal class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+     role="dialog" aria-modal="true" aria-labelledby="reaction-people-title" hidden>
+    <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
+    <div class="card relative flex max-h-[85vh] w-full max-w-md flex-col shadow-xl">
+        <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+            <h2 id="reaction-people-title" class="text-base font-semibold text-primary-600">{{ __('reactions.people.title') }}</h2>
+            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="{{ __('reactions.people.close') }}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <div class="min-h-32 overflow-y-auto" data-reaction-people-body aria-live="polite"></div>
+    </div>
+</div>
+
 {{-- Indicateur de chargement des formulaires POST --}}
 <div id="loading-overlay" class="fixed inset-0 z-[70] flex items-center justify-center bg-white/70 p-4" role="status" aria-live="assertive" hidden>
     <div class="card flex items-center gap-3 px-5 py-4 text-sm font-medium text-slate-700">

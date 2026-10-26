@@ -4,6 +4,32 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-26 — Prier plusieurs fois
+
+- **Utilisateurs** (site) :
+  - « Je prie » ne retire plus la prière au second appui : chaque appui ouvre le temps de prière, puis ajoute une prière. Cela vaut pour les témoignages, les requêtes de prière (« Prier encore ») et le verset du jour.
+  - Sous le bouton s'affichent « Vous avez prié 3 fois » et **Retirer ma dernière prière**.
+  - Le compteur de la publication reste le nombre de personnes.
+  - Le popup « Qui a réagi ? » indique « 3 fois » à côté de chaque personne.
+- **Développeurs** :
+  - colonne `prayer_times` sur les réactions et les « Je prie » des requêtes ;
+  - API : `again: true` pour prier encore, `last` pour retirer la dernière prière, `myPrayerTimes` dans les ressources, `prayerTimes` dans `…/reactions/people` ;
+  - sans ces paramètres, le comportement est inchangé, pour les anciennes versions de l'application ;
+  - les tests de l'ancienne bascule du site (`WebPrayToggleTest`, `PrayerFocusTest`, `PrayerFocusOtherKindsTest`, `WorshipReactionTest`) sont adaptés ; nouveaux tests `PrayMultipleTimesTest`.
+  - Voir [prier-plusieurs-fois.md](fonctionnalites/prier-plusieurs-fois.md).
+- **Application** : reste à faire côté Flutter (`again`, `last`, `myPrayerTimes`).
+- **Déploiement** : `php artisan migrate --force`, puis `php artisan optimize:clear` et `php artisan optimize`. Recompiler et **copier `public/build/`**.
+
+---
+
+## 2026-10-26 — Qui a réagi ? Effectif et personnes par réaction
+
+- **Utilisateurs** (site) : bouton « Qui a réagi ? » sur la page d'un témoignage et du verset du jour ; sur une requête de prière, « N personnes prient » s'ouvre. Le popup affiche un onglet par réaction avec son effectif (« Toutes 12 », « J'aime 8 », « Je prie 5 »…) et la liste des personnes (avatar, nom vers le profil, icônes de leurs réactions), 30 à la fois avec « Afficher plus ». Correction au passage : la réaction `love` s'affichait « J\'adore Dieu » en français.
+- **Développeurs** : `App\Services\ReactionPeople` (comptes actifs seulement, visibilité de la publication, « Je prie » dédié des requêtes compté comme `pray`) ; API publique `GET {testimonies|daily-verse|prayer/requests|events|prayer/sessions}/{id}/reactions/people?type=&page=` (`summary` + `people`) pour l'application ; route web `reactions.people` (contenu du popup), bouton `[data-reaction-people]` géré par `app.js`. Tests `ReactionPeopleTest`. Voir [qui-a-reagi.md](fonctionnalites/qui-a-reagi.md).
+- **Déploiement** : `php artisan optimize:clear` puis `php artisan optimize` (routes), recompiler et **copier `public/build/`**. Aucune migration.
+
+---
+
 ## 2026-10-26 — Liens Bible : versions dont le code contient « _ » (EN_NLT…)
 
 - **Utilisateurs** : les liens vers une version comme `EN_NLT` (`/bible/EN_NLT/1/1/2,4-7`) répondaient « Not Found » ; ils s'ouvrent maintenant, avec les noms de livres anglais (`/bible/EN_NLT/genesis/1/2,4-7`).

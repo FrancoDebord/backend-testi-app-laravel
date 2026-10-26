@@ -45,8 +45,9 @@ class WorshipReactionTest extends TestCase
 
         $this->actingAs($this->user)->postJson($url, ['type' => 'worship'], ['X-Requested-With' => 'XMLHttpRequest'])
             ->assertOk()->assertJson(['reacted' => true, 'prayer_count' => 1, 'like_count' => 0]);
+        // Nouvel appui : une prière de plus (docs/fonctionnalites/prier-plusieurs-fois.md), compteur de personnes inchangé.
         $this->actingAs($this->user)->postJson($url, ['type' => 'worship'], ['X-Requested-With' => 'XMLHttpRequest'])
-            ->assertOk()->assertJson(['reacted' => false, 'prayer_count' => 0]);
+            ->assertOk()->assertJson(['reacted' => true, 'prayer_count' => 1, 'my_prayer_times' => 2]);
         $this->actingAs($this->user)->postJson($url, ['type' => 'adore'])->assertStatus(422);
     }
 

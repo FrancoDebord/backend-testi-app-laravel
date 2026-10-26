@@ -18,7 +18,7 @@ Disponible sur le **site** (`/priere/requetes`, menu latéral « Requêtes de pr
 | **Texte** | 10 à 2 000 caractères. |
 | **Visibilité** | `public` (tout le monde, même sans compte) · `followers` (l'auteur, ses abonnés, la modération) · `private` (l'auteur **seul**, modération comprise : un carnet de prière personnel). Toute autre personne reçoit **404**. |
 | **Anonyme** | `is_anonymous` : le nom et la photo sont **masqués pour les autres** (`author: null`, « Anonyme »). Ils restent visibles de l'**auteur** et de la **modération**. Le fil `following` n'affiche jamais de requête anonyme (la lister « parmi les comptes que je suis » trahirait l'anonymat). |
-| **Je prie** | Une fois par personne (`prayer_request_prayers`), bascule ; compteur `prayer_count`. L'auteur est **prévenu une seule fois par personne** (notification `prayer_request_prayed`, « {Nom} prie pour votre requête de prière », push selon la préférence « prières ») : retirer puis remettre « Je prie » ne renvoie rien, et prier pour sa propre requête ne notifie pas. |
+| **Je prie** | Une ligne par personne (`prayer_request_prayers`, nombre de prières dans `prayer_times`) ; compteur `prayer_count` = nombre de personnes. Prier encore (`again`) et retirer la dernière prière (`last`) : [prier-plusieurs-fois.md](prier-plusieurs-fois.md). L'auteur est **prévenu une seule fois par personne** (notification `prayer_request_prayed`, « {Nom} prie pour votre requête de prière », push selon la préférence « prières ») : retirer puis remettre « Je prie » ne renvoie rien, et prier pour sa propre requête ne notifie pas. |
 | **Temps de prière** | Ajouter sa prière exige un temps de prière de 5 minutes commencé par `POST prayer/requests/{id}/pray/start` (sinon **422**). Retirer sa prière ou renvoyer `{ prayed: true }` alors qu'on prie déjà n'est jamais bloqué. Voir [Temps de prière](#temps-de-prière) et [temps-de-priere.md](temps-de-priere.md). |
 | **Encouragements** | Messages de 2 à 1 000 caractères + référence biblique facultative. Possibles si la requête est visible, non retirée, et pas privée (sauf pour l'auteur). L'auteur de la requête est **prévenu** (notification `prayer_encouragement`, push selon la préférence « prières »). Suppression : l'auteur du message, l'auteur de la requête, la modération. |
 | **Exaucée** | L'auteur seul : `status = answered`, `answered_at`, note facultative (`answer_note`). Remise « en attente » possible tant qu'aucun témoignage n'est rattaché. **Témoigner** ouvre Publier ; le témoignage peut ensuite être rattaché par `PUT /prayer/requests/{id}` `{ testimony_id }` (témoignage de l'auteur ; la requête passe exaucée). |
@@ -48,7 +48,7 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 | POST | `prayer/requests` | `{ body, visibility?, is_anonymous?, event_id?, source_testimony_id? }` (connecté) |
 | PUT · DELETE | `prayer/requests/{id}` | Modifier (`body`, `visibility`, `is_anonymous`, `event_id`, `testimony_id`) · supprimer |
 | POST | `prayer/requests/{id}/pray/start` | Commence (ou recommence) le temps de prière : `{ startedAt, requiredSeconds, confirmableAt }` |
-| POST | `prayer/requests/{id}/pray` | « Je prie » : bascule, ou `{ prayed: true/false }` ; renvoie la requête. Ajout : temps de prière écoulé exigé (422 sinon) |
+| POST | `prayer/requests/{id}/pray` | « Je prie » : bascule, ou `{ prayed: true/false }` ; `{ again: true }` prier encore ; `{ prayed: false, last: true }` retirer la dernière prière ; renvoie la requête (`myPrayerTimes`). Ajout : temps de prière écoulé exigé (422 sinon) |
 | POST · DELETE | `prayer/requests/{id}/answered` | Exaucée `{ note? }` · de nouveau en attente |
 | GET · POST | `prayer/requests/{id}/messages` | Encouragements (du plus ancien au plus récent) · `{ message, bible_reference? }` |
 | DELETE | `prayer/requests/{id}/messages/{messageId}` | Supprimer un encouragement |
@@ -83,7 +83,7 @@ Les signalements des témoignages (`reports`) sont propres aux témoignages : le
 | GET · POST | `/priere/requetes/nouvelle` `?evenement=` `?temoignage=` · `/priere/requetes` | Confier une requête (visibilité, anonyme ; rattachée à l'événement si `?evenement=`, au témoignage publié si `?temoignage=`, rappelé en haut du formulaire ; « Annuler » ramène au témoignage) |
 | GET · DELETE | `/priere/requetes/{id}` | Détail (« Je prie », encouragements, exaucement, signalement) · supprimer |
 | POST | `/priere/requetes/{id}/je-prie/commencer` | Temps de prière (JSON, nom `prayer.requests.pray.start`) |
-| POST | `/priere/requetes/{id}/je-prie` | Bascule « Je prie » (ajout : après l'écran « Temps de prière ») |
+| POST | `/priere/requetes/{id}/je-prie` | Ajoute une prière (après l'écran « Temps de prière ») ; `last=1` retire la dernière |
 | POST · DELETE | `/priere/requetes/{id}/exaucee` | Exaucée `{ note? }` · remettre en attente |
 | POST · DELETE | `/priere/requetes/{id}/messages` · `/messages/{message}` | Encourager · supprimer un message |
 | POST | `/priere/requetes/{id}/signaler` | Signaler |

@@ -133,15 +133,18 @@ class DailyVerseController extends Controller
         });
     }
 
-    // POST /daily-verse/{id}/react  { type, active? }  (authentifié, n'importe quel verset ; sans active : bascule)
+    // POST /daily-verse/{id}/react  { type, active?, again?, last? }  (authentifié, n'importe quel verset ; sans active : bascule)
+    // again (pray) : prier encore ; { active: false, last: true } : retirer la dernière prière (docs/fonctionnalites/prier-plusieurs-fois.md)
     public function reactTo(Request $request, int $id): JsonResponse
     {
-        $request->validate(['type' => 'required|in:like,pray,amen', 'active' => 'sometimes|boolean']);
+        $request->validate(['type' => 'required|in:like,pray,amen', 'active' => 'sometimes|boolean', 'again' => 'sometimes|boolean', 'last' => 'sometimes|boolean']);
         $verse = $this->find($id);
 
         return $this->attempt(function () use ($verse, $request) {
-            $active = $this->verses->setReaction($verse, $request->user(), $request->type,
-                $request->has('active') ? $request->boolean('active') : null);
+            $active = $request->type === 'pray' && $request->boolean('last') && $request->has('active') && !$request->boolean('active')
+                ? $this->verses->removeLastPrayer($verse, $request->user()) > 0
+                : $this->verses->setReaction($verse, $request->user(), $request->type,
+                    $request->has('active') ? $request->boolean('active') : null, $request->boolean('again'));
 
             return $this->success($this->payload($verse->refresh(), $request), $active ? 'Réaction enregistrée' : 'Réaction retirée');
         });
@@ -290,6 +293,8 @@ class DailyVerseController extends Controller
                 'prayerRequests' => $verse->prayerRequests()->where('visibility', 'public')->whereNull('hidden_at')->count(),
             ],
             'myReactions'  => $myReactions,
+            // Nombre de fois que la personne a prié (docs/fonctionnalites/prier-plusieurs-fois.md).
+            'myPrayerTimes' => $this->verses->prayerTimes($verse, $user),
             'webUrl'       => route('daily-verse.show', $verse->scheduled_date ? ['date' => $verse->scheduled_date->toDateString()] : []),
             ...$this->designFields($verse, $request, $user),
         ];

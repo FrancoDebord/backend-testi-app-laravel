@@ -52,6 +52,8 @@ class PrayerRequestResource extends JsonResource
             'prayerCount' => $this->prayer_count,
             'messageCount' => $this->message_count,
             'hasPrayed'   => $this->hasPrayed($viewer),
+            // Nombre de fois que la personne a prié (docs/fonctionnalites/prier-plusieurs-fois.md).
+            'myPrayerTimes' => $this->prayerTimesOf($viewer),
             'event'       => $this->event_id && $this->event ? ['id' => $this->event_id, 'title' => $this->event->title] : null,
             // Témoignage depuis lequel la requête a été confiée, tant qu'il reste publié (sinon null).
             'sourceTestimony' => $this->source_testimony_id && $this->sourceTestimony

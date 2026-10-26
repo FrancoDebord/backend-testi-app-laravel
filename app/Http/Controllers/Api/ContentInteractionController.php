@@ -16,8 +16,8 @@ use Illuminate\Validation\Rule;
  * Réactions et partages internes des événements, requêtes et sessions de prière.
  * Le type de publication (`kind`) est fixé par la route : event, prayer_request, prayer_session.
  *
- *   POST   {publication}/reactions { type }          → pose la réaction (une par groupe, idempotent)
- *   DELETE {publication}/reactions ?group=|?type=    → retire la réaction du groupe (toutes sans paramètre)
+ *   POST   {publication}/reactions { type, again? }  → pose la réaction (une par groupe, idempotent) ; again : prier encore
+ *   DELETE {publication}/reactions ?group=|?type=    → retire la réaction du groupe (toutes sans paramètre) ; &last=1 : la dernière prière
  *   POST   {publication}/repost { comment? }         → partage avec ses abonnés (201) ou commentaire modifié (200)
  *   DELETE {publication}/repost                      → annule son partage
  *
@@ -32,10 +32,10 @@ class ContentInteractionController extends Controller
 
     public function react(Request $request, string $id): JsonResponse
     {
-        $data = $request->validate(['type' => ['required', Rule::enum(ReactionType::class)]]);
+        $data = $request->validate(['type' => ['required', Rule::enum(ReactionType::class)], 'again' => 'sometimes|boolean']);
 
         return $this->run($request, $id, function ($subject) use ($request, $data) {
-            $created = $this->interactions->react($request->user(), $subject, ReactionType::from($data['type']));
+            $created = $this->interactions->react($request->user(), $subject, ReactionType::from($data['type']), $request->boolean('again'));
 
             return [$created ? 201 : 200, $created ? __('reactions.api.added') : __('reactions.api.saved')];
         });
@@ -62,11 +62,16 @@ class ContentInteractionController extends Controller
         $request->validate([
             'group' => 'nullable|in:appreciation,prayer',
             'type'  => ['nullable', Rule::enum(ReactionType::class)],
+            'last'  => 'sometimes|boolean',
         ]);
         $group = $request->query('group') ?? ($request->query('type') ? ReactionType::from($request->query('type'))->group() : null);
 
         return $this->run($request, $id, function ($subject) use ($request, $group) {
-            $this->interactions->unreact($request->user(), $subject, $group);
+            if ($group === 'prayer' && $request->boolean('last')) {
+                $this->interactions->removeLastPrayer($request->user(), $subject);
+            } else {
+                $this->interactions->unreact($request->user(), $subject, $group);
+            }
 
             return [200, __('reactions.api.removed')];
         });

@@ -5,6 +5,7 @@
 return [
     // resources/js/app.js
     'app' => [
+        'reaction_people_error' => 'Impossible de charger les réactions. Réessayez.',
         'confirm' => 'Confirmer',
         'offline' => "Vous êtes hors connexion. Votre saisie est conservée : l'envoi sera possible dès le retour de la connexion.",
         'searching' => 'Recherche…',
@@ -52,6 +53,8 @@ return [
 
     // resources/js/videos.js
     'videos' => [
+        // Prier plusieurs fois (docs/fonctionnalites/prier-plusieurs-fois.md)
+        'prayed_times' => ['one' => 'Vous avez prié :count fois', 'other' => 'Vous avez prié :count fois'],
         'errors' => [
             '401' => 'Connectez-vous pour continuer.',
             '403' => "Vous n'avez pas le droit d'effectuer cette action.",

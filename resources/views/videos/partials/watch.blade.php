@@ -308,7 +308,19 @@
                         @if($rType === 'pray')<span class="tabular-nums" data-count="prayer_count">{{ \App\Support\Locales::number($testimony->prayer_count) }}</span>@endif
                     </button>
                     @endforeach
+                    {{-- Effectif de chaque réaction et personnes (docs/fonctionnalites/qui-a-reagi.md) --}}
+                    <button type="button" class="btn-ghost btn-sm sm:ml-auto" data-reaction-people="{{ route('reactions.people', ['kind' => 'testimony', 'id' => $testimony->id]) }}" aria-haspopup="dialog">
+                        <i class="fa-solid fa-users" aria-hidden="true"></i>{{ __('reactions.people.open') }}
+                    </button>
                 </div>
+                @auth
+                {{-- « Je prie » ajoute une prière à chaque fois : nombre de fois et retrait de la dernière (docs/fonctionnalites/prier-plusieurs-fois.md) --}}
+                @php $myPrayerTimes = app(\App\Services\TestimonyReactions::class)->prayerTimes(Auth::user(), $testimony); @endphp
+                <div class="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-slate-600" data-prayer-times-row @if($myPrayerTimes === 0) hidden @endif>
+                    <span data-prayer-times-label>{{ trans_choice('reactions.prayer_times.prayed', max(1, $myPrayerTimes), ['count' => max(1, $myPrayerTimes)]) }}</span>
+                    <button type="button" class="btn-ghost btn-sm" data-pray-remove-last>{{ __('reactions.prayer_times.remove_last') }}</button>
+                </div>
+                @endauth
                 <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
                     @unless($inJournal)
                     <button type="button" class="chip" data-share="{{ $shareUrl }}" data-share-title="{{ $testimony->title }}">

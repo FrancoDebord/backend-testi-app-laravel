@@ -87,6 +87,58 @@ document.addEventListener('keydown', (e) => {
     if (open) closeModal(open);
 });
 
+// ── « Qui a réagi ? » : effectif de chaque réaction et personnes (docs/fonctionnalites/qui-a-reagi.md) ──
+async function fetchReactionPeople(url) {
+    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' } });
+    if (!response.ok) throw new Error(String(response.status));
+    return response.text();
+}
+
+async function showReactionPeople(url) {
+    const body = document.querySelector('[data-reaction-people-body]');
+    if (!body) return;
+    body.setAttribute('aria-busy', 'true');
+    body.innerHTML = '<p class="flex justify-center py-8 text-primary-600"><span class="spinner"></span></p>';
+    try {
+        body.innerHTML = await fetchReactionPeople(url);
+    } catch {
+        body.innerHTML = '';
+        flash(t('app.reaction_people_error'), 'error');
+    }
+    body.removeAttribute('aria-busy');
+}
+
+document.addEventListener('click', async (e) => {
+    const opener = e.target.closest('[data-reaction-people]');
+    if (opener) {
+        e.preventDefault();
+        openModal('reaction-people-modal');
+        showReactionPeople(opener.dataset.reactionPeople);
+        return;
+    }
+    // Onglet d'une réaction : la liste de cette réaction.
+    const tab = e.target.closest('[data-reaction-people-link]');
+    if (tab) {
+        e.preventDefault();
+        showReactionPeople(tab.href);
+        return;
+    }
+    // « Afficher plus » : page suivante ajoutée à la liste.
+    const more = e.target.closest('[data-reaction-people-more]');
+    if (!more) return;
+    e.preventDefault();
+    const row = more.closest('[data-reaction-people-more-row]');
+    more.setAttribute('aria-disabled', 'true');
+    try {
+        const html = await fetchReactionPeople(more.href);
+        row.insertAdjacentHTML('beforebegin', html);
+        row.remove();
+    } catch {
+        more.removeAttribute('aria-disabled');
+        flash(t('app.reaction_people_error'), 'error');
+    }
+});
+
 // ── Confirmation (remplace confirm()) ───────────────────────────────────
 let pendingConfirmForm = null;
 

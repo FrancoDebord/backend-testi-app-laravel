@@ -126,6 +126,10 @@ Route::get('/bible',                [BibleController::class, 'reader'])->name('b
 Route::get('/bible/{translation}/{book}/{chapter}/{verses?}', [BibleController::class, 'passage'])
     ->where(['translation' => '[A-Za-z0-9_.-]{1,30}', 'book' => '[^/]{1,40}', 'chapter' => '[0-9]{1,3}', 'verses' => '[0-9,-]{1,200}'])
     ->name('bible.passage');
+// Popup « Qui a réagi ? » : effectif de chaque réaction et personnes (docs/fonctionnalites/qui-a-reagi.md)
+Route::get('/reactions/{kind}/{id}', \App\Http\Controllers\Web\ReactionPeopleController::class)
+    ->whereIn('kind', \App\Services\ReactionPeople::KINDS)->where('id', '[0-9a-fA-F-]{1,36}')
+    ->middleware('throttle:60,1')->name('reactions.people');
 // Verset du jour en plein écran : versions, prière, commentaires, témoignages (docs/fonctionnalites/verset-du-jour.md)
 Route::get('/verset-du-jour/historique', [\App\Http\Controllers\Web\DailyVerseController::class, 'history'])->name('daily-verse.history');
 Route::get('/verset-du-jour/{date?}', [\App\Http\Controllers\Web\DailyVerseController::class, 'show'])

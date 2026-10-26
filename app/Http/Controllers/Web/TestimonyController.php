@@ -391,17 +391,26 @@ class TestimonyController extends Controller
 
     public function storeReaction(Request $request, string $id): JsonResponse|RedirectResponse
     {
-        $request->validate(['type' => ['required', \Illuminate\Validation\Rule::enum(\App\Enums\ReactionType::class)]]);
+        $request->validate([
+            'type'        => ['required', \Illuminate\Validation\Rule::enum(\App\Enums\ReactionType::class)],
+            'remove_last' => 'sometimes|boolean',
+        ]);
 
         $testimony = Testimony::findOrFail($id);
 
-        // Une réaction par groupe (j'aime / je prie) : docs/fonctionnalites/reactions.md. « Je prie » se comporte
-        // comme dans l'application : un seul bouton qui pose ou retire la prière (pray, amen et worship confondus).
+        // Une réaction par groupe (j'aime / je prie) : docs/fonctionnalites/reactions.md. « Je prie » ajoute une
+        // prière à chaque fois (après le temps de prière) ; remove_last retire la dernière
+        // (docs/fonctionnalites/prier-plusieurs-fois.md).
         $type = \App\Enums\ReactionType::from($request->type);
         $service = app(\App\Services\TestimonyReactions::class);
-        $reacted = $type->group() === 'prayer'
-            ? $service->togglePrayer(Auth::user(), $testimony)
-            : $service->toggle(Auth::user(), $testimony, $type);
+        if ($type->group() === 'prayer' && $request->boolean('remove_last')) {
+            $reacted = $service->removeLastPrayer(Auth::user(), $testimony) > 0;
+        } elseif ($type->group() === 'prayer') {
+            $service->set(Auth::user(), $testimony, \App\Enums\ReactionType::Pray, again: true);
+            $reacted = true;
+        } else {
+            $reacted = $service->toggle(Auth::user(), $testimony, $type);
+        }
 
         $testimony->refresh();
 
@@ -413,6 +422,7 @@ class TestimonyController extends Controller
                 // État comme l'API de l'application : isPrayedByMe, isLikedByMe.
                 'is_prayed'     => $state['isPrayedByMe'],
                 'is_liked'      => $state['isLikedByMe'],
+                'my_prayer_times' => $state['myPrayerTimes'],
                 // Réactions de la personne après le changement (une par groupe) : boutons à jour.
                 'my_reactions'  => Reaction::where('user_id', Auth::id())->where('testimony_id', $testimony->id)
                     ->pluck('type')->map(fn ($t) => $t->value)->values(),

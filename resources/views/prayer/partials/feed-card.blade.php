@@ -66,10 +66,12 @@
         @if($viewer && !$prayerItem->isHidden())
         {{-- Ajouter une prière : temps de prière d'abord (resources/js/prayer-focus.js, docs/fonctionnalites/temps-de-priere.md) --}}
         <form method="POST" action="{{ route('prayer.requests.pray', $prayerItem->id) }}" data-loading-label="Enregistrement…"
-              data-prayer-focus="{{ route('prayer.requests.pray.start', $prayerItem->id) }}" data-prayed="{{ $hasPrayed ? '1' : '0' }}"
+              data-prayer-focus="{{ route('prayer.requests.pray.start', $prayerItem->id) }}"
               data-prayer-excerpt="{{ Str::limit(\App\Services\Mentions::plain($prayerItem->body), 600) }}">
             @csrf
-            <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}">
+            {{-- Chaque appui ajoute une prière ; nombre de fois en infobulle (docs/fonctionnalites/prier-plusieurs-fois.md) --}}
+            <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}"
+                    @if($hasPrayed) title="{{ trans_choice('reactions.prayer_times.prayed', max(1, $prayerItem->prayerTimesOf($viewer)), ['count' => max(1, $prayerItem->prayerTimesOf($viewer))]) }}" @endif>
                 <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie
                 <span class="tabular-nums">{{ $prayerItem->prayer_count }}</span>
             </button>

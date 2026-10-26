@@ -81,12 +81,19 @@ class PrayerRequestController extends Controller
         });
     }
 
-    public function pray(string $id): RedirectResponse
+    /** « Je prie » : une prière de plus à chaque fois ; last=1 retire la dernière (docs/fonctionnalites/prier-plusieurs-fois.md). */
+    public function pray(Request $request, string $id): RedirectResponse
     {
-        return $this->attempt(function () use ($id) {
-            $prayed = $this->requests->setPrayed($this->find($id), Auth::user());
+        return $this->attempt(function () use ($request, $id) {
+            $prayer = $this->find($id);
+            if ($request->boolean('last')) {
+                $this->requests->removeLastPrayer($prayer, Auth::user());
 
-            return back()->with('success', $prayed ? 'Merci de prier pour cette requête.' : 'Prière retirée.');
+                return back()->with('success', 'Dernière prière retirée.');
+            }
+            $this->requests->setPrayed($prayer, Auth::user(), true, again: true);
+
+            return back()->with('success', 'Merci de prier pour cette requête.');
         });
     }
 

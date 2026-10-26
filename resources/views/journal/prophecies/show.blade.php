@@ -130,7 +130,7 @@
             @unless($fulfilled)
             {{-- « J'ai prié » : temps de prière d'abord (resources/js/prayer-focus.js, docs/fonctionnalites/temps-de-priere.md) --}}
             <form method="POST" action="{{ route('prophecies.pray', $prophecy->id) }}" class="mt-4 space-y-2" data-loading-label="Enregistrement de la prière…"
-                  data-prayer-focus="{{ route('prophecies.pray.start', $prophecy->id) }}" data-prayer-focus-kind="prophecy" data-prayed="0"
+                  data-prayer-focus="{{ route('prophecies.pray.start', $prophecy->id) }}" data-prayer-focus-kind="prophecy"
                   data-prayer-subject="{{ $prophecy->title }}" data-prayer-excerpt="{{ \Illuminate\Support\Str::limit((string) $prophecy->body_text, 600) }}">
                 @csrf
                 <label for="prayer-note" class="form-label">Note (facultatif)</label>

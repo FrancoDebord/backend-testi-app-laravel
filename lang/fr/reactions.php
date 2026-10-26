@@ -10,6 +10,28 @@ return [
     'worship' => 'Adorer Dieu',
     'fire'    => 'Feu',
 
+    // Popup « Qui a réagi ? » (App\Services\ReactionPeople, docs/fonctionnalites/qui-a-reagi.md)
+    'people' => [
+        'open'         => 'Qui a réagi ?',
+        'open_prayers' => 'Voir qui prie',
+        'title'        => 'Réactions',
+        'all'          => 'Toutes',
+        'tabs'         => 'Réactions par type',
+        'empty'        => 'Personne n\'a encore réagi.',
+        'empty_type'   => 'Personne pour cette réaction.',
+        'more'         => 'Afficher plus',
+        'close'        => 'Fermer',
+        'invalid_type' => 'Type de réaction inconnu.',
+    ],
+
+    // Prier plusieurs fois (docs/fonctionnalites/prier-plusieurs-fois.md)
+    'prayer_times' => [
+        'prayed'      => '{1} Vous avez prié 1 fois|[2,*] Vous avez prié :count fois',
+        'remove_last' => 'Retirer ma dernière prière',
+        'pray_again'  => 'Prier encore',
+        'times'       => '{1} 1 fois|[2,*] :count fois',
+    ],
+
     'api' => [
         'added'   => 'Réaction ajoutée',
         'saved'   => 'Réaction enregistrée',

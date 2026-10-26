@@ -45,7 +45,7 @@ return [
     ],
     'reaction_type' => [
         'like' => 'J\'aime',
-        'love' => 'J\\\'adore Dieu',
+        'love' => 'J\'adore Dieu',
         'pray' => 'Prière',
         'amen' => 'Amen',
         'worship' => 'Adorer Dieu',

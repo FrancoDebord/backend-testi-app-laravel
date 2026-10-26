@@ -5,6 +5,7 @@
 return [
     // resources/js/app.js
     'app' => [
+        'reaction_people_error' => 'Could not load the reactions. Please try again.',
         'confirm' => 'Confirm',
         'offline' => 'You are offline. Your input is kept: you can send it as soon as the connection is back.',
         'searching' => 'Searching…',
@@ -52,6 +53,8 @@ return [
 
     // resources/js/videos.js
     'videos' => [
+        // Praying several times (docs/fonctionnalites/prier-plusieurs-fois.md)
+        'prayed_times' => ['one' => 'You prayed :count time', 'other' => 'You prayed :count times'],
         'errors' => [
             '401' => 'Sign in to continue.',
             '403' => 'You are not allowed to do this.',

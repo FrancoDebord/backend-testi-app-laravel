@@ -92,18 +92,25 @@
                 @if($user && !$prayer->isHidden())
                 {{-- Ajouter une prière : temps de prière d'abord (resources/js/prayer-focus.js, docs/fonctionnalites/temps-de-priere.md) --}}
                 <form method="POST" action="{{ route('prayer.requests.pray', $prayer->id) }}" data-loading-label="Enregistrement…"
-                      data-prayer-focus="{{ route('prayer.requests.pray.start', $prayer->id) }}" data-prayed="{{ $hasPrayed ? '1' : '0' }}"
+                      data-prayer-focus="{{ route('prayer.requests.pray.start', $prayer->id) }}"
                       data-prayer-excerpt="{{ Str::limit(\App\Services\Mentions::plain($prayer->body), 600) }}">
                     @csrf
                     <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }}" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}">
-                        <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $hasPrayed ? 'Je prie pour vous' : 'Je prie' }}
+                        <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $hasPrayed ? __('reactions.prayer_times.pray_again') : 'Je prie' }}
                     </button>
                 </form>
                 @elseif(!$user)
                 <a href="{{ route('login') }}" class="btn-secondary"><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>Se connecter pour prier</a>
                 @endif
-                <span class="text-sm text-slate-600"><span class="font-semibold tabular-nums text-slate-900">{{ $prayer->prayer_count }}</span> {{ $prayer->prayer_count > 1 ? 'personnes prient' : 'personne prie' }}</span>
+                {{-- Qui prie (et qui aime) : docs/fonctionnalites/qui-a-reagi.md --}}
+                <button type="button" class="btn-ghost btn-sm" data-reaction-people="{{ route('reactions.people', ['kind' => 'prayer_request', 'id' => $prayer->id, 'type' => 'pray']) }}" aria-haspopup="dialog" title="{{ __('reactions.people.open_prayers') }}">
+                    <span class="font-semibold tabular-nums text-slate-900">{{ $prayer->prayer_count }}</span> {{ $prayer->prayer_count > 1 ? 'personnes prient' : 'personne prie' }}
+                </button>
             </div>
+            {{-- Nombre de fois que la personne a prié (docs/fonctionnalites/prier-plusieurs-fois.md) --}}
+            @if($user && !$prayer->isHidden())
+            <div class="mt-2">@include('components.prayer-times', ['times' => $prayer->prayerTimesOf($user), 'action' => route('prayer.requests.pray', $prayer->id), 'fields' => ['last' => 1]])</div>
+            @endif
         </section>
 
         {{-- ── Encouragements ───────────────────────────────────────── --}}

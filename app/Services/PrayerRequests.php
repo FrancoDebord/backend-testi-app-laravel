@@ -207,8 +207,10 @@ class PrayerRequests
     /**
      * « Je prie » (true) ou retrait (false). Renvoie l'état final. Ajouter une prière exige un temps
      * de prière écoulé (PrayerFocus, 422) ; retirer sa prière ou prier de nouveau n'est jamais bloqué.
+     * `$again` (prier encore) : la personne prie déjà → une prière de plus (prayer_times), après un nouveau temps
+     * de prière ; prayer_count (personnes) ne change pas. Voir docs/fonctionnalites/prier-plusieurs-fois.md
      */
-    public function setPrayed(PrayerRequest $request, User $user, ?bool $prayed = null): bool
+    public function setPrayed(PrayerRequest $request, User $user, ?bool $prayed = null, bool $again = false): bool
     {
         $this->ensureActive($user);
         if ($request->isHidden()) {
@@ -216,9 +218,10 @@ class PrayerRequests
         }
 
         $added  = false;
-        $target = DB::transaction(function () use ($request, $user, $prayed, &$added) {
+        $target = DB::transaction(function () use ($request, $user, $prayed, $again, &$added) {
             $existing = PrayerRequestPrayer::where('prayer_request_id', $request->id)->where('user_id', $user->id)->lockForUpdate()->first();
-            $target   = $prayed ?? !$existing; // sans précision : bascule
+            $target   = $again ?: ($prayed ?? !$existing); // sans précision : bascule
+            $times    = $existing?->prayer_times ?? 0;
 
             if ($target && !$existing) {
                 // Nouvelle prière : le temps de prière doit être écoulé (docs/fonctionnalites/temps-de-priere.md).
@@ -226,11 +229,19 @@ class PrayerRequests
                 PrayerRequestPrayer::create(['prayer_request_id' => $request->id, 'user_id' => $user->id]);
                 $request->increment('prayer_count');
                 $added = true;
+                $times = 1;
+            } elseif ($target && $again) {
+                // Prier encore : une prière de plus, après un nouveau temps de prière.
+                app(PrayerFocus::class)->ensureCompleted($user, 'prayer_request', $request->id);
+                $existing->increment('prayer_times');
+                $times++;
             } elseif (!$target && $existing) {
                 $existing->delete();
                 PrayerRequest::whereKey($request->id)->where('prayer_count', '>', 0)->decrement('prayer_count');
+                $times = 0;
             }
             $request->setAttribute('has_prayed', $target);
+            $request->setAttribute('my_prayer_times', $times);
 
             return $target;
         });
@@ -240,6 +251,24 @@ class PrayerRequests
         }
 
         return $target;
+    }
+
+    /**
+     * Retire la dernière prière de la personne : une de moins, ou plus de « Je prie » s'il n'en restait qu'une.
+     * Renvoie le nombre de prières restantes.
+     */
+    public function removeLastPrayer(PrayerRequest $request, User $user): int
+    {
+        $existing = PrayerRequestPrayer::where('prayer_request_id', $request->id)->where('user_id', $user->id)->first();
+        if (!$existing || $existing->prayer_times <= 1) {
+            $this->setPrayed($request, $user, false);
+            return 0;
+        }
+        $existing->decrement('prayer_times');
+        $request->setAttribute('has_prayed', true);
+        $request->setAttribute('my_prayer_times', $existing->prayer_times);
+
+        return $existing->prayer_times;
     }
 
     /**

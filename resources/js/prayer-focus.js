@@ -7,9 +7,10 @@
 |   2. écran plein « Temps de prière » (components/prayer-focus-modal) : décompte de requiredSeconds
 |      (5 min), en pause quand l'onglet est caché ; ensuite « J'ai prié… » active « Valider ma prière » ;
 |   3. « Valider » : la requête d'origine part (formulaire ou fetch), le serveur vérifie le temps écoulé.
-| Fermer l'écran = partir sans enregistrer. Retirer sa prière reste immédiat (pas d'écran).
+| Fermer l'écran = partir sans enregistrer. Chaque « Je prie » ajoute une prière (docs/fonctionnalites/prier-plusieurs-fois.md) ;
+| « Retirer ma dernière prière » est un autre formulaire, sans écran.
 |
-| Formulaires : <form data-prayer-focus="URL de début" data-prayed="0|1" data-prayer-subject="…"
+| Formulaires : <form data-prayer-focus="URL de début" data-prayer-subject="…"
 |   data-prayer-focus-kind="prayer_request|daily_verse|prophecy"> (requêtes de prière, « Je prie » du verset
 |   du jour, « J'ai prié » d'une parole prophétique ; prayer_request par défaut).
 | Témoignages : resources/js/videos.js appelle prayerFocus({ startUrl, kind: 'testimony', subject, excerpt }).
@@ -184,7 +185,6 @@ export async function prayerFocus({ startUrl, kind = 'prayer_request', subject =
 document.addEventListener('submit', async (e) => {
     const form = e.target;
     if (!(form instanceof HTMLFormElement) || !form.dataset.prayerFocus) return;
-    if (form.dataset.prayed === '1') return; // retirer sa prière : immédiat
     if (form.dataset.prayerFocusDone === '1') {
         delete form.dataset.prayerFocusDone;
         return; // temps de prière validé : envoi normal

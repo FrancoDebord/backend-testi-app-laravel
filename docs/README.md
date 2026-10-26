@@ -38,6 +38,8 @@ Serveur Laravel de **My Testimony** (AIRID) : site web de partage de témoignage
 | [Temps de prière](fonctionnalites/temps-de-priere.md) | « Je prie » (requête de prière, témoignage) ouvre un écran de 5 minutes ; la prière n'est enregistrée qu'après, contrôle par le serveur (`…/pray/start`, 422), `PRAYER_FOCUS_SECONDS` (site et application) |
 | [« J'aime » sur les commentaires](fonctionnalites/jaime-commentaires.md) | Cœur sous les commentaires des témoignages, des événements et du verset du jour (site et API) : un par personne, compteur jamais négatif, `likesCount` / `isLikedByMe`, notification `comment_liked` la première fois |
 | [Réactions (j'aime, je prie…)](fonctionnalites/reactions.md) | Une réaction « j'aime » et une « je prie » au plus par personne : témoignages, événements, requêtes et sessions de prière ; jamais comptées deux fois |
+| [Prier plusieurs fois](fonctionnalites/prier-plusieurs-fois.md) | « Je prie » ajoute une prière à chaque fois (après le temps de prière), « Retirer ma dernière prière », nombre de fois par personne (`myPrayerTimes`) ; compteur = nombre de personnes |
+| [Qui a réagi ?](fonctionnalites/qui-a-reagi.md) | Effectif de chaque réaction et liste des personnes (popup du site, `GET …/{id}/reactions/people`) : témoignages, verset du jour, requêtes, événements et sessions de prière |
 | [Partage interne « X a partagé »](fonctionnalites/partage-interne.md) | Partager un témoignage sur My Testimony avec un commentaire facultatif (auteur d'origine toujours affiché) : Mon fil des abonnés, section « Partages » du profil, compteur, notification à l'auteur, annulation |
 | [Preuves d'un témoignage](fonctionnalites/preuves.md) | Deux images ou PDF par témoignage, privés (auteur et équipe de modération) |
 | [Vidéos sur Bunny Stream](fonctionnalites/videos-bunny-stream.md) | Envoi direct de l'application à Bunny (TUS, sans passer par le serveur), états `uploading` → `processing` → `ready`, webhook, objet `video` (HLS, MP4), envois abandonnés, reprise des anciennes vidéos |
@@ -172,6 +174,10 @@ Page de lecture d'un témoignage (2026-10-23) : aucune migration ; **recompiler 
 En-tête des pages (2026-10-23, `layouts/app`) : aucune migration ; **recompiler et copier `public/build/`**, puis `php artisan view:cache`.
 
 Page de profil (2026-10-23) : aucune migration ; **recompiler et copier `public/build/`** (nouvelles classes du profil), puis `php artisan view:cache`.
+
+Prier plusieurs fois (2026-10-26) : **migration** `2026_10_26_100001_add_prayer_times_to_reaction_tables` (`php artisan migrate --force`), puis `php artisan optimize:clear` et `php artisan optimize`, puis **recompiler et copier `public/build/`** ([prier plusieurs fois](fonctionnalites/prier-plusieurs-fois.md)).
+
+« Qui a réagi ? » (2026-10-26) : **aucune migration**. Lancer `php artisan optimize:clear` puis `php artisan optimize` (routes `reactions.people` et `…/reactions/people`), puis **recompiler et copier `public/build/`** ([qui a réagi](fonctionnalites/qui-a-reagi.md)).
 
 Liens vers la Bible et file d'envoi hors connexion (2026-10-26) : **aucune migration**. Lancer `php artisan optimize:clear` puis `php artisan optimize` (route `bible.passage`, chemin App Links `/bible/*`, middleware `IdempotentRequests`), puis **recompiler et copier `public/build/`** ([liens vers la Bible](fonctionnalites/liens-bible.md), [hors connexion](fonctionnalites/hors-connexion.md)).
 

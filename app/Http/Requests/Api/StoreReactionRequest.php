@@ -13,7 +13,9 @@ class StoreReactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', new Enum(ReactionType::class)],
+            'type'  => ['required', new Enum(ReactionType::class)],
+            // Prier encore (docs/fonctionnalites/prier-plusieurs-fois.md) : une prière de plus si la personne prie déjà.
+            'again' => ['sometimes', 'boolean'],
         ];
     }
 }

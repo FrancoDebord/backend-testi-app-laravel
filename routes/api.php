@@ -133,6 +133,11 @@ Route::prefix('v1')->group(function () {
     Route::post('testimonies/{id}/view', [TestimonyController::class, 'recordView'])->middleware('throttle:120,1');
     Route::get('testimonies/{id}/comments',  [CommentController::class, 'index']);
     Route::get('testimonies/{id}/reactions', [ReactionController::class, 'index']);
+    // « Qui a réagi ? » : effectif de chaque réaction et personnes (docs/fonctionnalites/qui-a-reagi.md)
+    foreach (['testimonies' => 'testimony', 'events' => 'event', 'prayer/requests' => 'prayer_request', 'prayer/sessions' => 'prayer_session', 'daily-verse' => 'daily_verse'] as $prefix => $kind) {
+        Route::get("{$prefix}/{id}/reactions/people", \App\Http\Controllers\Api\ReactionPeopleController::class)
+            ->defaults('kind', $kind)->where('id', $kind === 'daily_verse' ? '[0-9]+' : '[0-9a-fA-F-]{36}')->middleware('throttle:60,1');
+    }
     // Avant users/{id} : comptes à suivre (invité accepté) et mentions « @ » (connecté)
     // ─ docs/fonctionnalites/abonnements.md, docs/fonctionnalites/mentions.md
     Route::get('users/suggestions',    [\App\Http\Controllers\Api\CommunityController::class, 'suggestions'])->middleware('throttle:60,1');

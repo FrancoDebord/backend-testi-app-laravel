@@ -20,12 +20,14 @@ class TestimonyReactions
     /**
      * Pose la réaction `$type` (idempotent). Retourne [réaction, nouvelle ?].
      * Une réaction différente du même groupe est remplacée sans changer le compteur.
+     * `$again` (prier encore) : la personne prie déjà → une prière de plus (prayer_times), après un nouveau
+     * temps de prière ; le compteur du témoignage (personnes) ne change pas. Voir docs/fonctionnalites/prier-plusieurs-fois.md
      *
      * @return array{0: Reaction, 1: bool}
      */
-    public function set(User $user, Testimony $testimony, ReactionType $type): array
+    public function set(User $user, Testimony $testimony, ReactionType $type, bool $again = false): array
     {
-        [$reaction, $created] = DB::transaction(function () use ($user, $testimony, $type) {
+        [$reaction, $created] = DB::transaction(function () use ($user, $testimony, $type, $again) {
             Testimony::whereKey($testimony->id)->lockForUpdate()->first();
 
             $mine = Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)
@@ -39,6 +41,14 @@ class TestimonyReactions
             // Passer de pray à amen, ou prier de nouveau, n'est jamais bloqué (docs/fonctionnalites/temps-de-priere.md).
             if ($type->group() === 'prayer' && $mine->isEmpty()) {
                 app(PrayerFocus::class)->ensureCompleted($user, 'testimony', (string) $testimony->id);
+            }
+            // Prier encore : même réaction gardée, une prière de plus.
+            if ($again && $type->group() === 'prayer' && $mine->isNotEmpty()) {
+                app(PrayerFocus::class)->ensureCompleted($user, 'testimony', (string) $testimony->id);
+                $current = $mine->sortByDesc('prayer_times')->first();
+                $current->increment('prayer_times');
+
+                return [$current, false];
             }
 
             if ($others->isNotEmpty()) {
@@ -100,25 +110,35 @@ class TestimonyReactions
         return app(PrayerFocus::class)->start($user, 'testimony', (string) $testimony->id);
     }
 
-    /** Bascule `$type` : retire la réaction si c'est déjà celle-là, sinon la pose. Retourne true si posée. */
     /**
-     * « Je prie », comme l'application mobile (InteractionNotifier::togglePray) : un seul bouton. La personne
-     * prie déjà (pray, ou ancienne réaction amen / worship) → sa prière est retirée ; sinon « pray » est posé.
-     * Renvoie vrai si la personne prie après l'appel.
+     * Retire la dernière prière de la personne : une prière de moins, ou plus de réaction « je prie » s'il
+     * n'en restait qu'une. Renvoie le nombre de prières restantes.
      */
-    public function togglePrayer(User $user, Testimony $testimony): bool
+    public function removeLastPrayer(User $user, Testimony $testimony): int
     {
-        $prays = Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)
-            ->whereIn('type', ReactionType::valuesOfGroup('prayer'))->exists();
-        if ($prays) {
+        return DB::transaction(function () use ($user, $testimony) {
+            Testimony::whereKey($testimony->id)->lockForUpdate()->first();
+            $current = Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)
+                ->whereIn('type', ReactionType::valuesOfGroup('prayer'))->orderByDesc('prayer_times')->first();
+            if (!$current) return 0;
+            if ($current->prayer_times > 1) {
+                $current->decrement('prayer_times');
+                return $current->prayer_times;
+            }
             $this->remove($user, $testimony, 'prayer');
-            return false;
-        }
-        $this->set($user, $testimony, ReactionType::Pray);
 
-        return true;
+            return 0;
+        });
     }
 
+    /** Nombre de prières de la personne sur le témoignage (0 si elle ne prie pas). */
+    public function prayerTimes(?User $user, Testimony $testimony): int
+    {
+        return $user ? (int) Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)
+            ->whereIn('type', ReactionType::valuesOfGroup('prayer'))->max('prayer_times') : 0;
+    }
+
+    /** Bascule `$type` : retire la réaction si c'est déjà celle-là, sinon la pose. Retourne true si posée. */
     public function toggle(User $user, Testimony $testimony, ReactionType $type): bool
     {
         $current = Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)
@@ -135,14 +155,13 @@ class TestimonyReactions
     /**
      * État des réactions de la personne et compteurs à jour (réponse de l'API).
      *
-     * @return array{myReaction: ?string, myPrayerReaction: ?string, isLikedByMe: bool, isPrayedByMe: bool, likesCount: int, prayersCount: int}
+     * @return array{myReaction: ?string, myPrayerReaction: ?string, isLikedByMe: bool, isPrayedByMe: bool, myPrayerTimes: int, likesCount: int, prayersCount: int}
      */
     public function state(?User $user, Testimony $testimony): array
     {
         $fresh = Testimony::query()->select(['id', 'like_count', 'prayer_count'])->find($testimony->id);
-        $types = $user
-            ? Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)->get()->map(fn ($r) => $r->type)
-            : collect();
+        $mine = $user ? Reaction::where('user_id', $user->id)->where('testimony_id', $testimony->id)->get() : collect();
+        $types = $mine->map(fn ($r) => $r->type);
         $appreciation = $types->first(fn (ReactionType $t) => $t->group() === 'appreciation');
         $prayer = $types->first(fn (ReactionType $t) => $t->group() === 'prayer');
 
@@ -151,6 +170,8 @@ class TestimonyReactions
             'myPrayerReaction' => $prayer?->value,
             'isLikedByMe'      => $appreciation !== null,
             'isPrayedByMe'     => $prayer !== null,
+            // Nombre de fois que la personne a prié (docs/fonctionnalites/prier-plusieurs-fois.md).
+            'myPrayerTimes'    => (int) $mine->filter(fn ($r) => $r->type->group() === 'prayer')->max('prayer_times'),
             'likesCount'       => (int) ($fresh?->like_count ?? 0),
             'prayersCount'     => (int) ($fresh?->prayer_count ?? 0),
         ];

@@ -15,7 +15,7 @@ Cela vaut pour :
 | Règle | Détail |
 |---|---|
 | Groupes | **J'aime** : `like`, `love`, `fire`, `glory`, `strong`, `touched` (compteur `like_count`). **Je prie** : `pray`, `amen`, `worship` (compteur `prayer_count`). |
-| Une par groupe | Au plus **une réaction « j'aime » et une « je prie »** par personne et par publication. Poser `fire` après `like` **remplace** `like` : le compteur ne bouge pas. |
+| Une par groupe | Au plus **une réaction « j'aime » et une « je prie »** par personne et par publication. Poser `fire` après `like` **remplace** `like` : le compteur ne bouge pas. La réaction « je prie » peut compter **plusieurs prières** (`prayer_times`, `again`) : [prier-plusieurs-fois.md](prier-plusieurs-fois.md). |
 | Idempotent | Envoyer deux fois la même réaction ne crée rien (réponse 200 au lieu de 201) ; ni compteur ni notification en plus. |
 | Retrait | Retire la réaction du groupe ; le compteur ne descend jamais sous 0. |
 | Concurrence | Transaction avec verrou sur la publication : deux appuis simultanés ne comptent qu'une fois. |
@@ -55,7 +55,7 @@ Le bouton de réaction du site bascule la réaction : un second appui la retire.
 
 - un seul bouton « Je prie » (icône mains, compteur des prières) ; plus de boutons « Amen » ni « Adorer Dieu » sur la page de lecture ;
 - allumé dès que la personne a une réaction du groupe prière (`pray`, ou les anciennes `amen` / `worship`), comme `isPrayedByMe` dans l'API ;
-- un appui retire la prière si elle existe (quel que soit son type), sinon pose `pray` (`TestimonyReactions::togglePrayer`) : même résultat que `POST {type: pray}` / `DELETE ?group=prayer` de l'application ;
+- ~~un appui retire la prière~~ : depuis le 2026-10-26, chaque appui **ajoute une prière** (`set(…, again: true)`) et « Retirer ma dernière prière » (`remove_last`) en retire une : voir [prier-plusieurs-fois.md](prier-plusieurs-fois.md) ;
 - bouton et compteur changent tout de suite, puis l'état renvoyé par le serveur fait foi ; en cas d'erreur, l'état d'avant est rétabli ;
 - les cartes des listes affichent le nombre de prières à côté des « j'aime ».
 
@@ -65,7 +65,7 @@ L'API ne change pas : `amen` et `worship` restent acceptés et comptés comme de
 
 **Événements et sessions de prière** (2026-10-19) : une nouvelle réaction du groupe « je prie » sur `events/{id}/reactions` ou `prayer/sessions/{id}/reactions` exige aussi un temps de prière commencé par `POST events/{id}/pray/start` ou `POST prayer/sessions/{id}/pray/start` (même JSON, même 422, mêmes exceptions : changer d'émoji, retirer, « j'aime »). Requêtes de prière : la réaction « je prie » reste refusée, le bouton dédié et `prayer/requests/{id}/pray/start` s'appliquent. Les réactions 🙏 des directs ne sont pas concernées.
 
-Depuis le 2026-10-18, une **nouvelle** réaction du groupe « je prie » (`pray`, `amen`, `worship`) sur un témoignage n'est acceptée qu'après un temps de prière de 5 minutes commencé par `POST testimonies/{id}/pray/start` (site : `POST /testimonies/{id}/priere/commencer`). Sinon : **422** `{ success: false, message, errors: { prayer_focus: [...] }, remaining_seconds }`. Passer de `pray` à `amen`, renvoyer la même réaction, retirer sa prière et les réactions « j'aime » ne sont jamais bloqués. Sur le site, « Je prie » ouvre l'écran « Temps de prière » avant l'envoi ; un second appui (retrait) reste immédiat. `PRAYER_FOCUS_SECONDS=0` désactive la règle (transition : les anciennes versions de l'application reçoivent 422). Détails : [temps-de-priere.md](temps-de-priere.md).
+Depuis le 2026-10-18, une **nouvelle** réaction du groupe « je prie » (`pray`, `amen`, `worship`) sur un témoignage n'est acceptée qu'après un temps de prière de 5 minutes commencé par `POST testimonies/{id}/pray/start` (site : `POST /testimonies/{id}/priere/commencer`). Sinon : **422** `{ success: false, message, errors: { prayer_focus: [...] }, remaining_seconds }`. Passer de `pray` à `amen`, renvoyer la même réaction, retirer sa prière et les réactions « j'aime » ne sont jamais bloqués. Sur le site, « Je prie » ouvre l'écran « Temps de prière » avant chaque prière ; « Retirer ma dernière prière » reste immédiat. `PRAYER_FOCUS_SECONDS=0` désactive la règle (transition : les anciennes versions de l'application reçoivent 422). Détails : [temps-de-priere.md](temps-de-priere.md).
 
 ## Application
 
@@ -108,6 +108,10 @@ Migrations :
 
 - Serveur : `tests/Feature/ReactionsAndSharesTest.php`, `tests/Feature/PrayerFocusTest.php` (temps de prière).
 - Application : `test/reactions_shares_test.dart`.
+
+## Qui a réagi ?
+
+Effectif de chaque réaction et liste des personnes (popup du site, `GET …/{id}/reactions/people`) : voir [qui-a-reagi.md](qui-a-reagi.md).
 
 ## Limites connues
 

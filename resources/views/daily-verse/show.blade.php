@@ -117,17 +117,27 @@
     <section class="card flex flex-wrap items-center gap-2 p-5" aria-label="Méditer le verset">
         @auth
         {{-- « Je prie » : temps de prière d'abord (resources/js/prayer-focus.js, docs/fonctionnalites/temps-de-priere.md) --}}
+        {{-- Chaque appui ajoute une prière (docs/fonctionnalites/prier-plusieurs-fois.md) --}}
         <form method="POST" action="{{ route('daily-verse.react', $verse->id) }}" data-loading-label="…"
-              data-prayer-focus="{{ route('daily-verse.pray.start', $verse->id) }}" data-prayer-focus-kind="daily_verse" data-prayed="{{ $prayed ? '1' : '0' }}"
+              data-prayer-focus="{{ route('daily-verse.pray.start', $verse->id) }}" data-prayer-focus-kind="daily_verse"
               data-prayer-subject="{{ $reference }}" data-prayer-excerpt="{{ \Illuminate\Support\Str::limit($shown, 600) }}">
             @csrf <input type="hidden" name="type" value="pray">
             <button type="submit" class="{{ $prayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $prayed ? 'true' : 'false' }}">
-                <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie <span class="tabular-nums">{{ $verse->prayer_count }}</span>
+                <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $prayed ? __('reactions.prayer_times.pray_again') : 'Je prie' }} <span class="tabular-nums">{{ $verse->prayer_count }}</span>
             </button>
         </form>
+        @include('components.prayer-times', [
+            'times'  => app(\App\Services\DailyVerses::class)->prayerTimes($verse, auth()->user()),
+            'action' => route('daily-verse.react', $verse->id),
+            'fields' => ['type' => 'pray', 'last' => 1],
+        ])
         @else
         <a href="{{ $loginUrl }}" class="btn-secondary btn-sm"><i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie <span class="tabular-nums">{{ $verse->prayer_count }}</span></a>
         @endauth
+        {{-- Effectif de chaque réaction et personnes (docs/fonctionnalites/qui-a-reagi.md) --}}
+        <button type="button" class="btn-secondary btn-sm" data-reaction-people="{{ route('reactions.people', ['kind' => 'daily_verse', 'id' => $verse->id]) }}" aria-haspopup="dialog">
+            <i class="fa-solid fa-users" aria-hidden="true"></i>{{ __('reactions.people.open') }}
+        </button>
         <button type="button" class="btn-secondary btn-sm" data-verse-speak hidden>
             <i class="fa-solid fa-volume-high" aria-hidden="true"></i><span data-speak-label>Écouter</span>
         </button>
