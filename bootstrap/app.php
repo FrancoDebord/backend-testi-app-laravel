@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Agir au nom d'un compte administré (docs/fonctionnalites/administrateurs-de-compte.md)
         $middleware->appendToGroup('api', \App\Http\Middleware\ActAsAccount::class);
+        // Écritures rejouées par la file hors ligne de l'application : exécutées une seule fois (docs/fonctionnalites/hors-connexion.md)
+        $middleware->appendToGroup('api', \App\Http\Middleware\IdempotentRequests::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\ActAsAccount::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\SetLocale::class);
     })

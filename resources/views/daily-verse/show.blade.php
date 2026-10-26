@@ -180,7 +180,7 @@
             @endforeach
         </ol>
         @endif
-        <p class="mt-3 text-xs text-slate-500">Votre choix est retenu pour vos prochaines visites. <a href="{{ route('bible.reader', $parsed ? ['book' => $parsed['book'], 'chapter' => $parsed['chapter'], 'translation' => $current['code'] ?? 'LSG'] : []) }}" class="text-primary-700 hover:underline">Lire tout le chapitre</a></p>
+        <p class="mt-3 text-xs text-slate-500">Votre choix est retenu pour vos prochaines visites. <a href="{{ $parsed ? url(\App\Support\BibleReference::passagePath($current['code'] ?? 'LSG', $parsed['book'], $parsed['chapter'], [[$parsed['verseStart'], $parsed['verseEnd']]])) : route('bible.reader') }}" class="text-primary-700 hover:underline">Lire tout le chapitre</a></p>
         @endif
     </section>
 

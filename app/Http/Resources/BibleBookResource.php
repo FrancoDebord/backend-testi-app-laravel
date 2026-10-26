@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\BibleReference;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,6 +17,8 @@ class BibleBookResource extends JsonResource
             'testament'     => $this->testament,
             'chaptersCount' => $this->chapters_count,
             'translation'   => $this->translation,
+            // Nom du livre dans les liens /bible/{traduction}/{slug}/{chapitre}/{versets} (docs/fonctionnalites/liens-bible.md)
+            'slug'          => BibleReference::slug($this->number, $this->translation),
         ];
     }
 }

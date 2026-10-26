@@ -122,6 +122,10 @@ Route::delete('/suppression-compte', [LegalController::class, 'destroyAccount'])
 Route::get('/',                     [HomeController::class, 'index'])->name('home');
 Route::get('/explore',              [ExploreController::class, 'index'])->name('explore');
 Route::get('/bible',                [BibleController::class, 'reader'])->name('bible.reader');
+// Lien partageable d'un passage, ouvert aussi dans l'application : /bible/LSG/jean/3/16-18 (docs/fonctionnalites/liens-bible.md)
+Route::get('/bible/{translation}/{book}/{chapter}/{verses?}', [BibleController::class, 'passage'])
+    ->where(['translation' => '[A-Za-z0-9]{2,10}', 'book' => '[^/]{1,40}', 'chapter' => '[0-9]{1,3}', 'verses' => '[0-9,-]{1,200}'])
+    ->name('bible.passage');
 // Verset du jour en plein écran : versions, prière, commentaires, témoignages (docs/fonctionnalites/verset-du-jour.md)
 Route::get('/verset-du-jour/historique', [\App\Http\Controllers\Web\DailyVerseController::class, 'history'])->name('daily-verse.history');
 Route::get('/verset-du-jour/{date?}', [\App\Http\Controllers\Web\DailyVerseController::class, 'show'])

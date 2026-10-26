@@ -70,8 +70,10 @@ class ActAsAccount
 
         $response = $next($request);
 
-        // Basculer de compte n'est pas une action faite au nom du compte.
-        if (!$request->isMethodSafe() && $response->getStatusCode() < 400 && !$request->routeIs('accounts.switch')) {
+        // Basculer de compte n'est pas une action faite au nom du compte ; une réponse rejouée
+        // par IdempotentRequests a déjà été inscrite au journal lors du premier envoi.
+        if (!$request->isMethodSafe() && $response->getStatusCode() < 400 && !$request->routeIs('accounts.switch')
+            && !$response->headers->has('Idempotent-Replayed')) {
             AccountDelegation::record($request, $account, $actor, $response->getStatusCode());
         }
         if ($isApi) {

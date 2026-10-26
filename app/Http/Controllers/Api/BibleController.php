@@ -7,6 +7,7 @@ use App\Http\Resources\BibleBookResource;
 use App\Http\Resources\BibleVerseResource;
 use App\Models\BibleBook;
 use App\Models\BibleVerse;
+use App\Support\BibleReference;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,8 @@ class BibleController extends Controller
             'chapter'     => $chapter,
             'totalChapters' => $bookMeta?->chapters_count,
             'verses'      => BibleVerseResource::collection($verses),
+            // Lien du chapitre (docs/fonctionnalites/liens-bible.md)
+            'shareUrl'    => BibleReference::passageUrl($translation, $book, $chapter),
         ];
 
         // Annotations de l'utilisateur (si connecté)
@@ -107,6 +110,7 @@ class BibleController extends Controller
             'verse'       => $verse,
             'text'        => $v->text,
             'reference'   => ($bookMeta?->abbreviation ?? "Livre {$book}") . " {$chapter}:{$verse}",
+            'shareUrl'    => BibleReference::passageUrl($translation, $book, $chapter, [[$verse, $verse]]),
         ]);
     }
 

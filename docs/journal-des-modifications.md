@@ -4,6 +4,30 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-26 — Bible du site : partager un ou plusieurs versets choisis
+
+- **Utilisateurs** (site, lecture de la Bible) : toucher un verset le sélectionne, en toucher d'autres les ajoute, contigus ou non (« Jean 3:16-18, 20 »). Une barre en bas propose **Partager**, **Copier le texte** (versets numérotés, référence et lien), **Copier le lien** et effacer. L'adresse de la page suit la sélection. Le bouton Partager de l'en-tête partage la sélection, sinon le chapitre.
+- **Développeurs** : `resources/views/bible/reader.blade.php` (lignes de versets avec bouton `aria-pressed`, barre `#verse-actions`, script de sélection) ; la route `bible.passage` accepte des versets jusqu'à 200 caractères ; 10 plages au plus, comme l'application (`BibleReference::MAX_RANGES`). Tests `BibleLinksTest` (versets épars). Voir [liens-bible.md](fonctionnalites/liens-bible.md).
+- **Déploiement** : `php artisan optimize:clear` puis `php artisan optimize`, `php artisan view:cache`, **recompiler et copier `public/build/`**. Aucune migration.
+
+---
+
+## 2026-10-26 — Liens partageables vers un passage de la Bible
+
+- **Utilisateurs** : chaque passage a son lien, par ex. `https://temoignage.as-krea.com/bible/LSG/jean/3/16-18`. Sur le site, il ouvre la Bible au passage avec les versets mis en avant ; bouton **Partager** dans le lecteur ; chaque numéro de verset est un lien vers ce verset ; aperçu WhatsApp / Facebook avec la référence et le texte. Le verset du jour (« Lire tout le chapitre ») ouvre le chapitre sur le verset. Dans l'application (Android), le lien ouvre la Bible au passage, versets mis en avant ; partager des versets depuis le lecteur ajoute leur lien.
+- **Développeurs** : route web `bible.passage` (`/bible/{traduction}/{livre}/{chapitre}/{versets?}`, redirection 301 vers l'écriture canonique, 404 si introuvable) ; ancienne adresse `/bible?book=&chapter=` redirigée ; `BibleReference` (`bookFromSegment`, `slug`, `parseVerses`, `passagePath`, `passageUrl`…) ; `ShareMeta::biblePassage` ; API : `slug` dans `GET /bible/books`, `shareUrl` dans le chapitre, le verset et `…/share` ; `/bible/*` ajouté à `config/applinks.php`. Tests `BibleLinksTest`. Voir [liens-bible.md](fonctionnalites/liens-bible.md).
+- **Déploiement** : `php artisan optimize:clear` puis `php artisan optimize`, **recompiler et copier `public/build/`**. Aucune migration.
+
+---
+
+## 2026-10-26 — Application hors connexion : file d'envoi ; écritures rejouées une seule fois
+
+- **Utilisateurs** (application) : sans réseau, on peut publier un témoignage (texte, audio, vidéo, avec couverture et preuves), confier une requête de prière, programmer une session de prière, créer ou modifier un événement que l'on gère (avec images), commenter, encourager, réagir (« j'aime ») et enregistrer un témoignage. Tout est gardé sur le téléphone, marqué « En attente d'envoi », puis envoyé automatiquement au retour du réseau. Nouvel écran « À envoyer » (Profil, menu latéral) : éléments en attente, éléments refusés avec le message du serveur, Réessayer / Supprimer. « Je prie » et les directs restent en ligne.
+- **Développeurs** : nouveau middleware `IdempotentRequests` (groupe `api`, après `ActAsAccount`) : une écriture avec l'en-tête `Idempotency-Key` n'est exécutée qu'une fois par personne et par route, la réponse 2xx est rejouée 7 jours (`Idempotent-Replayed: true`) ; envoi simultané → 409 `api.request_in_progress` (FR / EN). `ActAsAccount` n'inscrit pas une réponse rejouée au journal du compte administré. Tests `IdempotentRequestsTest` (jeton Sanctum, compte administré, fichier envoyé par `media/upload`). Voir [hors-connexion.md](fonctionnalites/hors-connexion.md).
+- **Déploiement** : `php artisan optimize:clear` puis `php artisan optimize`. Aucune migration (tables `cache` / `cache_locks` existantes).
+
+---
+
 ## 2026-10-25 — Carte de requête de prière : badge « Exaucée » sous l'en-tête
 
 - **Utilisateurs** : sur l'accueil (« Prières récentes ») et dans les autres listes, une requête exaucée n'a plus son nom et sa date coincés en colonne étroite à côté du badge « Exaucée » ; le badge passe sous la ligne « Requête de prière · date ».

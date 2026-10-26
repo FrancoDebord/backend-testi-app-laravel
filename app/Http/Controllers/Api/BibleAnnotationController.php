@@ -8,6 +8,7 @@ use App\Models\BibleVerse;
 use App\Models\VerseBookmark;
 use App\Models\VerseHighlight;
 use App\Models\VerseNote;
+use App\Support\BibleReference;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -219,6 +220,8 @@ class BibleAnnotationController extends Controller
             'text'      => $v->text,
             'reference' => $reference,
             'shareText' => "\"{$v->text}\"\n— {$reference}",
+            // Lien qui ouvre ce verset sur le site ou dans l'application (docs/fonctionnalites/liens-bible.md)
+            'shareUrl'  => BibleReference::passageUrl($translation, $book, $chapter, [[$verse, $verse]]),
         ]);
     }
 }

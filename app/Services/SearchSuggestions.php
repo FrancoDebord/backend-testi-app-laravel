@@ -264,7 +264,7 @@ class SearchSuggestions
             'prayer_session' => ['url' => route('prayer.sessions.show', $m['id']), 'route' => '/prayer-sessions/' . $m['id']],
             'category'       => ['url' => route('explore', ['category' => $m['id']]), 'route' => '/explore/category/' . $m['id']],
             'bible'          => [
-                'url'         => route('bible.reader', ['translation' => $x['translation'] ?? 'LSG', 'book' => $x['book'] ?? 1]),
+                'url'         => url(\App\Support\BibleReference::passagePath($x['translation'] ?? 'LSG', (int) ($x['book'] ?? 1), 1)),
                 'route'       => '/bible/' . ($x['translation'] ?? 'LSG') . '?book=' . ($x['book'] ?? 1),
                 'book'        => (int) ($x['book'] ?? 1),
                 'translation' => $x['translation'] ?? 'LSG',

@@ -9,6 +9,7 @@ return [
     'not_found'              => 'Resource not found',
     'invalid_data'           => 'Invalid data',
     'acting_as_forbidden'    => 'You no longer manage this account.',
+    'request_in_progress'    => 'This action is already being sent. Try again in a moment.',
     'owner_only'             => 'Reserved for the account holder. Switch back to your own account for this action.',
     'preferences_saved'      => 'Preferences saved.',
     'verse_style' => [

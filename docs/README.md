@@ -58,6 +58,8 @@ Serveur Laravel de **My Testimony** (AIRID) : site web de partage de témoignage
 | [Français et anglais](fonctionnalites/langues.md) | Site, API, validation, notifications et push en français ou en anglais : `Accept-Language`, `users.locale` (`PUT /me`), sélecteur de langue, fichiers `lang/fr` et `lang/en` (test de parité des clés) |
 | [Témoignage de conversion](fonctionnalites/temoignage-de-conversion.md) | Un témoignage de conversion par compte personnel (année, lieu, verset), même modération ; `GET /testimonies?kind=conversion`, `/users/{id}/conversion-testimony`, `/me/conversion-testimony` ; section « Témoignages de conversion », mise en avant sur le profil |
 | [Documentation en ligne](fonctionnalites/documentation-en-ligne.md) | Lecture de cette documentation dans la plateforme (`/admin/documentation`) |
+| [Liens vers la Bible](fonctionnalites/liens-bible.md) | Lien partageable d'un passage `/bible/{traduction}/{livre}/{chapitre}/{versets}` (`/bible/LSG/jean/3/16-18`) : ouvert dans l'application (App Links) ou sur le site, versets mis en avant, aperçu de partage ; `slug` des livres et `shareUrl` dans l'API |
+| [Hors connexion (file d'envoi)](fonctionnalites/hors-connexion.md) | Application : témoignages, requêtes et sessions de prière, événements, commentaires, réactions et enregistrements faits sans réseau, gardés sur le téléphone puis envoyés au retour de la connexion (écran « À envoyer ») ; serveur : en-tête `Idempotency-Key`, écriture rejouée une seule fois (middleware `IdempotentRequests`) |
 | [Journal des modifications](journal-des-modifications.md) | Historique daté de chaque ajout, modification et correction |
 
 > **Lire en ligne** : connecté en administrateur, menu **Administration → Documentation** (`/admin/documentation`). Les pages sont générées à partir de ces fichiers et restent donc toujours à jour.
@@ -170,6 +172,8 @@ Page de lecture d'un témoignage (2026-10-23) : aucune migration ; **recompiler 
 En-tête des pages (2026-10-23, `layouts/app`) : aucune migration ; **recompiler et copier `public/build/`**, puis `php artisan view:cache`.
 
 Page de profil (2026-10-23) : aucune migration ; **recompiler et copier `public/build/`** (nouvelles classes du profil), puis `php artisan view:cache`.
+
+Liens vers la Bible et file d'envoi hors connexion (2026-10-26) : **aucune migration**. Lancer `php artisan optimize:clear` puis `php artisan optimize` (route `bible.passage`, chemin App Links `/bible/*`, middleware `IdempotentRequests`), puis **recompiler et copier `public/build/`** ([liens vers la Bible](fonctionnalites/liens-bible.md), [hors connexion](fonctionnalites/hors-connexion.md)).
 
 Migration du 2026-10-23 (sujet de prière depuis un témoignage) : `2026_10_23_100001_add_source_testimony_to_prayer_requests` (`prayer_requests.source_testimony_id`, [requêtes de prière](fonctionnalites/requetes-de-priere.md)). Lancer `php artisan migrate --force`, puis `php artisan view:cache`. Aucun asset à recompiler.
 

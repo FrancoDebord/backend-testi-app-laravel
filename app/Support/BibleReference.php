@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
  *
  * Une référence analysée : ['book' => 1-66, 'chapter' => int, 'verseStart' => int, 'verseEnd' => int].
  * Les plages qui débordent sur le chapitre suivant (« Jean 3:16-4:2 ») sont réduites au premier verset.
- * Voir docs/fonctionnalites/verset-du-jour.md
+ * Voir docs/fonctionnalites/verset-du-jour.md ; liens de partage : docs/fonctionnalites/liens-bible.md
  */
 class BibleReference
 {
@@ -151,6 +151,107 @@ class BibleReference
         $verses = $ref['verseEnd'] > $ref['verseStart'] ? "{$ref['verseStart']}-{$ref['verseEnd']}" : (string) $ref['verseStart'];
 
         return ($bookName ?: self::bookName($ref['book'])) . " {$ref['chapter']}:{$verses}";
+    }
+
+    // ─── Liens de partage : /bible/{traduction}/{livre}/{chapitre}/{versets} ─ docs/fonctionnalites/liens-bible.md ──
+
+    /** Nombre de plages de versets acceptées dans un lien (« 1,3,5-7… ») ; même limite dans l'application (bible_links.dart). */
+    public const MAX_RANGES = 10;
+
+    /**
+     * Livre écrit dans un lien : numéro (« 43 »), nom ou abréviation, avec ou sans accents ni tirets
+     * (« jean », « 1-corinthiens », « john », « jn »). Null si inconnu.
+     */
+    public static function bookFromSegment(string $segment): ?int
+    {
+        if (ctype_digit($segment)) {
+            $n = (int) $segment;
+
+            return $n >= 1 && $n <= 66 ? $n : null;
+        }
+
+        return self::bookNumber(str_replace(['-', '_'], ' ', $segment));
+    }
+
+    /** Nom du livre dans un lien : anglais pour une traduction anglaise, sinon français (« 1-corinthiens »). */
+    public static function slug(int $book, ?string $translation = null): string
+    {
+        $english = $translation !== null && config('bible.translations.' . strtoupper($translation) . '.language') === 'en';
+        $name = $english ? (self::NAMES_EN[$book] ?? null) : (self::NAMES_FR[$book] ?? null);
+
+        return $name === null ? (string) $book : Str::slug($name);
+    }
+
+    /**
+     * Versets d'un lien : « 16 », « 16-18 », « 16,18-20 ». Plages triées et fusionnées
+     * ([[16, 16], [18, 20]]), null si l'écriture n'est pas valable.
+     *
+     * @return list<array{0: int, 1: int}>|null
+     */
+    public static function parseVerses(string $spec): ?array
+    {
+        $parts = explode(',', $spec);
+        if (count($parts) > self::MAX_RANGES) {
+            return null;
+        }
+        $ranges = [];
+        foreach ($parts as $part) {
+            if (!preg_match('/^(\d{1,3})(?:-(\d{1,3}))?$/', $part, $m)) {
+                return null;
+            }
+            $start = (int) $m[1];
+            $end   = isset($m[2]) ? (int) $m[2] : $start;
+            if ($start < 1 || $end < $start) {
+                return null;
+            }
+            $ranges[] = [$start, $end];
+        }
+        usort($ranges, fn ($a, $b) => $a[0] <=> $b[0]);
+
+        $merged = [];
+        foreach ($ranges as [$start, $end]) {
+            $last = array_key_last($merged);
+            if ($last !== null && $start <= $merged[$last][1] + 1) {
+                $merged[$last][1] = max($merged[$last][1], $end);
+            } else {
+                $merged[] = [$start, $end];
+            }
+        }
+
+        return $merged;
+    }
+
+    /** [[16, 18], [20, 20]] → « 16-18,20 ». */
+    public static function formatVerses(array $ranges): string
+    {
+        return implode(',', array_map(fn ($r) => $r[0] === $r[1] ? (string) $r[0] : "{$r[0]}-{$r[1]}", $ranges));
+    }
+
+    /** Numéros des versets couverts par les plages. */
+    public static function versesIn(array $ranges): array
+    {
+        return array_merge(...array_map(fn ($r) => range($r[0], $r[1]), $ranges ?: [[0, -1]]));
+    }
+
+    /** « /bible/LSG/jean/3/16-18 » (chapitre entier sans plages). */
+    public static function passagePath(string $translation, int $book, int $chapter, array $ranges = []): string
+    {
+        $code = strtoupper($translation);
+        $path = "/bible/{$code}/" . self::slug($book, $code) . "/{$chapter}";
+
+        return $ranges ? $path . '/' . self::formatVerses($ranges) : $path;
+    }
+
+    /** Lien public à partager (adresse SHARE_URL, comme les témoignages). */
+    public static function passageUrl(string $translation, int $book, int $chapter, array $ranges = []): string
+    {
+        return rtrim((string) config('app.share_url'), '/') . self::passagePath($translation, $book, $chapter, $ranges);
+    }
+
+    /** « Jean 3:16-18, 20 », « Jean 3 ». */
+    public static function passageLabel(string $bookName, int $chapter, array $ranges = []): string
+    {
+        return $ranges ? "{$bookName} {$chapter}:" . str_replace(',', ', ', self::formatVerses($ranges)) : "{$bookName} {$chapter}";
     }
 
     /** Même livre, même chapitre et versets qui se recoupent. */

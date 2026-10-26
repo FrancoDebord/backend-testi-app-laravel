@@ -110,6 +110,12 @@ class ShareMeta
     }
 
     /** Balises génériques du site (aucune information sur le contenu demandé). */
+    /** Passage de la Bible (docs/fonctionnalites/liens-bible.md) : « Jean 3:16 (LSG) » et le texte des versets. */
+    public static function biblePassage(string $title, string $text, string $url): array
+    {
+        return [...self::site(), 'title' => $title, 'description' => self::excerpt($text) ?: $title, 'url' => $url, 'type' => 'article'];
+    }
+
     public static function site(): array
     {
         return [

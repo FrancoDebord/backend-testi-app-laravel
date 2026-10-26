@@ -9,6 +9,7 @@ return [
     'not_found'              => 'Ressource introuvable',
     'invalid_data'           => 'Données invalides',
     'acting_as_forbidden'    => "Vous n'administrez plus ce compte.",
+    'request_in_progress'    => "Cette action est déjà en cours d'envoi. Réessayez dans un instant.",
     'owner_only'             => 'Réservé au titulaire du compte. Revenez sur votre propre compte pour cette action.',
     'preferences_saved'      => 'Préférences enregistrées.',
     'verse_style' => [
