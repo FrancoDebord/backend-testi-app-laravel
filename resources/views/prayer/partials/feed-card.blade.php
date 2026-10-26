@@ -64,24 +64,28 @@
 
     <footer class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
         @if($viewer && !$prayerItem->isHidden())
-        {{-- Ajouter une prière : temps de prière d'abord (resources/js/prayer-focus.js, docs/fonctionnalites/temps-de-priere.md) --}}
+        {{-- Chaque appui ajoute une prière, après le temps de prière (resources/js/prayer-focus.js,
+             docs/fonctionnalites/temps-de-priere.md, prier-plusieurs-fois.md) --}}
         <form method="POST" action="{{ route('prayer.requests.pray', $prayerItem->id) }}" data-loading-label="Enregistrement…"
               data-prayer-focus="{{ route('prayer.requests.pray.start', $prayerItem->id) }}"
               data-prayer-excerpt="{{ Str::limit(\App\Services\Mentions::plain($prayerItem->body), 600) }}">
             @csrf
-            {{-- Chaque appui ajoute une prière ; nombre de fois en infobulle (docs/fonctionnalites/prier-plusieurs-fois.md) --}}
-            <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}"
-                    @if($hasPrayed) title="{{ trans_choice('reactions.prayer_times.prayed', max(1, $prayerItem->prayerTimesOf($viewer)), ['count' => max(1, $prayerItem->prayerTimesOf($viewer))]) }}" @endif>
-                <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Je prie
-                <span class="tabular-nums">{{ $prayerItem->prayer_count }}</span>
+            <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}">
+                <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $hasPrayed ? __('reactions.prayer_times.pray_again') : 'Je prie' }}
             </button>
         </form>
-        @else
-        <span class="text-sm text-slate-600"><i class="fa-solid fa-hands-praying mr-1 text-primary-600" aria-hidden="true"></i><span class="tabular-nums">{{ $prayerItem->prayer_count }}</span> {{ $prayerItem->prayer_count > 1 ? 'prient' : 'prie' }}</span>
         @endif
+        {{-- Qui a prié, et combien de fois (docs/fonctionnalites/qui-a-reagi.md) --}}
+        <button type="button" class="btn-ghost btn-sm" data-reaction-people="{{ route('reactions.people', ['kind' => 'prayer_request', 'id' => $prayerItem->id, 'type' => 'pray']) }}"
+                aria-haspopup="dialog" title="{{ __('reactions.people.open_prayers') }}">
+            <i class="fa-solid fa-users" aria-hidden="true"></i><span class="tabular-nums">{{ $prayerItem->prayer_count }}</span> {{ $prayerItem->prayer_count > 1 ? 'prient' : 'prie' }}
+        </button>
         <a href="{{ route('prayer.requests.show', $prayerItem->id) }}#encouragements" class="btn-ghost btn-sm">
             <i class="fa-regular fa-comment" aria-hidden="true"></i><span class="tabular-nums">{{ $prayerItem->message_count }}</span>
             <span class="sr-only sm:not-sr-only">{{ $prayerItem->message_count > 1 ? 'encouragements' : 'encouragement' }}</span>
         </a>
+        @if($viewer && $hasPrayed && !$prayerItem->isHidden())
+        <div class="w-full">@include('components.prayer-times', ['times' => $prayerItem->prayerTimesOf($viewer), 'action' => route('prayer.requests.pray', $prayerItem->id), 'fields' => ['last' => 1]])</div>
+        @endif
     </footer>
 </article>

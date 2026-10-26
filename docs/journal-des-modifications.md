@@ -4,6 +4,19 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-26 — Sujets de prière : qui a prié et prier plusieurs fois depuis les cartes
+
+- **Utilisateurs** (site) : les cartes des sujets de prière ont maintenant les mêmes actions que la page d'une requête :
+  - où : liste des requêtes, onglet « Sujets de prière » du verset du jour, « Prières récentes » de l'accueil, fils ;
+  - « Je prie » puis « Prier encore » ;
+  - un bouton « N prient » qui ouvre la liste de ceux qui ont prié, avec le nombre de fois ;
+  - « Vous avez prié N fois » et « Retirer ma dernière prière ».
+  - Sur la page d'un événement, le nombre de personnes de chaque requête ouvre la même liste.
+- **Développeurs** : `prayer/partials/feed-card.blade.php`, `prayer/partials/event-section.blade.php` ; test `PrayMultipleTimesTest::test_cartes_des_sujets_de_priere`. Voir [prier-plusieurs-fois.md](fonctionnalites/prier-plusieurs-fois.md), [qui-a-reagi.md](fonctionnalites/qui-a-reagi.md).
+- **Déploiement** : `php artisan view:cache`. Aucune migration en plus ; le CSS compilé ne change pas (copier `public/build/` reste nécessaire pour les deux entrées précédentes).
+
+---
+
 ## 2026-10-26 — Prier plusieurs fois
 
 - **Utilisateurs** (site) :

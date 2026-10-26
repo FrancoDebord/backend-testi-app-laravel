@@ -79,6 +79,27 @@ class PrayMultipleTimesTest extends TestCase
             ->assertJsonPath('data.myPrayerTimes', 0)->assertJsonPath('data.prayerCount', 0);
     }
 
+    public function test_cartes_des_sujets_de_priere(): void
+    {
+        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => now()->toDateString(), 'is_active' => true]);
+        $prayer = PrayerRequest::create(['user_id' => $this->author->id, 'body' => 'Pour ma famille', 'visibility' => 'public', 'daily_verse_id' => $verse->id]);
+        $popup = 'data-reaction-people="' . e(route('reactions.people', ['kind' => 'prayer_request', 'id' => $prayer->id, 'type' => 'pray'])) . '"';
+
+        // Visiteur : qui a prié, sans bouton de prière.
+        $this->get(route('prayer.requests.index'))->assertOk()->assertSee($popup, false)->assertDontSee('Retirer ma dernière prière');
+
+        // Prier deux fois depuis la carte, puis retirer la dernière.
+        $this->actingAs($this->me)->from(route('prayer.requests.index'))->post(route('prayer.requests.pray', $prayer->id))->assertRedirect(route('prayer.requests.index'));
+        $this->actingAs($this->me)->post(route('prayer.requests.pray', $prayer->id));
+        $this->actingAs($this->me)->get(route('prayer.requests.index'))->assertOk()
+            ->assertSee('Prier encore')->assertSee('Vous avez prié 2 fois')->assertSee('Retirer ma dernière prière')->assertSee($popup, false);
+        $this->actingAs($this->me)->get(route('daily-verse.show'))->assertOk()->assertSee('Vous avez prié 2 fois')->assertSee($popup, false);
+
+        $this->actingAs($this->me)->post(route('prayer.requests.pray', $prayer->id), ['last' => 1]);
+        $this->assertSame(1, $prayer->fresh()->prayerTimesOf($this->me));
+        $this->get("/reactions/prayer_request/{$prayer->id}?type=pray")->assertOk()->assertSee('Ama');
+    }
+
     public function test_verset_du_jour(): void
     {
         $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => now()->toDateString(), 'is_active' => true]);

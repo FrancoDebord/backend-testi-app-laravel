@@ -22,7 +22,8 @@ Publications concernées : témoignages, requêtes de prière, verset du jour, �
 | Page | Comportement |
 |---|---|
 | Témoignage | « Je prie » ouvre le temps de prière à chaque appui, puis ajoute une prière. Dessous : « Vous avez prié 3 fois » et **Retirer ma dernière prière** (mise à jour sans rechargement, `resources/js/videos.js`). |
-| Requête de prière | Bouton « Je prie », puis « Prier encore ». Sous le compteur : « Vous avez prié N fois » et **Retirer ma dernière prière**. Cartes des listes : le nombre de fois est en infobulle du bouton. |
+| Requête de prière (sujet de prière) | Page de la requête : bouton « Je prie », puis « Prier encore ». Sous le compteur : « Vous avez prié N fois » et **Retirer ma dernière prière**. |
+| Cartes des sujets de prière | Liste des requêtes, onglet « Sujets de prière » du verset du jour, « Prières récentes » de l'accueil, fils : mêmes boutons « Je prie » / « Prier encore », bouton « N prient » qui ouvre la liste de ceux qui ont prié (avec le nombre de fois), puis « Vous avez prié N fois » et **Retirer ma dernière prière** (2026-10-26, `prayer/partials/feed-card.blade.php`). Page d'un événement : le nombre de personnes de chaque requête ouvre la même liste (`prayer/partials/event-section.blade.php`). |
 | Verset du jour | « Je prie », puis « Prier encore », avec la même ligne sous les boutons. |
 | Popup « Qui a réagi ? » | « 3 fois » à côté de l'icône « Je prie » de la personne (à partir de 2). Voir [qui-a-reagi.md](qui-a-reagi.md). |
 

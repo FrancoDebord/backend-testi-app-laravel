@@ -22,6 +22,7 @@ Publications concernées : témoignages, verset du jour, requêtes de prière, �
 - **Témoignage** (page de lecture) : bouton « Qui a réagi ? » à droite des réactions.
 - **Verset du jour** : bouton « Qui a réagi ? » dans « Méditer le verset ».
 - **Requête de prière** : « N personnes prient » devient un bouton ; le popup s'ouvre sur l'onglet « Je prie ».
+- **Cartes des sujets de prière** (liste des requêtes, onglet du verset du jour, accueil, fils) : bouton « N prient » ; **page d'un événement** : le nombre de personnes de chaque requête. Même popup, onglet « Je prie », avec le nombre de fois de chaque personne.
 
 Le popup (`#reaction-people-modal`, dans `layouts/partials/global-ui.blade.php`) montre :
 
