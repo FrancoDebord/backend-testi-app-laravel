@@ -346,6 +346,9 @@ Route::middleware('auth')->group(function () {
     // Testimonies
     Route::get('/publish',               [TestimonyController::class, 'create'])->name('publish');
     Route::post('/testimonies',          [TestimonyController::class, 'store'])->name('testimonies.store');
+    // Texte riche : images insérées et aperçu avant publication ─ docs/fonctionnalites/texte-riche-et-apercu.md
+    Route::post('/publish/images',       [\App\Http\Controllers\Web\TestimonyComposerController::class, 'storeImage'])->middleware('throttle:20,1')->name('testimonies.images.store');
+    Route::post('/publish/apercu',       [\App\Http\Controllers\Web\TestimonyComposerController::class, 'preview'])->middleware('throttle:60,1')->name('testimonies.preview');
     // Vidéo envoyée par le navigateur à Bunny Stream (session + CSRF ; mêmes règles que l'API) ─ docs/fonctionnalites/videos-bunny-stream.md
     Route::post('/testimonies/{id}/video/signature', [\App\Http\Controllers\Api\VideoUploadController::class, 'signature'])->middleware('throttle:30,1')->name('testimonies.video.signature');
     Route::post('/testimonies/{id}/video/complete',  [\App\Http\Controllers\Api\VideoUploadController::class, 'complete'])->middleware('throttle:30,1')->name('testimonies.video.complete');

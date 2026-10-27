@@ -5,6 +5,7 @@ return [
     'common' => [
         'home'   => 'Accueil',
         'cancel' => 'Annuler',
+        'close'  => 'Fermer',
     ],
 
     'create' => [
@@ -99,6 +100,29 @@ return [
     ],
 
     // Validation du formulaire du site et de l'API
+    // Rédaction : images du texte riche et aperçu avant publication (docs/fonctionnalites/texte-riche-et-apercu.md)
+    'composer' => [
+        'image_required' => 'Choisissez une image.',
+        'image_type'     => 'Image JPEG, PNG, WebP ou GIF seulement.',
+        'image_max'      => 'Image de 5 Mo au plus.',
+        'images_max'     => ':max images au plus dans un témoignage.',
+    ],
+    'preview' => [
+        'button'      => 'Aperçu',
+        'title'       => 'Aperçu de votre témoignage',
+        'intro'       => "Voici comment votre témoignage apparaîtra une fois publié. Rien n'est encore envoyé.",
+        'edit'        => 'Modifier',
+        'publish'     => 'Publier',
+        'now'         => "À l'instant",
+        'no_title'    => 'Sans titre',
+        'no_text'     => 'Aucun texte pour le moment.',
+        'no_media'    => 'Aucun fichier choisi : ajoutez votre audio ou votre vidéo.',
+        'youtube'     => 'Vidéo YouTube',
+        'youtube_bad' => 'Lien YouTube non reconnu.',
+        'loading'     => "Préparation de l'aperçu…",
+        'failed'      => 'Aperçu du texte indisponible. Réessayez.',
+    ],
+
     'validation' => [
         'title_required'       => 'Merci de donner un titre à votre témoignage.',
         'youtube_required'     => 'Collez le lien de la vidéo YouTube.',

@@ -227,7 +227,7 @@
                             <div class="h-full rounded-full bg-primary-600" style="width: 0%" data-tts-progress></div>
                         </div>
                     </div>
-                    <div id="testimony-body" class="p-5 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800 sm:p-8 sm:text-base [&_strong]:font-semibold [&_strong]:text-slate-900">{{ $testimony->body_html }}</div>
+                    <div id="testimony-body" class="rich-text p-5 text-[15px] leading-relaxed text-slate-800 sm:p-8 sm:text-base">{{ $testimony->body_html }}</div>
                 </article>
             @endif
 
@@ -384,7 +384,7 @@
                 @endif
 
                 @if($description)
-                <div id="video-description" class="{{ $longDesc ? 'line-clamp-4' : '' }} text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-700 [&_strong]:font-semibold">{{ $testimony->body_html }}</div>
+                <div id="video-description" class="{{ $longDesc ? 'line-clamp-4' : '' }} rich-text text-[15px] leading-relaxed text-slate-700">{{ $testimony->body_html }}</div>
                 @if($longDesc)
                 <button type="button" class="-mt-1 text-sm font-semibold text-primary-600 hover:underline" data-expand="video-description" aria-expanded="false" aria-controls="video-description">{{ __('videos.common.show_more') }}</button>
                 @endif

@@ -366,71 +366,192 @@ function initAutosave(form) {
     form.dispatchEvent(new CustomEvent('autosave:ready'));
 }
 
-// ── Éditeur de texte mis en forme (gras, italique, émojis) ─────────────
-// Format enregistré : Markdown léger (**gras**, *italique*, \* = astérisque),
-// identique à App\Support\RichText côté serveur.
+// ── Éditeur de texte riche (mise en forme visible pendant la saisie) ────
+// Format enregistré : Markdown léger, identique à App\Support\RichText et à l'application mobile
+// (docs/fonctionnalites/texte-riche-et-apercu.md) :
+//   **gras**  __italique__ (*italique* lu aussi)  ~~barré~~  [texte](https://…)  \* = astérisque
+//   # Titre   > citation   - liste   1. liste numérotée   ![légende](URL d'une image envoyée)
 const RT_STAR = String.fromCharCode(0xe000);
-const NBSP_RE = new RegExp(String.fromCharCode(0xa0), "g");
+const NBSP_RE = new RegExp(String.fromCharCode(0xa0), 'g');
+const RT_URL_RE = /^https?:\/\/[^\s<>"]+$/i;
 
-function richTextToHtml(md) {
-    let h = (md || '')
-        .replace(/\r\n?/g, '\n')
-        .replace(/\\\*/g, RT_STAR)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    h = h.replace(/\*\*\*(?=\S)([^\n]+?)(?<=\S)\*\*\*/gu, '<strong><em>$1</em></strong>');
-    h = h.replace(/\*\*(?=\S)([^\n]+?)(?<=\S)\*\*/gu, '<strong>$1</strong>');
-    h = h.replace(/(?<!\*)\*(?=[^\s*])([^\n]*?)(?<=[^\s*])\*(?!\*)/gu, '<em>$1</em>');
-    h = h.replace(new RegExp(RT_STAR, 'g'), '*');
-    return h ? h.split('\n').map((line) => `<div>${line || '<br>'}</div>`).join('') : '';
+function rtEscape(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function richTextFromDom(root) {
-    // Parcourt le contenu et relève, pour chaque morceau de texte, son style réellement affiché.
-    const lines = [[]];
-    const current = () => lines[lines.length - 1];
-    const newLine = () => lines.push([]);
-    const isBlock = (el) => /^(DIV|P|LI|H[1-6]|BLOCKQUOTE|UL|OL)$/.test(el.nodeName);
+/** Mise en forme en ligne → HTML de l'éditeur. */
+function rtInline(md) {
+    const links = [];
+    let h = rtEscape((md || '').replace(/\\\*/g, RT_STAR));
+    h = h.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, label, url) => {
+        links.push(`<a href="${url}">${rtMarks(label)}</a>`);
+        return `${RT_STAR}L${links.length - 1}${RT_STAR}`;
+    });
+    h = rtMarks(h);
+    h = h.replace(new RegExp(`${RT_STAR}L(\\d+)${RT_STAR}`, 'g'), (m, i) => links[Number(i)]);
+    return h.replace(new RegExp(RT_STAR, 'g'), '*');
+}
 
-    const walk = (node) => {
+function rtMarks(h) {
+    return h
+        .replace(/\*\*\*(?=\S)([^\n]+?)(?<=\S)\*\*\*/gu, '<strong><em>$1</em></strong>')
+        .replace(/\*\*(?=\S)([^\n]+?)(?<=\S)\*\*/gu, '<strong>$1</strong>')
+        .replace(/(?<!\*)\*(?=[^\s*])([^\n]*?)(?<=[^\s*])\*(?!\*)/gu, '<em>$1</em>')
+        .replace(/(?<![\w_])__(?=\S)([^\n]+?)(?<=\S)__(?![\w_])/gu, '<em>$1</em>')
+        .replace(/~~(?=\S)([^\n]+?)(?<=\S)~~/gu, '<s>$1</s>');
+}
+
+function rtFigure(url, alt = '') {
+    return `<figure contenteditable="false" data-rt-figure><img src="${rtEscape(url)}" alt="${rtEscape(alt)}"></figure>`;
+}
+
+/** Markdown léger → HTML modifiable (une ligne = un bloc). */
+function richTextToHtml(md) {
+    const lines = (md || '').replace(/\r\n?/g, '\n').split('\n');
+    if (lines.length === 1 && lines[0] === '') return '';
+    let html = '';
+    let list = null;   // { tag, items }
+    let quote = null;  // lignes de la citation
+    const flush = () => {
+        if (list) html += `<${list.tag}>${list.items.map((li) => `<li>${li}</li>`).join('')}</${list.tag}>`;
+        if (quote) html += `<blockquote>${quote.join('<br>')}</blockquote>`;
+        list = null;
+        quote = null;
+    };
+    lines.forEach((raw) => {
+        const line = raw.replace(/\s+$/, '');
+        let m;
+        if ((m = line.match(/^!\[([^\]\n]*)\]\((https?:\/\/\S+)\)$/))) {
+            flush();
+            html += rtFigure(m[2], m[1]);
+        } else if ((m = line.match(/^#{1,3}\s+(.+)$/))) {
+            flush();
+            html += `<h3>${rtInline(m[1])}</h3>`;
+        } else if ((m = line.match(/^>\s?(.*)$/))) {
+            if (list) flush();
+            (quote ??= []).push(rtInline(m[1]));
+        } else if ((m = line.match(/^(?:[-•]\s+(.+)|\d{1,3}[.)]\s+(.+))$/))) {
+            const tag = m[1] !== undefined ? 'ul' : 'ol';
+            if (quote || (list && list.tag !== tag)) flush();
+            (list ??= { tag, items: [] }).items.push(rtInline(m[1] ?? m[2]));
+        } else {
+            flush();
+            html += `<div>${line ? rtInline(line) : '<br>'}</div>`;
+        }
+    });
+    flush();
+    return html;
+}
+
+/** Contenu de l'éditeur → Markdown léger (styles réellement affichés, blocs, liens, images). */
+function richTextFromDom(root) {
+    const lines = [];
+    let cur = null;
+    const start = (prefix, ctx) => {
+        cur = { prefix, runs: [], fresh: true, ctx };
+        lines.push(cur);
+    };
+
+    const walk = (node, ctx) => {
         node.childNodes.forEach((n) => {
             if (n.nodeType === Node.TEXT_NODE) {
-                const text = n.nodeValue.replace(NBSP_RE, " ").replace(/\n/g, ' ');
+                const text = n.nodeValue.replace(NBSP_RE, ' ').replace(/\n/g, ' ');
                 if (!text) return;
+                if (!cur) start(ctx.quote ? '> ' : '', ctx);
                 const style = getComputedStyle(n.parentElement);
-                current().push({ text, b: parseInt(style.fontWeight, 10) >= 600, i: style.fontStyle === 'italic' });
-            } else if (n.nodeName === 'BR') {
-                newLine();
-            } else if (n.nodeType === Node.ELEMENT_NODE) {
-                const block = isBlock(n);
-                if (block && current().length) newLine();
-                walk(n);
-                if (block && current().length) newLine();
+                cur.fresh = false;
+                cur.runs.push({
+                    text,
+                    // Titre (déjà gras) et citation (déjà en italique) : style du bloc, pas une marque.
+                    b: !ctx.heading && parseInt(style.fontWeight, 10) >= 600,
+                    i: !ctx.quote && style.fontStyle === 'italic',
+                    s: style.textDecorationLine.includes('line-through'),
+                    href: ctx.href || null,
+                });
+                return;
+            }
+            if (n.nodeType !== Node.ELEMENT_NODE) return;
+            const tag = n.nodeName;
+            if (tag === 'BR') {
+                if (cur && cur.fresh) cur.fresh = false; // <div><br></div> : ligne vide
+                else start(ctx.quote ? '> ' : (ctx.listPrefix ? '   ' : ''), ctx);
+            } else if (tag === 'IMG') {
+                lines.push({ image: n.getAttribute('src') || '', alt: n.getAttribute('alt') || '' });
+                cur = null;
+            } else if (tag === 'FIGCAPTION') {
+                // légende = texte alternatif de l'image
+            } else if (tag === 'A') {
+                walk(n, { ...ctx, href: n.getAttribute('href') });
+            } else if (/^H[1-6]$/.test(tag)) {
+                cur = null;
+                start('# ', ctx);
+                walk(n, { ...ctx, heading: true });
+                cur = null;
+            } else if (tag === 'BLOCKQUOTE') {
+                cur = null;
+                start('> ', ctx);
+                walk(n, { ...ctx, quote: true });
+                cur = null;
+            } else if (tag === 'UL' || tag === 'OL') {
+                cur = null;
+                walk(n, { ...ctx, list: tag, counter: { n: 0 } });
+                cur = null;
+            } else if (tag === 'LI') {
+                cur = null;
+                const prefix = ctx.list === 'OL' ? `${++ctx.counter.n}. ` : '- ';
+                start(prefix, ctx);
+                walk(n, { ...ctx, listPrefix: prefix });
+                cur = null;
+            } else if (/^(DIV|P|FIGURE|SECTION)$/.test(tag)) {
+                if (!ctx.quote || (cur && !cur.fresh)) cur = null;
+                if (!cur && tag !== 'FIGURE') start(ctx.quote ? '> ' : '', ctx);
+                walk(n, ctx);
+                if (!ctx.quote) cur = null;
+            } else {
+                walk(n, ctx);
             }
         });
     };
-    walk(root);
+    walk(root, {});
 
-    const out = lines.map((runs) => {
+    const text = lines.map((line) => {
+        if (line.image !== undefined) {
+            return `![${line.alt.replace(/[[\]]/g, '')}](${line.image})`;
+        }
+        // Morceaux de même style fusionnés, puis marques ; liens [texte](adresse).
         const merged = [];
-        runs.forEach((r) => {
+        line.runs.forEach((r) => {
             const last = merged[merged.length - 1];
-            if (last && last.b === r.b && last.i === r.i) last.text += r.text;
+            if (last && last.b === r.b && last.i === r.i && last.s === r.s && last.href === r.href) last.text += r.text;
             else merged.push({ ...r });
         });
-        return merged
-            .map((r) => {
-                const text = r.text.replace(/\*/g, '\\*');
-                const mark = r.b && r.i ? '***' : r.b ? '**' : r.i ? '*' : '';
-                const m = text.match(/^(\s*)([\s\S]*?)(\s*)$/);
-                return mark && m[2] ? m[1] + mark + m[2] + mark + m[3] : text;
-            })
-            .join('');
+        let out = '';
+        let openHref = null;
+        merged.forEach((r) => {
+            if (r.href !== openHref) {
+                if (openHref) out += `](${openHref})`;
+                if (r.href) out += '[';
+                openHref = r.href;
+            }
+            let t = r.text.replace(/\*/g, '\\*');
+            if (r.href) t = t.replace(/[[\]]/g, '');
+            const m = t.match(/^(\s*)([\s\S]*?)(\s*)$/);
+            if (!m[2]) {
+                out += t;
+                return;
+            }
+            let core = m[2];
+            if (r.s) core = `~~${core}~~`;
+            if (r.i) core = `__${core}__`;
+            if (r.b) core = `**${core}**`;
+            out += m[1] + core + m[3];
+        });
+        if (openHref) out += `](${openHref})`;
+        // Ligne vide d'une citation ou d'un titre : rien.
+        return out.trim() || !line.prefix.trim() ? line.prefix + out : '';
     });
 
-    return out.join('\n').replace(/\s+$/, '');
+    return text.join('\n').replace(/\s+$/, '');
 }
 
 function initRichEditor(wrap) {
@@ -438,6 +559,13 @@ function initRichEditor(wrap) {
     const source = wrap.querySelector('[data-rt-source]');
     const panel = wrap.querySelector('[data-rt-emojis]');
     const emojiToggle = wrap.querySelector('[data-rt-emoji-toggle]');
+    const linkToggle = wrap.querySelector('[data-rt-link-toggle]');
+    const linkPanel = wrap.querySelector('[data-rt-link-panel]');
+    const linkUrl = wrap.querySelector('[data-rt-link-url]');
+    const linkError = wrap.querySelector('[data-rt-link-error]');
+    const imageButton = wrap.querySelector('[data-rt-image]');
+    const imageInput = wrap.querySelector('[data-rt-image-input]');
+    const imageStatus = wrap.querySelector('[data-rt-image-status]');
     const error = wrap.nextElementSibling?.matches('[data-rt-error]') ? wrap.nextElementSibling : null;
     const form = wrap.closest('form');
     let savedRange = null;
@@ -446,19 +574,35 @@ function initRichEditor(wrap) {
         content.innerHTML = richTextToHtml(source.value);
     };
     const sync = () => {
-        if (!content.textContent.trim()) content.innerHTML = '';
+        if (!content.textContent.trim() && !content.querySelector('img')) content.innerHTML = '';
         source.value = richTextFromDom(content);
         if (error && source.value.trim()) error.hidden = true;
+        source.dispatchEvent(new Event('input', { bubbles: true })); // brouillon automatique, aperçu
     };
     const selectionInside = () => {
         const sel = window.getSelection();
         return sel.rangeCount && content.contains(sel.getRangeAt(0).commonAncestorContainer);
     };
+    const currentBlock = () => {
+        try {
+            return String(document.queryCommandValue('formatBlock') || '').toLowerCase().replace(/[<>]/g, '');
+        } catch {
+            return '';
+        }
+    };
     const refreshButtons = () => {
         if (!selectionInside()) return;
         wrap.querySelectorAll('[data-rt-command]').forEach((btn) => {
-            btn.setAttribute('aria-pressed', document.queryCommandState(btn.dataset.rtCommand) ? 'true' : 'false');
+            let on = false;
+            try {
+                on = document.queryCommandState(btn.dataset.rtCommand);
+            } catch {
+                /* commande inconnue */
+            }
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
         });
+        const block = currentBlock();
+        wrap.querySelectorAll('[data-rt-block]').forEach((btn) => btn.setAttribute('aria-pressed', block === btn.dataset.rtBlock ? 'true' : 'false'));
     };
     const restoreSelection = () => {
         // Le curseur est déjà dans l'éditeur : on n'y touche pas.
@@ -469,6 +613,12 @@ function initRichEditor(wrap) {
             sel.removeAllRanges();
             sel.addRange(savedRange);
         }
+    };
+    const exec = (command, value = null) => {
+        restoreSelection();
+        document.execCommand(command, false, value);
+        sync();
+        refreshButtons();
     };
 
     render();
@@ -488,30 +638,140 @@ function initRichEditor(wrap) {
         }
     });
 
-    // Collage et dépôt : texte seul (pas de mise en forme ni de HTML externe).
+    // Collage : texte seul ; une adresse collée sur un texte sélectionné en fait un lien.
     content.addEventListener('paste', (e) => {
         e.preventDefault();
-        document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+        const text = e.clipboardData.getData('text/plain');
+        const sel = window.getSelection();
+        if (RT_URL_RE.test(text.trim()) && sel.rangeCount && !sel.isCollapsed) {
+            exec('createLink', text.trim());
+            return;
+        }
+        document.execCommand('insertText', false, text);
     });
     content.addEventListener('drop', (e) => e.preventDefault());
 
-    wrap.querySelectorAll('[data-rt-command]').forEach((btn) => {
+    wrap.querySelectorAll('[data-rt-command], [data-rt-block], [data-rt-link-toggle], [data-rt-image], [data-rt-emoji-toggle], [data-rt-emoji]').forEach((btn) => {
         btn.addEventListener('mousedown', (e) => e.preventDefault()); // garde la sélection
+    });
+    wrap.querySelectorAll('[data-rt-command]').forEach((btn) => {
+        btn.addEventListener('click', () => exec(btn.dataset.rtCommand));
+    });
+    // Titre, citation : un second appui revient au texte normal.
+    wrap.querySelectorAll('[data-rt-block]').forEach((btn) => {
         btn.addEventListener('click', () => {
             restoreSelection();
-            document.execCommand(btn.dataset.rtCommand);
-            sync();
-            refreshButtons();
+            exec('formatBlock', currentBlock() === btn.dataset.rtBlock ? 'div' : btn.dataset.rtBlock);
         });
     });
 
-    emojiToggle?.addEventListener('mousedown', (e) => e.preventDefault());
+    // ── Liens ──
+    const openLinkPanel = () => {
+        if (!linkPanel) return;
+        const anchor = savedRange && (savedRange.commonAncestorContainer.nodeType === 1
+            ? savedRange.commonAncestorContainer : savedRange.commonAncestorContainer.parentElement)?.closest('a');
+        linkUrl.value = anchor && content.contains(anchor) ? anchor.getAttribute('href') : '';
+        linkError.hidden = true;
+        linkPanel.hidden = false;
+        linkToggle.setAttribute('aria-expanded', 'true');
+        linkUrl.focus();
+    };
+    const closeLinkPanel = () => {
+        if (!linkPanel) return;
+        linkPanel.hidden = true;
+        linkToggle.setAttribute('aria-expanded', 'false');
+    };
+    const applyLink = () => {
+        let url = linkUrl.value.trim();
+        if (/^www\./i.test(url)) url = `https://${url}`;
+        if (!RT_URL_RE.test(url)) {
+            linkError.hidden = false;
+            linkUrl.focus();
+            return;
+        }
+        closeLinkPanel();
+        restoreSelection();
+        const sel = window.getSelection();
+        if (sel.rangeCount && !sel.isCollapsed) {
+            document.execCommand('createLink', false, url);
+        } else {
+            document.execCommand('insertHTML', false, `<a href="${rtEscape(url)}">${rtEscape(url)}</a>&nbsp;`);
+        }
+        sync();
+    };
+    linkToggle?.addEventListener('click', () => (linkPanel.hidden ? openLinkPanel() : closeLinkPanel()));
+    wrap.querySelector('[data-rt-link-apply]')?.addEventListener('click', applyLink);
+    wrap.querySelector('[data-rt-link-remove]')?.addEventListener('click', () => {
+        closeLinkPanel();
+        exec('unlink');
+    });
+    linkUrl?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // ne pas envoyer le formulaire
+            applyLink();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeLinkPanel();
+            restoreSelection();
+        }
+    });
+    content.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && linkPanel) {
+            e.preventDefault();
+            savedRange = window.getSelection().rangeCount ? window.getSelection().getRangeAt(0).cloneRange() : savedRange;
+            openLinkPanel();
+        }
+    });
+
+    // ── Images : envoyées au serveur, puis insérées à l'endroit du curseur ──
+    imageButton?.addEventListener('click', () => {
+        const max = Number(wrap.dataset.rtMaxImages || 10);
+        if (content.querySelectorAll('img').length >= max) {
+            flash(t('app.rich_editor.images_max', { max }), 'error');
+            return;
+        }
+        imageInput.click();
+    });
+    imageInput?.addEventListener('change', async () => {
+        const file = imageInput.files[0];
+        imageInput.value = '';
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            flash(t('app.rich_editor.image_max'), 'error');
+            return;
+        }
+        const body = new FormData();
+        body.append('image', file);
+        imageStatus.hidden = false;
+        imageButton.disabled = true;
+        try {
+            const response = await fetch(wrap.dataset.rtImageUrl, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+                credentials: 'same-origin',
+                body,
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload?.url) {
+                throw new Error(payload?.errors?.image?.[0] || payload?.message || t('app.rich_editor.image_failed'));
+            }
+            restoreSelection();
+            document.execCommand('insertHTML', false, `${rtFigure(payload.url)}<div><br></div>`);
+            sync();
+        } catch (err) {
+            flash(navigator.onLine ? err.message : t('app.offline'), 'error');
+        } finally {
+            imageStatus.hidden = true;
+            imageButton.disabled = false;
+        }
+    });
+
+    // ── Émojis ──
     emojiToggle?.addEventListener('click', () => {
         panel.hidden = !panel.hidden;
         emojiToggle.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
     });
     panel?.querySelectorAll('[data-rt-emoji]').forEach((btn) => {
-        btn.addEventListener('mousedown', (e) => e.preventDefault());
         btn.addEventListener('click', () => {
             restoreSelection();
             document.execCommand('insertText', false, btn.dataset.rtEmoji);

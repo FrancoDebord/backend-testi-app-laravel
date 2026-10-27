@@ -77,7 +77,7 @@
                 @endif
 
                 @if($testimony->body_text)
-                <div class="text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800 [&_strong]:font-semibold [&_strong]:text-slate-900">{{ $testimony->body_html }}</div>
+                <div class="rich-text text-[15px] leading-relaxed text-slate-800">{{ $testimony->body_html }}</div>
                 @else
                 <p class="text-sm text-slate-500">{{ __('moderation.show.no_text') }}</p>
                 @endif

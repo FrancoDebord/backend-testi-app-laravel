@@ -34,6 +34,7 @@ class ReactionPeopleController extends Controller
         return view($page->currentPage() > 1 ? $rows : 'reactions.people', [
             'rows'    => $rows,
             // Requête de prière : ses encouragements.
+            'hasComments'   => $kind !== 'prayer_session', // pas de commentaires sur une session de prière
             'commentsLabel' => __($kind === 'prayer_request' ? 'reactions.people.encouragements' : 'reactions.people.comments'),
             'summary' => $people->summary($kind, $subject),
             'page'    => $page,

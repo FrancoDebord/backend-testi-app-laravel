@@ -113,7 +113,8 @@ class ReactionPeopleTest extends TestCase
         \App\Models\Comment::create(['testimony_id' => $t->id, 'user_id' => $this->user('Banni', ['status' => 'suspended'])->id, 'body' => 'Message masqué']);
 
         // Onglet avec l'effectif (comptes actifs seulement), puis qui a commenté et quoi.
-        $this->get("/reactions/testimony/{$t->id}")->assertOk()->assertSeeInOrder(["J'aime", 'Commentaires', '1'], false);
+        $this->get("/reactions/testimony/{$t->id}")->assertOk()->assertSeeInOrder(['Toutes', 'Commentaires', '1', "J'aime"], false)
+            ->assertDontSee('overflow-x-auto', false);
         $this->get("/reactions/testimony/{$t->id}?type=comments")->assertOk()
             ->assertSee('Ama')->assertSee('Gloire à Dieu pour toi')->assertDontSee('Message masqué');
         $this->getJson("/api/v1/testimonies/{$t->id}/reactions/people?type=comments")->assertOk()
@@ -126,6 +127,11 @@ class ReactionPeopleTest extends TestCase
         \App\Models\PrayerRequestMessage::create(['prayer_request_id' => $prayer->id, 'user_id' => $this->user('Kofi')->id, 'body' => 'Courage, Dieu est fidèle']);
         $this->get("/reactions/prayer_request/{$prayer->id}")->assertOk()->assertSee('Encouragements');
         $this->get("/reactions/prayer_request/{$prayer->id}?type=comments")->assertOk()->assertSee('Courage, Dieu est fidèle');
+
+        // Témoignage sans commentaire : l'onglet est quand même là (« Commentaires 0 »).
+        $other = $this->testimony($ama);
+        $this->get("/reactions/testimony/{$other->id}")->assertOk()->assertSee('?type=comments', false);
+        $this->get("/reactions/testimony/{$other->id}?type=comments")->assertOk()->assertSee('Aucun commentaire pour le moment.');
     }
 
     public function test_verset_du_jour(): void

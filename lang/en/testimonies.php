@@ -5,6 +5,7 @@ return [
     'common' => [
         'home'   => 'Home',
         'cancel' => 'Cancel',
+        'close'  => 'Close',
     ],
 
     'create' => [
@@ -99,6 +100,29 @@ return [
     ],
 
     // Website and API form validation
+    // Writing: rich text images and preview before publishing (docs/fonctionnalites/texte-riche-et-apercu.md)
+    'composer' => [
+        'image_required' => 'Choose an image.',
+        'image_type'     => 'JPEG, PNG, WebP or GIF images only.',
+        'image_max'      => 'Images of 5 MB at most.',
+        'images_max'     => ':max images at most in a testimony.',
+    ],
+    'preview' => [
+        'button'      => 'Preview',
+        'title'       => 'Preview of your testimony',
+        'intro'       => 'This is how your testimony will look once published. Nothing has been sent yet.',
+        'edit'        => 'Edit',
+        'publish'     => 'Publish',
+        'now'         => 'Just now',
+        'no_title'    => 'Untitled',
+        'no_text'     => 'No text yet.',
+        'no_media'    => 'No file chosen: add your audio or video.',
+        'youtube'     => 'YouTube video',
+        'youtube_bad' => 'YouTube link not recognised.',
+        'loading'     => 'Preparing the preview…',
+        'failed'      => 'Text preview unavailable. Please try again.',
+    ],
+
     'validation' => [
         'title_required'       => 'Please give your testimony a title.',
         'youtube_required'     => 'Paste the YouTube video link.',

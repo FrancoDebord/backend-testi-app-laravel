@@ -196,6 +196,7 @@
                     'placeholder' => __('testimonies.create.body_placeholder'),
                     'requiredMessage' => __('testimonies.create.body_required'),
                     'mentions' => true,
+                    'imageUploadUrl' => route('testimonies.images.store'),
                 ])
                 @include('components.mention-input')
                 @foreach(array_filter((array) old('mention_ids', []), 'is_string') as $mentionId)
@@ -348,11 +349,51 @@
                 <p class="text-xs text-slate-500" data-autosave-status>{{ __('testimonies.create.autosave') }}</p>
                 <div class="flex flex-wrap gap-2">
                     <a href="{{ route('home') }}" class="btn-secondary">{{ __('testimonies.common.cancel') }}</a>
+                    {{-- Aperçu avant publication (docs/fonctionnalites/texte-riche-et-apercu.md) --}}
+                    <button type="button" class="btn-secondary" data-preview-open aria-haspopup="dialog"><i class="fa-regular fa-eye" aria-hidden="true"></i>{{ __('testimonies.preview.button') }}</button>
                     <button type="submit" class="btn-primary" data-submit-guard disabled>{{ __('testimonies.create.submit') }}</button>
                 </div>
             </div>
         </div>
     </form>
+
+    {{-- ── Aperçu avant publication : rien n'est envoyé (docs/fonctionnalites/texte-riche-et-apercu.md) ── --}}
+    <div id="testimony-preview" data-modal class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+         role="dialog" aria-modal="true" aria-labelledby="testimony-preview-title" hidden>
+        <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
+        <div class="card relative flex max-h-[90vh] w-full max-w-3xl flex-col shadow-xl">
+            <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <h2 id="testimony-preview-title" class="text-base font-semibold text-primary-600">{{ __('testimonies.preview.title') }}</h2>
+                <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="{{ __('testimonies.common.close') }}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            </div>
+            <div class="overflow-x-hidden overflow-y-auto p-5 sm:p-6">
+                <p class="alert-info"><i class="fa-regular fa-eye mt-0.5" aria-hidden="true"></i><span>{{ __('testimonies.preview.intro') }}</span></p>
+                <article class="mt-5 space-y-4">
+                    <div data-preview-media></div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="badge-neutral" data-preview-category></span>
+                        <span class="badge-neutral" data-preview-visibility></span>
+                    </div>
+                    <h3 class="text-xl font-bold break-words text-slate-900 sm:text-2xl" data-preview-title></h3>
+                    <p class="flex items-center gap-2 text-sm text-slate-500">
+                        @include('components.avatar', ['user' => auth()->user(), 'size' => 'sm'])
+                        <span class="min-w-0 truncate font-semibold text-slate-800">{{ auth()->user()->display_name }}</span>
+                        <span aria-hidden="true">·</span><span class="shrink-0">{{ __('testimonies.preview.now') }}</span>
+                    </p>
+                    <div class="rich-text text-[15px] leading-relaxed text-slate-800 sm:text-base" data-preview-body aria-live="polite"></div>
+                    <blockquote class="rounded-lg border-l-4 border-sun-400 bg-slate-50 px-4 py-3 text-sm text-slate-700" data-preview-verse hidden>
+                        <p class="italic" data-preview-verse-text></p>
+                        <p class="mt-1 text-xs font-semibold text-slate-500" data-preview-verse-ref></p>
+                    </blockquote>
+                    <div class="flex flex-wrap gap-2" data-preview-tags></div>
+                </article>
+            </div>
+            <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4">
+                <button type="button" class="btn-secondary" data-modal-close><i class="fa-solid fa-pen" aria-hidden="true"></i>{{ __('testimonies.preview.edit') }}</button>
+                <button type="button" class="btn-primary" data-preview-publish>{{ __('testimonies.preview.publish') }}</button>
+            </div>
+        </div>
+    </div>
     @endif
 </div>
 @endsection
@@ -409,6 +450,132 @@
     form.addEventListener('autosave:ready', function () { syncType(); syncKind(); });
     syncType();
     syncKind();
+
+    // ── Aperçu avant publication (docs/fonctionnalites/texte-riche-et-apercu.md) ──
+    // Fichiers lus sur l'appareil (aucun envoi) ; texte mis en forme par le serveur, comme sur la page publiée.
+    const modal = document.getElementById('testimony-preview');
+    const P = {
+        previewUrl: @js(route('testimonies.preview')),
+        noTitle: @js(__('testimonies.preview.no_title')),
+        noText: @js(__('testimonies.preview.no_text')),
+        noMedia: @js(__('testimonies.preview.no_media')),
+        youtube: @js(__('testimonies.preview.youtube')),
+        youtubeBad: @js(__('testimonies.preview.youtube_bad')),
+        loading: @js(__('testimonies.preview.loading')),
+        failed: @js(__('testimonies.preview.failed')),
+    };
+    let objectUrls = [];
+    const q = function (sel) { return modal.querySelector(sel); };
+    const fileUrl = function (input) {
+        const file = input && input.files && input.files[0];
+        if (!file) return null;
+        const url = URL.createObjectURL(file);
+        objectUrls.push(url);
+        return url;
+    };
+    const el = function (tag, className, attrs) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        Object.entries(attrs || {}).forEach(function ([k, v]) { node.setAttribute(k, v); });
+        return node;
+    };
+    const youtubeId = function (url) {
+        const m = String(url || '').match(/(?:youtu\.be\/|[?&]v=|\/(?:embed|shorts|live)\/)([A-Za-z0-9_-]{11})/);
+        return m ? m[1] : null;
+    };
+    const emptyNote = function (text) {
+        const p = el('p', 'rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500');
+        p.textContent = text;
+        return p;
+    };
+
+    function renderMedia(type) {
+        const box = q('[data-preview-media]');
+        box.replaceChildren();
+        const cover = fileUrl(document.getElementById('cover'));
+        if (type === 'video') {
+            const src = fileUrl(media);
+            if (!src) return box.append(emptyNote(P.noMedia));
+            const video = el('video', 'aspect-video w-full rounded-lg bg-slate-900', { controls: '', playsinline: '', preload: 'metadata', src: src });
+            if (cover) video.poster = cover;
+            box.append(video);
+        } else if (type === 'audio') {
+            const src = fileUrl(media);
+            if (cover) box.append(el('img', 'mb-3 max-h-80 w-full rounded-lg object-cover', { src: cover, alt: '' }));
+            if (!src) return box.append(emptyNote(P.noMedia));
+            box.append(el('audio', 'w-full', { controls: '', preload: 'metadata', src: src }));
+        } else if (type === 'youtube') {
+            const id = youtubeId(form.querySelector('#youtube_url')?.value);
+            if (!id) return box.append(emptyNote(P.youtubeBad));
+            box.append(el('iframe', 'aspect-video w-full rounded-lg bg-slate-900', {
+                src: 'https://www.youtube-nocookie.com/embed/' + id, title: P.youtube, allowfullscreen: '',
+                allow: 'accelerometer; encrypted-media; gyroscope; picture-in-picture', loading: 'lazy',
+            }));
+        } else if (cover) {
+            box.append(el('img', 'max-h-96 w-full rounded-lg object-cover', { src: cover, alt: '' }));
+        }
+    }
+
+    async function renderBody() {
+        const body = q('[data-preview-body]');
+        if (!bodyText.value.trim()) {
+            body.innerHTML = '<p class="text-slate-500">' + P.noText + '</p>';
+            return;
+        }
+        body.textContent = P.loading;
+        const data = new FormData();
+        data.append('body_text', bodyText.value);
+        form.querySelectorAll('input[name="mention_ids[]"]').forEach(function (i) { data.append('mention_ids[]', i.value); });
+        try {
+            const response = await fetch(P.previewUrl, {
+                method: 'POST', body: data, credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value },
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error();
+            body.innerHTML = payload.html; // HTML produit par App\Support\RichText (texte échappé)
+        } catch (e) {
+            body.textContent = P.failed;
+        }
+    }
+
+    function openPreview() {
+        objectUrls.forEach(URL.revokeObjectURL);
+        objectUrls = [];
+        bodyText.closest('[data-rich-editor]')?.querySelector('[data-rt-content]')?.dispatchEvent(new Event('input')); // dernier état de l'éditeur
+        const type = form.querySelector('input[name="type"]:checked')?.value || 'text';
+        renderMedia(type);
+        q('[data-preview-title]').textContent = form.querySelector('#title').value.trim() || P.noTitle;
+        const category = form.querySelector('#category');
+        q('[data-preview-category]').textContent = category.value ? category.selectedOptions[0].textContent.trim() : '';
+        q('[data-preview-category]').hidden = !category.value;
+        q('[data-preview-visibility]').textContent = form.querySelector('input[name="visibility"]:checked')?.parentElement.textContent.trim() || '';
+        const verse = form.querySelector('#bible_verse').value.trim();
+        const ref = form.querySelector('#bible_ref').value.trim();
+        q('[data-preview-verse]').hidden = !verse && !ref;
+        q('[data-preview-verse-text]').textContent = verse;
+        q('[data-preview-verse-ref]').textContent = ref;
+        const tags = q('[data-preview-tags]');
+        tags.replaceChildren();
+        form.querySelector('#tags').value.split(',').map(function (t) { return t.trim(); }).filter(Boolean).forEach(function (tag) {
+            const chip = el('span', 'chip');
+            chip.textContent = '#' + tag;
+            tags.append(chip);
+        });
+        renderBody();
+        window.openModal('testimony-preview');
+    }
+
+    form.querySelector('[data-preview-open]').addEventListener('click', openPreview);
+    modal.querySelector('[data-preview-publish]').addEventListener('click', function () {
+        window.closeModal?.('testimony-preview');
+        modal.querySelectorAll('video, audio').forEach(function (m) { m.pause(); });
+        // Mêmes contrôles que le bouton « Publier » (engagement, champs obligatoires).
+        if (form.requestSubmit) form.requestSubmit(); else form.submit();
+    });
+    modal.addEventListener('click', function (e) {
+        if (e.target.closest('[data-modal-close]')) modal.querySelectorAll('video, audio').forEach(function (m) { m.pause(); });
+    });
 })();
 </script>
 @endpush

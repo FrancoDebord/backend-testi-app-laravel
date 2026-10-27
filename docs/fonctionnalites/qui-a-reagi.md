@@ -24,9 +24,9 @@ Publications concernées : témoignages, verset du jour, requêtes de prière, �
 - **Requête de prière** : « N personnes prient » devient un bouton ; le popup s'ouvre sur l'onglet « Je prie ».
 - **Cartes des sujets de prière** (liste des requêtes, onglet du verset du jour, accueil, fils) : bouton « N prient » ; **page d'un événement** : le nombre de personnes de chaque requête. Même popup, onglet « Je prie », avec le nombre de fois de chaque personne.
 
-Le popup (`#reaction-people-modal`, dans `layouts/partials/global-ui.blade.php`) montre :
+Le popup (`#reaction-people-modal`, dans `layouts/partials/global-ui.blade.php`, 576 px de large au plus : `max-w-xl`) montre :
 
-1. des onglets « Toutes 12 », « J'aime 8 », « Je prie 5 »… (icône Font Awesome, libellé, effectif), puis **« Commentaires 4 »** (« Encouragements » pour une requête de prière) quand il y en a ;
+1. des onglets « Toutes 12 », **« Commentaires 4 »** (« Encouragements » pour une requête de prière ; toujours présent, même à 0, sauf pour une session de prière), puis « J'aime 8 », « Je prie 5 »… (icône Font Awesome, libellé, effectif). Les onglets passent à la ligne : jamais de barre de défilement horizontale ;
 2. les personnes : avatar, nom (lien vers le profil), coche vérifiée, icônes de leurs réactions ;
 3. onglet « Commentaires » : qui a commenté et son message (avatar, nom, date, texte limité à 300 caractères), les plus récents d'abord ;
 4. « Afficher plus » ajoute la page suivante à la liste.

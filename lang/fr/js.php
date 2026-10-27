@@ -6,6 +6,12 @@ return [
     // resources/js/app.js
     'app' => [
         'reaction_people_error' => 'Impossible de charger les réactions. Réessayez.',
+        // Éditeur de texte riche (docs/fonctionnalites/texte-riche-et-apercu.md)
+        'rich_editor' => [
+            'images_max' => ':max images au plus dans un témoignage.',
+            'image_max' => 'Image de 5 Mo au plus.',
+            'image_failed' => "L'image n'a pas pu être envoyée. Réessayez.",
+        ],
         'confirm' => 'Confirmer',
         'offline' => "Vous êtes hors connexion. Votre saisie est conservée : l'envoi sera possible dès le retour de la connexion.",
         'searching' => 'Recherche…',

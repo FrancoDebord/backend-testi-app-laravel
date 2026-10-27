@@ -4,6 +4,37 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-27 — Texte riche et aperçu avant publication
+
+- **Utilisateurs** (site, « Publier un témoignage ») :
+  - l'éditeur montre la mise en forme pendant la saisie : gras, italique, barré, titre, citation, listes à puces et numérotées, liens (panneau d'adresse, Ctrl+K, ou coller une adresse sur un texte sélectionné), images envoyées depuis l'appareil (10 au plus, 5 Mo chacune), émojis ;
+  - nouveau bouton **Aperçu** : le témoignage tel qu'il sera publié (vidéo ou audio lus depuis l'appareil, lecteur YouTube, couverture, texte mis en forme, catégorie, verset, mots-clés), puis « Modifier » ou « Publier » ;
+  - les pages des témoignages affichent titres, citations, listes, liens et images.
+- **Développeurs** :
+  - `App\Support\RichText` réécrit (paragraphes `<p>`, blocs, liens sûrs, images de `/storage/testimony-images/` seulement, `plain` ligne par ligne) ;
+  - classe CSS `rich-text` ;
+  - routes `testimonies.images.store` et `testimonies.preview` (`TestimonyComposerController`) ;
+  - éditeur `components/rich-editor` (`imageUploadUrl`) et `initRichEditor` dans `app.js` ;
+  - le site enregistre maintenant l'italique `__…__`, comme l'application ;
+  - tests `RichTextTest` (attendus mis à jour : rendu en `<p>`), `TestimonyComposerTest`.
+  - Voir [texte-riche-et-apercu.md](fonctionnalites/texte-riche-et-apercu.md).
+- **Application** : reste à afficher les liens et les images dans `bodyText` (dépôt Flutter).
+- **Déploiement** : `php artisan optimize:clear` puis `php artisan optimize`. Recompiler et **copier `public/build/`**. Aucune migration.
+
+---
+
+## 2026-10-26 — Qui a réagi ? : commentaires toujours visibles, popup plus large
+
+- **Utilisateurs** (site) :
+  - le popup est plus large (`max-w-md` → `max-w-xl`) ;
+  - les onglets passent à la ligne au lieu de défiler : la barre de défilement horizontale disparaît ;
+  - l'onglet « Commentaires » vient juste après « Toutes » (avant, il était le dernier et restait caché à droite, derrière le défilement) ;
+  - pour un témoignage, l'onglet est toujours présent, même sans commentaire (« Commentaires 0 », « Aucun commentaire pour le moment. »).
+- **Développeurs** : `reactions/people.blade.php` (`flex-wrap`, `$hasComments`), `global-ui.blade.php` (`max-w-xl`, `overflow-x-hidden`). Voir [qui-a-reagi.md](fonctionnalites/qui-a-reagi.md).
+- **Déploiement** : `php artisan view:cache`, recompiler et **copier `public/build/`** (nouvelle classe de largeur).
+
+---
+
 ## 2026-10-26 — Qui a réagi ? : onglet « Commentaires »
 
 - **Utilisateurs** (site) : le popup « Qui a réagi ? » a un onglet **« Commentaires »** avec leur nombre (« Encouragements » pour une requête de prière). On y voit qui a commenté et son message, les plus récents d'abord, 30 à la fois.

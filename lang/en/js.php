@@ -6,6 +6,12 @@ return [
     // resources/js/app.js
     'app' => [
         'reaction_people_error' => 'Could not load the reactions. Please try again.',
+        // Rich text editor (docs/fonctionnalites/texte-riche-et-apercu.md)
+        'rich_editor' => [
+            'images_max' => ':max images at most in a testimony.',
+            'image_max' => 'Images of 5 MB at most.',
+            'image_failed' => 'The image could not be uploaded. Please try again.',
+        ],
         'confirm' => 'Confirm',
         'offline' => 'You are offline. Your input is kept: you can send it as soon as the connection is back.',
         'searching' => 'Searching…',

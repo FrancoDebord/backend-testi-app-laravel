@@ -20,6 +20,7 @@ return [
         'empty'        => 'Personne n\'a encore réagi.',
         'empty_type'   => 'Personne pour cette réaction.',
         'comments'     => 'Commentaires',
+        'empty_comments' => 'Aucun commentaire pour le moment.',
         'encouragements' => 'Encouragements',
         'more'         => 'Afficher plus',
         'close'        => 'Fermer',

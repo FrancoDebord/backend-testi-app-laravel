@@ -20,6 +20,7 @@ return [
         'empty'        => 'No one has reacted yet.',
         'empty_type'   => 'No one for this reaction.',
         'comments'     => 'Comments',
+        'empty_comments' => 'No comments yet.',
         'encouragements' => 'Encouragements',
         'more'         => 'Show more',
         'close'        => 'Close',

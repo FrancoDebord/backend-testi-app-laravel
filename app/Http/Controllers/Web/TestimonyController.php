@@ -152,6 +152,11 @@ class TestimonyController extends Controller
             'consent_given.accepted' => __('testimonies.validation.consent'),
         ]);
 
+        // Images du texte riche : 10 au plus (docs/fonctionnalites/texte-riche-et-apercu.md).
+        if (count(\App\Support\RichText::imageUrls($data['body_text'] ?? null)) > \App\Support\RichText::MAX_IMAGES) {
+            throw ValidationException::withMessages(['body_text' => __('testimonies.composer.images_max', ['max' => \App\Support\RichText::MAX_IMAGES])]);
+        }
+
         // Types autorisés (docs/fonctionnalites/types-de-temoignages.md) : même règle que l'API, carnet privé compris.
         $typePolicy = app(\App\Services\TestimonyTypePolicy::class);
         $requestedType = \App\Services\TestimonyTypePolicy::requestedType($data['type'], $data['youtube_url'] ?? null);
