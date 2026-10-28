@@ -19,4 +19,9 @@ return [
     'page_of'     => 'Page :page / :last',
     'pagination'  => 'History pages',
     'not_found'   => 'No verse for this date.',
+    // Sharing from the history, without opening the verse
+    'share'       => 'Share',
+    'share_title' => 'Verse of the day',
+    'copy_link'   => 'Copy link',
+    'link_copied' => 'Link copied',
 ];

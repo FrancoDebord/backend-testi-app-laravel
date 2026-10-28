@@ -19,4 +19,9 @@ return [
     'page_of'     => 'Page :page / :last',
     'pagination'  => 'Pages de l\'historique',
     'not_found'   => 'Aucun verset pour cette date.',
+    // Partage depuis l'historique, sans ouvrir le verset
+    'share'       => 'Partager',
+    'share_title' => 'Verset du jour',
+    'copy_link'   => 'Copier le lien',
+    'link_copied' => 'Lien copié',
 ];

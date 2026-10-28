@@ -80,6 +80,19 @@ class DailyVerseHistoryTest extends TestCase
             ->assertSee(route('daily-verse.show', ['date' => $this->day(1)]), false);
     }
 
+    /** Partage depuis l'historique, sans ouvrir le verset : lien daté (même pour aujourd'hui) et image du jour. */
+    public function test_web_history_offers_a_dated_share_link_per_day(): void
+    {
+        config(['app.share_url' => 'https://temoignage.as-krea.com']);
+        $this->seedVerses();
+
+        $this->get('/verset-du-jour/historique')->assertOk()
+            ->assertSee('data-share-url="https://temoignage.as-krea.com/verset-du-jour/' . $this->day(1) . '"', false)
+            ->assertSee('data-share-url="https://temoignage.as-krea.com/verset-du-jour/' . $this->day(0) . '"', false)
+            ->assertSee('data-share-image="' . route('daily-verse.image', ['date' => $this->day(1)]) . '"', false)
+            ->assertSee('Copier le lien')->assertSee('Partager');
+    }
+
     /** Comme l'écran de l'application : aujourd'hui mis en avant, compteurs accordés, mes réactions en couleur. */
     public function test_web_history_matches_the_app_screen(): void
     {

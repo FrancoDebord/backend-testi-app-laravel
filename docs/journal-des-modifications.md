@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-28 — Partager un ancien verset depuis l'historique
+
+- **Utilisateurs** : sur « Versets précédents » (`/verset-du-jour/historique`), chaque verset a un bouton « Partager » (image du verset et lien daté) et un bouton « Copier le lien », sans avoir à ouvrir le verset.
+- **Développeurs** : `resources/views/daily-verse/history.blade.php` (boutons et script en ligne, `DailyVerses::shareUrl($date)`), `lang/{fr,en}/daily_verse_history.php`. Test `DailyVerseHistoryTest::test_web_history_offers_a_dated_share_link_per_day`. Voir [verset-du-jour.md](fonctionnalites/verset-du-jour.md#lien-de-partage-2026-10-28).
+- **Déploiement** : copier la vue et les deux fichiers de langue, puis `php artisan optimize:clear` et `php artisan optimize`. Aucune migration ni recompilation.
+
+---
+
 ## 2026-10-28 — Pages catégorie et thème : titre en double, présentation des témoignages
 
 - **Utilisateurs** : sur `/temoignages/categorie/{slug}` (par exemple « Témoignages de salut ») et `/themes/{slug}`, le titre apparaissait deux fois : dans l'en-tête de la page puis dans la carte d'introduction. Seul l'en-tête reste ; la carte garde l'introduction (catégorie) ou le verset clé (thème).
