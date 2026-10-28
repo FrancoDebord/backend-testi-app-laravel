@@ -99,6 +99,7 @@
     <x-seo-head />
     <link rel="icon" type="image/png" href="{{ asset('icons/arise-shine-krea-star.png') }}">
     <meta name="theme-color" content="#184797">
+    @include('layouts.partials.pwa-head')
     @stack('meta')
 
     <link rel="preconnect" href="https://fonts.bunny.net">

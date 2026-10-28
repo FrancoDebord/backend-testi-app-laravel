@@ -9,6 +9,7 @@
     <x-seo-head />
     <link rel="icon" type="image/png" href="{{ asset('icons/arise-shine-krea-star.png') }}">
     <meta name="theme-color" content="#184797">
+    @include('layouts.partials.pwa-head')
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet">

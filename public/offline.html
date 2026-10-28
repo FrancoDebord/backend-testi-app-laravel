@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <meta name="theme-color" content="#184797">
+    <title>Hors ligne — My Testimony</title>
+    <link rel="icon" type="image/png" href="/icons/arise-shine-krea-star.png">
+    <!-- Page affichée par public/sw.js quand une page ne peut pas être chargée faute de réseau
+         (docs/fonctionnalites/pwa.md). Autonome : aucun fichier externe, couleurs de resources/css/theme.css. -->
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 24px 16px; background: #f8fafc; color: #263238;
+            font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        }
+        .card {
+            width: 100%; max-width: 420px; padding: 32px 24px; text-align: center;
+            background: #fff; border: 1px solid #e4e7ec; border-radius: 16px; box-shadow: 0 1px 3px rgba(16, 24, 40, .06);
+        }
+        img { width: 96px; height: auto; }
+        h1 { margin: 20px 0 8px; font-size: 1.375rem; color: #184797; }
+        p { margin: 0 0 24px; line-height: 1.6; color: #475467; }
+        button {
+            display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 20px;
+            font: inherit; font-weight: 600; color: #fff; background: #184797; border: 0; border-radius: 10px; cursor: pointer;
+        }
+        button:hover { background: #103675; }
+        button:focus-visible { outline: 3px solid #fcc11d; outline-offset: 2px; }
+    </style>
+</head>
+<body>
+<main class="card">
+    <img src="/icons/arise-shine-krea.png" alt="ARISE &amp; SHINE Krea" width="477" height="493">
+    <h1 data-text="title">Vous êtes hors ligne</h1>
+    <p data-text="text">Cette page ne peut pas s'afficher sans connexion à Internet. Vérifiez votre connexion, puis réessayez.</p>
+    <button type="button" data-text="retry" onclick="location.reload()">Réessayer</button>
+</main>
+<script>
+    // Langue du navigateur : anglais si demandé, français sinon.
+    if (/^en\b/i.test(navigator.language || '')) {
+        var en = {
+            title: "You are offline",
+            text: "This page can't be shown without an Internet connection. Check your connection, then try again.",
+            retry: "Try again"
+        };
+        document.documentElement.lang = 'en';
+        document.title = 'Offline — My Testimony';
+        document.querySelectorAll('[data-text]').forEach(function (el) { el.textContent = en[el.dataset.text]; });
+    }
+    // Retour du réseau : la page demandée se recharge seule.
+    window.addEventListener('online', function () { location.reload(); });
+</script>
+</body>
+</html>

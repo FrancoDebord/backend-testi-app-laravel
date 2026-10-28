@@ -218,6 +218,14 @@ document.addEventListener(
     true,
 );
 
+// ── Application installable (PWA, docs/fonctionnalites/pwa.md) ──────────
+// public/sw.js : fichiers compilés en cache, page « hors ligne » ; jamais les pages ni l'API.
+if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+}
+
 // ── Indicateurs de chargement ───────────────────────────────────────────
 function setButtonLoading(button, label) {
     if (!button || button.dataset.loading) return;

@@ -4,6 +4,12 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-28 — Site installable (PWA)
+
+- **Utilisateurs** : le site s'installe sur l'écran d'accueil (Android et ordinateur : menu du navigateur « Installer l'application » ; iPhone : « Partager » puis « Sur l'écran d'accueil ») et s'ouvre en plein écran, aux couleurs Krea. Sans réseau, une page « Vous êtes hors ligne » remplace l'erreur du navigateur et se recharge au retour de la connexion. Raccourcis : Verset du jour, Publier un témoignage.
+- **Développeurs** : `public/manifest.webmanifest`, `public/sw.js` (pages toujours depuis le réseau, jamais mises en cache ; seuls `/build/assets/*` et `/icons/*` ; jamais l'API, les POST ni les médias), `public/offline.html`, icônes `public/icons/pwa/` (192, 512, 512 maskable, apple-touch-icon 180), partiel `layouts/partials/pwa-head` dans les deux gabarits, enregistrement dans `resources/js/app.js`. Pas de bouton « Installer » dans l'interface. Tests `PwaTest`. Voir [pwa.md](fonctionnalites/pwa.md).
+- **Déploiement** : copier les fichiers ci-dessus, `public/.htaccess`, `resources/views/layouts/`, et **`public/build/`** (JS modifié). Aucune migration ni variable d'environnement. HTTPS obligatoire.
+
 ## 2026-10-28 — Accord pour le web modifiable depuis l'application
 
 - **Utilisateurs** : dans l'application, l'auteur d'un témoignage peut retirer ou redonner son accord pour le web et choisir l'anonymat sur le site, depuis la page de son témoignage, sans que celui-ci repasse en modération.
