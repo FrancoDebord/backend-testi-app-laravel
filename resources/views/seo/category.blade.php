@@ -37,12 +37,15 @@
     @if($testimonies->isEmpty())
         @include('components.empty-state', ['title' => __('seo.category.empty'), 'text' => __('seo.category.empty_text')])
     @else
-    <div class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 xl:grid-cols-3">
-        @foreach($testimonies as $testimony)
-            @include('videos.partials.card', ['testimony' => $testimony, 'short' => false, 'large' => false, 'url' => route('testimonies.show', $testimony->id)])
-        @endforeach
-    </div>
-    {{ $testimonies->links() }}
+    {{-- Même présentation que l'accueil et Explorer : cartes encadrées ou liste compacte, au choix. --}}
+    <section aria-labelledby="category-testimonies">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="category-testimonies" class="card-title">{{ __('seo.breadcrumb.testimonies') }}</h2>
+            @include('components.layout-toggle')
+        </div>
+        @include('components.testimony-list', ['items' => $testimonies, 'routeName' => 'testimonies.show'])
+        <div class="mt-6">{{ $testimonies->links() }}</div>
+    </section>
     @endif
 
     {{-- Maillage : les autres catégories --}}

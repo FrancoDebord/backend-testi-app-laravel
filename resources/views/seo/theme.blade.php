@@ -50,12 +50,13 @@
     {{-- Maillage : derniers témoignages publiés --}}
     @if($testimonies->isNotEmpty())
     <section aria-labelledby="theme-testimonies">
-        <h2 id="theme-testimonies" class="card-title mb-3">{{ __('seo.theme.testimonies') }}</h2>
-        <div class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 xl:grid-cols-3">
-            @foreach($testimonies as $testimony)
-                @include('videos.partials.card', ['testimony' => $testimony, 'short' => false, 'large' => false, 'url' => route('testimonies.show', $testimony->id)])
-            @endforeach
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="theme-testimonies" class="card-title">{{ __('seo.theme.testimonies') }}</h2>
+            @include('components.layout-toggle')
         </div>
+        {{-- 6 témoignages : 3 colonnes au plus (deux rangées pleines). --}}
+        @include('components.testimony-list', ['items' => $testimonies, 'routeName' => 'testimonies.show',
+            'gridClass' => 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-5'])
     </section>
     @endif
 </div>

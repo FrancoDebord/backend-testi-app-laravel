@@ -23,7 +23,7 @@ class PublicPagesController extends Controller
     public function category(Request $request, string $slug): View
     {
         $category = Category::where('slug', $slug)->where('is_active', true)->firstOrFail();
-        $testimonies = Sitemaps::testimonyQuery()->with('user')->where('category_slug', $category->slug)
+        $testimonies = Sitemaps::testimonyQuery()->with(['user', 'category'])->where('category_slug', $category->slug)
             ->latest('approved_at')->paginate((int) config('seo.per_page', 24))->withQueryString();
 
         return view('seo.category', [
@@ -48,7 +48,7 @@ class PublicPagesController extends Controller
         return view('seo.theme', [
             'theme'       => $theme,
             'verses'      => $verses,
-            'testimonies' => Sitemaps::testimonyQuery()->with('user')->latest('approved_at')->limit(6)->get(),
+            'testimonies' => Sitemaps::testimonyQuery()->with(['user', 'category'])->latest('approved_at')->limit(6)->get(),
             'canonical'   => ShareMeta::absolute(route('themes.show', $theme->slug, false)),
         ]);
     }

@@ -4,11 +4,12 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
-## 2026-10-28 — Titre en double sur les pages catégorie et thème
+## 2026-10-28 — Pages catégorie et thème : titre en double, présentation des témoignages
 
 - **Utilisateurs** : sur `/temoignages/categorie/{slug}` (par exemple « Témoignages de salut ») et `/themes/{slug}`, le titre apparaissait deux fois : dans l'en-tête de la page puis dans la carte d'introduction. Seul l'en-tête reste ; la carte garde l'introduction (catégorie) ou le verset clé (thème).
 - **Développeurs** : `resources/views/seo/category.blade.php` et `seo/theme.blade.php` sans `<h1>` propre ; la page n'a plus qu'un `<h1>` (meilleur pour Google). `SeoTest::test_page_categorie_et_theme` le vérifie.
-- **Déploiement** : copier les deux vues, puis `php artisan view:clear` (ou `optimize:clear` puis `optimize`). Aucune migration ni recompilation.
+- **Témoignages de ces pages** : même présentation que l'accueil et Explorer (cartes encadrées `videos/partials/tile` via `components/testimony-list`, ou liste compacte avec le bouton « Grandes cartes / Liste compacte »), au lieu de l'ancienne carte sans cadre. Catégorie : 1 à 4 colonnes et pagination ; thème : 3 colonnes au plus (6 derniers témoignages). Catégorie préchargée (`with(['user', 'category'])`) dans `Web\PublicPagesController`.
+- **Déploiement** : copier `resources/views/seo/category.blade.php`, `seo/theme.blade.php` et `app/Http/Controllers/Web/PublicPagesController.php`, puis `php artisan optimize:clear` et `php artisan optimize`. Aucune migration ni recompilation.
 
 ---
 
