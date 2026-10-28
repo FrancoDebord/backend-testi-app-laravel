@@ -4,6 +4,23 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-28 — Titre en double sur les pages catégorie et thème
+
+- **Utilisateurs** : sur `/temoignages/categorie/{slug}` (par exemple « Témoignages de salut ») et `/themes/{slug}`, le titre apparaissait deux fois : dans l'en-tête de la page puis dans la carte d'introduction. Seul l'en-tête reste ; la carte garde l'introduction (catégorie) ou le verset clé (thème).
+- **Développeurs** : `resources/views/seo/category.blade.php` et `seo/theme.blade.php` sans `<h1>` propre ; la page n'a plus qu'un `<h1>` (meilleur pour Google). `SeoTest::test_page_categorie_et_theme` le vérifie.
+- **Déploiement** : copier les deux vues, puis `php artisan view:clear` (ou `optimize:clear` puis `optimize`). Aucune migration ni recompilation.
+
+---
+
+## 2026-10-28 — Lien de partage du verset du jour
+
+- **Utilisateurs** : la page du verset a une carte « Partager ce verset » : lien à copier, WhatsApp, Facebook et téléchargement de l'image. Le lien est daté (`/verset-du-jour/AAAA-MM-JJ`) : ouvert plus tard, il montre toujours ce verset. Le bouton « Partager » du premier écran partage l'image du verset (design affiché) avec le texte et ce lien daté ; le lien s'ajoute à l'image, il ne la remplace pas. Auparavant, il envoyait seulement le texte et la page du jour, qui changeait le lendemain.
+- **Développeurs** : `DailyVerses::shareUrl()` (`SHARE_URL`), `og:url` daté ; API : `shareUrl` dans le verset (`GET /daily-verse`, `/daily-verse/{id}`, réactions) et dans `POST /daily-verse/share`. Test `DailyVerseTest::test_share_link_is_dated_on_web_and_api`. Voir [verset-du-jour.md](fonctionnalites/verset-du-jour.md#lien-de-partage-2026-10-28).
+- **Application** (dépôt Flutter) : garder le partage de l'image et ajouter `shareUrl` au texte.
+- **Déploiement** : copier `app/Services/DailyVerses.php`, `app/Http/Controllers/Api/DailyVerseController.php`, `resources/views/daily-verse/show.blade.php`, puis `php artisan optimize:clear` et `php artisan optimize`. Aucune migration, aucune recompilation (script en ligne dans la vue).
+
+---
+
 ## 2026-10-28 — Liens cliquables et aperçus de liens
 
 - **Utilisateurs** : une adresse (`https://…`, `http://…`, `www.…`) écrite ou collée devient un lien cliquable dans les témoignages, commentaires et réponses, requêtes de prière, messages d'encouragement, sessions de prière, événements (description, commentaires, avis), commentaires du verset du jour, description d'un direct et bio du profil. Sous les descriptions, commentaires et réponses, le premier lien s'affiche en aperçu : miniature, site, titre, début de la description (YouTube : miniature et titre de la vidéo). Les textes déjà publiés en profitent aussi.

@@ -27,9 +27,9 @@
 
 @section('content')
 <div class="space-y-6">
+    {{-- Titre : en-tête de page du gabarit ($header), seul <h1> de la page. --}}
     <section class="card p-5 sm:p-6">
-        <h1 class="text-xl font-bold text-primary-600 sm:text-2xl">{{ $header }}</h1>
-        <div class="rich-text mt-2 text-[15px] leading-relaxed text-slate-700">
+        <div class="rich-text text-[15px] leading-relaxed text-slate-700">
             {{ $category->intro ? \App\Support\RichText::toHtml($category->intro) : __('seo.category.description', ['category' => $name]) }}
         </div>
     </section>

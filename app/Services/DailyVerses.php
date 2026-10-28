@@ -99,6 +99,17 @@ class DailyVerses
         return null;
     }
 
+    /**
+     * Lien de partage du verset d'un jour : toujours daté (ouvert le lendemain, il montre le même verset),
+     * sur SHARE_URL comme les témoignages. Sans date : aujourd'hui. Voir docs/fonctionnalites/verset-du-jour.md
+     */
+    public static function shareUrl(?string $date = null): string
+    {
+        $date = $date ?: \App\Services\VerseDesignOfTheDay::todayDate();
+
+        return rtrim((string) config('app.share_url'), '/') . route('daily-verse.show', ['date' => $date], false);
+    }
+
     /** Verset d'une date (AAAA-MM-JJ) ou du jour ; null si la date est invalide ou sans verset. */
     public function forDate(?string $date = null): ?DailyVerse
     {

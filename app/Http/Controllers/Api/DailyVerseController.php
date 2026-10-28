@@ -189,7 +189,7 @@ class DailyVerseController extends Controller
 
         $verse->increment('share_count');
 
-        return $this->success(null, 'Partage enregistré');
+        return $this->success(['shareUrl' => DailyVerses::shareUrl()], 'Partage enregistré');
     }
 
     // ─── Commentaires ────────────────────────────────────────────────────────
@@ -329,6 +329,10 @@ class DailyVerseController extends Controller
             // Nombre de fois que la personne a prié (docs/fonctionnalites/prier-plusieurs-fois.md).
             'myPrayerTimes' => $this->verses->prayerTimes($verse, $user),
             'webUrl'       => route('daily-verse.show', $verse->scheduled_date ? ['date' => $verse->scheduled_date->toDateString()] : []),
+            // Lien à partager : page datée du site (SHARE_URL), même verset quel que soit le jour d'ouverture.
+            'shareUrl'     => DailyVerses::shareUrl(
+                preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query('date')) ? $request->query('date') : $verse->scheduled_date?->toDateString()
+            ),
             ...$this->designFields($verse, $request, $user),
         ];
     }

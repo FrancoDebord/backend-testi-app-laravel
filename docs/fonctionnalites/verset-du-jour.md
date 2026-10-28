@@ -73,7 +73,7 @@ Migration : `2026_10_06_400001_create_daily_verse_participation`.
 
 | Méthode | Route | Accès | Rôle |
 |---|---|---|---|
-| GET | `/daily-verse?date=AAAA-MM-JJ&translation=KJV` | public | Verset (du jour par défaut). Ajoute `parsed` (livre, chapitre, versets), `translation` (le passage dans cette version, si demandé), `counts.comments`, `counts.prayerRequests` (publiques), `webUrl`. |
+| GET | `/daily-verse?date=AAAA-MM-JJ&translation=KJV` | public | Verset (du jour par défaut). Ajoute `parsed` (livre, chapitre, versets), `translation` (le passage dans cette version, si demandé), `counts.comments`, `counts.prayerRequests` (publiques), `webUrl`, `shareUrl` (lien à partager, voir « Lien de partage »). |
 | GET | `/daily-verse/{id}` | public | Même format pour un verset donné |
 | — | (champs ajoutés le 2026-10-27) | | `weekTheme` `{ year, week, theme, keyVerse, period, startDate, endDate }` ou `null`, `version` (« LSG 1910 »), `dayName` (« Dimanche ») |
 | GET | `/daily-verse/weeks/{year}/{week}` | public | Thème de la semaine et ses versets : `{ year, week, theme, keyVerse, period, startDate, endDate, verses: [{ id, date, dayName, reference, verseText, version }] }` ; 404 si la semaine n'existe pas |
@@ -124,6 +124,14 @@ Commentaire :
 - Actions (connecté) : `POST /verset-du-jour/{id}/reagir` (`type`), `/prieres`, `/commentaires`, `DELETE /commentaires/{comment}`, `POST /commentaires/{comment}/signaler`.
 - Accueil : le bloc « Verset du jour » (`home/index.blade.php`) est un lien vers la page.
 - Fichiers : `Web\DailyVerseController`, `resources/views/daily-verse/show.blade.php`, composant `<x-verse-of-the-day-card />` ; designs : `resources/css/verse.css`, `resources/css/verse-designs.css` (généré), `resources/js/verse-style.js`.
+
+## Lien de partage (2026-10-28)
+
+- **Toujours daté** : `https://temoignage.as-krea.com/verset-du-jour/AAAA-MM-JJ` (`SHARE_URL` + `daily-verse.show`, `DailyVerses::shareUrl()`). Ouvert le lendemain ou plus tard, il montre le même verset ; auparavant, le bouton « Partager » de la page du jour envoyait `/verset-du-jour`, qui affiche le verset du jour où on l'ouvre.
+- **Site** : bouton « Partager » du premier écran : partage **l'image du verset** (design affiché, PNG 1080 × 1350) **et** le texte avec le lien daté dans la feuille du système (téléphones, Edge / Chrome sous Windows, Safari). L'image est préchargée pour que la feuille s'ouvre pendant le clic. Sans partage de fichiers : texte et lien ; sans feuille du système : copie dans le presse-papiers et carte **« Partager ce verset »** sous le premier écran : lien à copier (« Copier le lien »), WhatsApp (verset, référence et lien), Facebook, « Télécharger l'image » (`daily-verse.image` dans le design affiché). `og:url` porte aussi le lien daté, donc l'aperçu WhatsApp / Facebook montre l'image et le texte de ce jour-là.
+- **API** : `shareUrl` dans `GET /daily-verse` (date de `?date=`, sinon date programmée du verset, sinon aujourd'hui), `GET /daily-verse/{id}` et la réponse des réactions ; `POST /daily-verse/share` renvoie aussi `{ shareUrl }` (auparavant `data: null`).
+- **Application** (dépôt Flutter) : **garder le partage de l'image** du verset et ajouter `shareUrl` au texte qui l'accompagne (le lien ne remplace pas l'image).
+- Le lien ne retient pas la version de la Bible choisie : la personne qui l'ouvre voit sa propre version.
 
 ## Application
 

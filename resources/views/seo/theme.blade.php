@@ -24,9 +24,9 @@
 
 @section('content')
 <div class="space-y-6">
+    {{-- Titre : en-tête de page du gabarit ($header), seul <h1> de la page. --}}
     <section class="card p-5 sm:p-6">
-        <h1 class="text-xl font-bold text-primary-600 sm:text-2xl">{{ $theme->thematique }}</h1>
-        <p class="mt-1 text-sm text-slate-500">
+        <p class="text-sm text-slate-500">
             {{ __('seo.theme.key_verse') }} <strong class="text-slate-800">{{ $theme->verset_cle }}</strong>
             @if($theme->periode) · {{ $theme->periode }}@endif
         </p>

@@ -242,6 +242,27 @@ class DailyVerseTest extends TestCase
         $this->get('/')->assertSee(route('daily-verse.show'), false);
     }
 
+    public function test_share_link_is_dated_on_web_and_api(): void
+    {
+        config(['app.share_url' => 'https://temoignage.as-krea.com']);
+        $today = \App\Services\VerseDesignOfTheDay::todayDate();
+        $link  = "https://temoignage.as-krea.com/verset-du-jour/{$today}";
+
+        // Page du jour (sans date) : le lien partagé porte la date, pour retrouver ce verset plus tard.
+        $this->get('/verset-du-jour')->assertOk()
+            ->assertSee('Partager ce verset')
+            ->assertSee('value="' . $link . '"', false)
+            ->assertSee('<meta property="og:url" content="' . $link . '">', false)
+            ->assertSee('https://wa.me/?text=', false)
+            ->assertSee(rawurlencode($link), false);
+        $this->get("/verset-du-jour/{$today}")->assertOk()->assertSee('value="' . $link . '"', false);
+
+        $this->getJson('/api/v1/daily-verse')->assertOk()->assertJsonPath('data.shareUrl', $link);
+        $this->getJson('/api/v1/daily-verse?date=' . $today)->assertOk()->assertJsonPath('data.shareUrl', $link);
+        $this->getJson("/api/v1/daily-verse/{$this->verse->id}")->assertOk()
+            ->assertJsonPath('data.shareUrl', 'https://temoignage.as-krea.com/verset-du-jour/' . $this->verse->scheduled_date->toDateString());
+    }
+
     public function test_web_member_can_comment_pray_and_react(): void
     {
         $this->actingAs($this->member)->from('/verset-du-jour')

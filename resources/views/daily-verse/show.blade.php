@@ -28,6 +28,9 @@
     $surface     = "verse-design verse-design--{$designId} verse-font--{$style['font']} verse-align--{$style['text_align']} verse-tone--{$tone}";
     $fullSizes   = \App\Services\VerseStyles::sizesFor($shown, 'fullscreen');
     $shareImage  = route('daily-verse.image', ['date' => $designDate]);
+    // Lien de partage toujours daté : ouvert plus tard, il montre ce verset et non celui du jour.
+    $shareUrl    = \App\Services\DailyVerses::shareUrl($designDate);
+    $shareText   = '« ' . trim($text) . " »\n— " . $reference . "\n" . $shareUrl;
 @endphp
 @section('title', 'Verset du jour — ' . $reference)
 {{-- Indexé pour aujourd'hui et les jours passés (docs/fonctionnalites/referencement.md) --}}
@@ -41,7 +44,7 @@
     <meta property="og:site_name" content="My Testimony · ARISE &amp; SHINE Krea">
     <meta property="og:title" content="Verset du jour — {{ $verse->reference }}">
     <meta property="og:description" content="{{ \Illuminate\Support\Str::limit($verse->verse_text, 200) }}">
-    <meta property="og:url" content="{{ $pageUrl }}">
+    <meta property="og:url" content="{{ $shareUrl }}">
     <meta property="og:image" content="{{ $shareImage }}">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1080">
@@ -96,7 +99,8 @@
                 <a href="{{ $loginUrl }}" class="verse-action"><i class="fa-regular fa-heart" aria-hidden="true"></i>J'aime <span class="tabular-nums">{{ $verse->like_count }}</span></a>
                 @endauth
                 <a href="{{ $tabUrl('commentaires') }}" class="verse-action"><i class="fa-regular fa-comment" aria-hidden="true"></i>Commentaires <span class="tabular-nums">{{ $commentCount }}</span></a>
-                <button type="button" class="verse-action" data-verse-share data-share-url="{{ $pageUrl }}">
+                <button type="button" class="verse-action" data-verse-share data-share-url="{{ $shareUrl }}"
+                        data-share-image="{{ $shareImage }}" data-share-filename="verset-du-jour-{{ $designDate }}.png">
                     <i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span data-share-label>Partager</span>
                 </button>
             </div>
@@ -150,6 +154,24 @@
         <button type="button" class="btn-ghost btn-sm" data-verse-style-open aria-controls="verse-style-panel">
             <i class="fa-solid fa-palette" aria-hidden="true"></i>Design et texte
         </button>
+    </section>
+
+    {{-- ── Partager : lien daté à copier, WhatsApp, Facebook, image ─────────── --}}
+    <section class="card p-5" aria-labelledby="verse-share-title">
+        <h2 id="verse-share-title" class="card-title"><i class="fa-solid fa-share-nodes mr-1" aria-hidden="true"></i>Partager ce verset</h2>
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+            <label for="verse-share-link" class="sr-only">Lien du verset</label>
+            <input id="verse-share-link" type="text" readonly value="{{ $shareUrl }}" class="form-input min-w-0 flex-1 text-sm" data-verse-share-link>
+            <button type="button" class="btn-primary btn-sm shrink-0 justify-center" data-verse-copy>
+                <i class="fa-regular fa-copy" aria-hidden="true"></i><span data-copy-label>Copier le lien</span>
+            </button>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+            <a href="https://wa.me/?text={{ rawurlencode($shareText) }}" target="_blank" rel="noopener" class="chip"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i>WhatsApp</a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ rawurlencode($shareUrl) }}" target="_blank" rel="noopener" class="chip"><i class="fa-brands fa-facebook" aria-hidden="true"></i>Facebook</a>
+            <a href="{{ route('daily-verse.image', ['date' => $designDate, 'design' => $designId]) }}" download="verset-du-jour-{{ $designDate }}.png" class="chip"><i class="fa-solid fa-image" aria-hidden="true"></i>Télécharger l'image</a>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">Ce lien mène toujours au verset du {{ \Illuminate\Support\Carbon::parse($designDate)->translatedFormat('j F Y') }}, avec son image dans les aperçus.</p>
     </section>
 
     {{-- ── Versions de la Bible ──────────────────────────────────────────── --}}
@@ -422,17 +444,67 @@
     document.querySelector('[data-verse-reader-open]')?.addEventListener('click', () => reader.showModal());
     reader.querySelector('[data-verse-reader-close]')?.addEventListener('click', () => reader.close());
 
-    // Partage : feuille du système, sinon copie dans le presse-papiers.
+    // Partage : l'image du verset (design affiché) ET le lien daté dans la feuille du système ;
+    // sans partage de fichiers : texte et lien ; sans feuille du système : copie dans le presse-papiers.
+    // L'image est préchargée : la feuille doit s'ouvrir pendant le clic (Safari refuse sinon).
     const shareBtn = document.querySelector('[data-verse-share]');
+    const designOf = () => [...(document.querySelector('.verse-hero')?.classList ?? [])]
+        .map((c) => c.match(/^verse-design--(.+)$/)?.[1]).find(Boolean);
+    const imageFiles = new Map(); // design → Promise<File|null>
+    const imageFile = (design) => {
+        if (!imageFiles.has(design)) {
+            const src = shareBtn.dataset.shareImage + (design ? '?design=' + encodeURIComponent(design) : '');
+            imageFiles.set(design, fetch(src)
+                .then((r) => (r.ok ? r.blob() : null))
+                .then((blob) => (blob ? new File([blob], shareBtn.dataset.shareFilename, { type: 'image/png' }) : null))
+                .catch(() => null));
+        }
+        return imageFiles.get(design);
+    };
+    if (shareBtn && navigator.canShare) {
+        const preload = () => imageFile(designOf());
+        'requestIdleCallback' in window ? requestIdleCallback(preload) : setTimeout(preload, 1500);
+        shareBtn.addEventListener('pointerenter', preload);
+        shareBtn.addEventListener('focus', preload);
+    }
     shareBtn?.addEventListener('click', async () => {
         const url = shareBtn.dataset.shareUrl;
         const body = '« ' + text + ' »\n— ' + reference;
         try {
-            if (navigator.share) { await navigator.share({ title: 'Verset du jour', text: body, url }); return; }
+            if (navigator.share) {
+                const file = navigator.canShare ? await imageFile(designOf()) : null;
+                if (file && navigator.canShare({ files: [file] })) {
+                    // Le lien va dans le texte : avec un fichier, beaucoup d'applications ignorent `url`.
+                    try {
+                        await navigator.share({ files: [file], title: 'Verset du jour', text: body + '\n' + url });
+                        return;
+                    } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        // Partage du fichier refusé (geste expiré, cible incompatible) : lien seul.
+                    }
+                }
+                await navigator.share({ title: 'Verset du jour', text: body, url });
+                return;
+            }
             await navigator.clipboard.writeText(body + '\n' + url);
             shareBtn.querySelector('[data-share-label]').textContent = 'Copié !';
         } catch (e) { /* partage annulé */ }
     });
+
+    // Copier le lien daté (bloc « Partager ce verset »).
+    const copyBtn = document.querySelector('[data-verse-copy]');
+    copyBtn?.addEventListener('click', async () => {
+        const field = document.querySelector('[data-verse-share-link]');
+        try {
+            await navigator.clipboard.writeText(field.value);
+        } catch (e) {
+            field.select();
+            document.execCommand('copy');
+        }
+        copyBtn.querySelector('[data-copy-label]').textContent = 'Lien copié';
+        setTimeout(() => { copyBtn.querySelector('[data-copy-label]').textContent = 'Copier le lien'; }, 2500);
+    });
+    document.querySelector('[data-verse-share-link]')?.addEventListener('focus', (e) => e.target.select());
 
     // Lecture vocale (masquée si le navigateur ne sait pas lire à voix haute).
     const speakBtn = document.querySelector('[data-verse-speak]');

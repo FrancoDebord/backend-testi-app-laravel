@@ -139,10 +139,12 @@ class SeoTest extends TestCase
         $this->testimony(['title' => 'Pas sur le web', 'publication_web' => false]);
 
         $html = $this->get('/temoignages/categorie/guerison')->assertOk()
-            ->assertSee('<h1 class="text-xl font-bold text-primary-600 sm:text-2xl">Témoignages de guérison</h1>', false)
+            ->assertSee('Témoignages de guérison')
             ->assertSee('Dieu guérit encore aujourd')
             ->assertSee($t->title)->assertDontSee('Pas sur le web')
             ->getContent();
+        // Un seul titre (en-tête du gabarit) : la carte d'introduction ne le répète pas.
+        $this->assertSame(1, substr_count($html, '<h1'));
         $this->assertContains('CollectionPage', array_column($this->jsonLd($html), '@type'));
         $this->get('/temoignages/categorie/inconnue')->assertNotFound();
 
@@ -152,7 +154,8 @@ class SeoTest extends TestCase
             'is_active' => true, 'theme_semaine_id' => $theme->id]);
         $this->assertSame('la-guerison-divine', $theme->slug);
 
-        $this->get('/themes/la-guerison-divine')->assertOk()->assertSee('La guérison divine')->assertSee('qui te guérit')->assertSee($t->title);
+        $themeHtml = $this->get('/themes/la-guerison-divine')->assertOk()->assertSee('La guérison divine')->assertSee('qui te guérit')->assertSee($t->title)->getContent();
+        $this->assertSame(1, substr_count($themeHtml, '<h1'));
         // Le témoignage de guérison montre le verset de ce thème.
         $this->get("/testimonies/{$t->id}")->assertSee('Un verset pour ce témoignage')->assertSee('qui te guérit');
         // Thème à venir : 404.
