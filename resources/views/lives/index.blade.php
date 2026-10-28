@@ -1,5 +1,7 @@
 @extends('layouts.app')
 @section('title', __('lives.lives'))
+{{-- Page publique indexable (docs/fonctionnalites/referencement.md) --}}
+@section('robots', \App\Support\Seo::INDEX)
 @php
     $header      = __('lives.index.header');
     $subheader   = __('lives.index.subheader');

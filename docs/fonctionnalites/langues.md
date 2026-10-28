@@ -9,7 +9,9 @@ Tous les textes visibles existent en français (langue par défaut) et en anglai
 | Canal | Langue utilisée |
 |---|---|
 | API (`/api/v1`) | En-tête `Accept-Language` de la requête (poids `q` respectés) ; **français** sans en-tête ou pour une langue non prise en charge. La réponse porte `Content-Language: fr` ou `en`. |
-| Site web | Choix du sélecteur de langue (session) ; sinon `users.locale` du membre connecté ; sinon français. |
+| Site web | Choix du sélecteur de langue (session) ; sinon `users.locale` du membre connecté ; sinon (visiteur) **langue du navigateur** (`Accept-Language`, 2026-10-27) ; sinon français. |
+| Nouveau compte | `users.locale` = langue de la requête d'inscription (2026-10-27) : langue choisie dans l'application ou, par défaut, celle du système ; langue du site (navigateur) pour une inscription sur le site. Auparavant toujours `fr`. (`User::creating`) |
+| Verset du jour | Texte dans la langue de la requête : voir [verset-du-jour.md](verset-du-jour.md#langue-du-verset-2026-10-27). |
 | Push | `users.locale` du destinataire, quelle que soit la langue de la personne qui déclenche l'action. |
 | E-mails, notifications Laravel | `users.locale` (`User` implémente `HasLocalePreference`). Le serveur n'envoie pas encore d'e-mail. |
 | Liste des notifications | Langue de la requête (API) ou du site. |
@@ -55,6 +57,8 @@ Ajouter un texte : créer la clé dans `lang/fr/<fichier>.php` **et** `lang/en/<
 Migration `2026_10_15_200001_add_locale_conversion_and_push_device_fields` : `users.locale` (`varchar(5)`, défaut `fr`).
 
 ## Tests
+
+`tests/Feature/DailyVerseLanguageTest.php` : verset du jour en français / anglais (API, historique, site), langue du navigateur pour un visiteur, choix du sélecteur et langue du compte prioritaires, langue d'un nouveau compte.
 
 `tests/Unit/TranslationKeysTest.php` (parité des clés et des paramètres) ; `tests/Feature/LocaleTest.php` : `Accept-Language` (défaut, poids, langue inconnue), erreurs 401/422 traduites, `PUT /me`, push et liste des notifications dans la langue du destinataire, sélecteur du site et langue du compte. `tests/TestCase.php` envoie les requêtes de test sans `Accept-Language` (Symfony ajouterait `en-us` par défaut), comme l'application.
 

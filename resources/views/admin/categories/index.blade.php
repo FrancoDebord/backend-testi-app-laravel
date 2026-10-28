@@ -70,6 +70,7 @@
             'action' => route('admin.categories.update', $cat->id),
             'name' => $cat->name,
             'name_en' => $cat->name_en,
+            'intro' => $cat->intro,
             'icon' => $cat->icon,
             'color' => $cat->color,
             'display_order' => $cat->display_order,
@@ -167,6 +168,12 @@
                 <input id="edit-name-en" type="text" name="name_en" maxlength="100" class="form-input">
                 <p class="form-hint">{{ __('admin.categories.name_en_hint') }}</p>
             </div>
+            {{-- Introduction de la page publique de la catégorie (docs/fonctionnalites/referencement.md) --}}
+            <div class="sm:col-span-2">
+                <label for="edit-intro" class="form-label">{{ __('seo.admin.intro') }}</label>
+                <textarea id="edit-intro" name="intro" rows="3" maxlength="1500" class="form-input" aria-describedby="edit-intro-hint"></textarea>
+                <p id="edit-intro-hint" class="form-hint">{{ __('seo.admin.intro_hint') }}</p>
+            </div>
             <div>
                 <label for="edit-icon" class="form-label">Icône (appli mobile)</label>
                 <input id="edit-icon" type="text" name="icon" class="form-input">
@@ -202,6 +209,7 @@ document.addEventListener('click', function (e) {
     form.action = data.action;
     document.getElementById('edit-name').value = data.name ?? '';
     document.getElementById('edit-name-en').value = data.name_en ?? '';
+    document.getElementById('edit-intro').value = data.intro ?? '';
     document.getElementById('edit-icon').value = data.icon ?? '';
     document.getElementById('edit-color').value = data.color ?? '';
     document.getElementById('edit-order').value = data.display_order ?? '';

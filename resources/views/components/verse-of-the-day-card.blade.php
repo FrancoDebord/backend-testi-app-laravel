@@ -16,7 +16,7 @@
         <span id="home-verse-title" class="verse-design__label mb-3 flex items-center gap-2 text-xs font-bold tracking-wide uppercase"><i class="fa-solid fa-sun" aria-hidden="true"></i>Verset du jour</span>
         <span class="verse-design__line mb-3" aria-hidden="true"></span>
         <span class="verse-design__text block">{{ $text }}</span>
-        <span class="verse-design__ref mt-3 block text-sm">{{ $verse->reference }}</span>
+        <span class="verse-design__ref mt-3 block text-sm">{{ $reference }}</span>
         <span class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold">
             <span data-verse-more hidden>Lire en entier</span>
             <span>Méditer, prier, commenter <i class="fa-solid fa-arrow-right ml-1" aria-hidden="true"></i></span>

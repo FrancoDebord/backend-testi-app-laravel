@@ -131,11 +131,16 @@ class VideoController extends Controller
 
     // ─── Outils ──────────────────────────────────────────────────────────
 
-    /** Témoignage consultable par la personne connectée (ou non), sinon 404. */
+    /**
+     * Témoignage consultable sur le site par la personne connectée (ou non), sinon 404 ; 410 Gone s'il a été
+     * supprimé ou retiré du web par son auteur (Testimony::webStatusFor, docs/fonctionnalites/referencement.md).
+     */
     public static function findVisible(Request $request, string $id, array $with = []): Testimony
     {
-        $testimony = Testimony::with($with)->find($id);
-        abort_unless($testimony && $testimony->isVisibleTo($request->user()), 404);
+        $testimony = \Illuminate\Support\Str::isUuid($id) ? Testimony::withTrashed()->with($with)->find($id) : null;
+        abort_unless($testimony, 404);
+        $status = $testimony->webStatusFor($request->user());
+        abort_if($status !== 200, $status);
 
         return $testimony;
     }

@@ -26,6 +26,11 @@ class User extends Authenticatable implements \Illuminate\Contracts\Translation\
     {
         // Pièces justificatives de vérification : supprimées avec le compte (données sensibles).
         static::deleted(fn (User $user) => \App\Services\PersonalVerification::purgeDocuments($user));
+        // Nouveau compte : langue de la requête d'inscription (langue de l'application ou du système, du navigateur
+        // sur le site), plutôt que toujours le français. Voir docs/fonctionnalites/langues.md
+        static::creating(function (User $user) {
+            $user->locale ??= \App\Support\Locales::normalize(app()->getLocale()) ?? \App\Support\Locales::DEFAULT;
+        });
     }
 
     protected $fillable = [

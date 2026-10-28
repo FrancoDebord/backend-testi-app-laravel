@@ -63,10 +63,16 @@
     </div>
 
     <div class="mt-3 flex gap-3">
+        {{-- Témoignage anonyme : docs/fonctionnalites/referencement.md --}}
+        @php $cardShowsAuthor = $testimony->showsAuthorOnWeb(auth()->user()); @endphp
         @unless($short)
+        @if($cardShowsAuthor)
         <a href="{{ route('profiles.show', $testimony->user->id) }}" class="relative z-10 shrink-0 self-start rounded-full" tabindex="-1" aria-hidden="true">
             @include('components.avatar', ['user' => $testimony->user, 'size' => 'md'])
         </a>
+        @else
+        <span class="shrink-0 self-start">@include('components.avatar', ['user' => null, 'size' => 'md'])</span>
+        @endif
         @endunless
         <div class="min-w-0 flex-1">
             <h3 class="{{ $large ? 'text-base sm:text-lg' : 'text-sm' }} line-clamp-2 leading-snug font-semibold text-primary-700">
@@ -79,8 +85,12 @@
             {{-- Nom (et coche) prioritaire ; la catégorie garde au plus 40 % de la ligne pour rester lisible. --}}
             <p class="mt-1 flex min-w-0 items-center gap-2 text-xs text-slate-600">
                 <span class="flex min-w-0 items-center gap-1">
+                    @if($cardShowsAuthor)
                     <a href="{{ route('profiles.show', $testimony->user->id) }}" class="relative z-10 truncate hover:text-slate-900 hover:underline">{{ $testimony->user->display_name }}</a>
                     @include('components.verified-badge', ['user' => $testimony->user])
+                    @else
+                    <span class="truncate italic">{{ __('seo.anonymous') }}</span>
+                    @endif
                 </span>
                 @if($category)
                 <span class="shrink-0 text-slate-300" aria-hidden="true">·</span><span class="max-w-[40%] shrink-0 truncate text-slate-500">{{ $category->displayName() }}</span>

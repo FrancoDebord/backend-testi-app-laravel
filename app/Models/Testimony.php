@@ -39,6 +39,9 @@ class Testimony extends Model
         'bunny_video_id', 'video_status', 'duration', 'available_resolutions',
         // Témoignage sur un direct terminé (docs/fonctionnalites/lives.md) ; crédit de la vidéo YouTube (videos-youtube.md)
         'live_id', 'youtube_credit_author', 'youtube_credit_channel', 'youtube_credit_url',
+        // Référencement et publication sur le web (docs/fonctionnalites/referencement.md)
+        'meta_description', 'resume', 'transcription', 'is_anonymous',
+        'publication_web', 'publication_web_at', 'publication_web_revoked_at',
     ];
 
     /** Témoignage standard tant que rien d'autre n'est demandé (valeur par défaut de la colonne). */
@@ -56,6 +59,10 @@ class Testimony extends Model
             'type'        => TestimonyType::class,
             'kind'        => TestimonyKind::class,
             'conversion_year' => 'integer',
+            'is_anonymous'    => 'boolean',
+            'publication_web' => 'boolean',
+            'publication_web_at'         => 'datetime',
+            'publication_web_revoked_at' => 'datetime',
             'status'      => TestimonyStatus::class,
             'visibility'  => TestimonyVisibility::class,
             'tags'        => 'array',
@@ -87,6 +94,30 @@ class Testimony extends Model
 
     protected static function booted(): void
     {
+        // Sitemaps (docs/fonctionnalites/referencement.md) : vidés à la publication, au retrait du web, à la
+        // modification et à la suppression ; recalculés à la prochaine demande.
+        $forgetSitemaps = function (Testimony $testimony) {
+            if ($testimony->wasRecentlyCreated || !$testimony->exists || $testimony->trashed()
+                || $testimony->wasChanged(['status', 'visibility', 'publication_web', 'title', 'body_text', 'resume', 'meta_description', 'video_status', 'deleted_at', 'category_slug'])) {
+                \App\Services\Sitemaps::forget();
+            }
+        };
+        static::saved($forgetSitemaps);
+        static::deleted($forgetSitemaps);
+        static::restored($forgetSitemaps);
+
+        // Consentement à la publication sur le web : date d'accord, ou date de retrait (page en 410 Gone).
+        static::saving(function (Testimony $testimony) {
+            if (!$testimony->exists || $testimony->isDirty('publication_web')) {
+                if ($testimony->publication_web ?? true) {
+                    $testimony->publication_web_at ??= now();
+                    $testimony->publication_web_revoked_at = null;
+                } elseif ($testimony->exists) {
+                    $testimony->publication_web_revoked_at = now();
+                }
+            }
+        });
+
         // Publié, dépublié ou supprimé : « Mon fil » de l'auteur (où figurent ses propres témoignages)
         // est recalculé tout de suite au lieu d'attendre la fin du cache.
         $forgetAuthorFeed = function (Testimony $testimony) {
@@ -297,9 +328,76 @@ class Testimony extends Model
         ] : null;
     }
 
+    /**
+     * Publié : approuvé, public, vidéo lisible. Sur le site (toute requête hors /api, et les commandes comme
+     * les sitemaps) : aussi accepté par l'auteur pour le web. L'application n'est pas concernée.
+     * Voir docs/fonctionnalites/referencement.md
+     */
     public function scopePublished($query)
     {
-        return $query->where('status', TestimonyStatus::Approved)->where('visibility', TestimonyVisibility::Public)->videoPlayable();
+        $query->where('status', TestimonyStatus::Approved)->where('visibility', TestimonyVisibility::Public)->videoPlayable();
+
+        return self::forWebContext() ? $query->where('publication_web', true) : $query;
+    }
+
+    /** Requête du site ou commande (sitemaps) : la règle de publication sur le web s'applique. */
+    public static function forWebContext(): bool
+    {
+        return app()->runningInConsole() && !app()->runningUnitTests()
+            ? true
+            : !request()->is('api/*');
+    }
+
+    // ─── Publication sur le web (docs/fonctionnalites/referencement.md) ─────
+
+    /** Page publique indexable : approuvée, publique, lisible, hors carnet, acceptée pour le web, non supprimée. */
+    public function isOnPublicWeb(): bool
+    {
+        return $this->status === TestimonyStatus::Approved
+            && $this->visibility === TestimonyVisibility::Public
+            && !$this->isInJournal()
+            && $this->isVideoPlayable()
+            && (bool) $this->publication_web
+            && !$this->trashed();
+    }
+
+    /**
+     * Code HTTP de la page du site pour cette personne : 200, 404 (en attente, refusé, privé, sans accord pour
+     * le web, carnet) ou 410 Gone (supprimé, accord pour le web retiré). L'auteur et la modération voient
+     * toujours leur page tant qu'elle n'est pas supprimée.
+     */
+    public function webStatusFor(?User $viewer): int
+    {
+        if ($this->trashed()) {
+            // Supprimé : 410 s'il était publié sur le web (Google le retire), sinon 404 (rien n'est révélé).
+            return $this->status === TestimonyStatus::Approved && $this->visibility === TestimonyVisibility::Public
+                && $this->publication_web ? 410 : 404;
+        }
+        if (!$this->isVisibleTo($viewer)) {
+            return 404;
+        }
+        $insider = $viewer && ($viewer->id === $this->user_id || $viewer->canModerate());
+        if (!$this->publication_web && !$insider) {
+            return $this->publication_web_revoked_at ? 410 : 404;
+        }
+
+        return 200;
+    }
+
+    /** Nom, photo et profil de l'auteur affichés sur le site (témoignage anonyme : auteur et modération seulement). */
+    public function showsAuthorOnWeb(?User $viewer = null): bool
+    {
+        if (!$this->is_anonymous) {
+            return true;
+        }
+
+        return $viewer !== null && ($viewer->id === $this->user_id || $viewer->canModerate());
+    }
+
+    /** Nom affiché sur le site : nom de l'auteur, ou « Témoignage anonyme ». */
+    public function webAuthorName(?User $viewer = null): string
+    {
+        return $this->showsAuthorOnWeb($viewer) ? (string) $this->user?->display_name : __('seo.anonymous');
     }
 
     public function scopePending($query)

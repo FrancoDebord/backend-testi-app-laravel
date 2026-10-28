@@ -23,14 +23,9 @@ class TestimonyController extends Controller
 {
     public function show(Request $request, string $id): View|JsonResponse
     {
-        $testimony = Testimony::with(['user', 'category', 'liveSession:id,testimony_id,started_at', 'mediaFile:id,url,processing_status'])->find($id);
-
-        if (!$testimony) abort(404);
-
-        // Carnet privé : 404 pour toute autre personne que l'auteur (son existence n'est pas révélée).
-        if ($testimony->isInJournal() && Auth::id() !== $testimony->user_id) {
-            abort(404);
-        }
+        // En attente, refusé, privé, carnet, sans accord pour le web : 404 ; supprimé ou retiré du web : 410.
+        // L'auteur et la modération voient leur page (docs/fonctionnalites/referencement.md).
+        $testimony = VideoController::findVisible($request, $id, ['user', 'category', 'liveSession:id,testimony_id,started_at', 'mediaFile:id,url,processing_status']);
 
         $watch = app(\App\Services\WatchPage::class);
 
@@ -44,6 +39,25 @@ class TestimonyController extends Controller
 
         // Même page de lecture que /videos/{id} (docs/fonctionnalites/videos.md).
         return view('testimonies.show', $watch->data($testimony, $request->user(), 'testimonies.show'));
+    }
+
+    /**
+     * PUT /testimonies/{id}/web : l'auteur donne ou retire son accord pour le web (retrait : la page répond
+     * 410 Gone et sort des sitemaps) et choisit l'anonymat sur le site. Sans nouvelle modération.
+     * Voir docs/fonctionnalites/referencement.md
+     */
+    public function updateWebPublication(Request $request, string $id): RedirectResponse
+    {
+        $testimony = Testimony::findOrFail($id);
+        abort_unless($request->user()->id === $testimony->user_id, 403);
+        $request->validate(['publication_web' => 'required|boolean', 'is_anonymous' => 'required|boolean']);
+
+        $testimony->update([
+            'publication_web' => $request->boolean('publication_web'),
+            'is_anonymous'    => $request->boolean('is_anonymous'),
+        ]);
+
+        return back()->with('success', __('seo.author.saved'));
     }
 
     public function create(Request $request): View
@@ -138,7 +152,9 @@ class TestimonyController extends Controller
             ...\App\Services\LiveTestimonies::rules(),
             // Crédit de la vidéo YouTube d'origine (docs/fonctionnalites/videos-youtube.md)
             ...\App\Support\YouTubeCredit::rules(),
-        ], \App\Services\ConversionTestimonies::messages() + \App\Services\LiveTestimonies::messages() + \App\Support\YouTubeCredit::messages() + TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
+            // Publication sur le web, anonymat, résumé, transcription (docs/fonctionnalites/referencement.md)
+            ...\App\Support\WebPublication::rules(),
+        ], \App\Support\WebPublication::messages() + \App\Services\ConversionTestimonies::messages() + \App\Services\LiveTestimonies::messages() + \App\Support\YouTubeCredit::messages() + TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
             'title.required'         => __('testimonies.validation.title_required'),
             'youtube_url.required_if' => __('testimonies.validation.youtube_required'),
             'category.required'      => __('testimonies.validation.category_required'),
@@ -243,6 +259,7 @@ class TestimonyController extends Controller
             'youtube_id'    => $youtubeId,
             // Crédit de la vidéo d'origine : vidéo YouTube seulement (docs/fonctionnalites/videos-youtube.md).
             ...\App\Support\YouTubeCredit::attributes($request, $youtubeId !== null),
+            ...\App\Support\WebPublication::attributes($request),
             'proofs_public' => $request->boolean('proofs_public'),
             'bible_verse'   => $data['bible_verse'] ?? null,
             'bible_ref'     => $data['bible_ref'] ?? null,

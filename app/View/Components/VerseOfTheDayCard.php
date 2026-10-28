@@ -30,12 +30,15 @@ class VerseOfTheDayCard extends Component
 
     public function render(): View
     {
-        $text = '« ' . trim($this->verse->verse_text) . ' »';
+        // Dans la langue de la page (docs/fonctionnalites/verset-du-jour.md).
+        $localized = app(\App\Services\DailyVerses::class)->localized($this->verse);
+        $text = '« ' . trim($localized['text']) . ' »';
         $view = app(VerseStyles::class)->forView(Auth::user(), VerseDesignOfTheDay::todayDate());
 
         return view('components.verse-of-the-day-card', [
             ...$view,
-            'text'  => $text,
+            'text'      => $text,
+            'reference' => $localized['reference'],
             'sizes' => VerseStyles::sizesFor($text, 'card'),
         ]);
     }

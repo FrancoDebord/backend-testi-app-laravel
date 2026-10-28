@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'My Testimony') — My Testimony · ARISE &amp; SHINE Krea</title>
+    {{-- Titre complet d'une page publique (référencement, < 60 caractères) : @section('page_title', …) --}}
+    <title>{!! trim($__env->yieldContent('page_title')) ?: trim($__env->yieldContent('title', 'My Testimony')) . ' — My Testimony · ARISE &amp; SHINE Krea' !!}</title>
+    <x-seo-head />
     <link rel="icon" type="image/png" href="{{ asset('icons/arise-shine-krea-star.png') }}">
     <meta name="theme-color" content="#184797">
 

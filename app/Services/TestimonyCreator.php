@@ -94,6 +94,8 @@ class TestimonyCreator
             'youtube_id'   => $youtubeId,
             // Crédit de la vidéo d'origine : vidéo YouTube seulement (docs/fonctionnalites/videos-youtube.md).
             ...\App\Support\YouTubeCredit::attributes($request, $youtubeId !== null),
+            // Publication sur le web, anonymat sur le site, résumé, transcription (docs/fonctionnalites/referencement.md)
+            ...\App\Support\WebPublication::attributes($request),
             'video_status' => $videoStatus,
             'proofs_public' => $request->boolean('proofs_public'),
             'renditions'   => $media?->renditions,

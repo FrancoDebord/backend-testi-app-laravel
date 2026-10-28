@@ -36,6 +36,69 @@ class DailyVerses
     /** Version proposée par défaut (texte du verset saisi par l'équipe = Louis Segond). */
     public const DEFAULT_TRANSLATION = 'LSG';
 
+    /** Langue du texte saisi ou importé (Louis Segond). */
+    public const ORIGINAL_LANGUAGE = 'fr';
+
+    /**
+     * Traductions préférées pour afficher le verset dans une autre langue que celle du texte du jour, dans
+     * l'ordre ; à défaut, toute traduction installée de cette langue. Voir docs/fonctionnalites/verset-du-jour.md
+     */
+    public const TRANSLATIONS_BY_LANGUAGE = ['en' => ['KJV', 'WEB', 'BBE', 'ASV']];
+
+    /** @var array<string, array> textes déjà calculés pendant la requête (historique : plusieurs versets) */
+    private array $localizedCache = [];
+
+    /**
+     * Verset dans la langue demandée (langue de l'application ou du site) : texte du jour si c'est sa langue,
+     * sinon la première traduction installée de cette langue qui contient le passage, sinon le texte du jour.
+     *
+     * @return array{text: string, reference: string, language: string, translation: ?string, translationName: ?string, isTranslated: bool}
+     */
+    public function localized(DailyVerse $verse, ?string $locale = null): array
+    {
+        $locale = \App\Support\Locales::normalize($locale ?? app()->getLocale()) ?? \App\Support\Locales::DEFAULT;
+        $key = "{$verse->id}:{$locale}:{$verse->updated_at?->timestamp}";
+
+        return $this->localizedCache[$key] ??= $this->computeLocalized($verse, $locale);
+    }
+
+    private function computeLocalized(DailyVerse $verse, string $locale): array
+    {
+        $original = [
+            'text' => $verse->verse_text, 'reference' => $verse->reference, 'language' => self::ORIGINAL_LANGUAGE,
+            'translation' => null, 'translationName' => null, 'isTranslated' => false,
+        ];
+        if ($locale === self::ORIGINAL_LANGUAGE || !$verse->parsedReference()) {
+            return $original;
+        }
+
+        $code = $this->translationFor($locale);
+        $version = $code ? ($this->versions($verse, $code)['versions'][0] ?? null) : null;
+        if (!$version || !$version['available']) {
+            return $original;
+        }
+
+        return [
+            'text' => $version['text'], 'reference' => $version['reference'], 'language' => $locale,
+            'translation' => $version['code'], 'translationName' => $version['name'], 'isTranslated' => true,
+        ];
+    }
+
+    /** Traduction installée pour une langue (« en » → KJV), ou null. */
+    public function translationFor(string $locale): ?string
+    {
+        $installed = $this->translations();
+        foreach (self::TRANSLATIONS_BY_LANGUAGE[$locale] ?? [] as $code) {
+            if ($installed->has($code)) return $code;
+        }
+        foreach ($installed as $code => $t) {
+            $language = $t['language'] ?? ($locale === 'en' && BibleReference::isEnglish($code) ? 'en' : null);
+            if ($language === $locale) return $code;
+        }
+
+        return null;
+    }
+
     /** Verset d'une date (AAAA-MM-JJ) ou du jour ; null si la date est invalide ou sans verset. */
     public function forDate(?string $date = null): ?DailyVerse
     {

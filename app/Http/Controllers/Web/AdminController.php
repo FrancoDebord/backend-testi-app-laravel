@@ -258,6 +258,7 @@ class AdminController extends Controller
         $data     = $request->validate([
             'name'          => 'required|string|max:50',
             'name_en'       => 'nullable|string|max:100', // vide : nom anglais effacé
+            'intro'         => 'nullable|string|max:1500', // page publique de la catégorie (referencement.md)
             'icon'          => 'nullable|string',
             'color'         => 'nullable|string|max:10',
             'display_order' => 'nullable|integer',
@@ -265,6 +266,7 @@ class AdminController extends Controller
         ]);
         $data['name_en'] = trim((string) ($data['name_en'] ?? '')) ?: null;
 
+        $data['intro'] = trim((string) ($data['intro'] ?? '')) ?: null;
         $category->update($data + ['is_active' => $request->boolean('is_active')]);
         return back()->with('success', __('admin.flash.category_updated'));
     }

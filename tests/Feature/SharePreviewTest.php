@@ -261,16 +261,9 @@ class SharePreviewTest extends TestCase
             ['status' => 'pending', 'approved_at' => null],
         ] as $attrs) {
             $t = $this->testimony(array_merge(['title' => 'Secret de famille', 'body_text' => 'Texte confidentiel'], $attrs));
-            $tags = $this->meta($this->get(route('testimonies.show', $t->id)));
-
-            $this->assertSame('My Testimony — témoignages qui fortifient la foi', $tags['og:title']);
-            $this->assertSame('website', $tags['og:type']);
-            $this->assertSame(self::SHARE . '/partage/site.jpg', $tags['og:image']);
-            foreach ($tags as $value) {
-                $this->assertStringNotContainsString('Secret de famille', $value);
-                $this->assertStringNotContainsString('confidentiel', $value);
-                $this->assertStringNotContainsString('Marie Adjovi', $value);
-            }
+            // Page introuvable pour un visiteur (docs/fonctionnalites/referencement.md) : rien n'en sort.
+            $this->get(route('testimonies.show', $t->id))->assertNotFound()
+                ->assertDontSee('Secret de famille')->assertDontSee('confidentiel')->assertDontSee('Marie Adjovi');
             $this->get(route('share-images.testimony', $t->id))->assertNotFound();
         }
 
@@ -307,7 +300,8 @@ class SharePreviewTest extends TestCase
             $this->assertJpeg($image);
             $this->assertEmpty($image->headers->getCookies(), $agent);
         }
-        $robots = File::get(public_path('robots.txt'));
+        // robots.txt servi par Laravel (docs/fonctionnalites/referencement.md).
+        $robots = $this->get('/robots.txt')->assertOk()->getContent();
         $this->assertDoesNotMatchRegularExpression('#Disallow:\s*/(partage|testimonies|evenements)?\s*$#m', $robots);
     }
 

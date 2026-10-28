@@ -1,5 +1,7 @@
 @extends('layouts.app')
 @section('title', __('conversion.section_title'))
+{{-- Page publique indexable (docs/fonctionnalites/referencement.md) --}}
+@section('robots', \App\Support\Seo::INDEX)
 @php
     $header      = __('conversion.section_title');
     $subheader   = __('conversion.section_subtitle');

@@ -38,12 +38,15 @@
         </ul>
         @endif
         <div class="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
-            @if($showAuthor && $testimony->user)
+            {{-- Témoignage anonyme : ni nom, ni photo, ni profil sur le site (docs/fonctionnalites/referencement.md) --}}
+            @if($showAuthor && $testimony->user && $testimony->showsAuthorOnWeb(auth()->user()))
             <a href="{{ route('profiles.show', $testimony->user->id) }}" class="relative z-10 flex min-w-0 items-center gap-2 text-sm text-slate-700 hover:text-slate-900 hover:underline">
                 @include('components.avatar', ['user' => $testimony->user, 'size' => 'sm'])
                 <span class="truncate font-medium">{{ $testimony->user->display_name }}</span>
                 @include('components.verified-badge', ['user' => $testimony->user])
             </a>
+            @elseif($showAuthor)
+            <span class="flex min-w-0 items-center gap-2 text-sm text-slate-500">@include('components.avatar', ['user' => null, 'size' => 'sm'])<span class="truncate italic">{{ __('seo.anonymous') }}</span></span>
             @endif
             <span class="text-sm font-semibold text-primary-600" aria-hidden="true">{{ __('conversion.read') }} <i class="fa-solid fa-arrow-right text-xs"></i></span>
         </div>

@@ -30,6 +30,9 @@
     $shareImage  = route('daily-verse.image', ['date' => $designDate]);
 @endphp
 @section('title', 'Verset du jour — ' . $reference)
+{{-- Indexé pour aujourd'hui et les jours passés (docs/fonctionnalites/referencement.md) --}}
+@section('robots', !$date || $date <= \App\Services\VerseDesignOfTheDay::todayDate() ? \App\Support\Seo::INDEX : 'noindex, follow')
+@section('page_title', \App\Support\Seo::title('Verset du jour : ' . $reference))
 
 @push('meta')
     {{-- Aperçu des réseaux sociaux : image générée dans le design du jour --}}

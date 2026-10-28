@@ -26,6 +26,7 @@ Détails : `docs/interface.md`. Jetons (couleurs, police, arrondis, ombres) : `r
 ## Vérifications avant de terminer
 
 - `php artisan view:cache` et `php artisan test` (`tests/Feature/ExampleTest.php` échoue déjà : absence de `RefreshDatabase`).
+- Jamais `php artisan optimize` ni `config:cache` sur la machine de développement (commandes du serveur seulement) : avec la configuration en cache, les tests ignorent `phpunit.xml` et `RefreshDatabase` vide la vraie base. `tests/TestCase.php` arrête alors les tests ; lancer `php artisan optimize:clear` avant de les relancer.
 - Compilation : `npm run build` demande Node 20.19+. La machine de développement a Node 18 : utiliser `npx -y node@22 node_modules/vite/bin/vite.js build`.
 - `public/build/` est exclu de git et npm n'est pas disponible sur le serveur : après une modification CSS/JS, rappeler de copier `public/build/` sur le serveur.
 - Archive des assets : `/c/Windows/System32/tar.exe -a -c -f build-a-deployer.zip -C public build`. Ne pas utiliser `Compress-Archive` (PowerShell 5.1), qui écrit des chemins avec `\`, mal décompressés sous Linux.

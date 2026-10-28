@@ -41,8 +41,12 @@
                 <a href="{{ $url }}" class="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">{{ $testimony->title }}</a>
             </h3>
             <p class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-600">
+                @if($testimony->showsAuthorOnWeb(auth()->user()))
                 <a href="{{ route('profiles.show', $testimony->user->id) }}" class="truncate hover:text-slate-900 hover:underline">{{ $testimony->user->display_name }}</a>
                 @include('components.verified-badge', ['user' => $testimony->user])
+                @else
+                <span class="truncate italic">{{ __('seo.anonymous') }}</span>
+                @endif
             </p>
             <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 @if($testimony->isInJournal())

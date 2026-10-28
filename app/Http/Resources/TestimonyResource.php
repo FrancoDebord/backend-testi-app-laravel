@@ -45,6 +45,12 @@ class TestimonyResource extends JsonResource
             'prophecy'     => $this->prophecyFor($request),
             // Texte lisible (« @Nom ») + mentions cliquables (docs/fonctionnalites/mentions.md).
             'bodyText'     => $this->body_text === null ? null : \App\Services\Mentions::plain($this->body_text),
+            // Référencement (docs/fonctionnalites/referencement.md) : texte écrit d'une vidéo, accord pour le web,
+            // anonymat sur le site (l'application montre toujours l'auteur).
+            'resume'         => $this->resume,
+            'transcription'  => $this->transcription,
+            'publicationWeb' => (bool) ($this->publication_web ?? true),
+            'isAnonymous'    => (bool) $this->is_anonymous,
             'mentions'     => \App\Services\Mentions::of($this->body_text),
             // Vidéo Bunny sans ancien fichier : meilleure qualité MP4, pour les versions de l'application sans objet « video ».
             'mediaUrl'     => $this->media_url ?? ($bunnyReady ? (collect((array) $video['mp4_urls'])->last()) : null),

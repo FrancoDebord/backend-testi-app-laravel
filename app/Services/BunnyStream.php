@@ -107,6 +107,12 @@ class BunnyStream
         return "https://{$this->cdnHost()}/{$guid}/thumbnail.jpg";
     }
 
+    /** Lecteur intégré Bunny (données structurées VideoObject.embedUrl, og:video : docs/fonctionnalites/referencement.md). */
+    public function embedUrl(string $guid): string
+    {
+        return "https://iframe.mediadelivery.net/embed/{$this->libraryId()}/{$guid}";
+    }
+
     public function mp4Url(string $guid, int $height): string
     {
         return "https://{$this->cdnHost()}/{$guid}/play_{$height}p.mp4";

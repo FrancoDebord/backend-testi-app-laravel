@@ -1,5 +1,7 @@
 @extends('layouts.app')
 @section('title', $event->title)
+{{-- Événement public indexable (docs/fonctionnalites/referencement.md) --}}
+@section('robots', $event->isVisibleTo(null) ? \App\Support\Seo::INDEX : 'noindex, nofollow')
 
 {{-- Aperçu de partage (WhatsApp, Facebook…) : docs/fonctionnalites/apercu-de-partage.md --}}
 @push('meta')

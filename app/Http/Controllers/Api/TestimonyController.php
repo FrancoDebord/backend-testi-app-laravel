@@ -319,6 +319,8 @@ class TestimonyController extends Controller
             'proofs_public' => $request->has('proofs_public') ? $request->boolean('proofs_public') : $testimony->proofs_public,
             // Crédit de la vidéo d'origine : vidéo YouTube seulement, vidé sinon (docs/fonctionnalites/videos-youtube.md).
             ...\App\Support\YouTubeCredit::attributesForUpdate($request, filled($testimony->youtube_id)),
+            // Champs envoyés seulement (docs/fonctionnalites/referencement.md)
+            ...\App\Support\WebPublication::attributes($request),
         ]);
         // Carnet privé : reste un brouillon. Modification par l'AUTEUR (« Modifier et renvoyer ») : refusé →
         // en attente, approuvé → en attente si la modération est obligatoire, label retiré

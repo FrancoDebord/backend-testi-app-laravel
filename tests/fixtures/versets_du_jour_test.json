@@ -1,0 +1,114 @@
+{
+  "titre": "Verset du jour 2027 (extrait de test)",
+  "version_biblique": "Louis Segond 1910 (domaine public)",
+  "annee": 2027,
+  "semaine_debut": "dimanche",
+  "nombre_semaines": 2,
+  "nombre_versets": 14,
+  "semaines": [
+    {
+      "semaine": 14,
+      "debut": "2027-03-28",
+      "fin": "2027-04-03",
+      "thematique": "La résurrection de Jésus",
+      "verset_cle": "Matthieu 28:6",
+      "periode": "Pâques (28 mars)",
+      "versets": [
+        {
+          "date": "2027-03-28",
+          "jour": "Dimanche",
+          "reference": "Matthieu 28:6",
+          "texte": "Il n’est point ici; il est ressuscité, comme il l’avait dit."
+        },
+        {
+          "date": "2027-03-29",
+          "jour": "Lundi",
+          "reference": "Psaumes 114:1",
+          "texte": "Verset de test n° 14-1, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-03-30",
+          "jour": "Mardi",
+          "reference": "Psaumes 114:2",
+          "texte": "Verset de test n° 14-2, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-03-31",
+          "jour": "Mercredi",
+          "reference": "Psaumes 114:3",
+          "texte": "Verset de test n° 14-3, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-01",
+          "jour": "Jeudi",
+          "reference": "Psaumes 114:4",
+          "texte": "Verset de test n° 14-4, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-02",
+          "jour": "Vendredi",
+          "reference": "Psaumes 114:5",
+          "texte": "Verset de test n° 14-5, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-03",
+          "jour": "Samedi",
+          "reference": "Psaumes 114:6",
+          "texte": "Verset de test n° 14-6, l’Éternel est fidèle."
+        }
+      ]
+    },
+    {
+      "semaine": 15,
+      "debut": "2027-04-04",
+      "fin": "2027-04-10",
+      "thematique": "La paix du Ressuscité",
+      "verset_cle": "Jean 20:19",
+      "periode": null,
+      "versets": [
+        {
+          "date": "2027-04-04",
+          "jour": "Dimanche",
+          "reference": "Jean 20:19",
+          "texte": "Verset de test n° 15-0, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-05",
+          "jour": "Lundi",
+          "reference": "Psaumes 115:1",
+          "texte": "Verset de test n° 15-1, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-06",
+          "jour": "Mardi",
+          "reference": "Psaumes 115:2",
+          "texte": "Verset de test n° 15-2, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-07",
+          "jour": "Mercredi",
+          "reference": "Psaumes 115:3",
+          "texte": "Verset de test n° 15-3, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-08",
+          "jour": "Jeudi",
+          "reference": "Psaumes 115:4",
+          "texte": "Verset de test n° 15-4, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-09",
+          "jour": "Vendredi",
+          "reference": "Psaumes 115:5",
+          "texte": "Verset de test n° 15-5, l’Éternel est fidèle."
+        },
+        {
+          "date": "2027-04-10",
+          "jour": "Samedi",
+          "reference": "Psaumes 115:6",
+          "texte": "Verset de test n° 15-6, l’Éternel est fidèle."
+        }
+      ]
+    }
+  ]
+}

@@ -42,7 +42,14 @@
 @endif
 @endif
 
-{{-- Auteur et bouton Suivre (docs/fonctionnalites/abonnements.md) --}}
+{{-- Auteur et bouton Suivre (docs/fonctionnalites/abonnements.md) ; témoignage anonyme : rien sur l'auteur
+     (docs/fonctionnalites/referencement.md) --}}
+@if(!$testimony->showsAuthorOnWeb(auth()->user()))
+<div class="mt-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+    @include('components.avatar', ['user' => null, 'size' => 'md'])
+    <p class="text-sm font-semibold text-slate-700">{{ __('seo.anonymous') }}</p>
+</div>
+@else
 <div class="mt-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
     <a href="{{ route('profiles.show', $testimony->user->id) }}" class="shrink-0 rounded-full" tabindex="-1" aria-hidden="true">
         @include('components.avatar', ['user' => $testimony->user, 'size' => 'md'])
@@ -58,3 +65,4 @@
         @include('components.follow-button', ['user' => $testimony->user, 'following' => $isFollowingAuthor ?? false, 'small' => true])
     </div>
 </div>
+@endif

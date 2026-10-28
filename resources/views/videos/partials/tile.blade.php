@@ -89,11 +89,15 @@
         @endif
 
         <p class="mt-auto flex min-w-0 items-center gap-1.5 pt-3 text-[11px] text-slate-500">
+            @if($testimony->showsAuthorOnWeb(auth()->user()))
             <a href="{{ route('profiles.show', $testimony->user->id) }}" class="relative z-10 flex min-w-0 shrink items-center gap-1.5 hover:text-primary-600" title="{{ $testimony->user->display_name }}">
                 @include('components.avatar', ['user' => $testimony->user, 'size' => 'xs'])
                 <span class="truncate font-medium text-slate-700">{{ $testimony->user->display_name }}</span>
             </a>
             @include('components.verified-badge', ['user' => $testimony->user])
+            @else
+            <span class="flex min-w-0 shrink items-center gap-1.5">@include('components.avatar', ['user' => null, 'size' => 'xs'])<span class="truncate italic">{{ __('seo.anonymous') }}</span></span>
+            @endif
             <span class="shrink-0" aria-hidden="true">·</span>
             <span class="shrink-0 whitespace-nowrap">{{ trans_choice('videos.tile.views', (int) ($testimony->views_count ?? 0), ['count' => $n($testimony->views_count ?? 0)]) }}</span>
             @if($testimony->publishedAt())

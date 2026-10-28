@@ -32,20 +32,24 @@ class ShareMeta
         if (!TestimonyShareImage::isShareable($testimony)) {
             return self::site();
         }
-        $author = $testimony->user?->display_name ?: 'My Testimony';
+        // Anonyme : « Témoignage anonyme » à la place du nom (docs/fonctionnalites/referencement.md).
+        $author = $testimony->webAuthorName(null) ?: 'My Testimony';
         $isVideo = $testimony->type === TestimonyType::Video || $testimony->isYouTube();
         $title = trim((string) $testimony->title);
+        $bunny = $testimony->bunny_video_id ? app(\App\Services\BunnyStream::class) : null;
 
         return [
             'title'       => $title . ' - ' . $author,
-            'description' => self::excerpt($testimony->body_text) ?: __('share.testimony_by', ['name' => $author]),
+            // Description choisie, sinon début du résumé, du texte ou de la transcription.
+            'description' => StructuredData::description($testimony),
             'url'         => $testimony->share_url,
             'image'       => self::absolute(route('share-images.testimony', [
                 'id' => $testimony->id, 'v' => substr(app(TestimonyShareImage::class)->fingerprint($testimony), 0, 10),
             ], false)),
             'imageAlt'    => __('share.image_alt', ['title' => $title, 'name' => $author]),
             'type'        => $isVideo ? 'video.other' : 'article',
-            'video'       => $testimony->isYouTube() ? self::youtube($testimony->youtube_id) : null,
+            'video'       => $testimony->isYouTube() ? self::youtube($testimony->youtube_id)
+                : ($bunny ? ['url' => $bunny->embedUrl($testimony->bunny_video_id), 'type' => 'text/html', 'width' => 1280, 'height' => 720] : null),
         ];
     }
 

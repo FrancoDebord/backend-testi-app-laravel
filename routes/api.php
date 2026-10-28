@@ -52,6 +52,8 @@ Route::prefix('v1')->group(function () {
     // Versions, commentaires, requêtes de prière, témoignages liés — docs/fonctionnalites/verset-du-jour.md
     Route::get('daily-verse/versions', [DailyVerseController::class, 'versions']); // ?date=&translation=
     Route::get('daily-verse/history', [DailyVerseController::class, 'history']); // ?page=&limit= — historique des versets du jour
+    // Thème d'une semaine et ses versets (versets:import) — docs/fonctionnalites/verset-du-jour.md
+    Route::get('daily-verse/weeks/{year}/{week}', [DailyVerseController::class, 'week'])->where(['year' => '20\d{2}', 'week' => '[1-9]|[1-4]\d|5[0-3]']);
     Route::whereNumber('id')->group(function () {
         Route::get('daily-verse/{id}',                 [DailyVerseController::class, 'show']);
         Route::get('daily-verse/{id}/versions',        [DailyVerseController::class, 'versions']);

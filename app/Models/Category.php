@@ -12,7 +12,7 @@ class Category extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'name', 'name_en', 'slug', 'icon', 'color', 'display_order', 'testimony_count', 'is_active',
+        'name', 'name_en', 'intro', 'slug', 'icon', 'color', 'display_order', 'testimony_count', 'is_active',
     ];
 
     /** Noms anglais des types connus (slug => nom) : seeder et migration 2026_10_20_100001. */
@@ -38,6 +38,13 @@ class Category extends Model
      * Nom affiché selon la langue : name_en en anglais s'il est renseigné, sinon name (français).
      * Voir docs/fonctionnalites/categories-de-temoignages.md
      */
+    protected static function booted(): void
+    {
+        // Sitemaps recalculés (docs/fonctionnalites/referencement.md).
+        static::saved(fn () => \App\Services\Sitemaps::forget());
+        static::deleted(fn () => \App\Services\Sitemaps::forget());
+    }
+
     public function displayName(?string $locale = null): string
     {
         $locale ??= app()->getLocale();

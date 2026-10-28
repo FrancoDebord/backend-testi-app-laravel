@@ -120,6 +120,13 @@ Route::delete('/suppression-compte', [LegalController::class, 'destroyAccount'])
 
 // ── Public ────────────────────────────────────────────────────────────────
 Route::get('/',                     [HomeController::class, 'index'])->name('home');
+
+// ── Référencement : sitemaps, robots.txt, pages des catégories et des thèmes ─ docs/fonctionnalites/referencement.md
+Route::get('/robots.txt', [\App\Http\Controllers\Web\PublicPagesController::class, 'robots'])->name('seo.robots');
+Route::get('/sitemap.xml', [\App\Http\Controllers\Web\PublicPagesController::class, 'sitemap'])->name('seo.sitemap');
+Route::get('/sitemap-{name}.xml', [\App\Http\Controllers\Web\PublicPagesController::class, 'sitemap'])->where('name', '[a-z]+')->name('seo.sitemap.part');
+Route::get('/temoignages/categorie/{slug}', [\App\Http\Controllers\Web\PublicPagesController::class, 'category'])->where('slug', '[a-z0-9-]+')->name('testimonies.category');
+Route::get('/themes/{slug}', [\App\Http\Controllers\Web\PublicPagesController::class, 'theme'])->where('slug', '[a-z0-9-]+')->name('themes.show');
 Route::get('/explore',              [ExploreController::class, 'index'])->name('explore');
 Route::get('/bible',                [BibleController::class, 'reader'])->name('bible.reader');
 // Lien partageable d'un passage, ouvert aussi dans l'application : /bible/LSG/jean/3/16-18 (docs/fonctionnalites/liens-bible.md)
@@ -346,6 +353,8 @@ Route::middleware('auth')->group(function () {
     // Testimonies
     Route::get('/publish',               [TestimonyController::class, 'create'])->name('publish');
     Route::post('/testimonies',          [TestimonyController::class, 'store'])->name('testimonies.store');
+    // Publication sur le web et anonymat, par l'auteur ─ docs/fonctionnalites/referencement.md
+    Route::put('/testimonies/{id}/web',  [TestimonyController::class, 'updateWebPublication'])->whereUuid('id')->name('testimonies.web-publication');
     // Texte riche : images insérées et aperçu avant publication ─ docs/fonctionnalites/texte-riche-et-apercu.md
     Route::post('/publish/images',       [\App\Http\Controllers\Web\TestimonyComposerController::class, 'storeImage'])->middleware('throttle:20,1')->name('testimonies.images.store');
     Route::post('/publish/apercu',       [\App\Http\Controllers\Web\TestimonyComposerController::class, 'preview'])->middleware('throttle:60,1')->name('testimonies.preview');

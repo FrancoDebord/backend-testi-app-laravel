@@ -1,5 +1,8 @@
 @extends('layouts.app')
 @section('title', 'Accueil')
+{{-- Page publique indexable (docs/fonctionnalites/referencement.md) --}}
+@section('robots', \App\Support\Seo::INDEX)
+@section('page_title', 'My Testimony – Témoignages chrétiens de guérison, délivrance, salut')
 @php
     // Accueil selon la maquette « My Testimony » et la charte ARISE & SHINE Krea.
     // Voir docs/fonctionnalites/accueil.md. Les blocs n'apparaissent que sur la première page sans filtre ;
@@ -343,7 +346,7 @@
                         @if($t->cover_url)
                         <img src="{{ $t->cover_url }}" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" loading="lazy">
                         @else
-                        @include('components.avatar', ['user' => $t->user, 'size' => 'md'])
+                        @include('components.avatar', ['user' => $t->showsAuthorOnWeb(auth()->user()) ? $t->user : null, 'size' => 'md'])
                         @endif
                         <span class="min-w-0 flex-1">
                             <span class="line-clamp-2 text-sm leading-snug font-semibold text-primary-700">{{ $t->title }}</span>

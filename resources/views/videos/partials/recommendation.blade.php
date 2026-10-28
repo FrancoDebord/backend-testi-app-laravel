@@ -20,7 +20,7 @@
         <h3 class="line-clamp-2 text-sm leading-snug font-semibold text-primary-700">
             <a href="{{ $url }}" class="rounded-sm after:absolute after:inset-0 after:content-[''] group-hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">{{ $testimony->title }}</a>
         </h3>
-        <p class="mt-1 flex min-w-0 items-center gap-1 text-xs text-slate-600"><span class="truncate">{{ $testimony->user->display_name }}</span>@include('components.verified-badge', ['user' => $testimony->user])</p>
+        <p class="mt-1 flex min-w-0 items-center gap-1 text-xs text-slate-600">@if($testimony->showsAuthorOnWeb(auth()->user()))<span class="truncate">{{ $testimony->user->display_name }}</span>@include('components.verified-badge', ['user' => $testimony->user])@else<span class="truncate italic">{{ __('seo.anonymous') }}</span>@endif</p>
         <p class="text-xs text-slate-500">{{ $testimony->viewsLabel() }} · {{ $testimony->publishedAt()?->diffForHumans() }}</p>
     </div>
 </article>

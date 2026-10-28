@@ -64,7 +64,9 @@ class DailyVerseController extends Controller
         if ($chosen !== '' && ($chosen === 'ORIGINAL' || $versions->contains('code', $chosen))) {
             $request->session()->put(self::SESSION_KEY, $chosen);
         }
-        $preferred = $chosen !== '' ? $chosen : $request->session()->get(self::SESSION_KEY, 'ORIGINAL');
+        // Sans choix : version de la langue de la page (texte du jour en français, KJV… en anglais).
+        // Voir docs/fonctionnalites/verset-du-jour.md
+        $preferred = $chosen !== '' ? $chosen : $request->session()->get(self::SESSION_KEY, $this->verses->localized($verse)['translation'] ?? 'ORIGINAL');
         $current   = $preferred === 'ORIGINAL' ? null : $versions->firstWhere('code', $preferred);
 
         $viewer = Auth::user();

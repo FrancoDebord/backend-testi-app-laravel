@@ -66,6 +66,13 @@ class LiveSession extends Model
     // ---------- Relations ----------
 
     /** Événement diffusé (docs/fonctionnalites/evenements.md). */
+    protected static function booted(): void
+    {
+        // Sitemaps recalculés (docs/fonctionnalites/referencement.md).
+        static::saved(fn () => \App\Services\Sitemaps::forget());
+        static::deleted(fn () => \App\Services\Sitemaps::forget());
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);

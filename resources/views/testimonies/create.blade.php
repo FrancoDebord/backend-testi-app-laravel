@@ -207,6 +207,22 @@
                 @error('body_text')<p class="form-error">{{ $message }}</p>@enderror
             </div>
 
+            {{-- Texte écrit d'un audio ou d'une vidéo : lu par Google (docs/fonctionnalites/referencement.md) --}}
+            <div data-type-section="audio video youtube" class="space-y-4">
+                <div>
+                    <label for="resume" class="form-label">{{ __('seo.form.resume') }}</label>
+                    <textarea id="resume" name="resume" rows="3" maxlength="5000" class="form-input" aria-describedby="resume-hint">{{ old('resume') }}</textarea>
+                    <p id="resume-hint" class="form-hint">{{ __('seo.form.resume_hint') }}</p>
+                    @error('resume')<p class="form-error">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="transcription" class="form-label">{{ __('seo.form.transcription') }}</label>
+                    <textarea id="transcription" name="transcription" rows="4" class="form-input" aria-describedby="transcription-hint">{{ old('transcription') }}</textarea>
+                    <p id="transcription-hint" class="form-hint">{{ __('seo.form.transcription_hint') }}</p>
+                    @error('transcription')<p class="form-error">{{ $message }}</p>@enderror
+                </div>
+            </div>
+
             <div data-type-section="audio video">
                 <label for="media_file" class="form-label" data-media-label>{{ __('testimonies.create.media_file') }}</label>
                 <input id="media_file" type="file" name="media_file" accept="audio/*,video/*" class="form-input">
@@ -334,6 +350,23 @@
                 </div>
                 @error('visibility')<p class="form-error">{{ $message }}</p>@enderror
             </div>
+            {{-- Publication sur le web (Google) et anonymat sur le site : docs/fonctionnalites/referencement.md --}}
+            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-4 text-sm text-slate-700 has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50">
+                <input type="hidden" name="publication_web" value="0">
+                <input type="checkbox" name="publication_web" value="1" class="mt-0.5 rounded" @checked(old('publication_web', '1') === '1')>
+                <span>
+                    <span class="font-semibold text-slate-900">{{ __('seo.form.publication_web') }}</span>
+                    <span class="mt-0.5 block text-xs text-slate-500">{{ __('seo.form.publication_web_help') }}</span>
+                </span>
+            </label>
+            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-4 text-sm text-slate-700 has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50">
+                <input type="hidden" name="is_anonymous" value="0">
+                <input type="checkbox" name="is_anonymous" value="1" class="mt-0.5 rounded" @checked(old('is_anonymous') === '1')>
+                <span>
+                    <span class="font-semibold text-slate-900">{{ __('seo.form.anonymous') }}</span>
+                    <span class="mt-0.5 block text-xs text-slate-500">{{ __('seo.form.anonymous_help') }}</span>
+                </span>
+            </label>
         </section>
 
         {{-- Engagement --}}

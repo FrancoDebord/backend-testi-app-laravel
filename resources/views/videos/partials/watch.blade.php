@@ -368,6 +368,28 @@
                 </div>
             </div>
 
+            {{-- ── Sur le web (auteur) : accord pour Google et anonymat, modifiables à tout moment
+                 (docs/fonctionnalites/referencement.md) ── --}}
+            @if(!$inJournal && Auth::id() === $testimony->user_id)
+            <form method="POST" action="{{ route('testimonies.web-publication', $testimony->id) }}" class="card mt-4 space-y-3 p-4 sm:p-5" data-loading-label="{{ __('videos.watch.saving') }}">
+                @csrf @method('PUT')
+                <h2 class="card-title">{{ __('seo.author.title') }}</h2>
+                <label class="flex items-start gap-3 text-sm text-slate-700">
+                    <input type="hidden" name="publication_web" value="0">
+                    <input type="checkbox" name="publication_web" value="1" class="mt-0.5 rounded" @checked($testimony->publication_web)>
+                    <span><span class="font-semibold text-slate-900">{{ __('seo.form.publication_web') }}</span>
+                        <span class="block text-xs text-slate-500">{{ __('seo.author.publication_web_help') }}</span></span>
+                </label>
+                <label class="flex items-start gap-3 text-sm text-slate-700">
+                    <input type="hidden" name="is_anonymous" value="0">
+                    <input type="checkbox" name="is_anonymous" value="1" class="mt-0.5 rounded" @checked($testimony->is_anonymous)>
+                    <span><span class="font-semibold text-slate-900">{{ __('seo.form.anonymous') }}</span>
+                        <span class="block text-xs text-slate-500">{{ __('seo.form.anonymous_help') }}</span></span>
+                </label>
+                <div class="flex justify-end"><button type="submit" class="btn-secondary btn-sm">{{ __('seo.author.save') }}</button></div>
+            </form>
+            @endif
+
             {{-- ── Description ──────────────────────────────────────────── --}}
             @php
                 $showEvent  = $testimony->event_id && $testimony->event?->isVisibleTo(Auth::user());
@@ -410,6 +432,11 @@
                 @endif
             </section>
             @endif
+
+            {{-- ── Texte écrit, verset du thème, partage (docs/fonctionnalites/referencement.md) ── --}}
+            @unless($inJournal)
+            @include('testimonies.partials.web-extras')
+            @endunless
 
             {{-- ── Parole prophétique accomplie (docs/fonctionnalites/paroles-prophetiques.md) ── --}}
             {{-- Montrée si l'auteur l'a rendue publique ; l'auteur la voit toujours, avec un lien vers la parole de son carnet. --}}
@@ -541,7 +568,7 @@
                 <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="{{ __('videos.common.close') }}"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-3 px-5 py-4">
-                <p class="text-sm text-slate-600">{!! __('videos.watch.repost_intro', ['name' => '<strong class="font-semibold text-slate-900">' . e($testimony->user->display_name) . '</strong>']) !!}</p>
+                <p class="text-sm text-slate-600">{!! __('videos.watch.repost_intro', ['name' => '<strong class="font-semibold text-slate-900">' . e($testimony->webAuthorName(Auth::user())) . '</strong>']) !!}</p>
                 <div>
                     <label for="repost-comment" class="form-label">{{ __('videos.watch.repost_comment') }}</label>
                     <textarea id="repost-comment" name="comment" rows="3" maxlength="500" class="form-input" placeholder="{{ __('videos.watch.repost_placeholder') }}">{{ old('comment', $myRepost?->comment) }}</textarea>

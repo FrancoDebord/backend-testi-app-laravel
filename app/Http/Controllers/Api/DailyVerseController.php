@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\DailyVerseCommentResource;
 use App\Http\Resources\PrayerRequestResource;
 use App\Http\Resources\TestimonyResource;
+use App\Http\Resources\ThemeSemaineResource;
 use App\Models\DailyVerse;
+use App\Models\ThemeSemaine;
 use App\Models\User;
 use App\Services\DailyVerses;
 use App\Services\PrayerActionException;
@@ -42,6 +44,21 @@ class DailyVerseController extends Controller
     }
 
     /**
+     * GET /daily-verse/weeks/{year}/{week}  (public) : thème de la semaine et ses versets (dimanche → samedi).
+     * Voir docs/fonctionnalites/verset-du-jour.md
+     */
+    public function week(int $year, int $week): JsonResponse
+    {
+        $theme = ThemeSemaine::with(['versets' => fn ($q) => $q->where('is_active', true)])
+            ->where('annee', $year)->where('numero_semaine', $week)->first();
+        if (!$theme) {
+            return $this->error("Aucun thème pour la semaine {$week} de {$year}.", 404);
+        }
+
+        return $this->success(new ThemeSemaineResource($theme));
+    }
+
+    /**
      * GET /daily-verse/history?page=&limit=  (public) : versets des jours passés, du plus récent au
      * plus ancien, avec leurs compteurs (j'aime, prières, commentaires, témoignages, requêtes) et
      * les réactions de la personne connectée.
@@ -54,12 +71,15 @@ class DailyVerseController extends Controller
         $data = array_map(function (array $item) use ($user) {
             /** @var DailyVerse $verse */
             $verse = $item['verse'];
+            // Dans la langue de l'application (Accept-Language) : docs/fonctionnalites/verset-du-jour.md
+            $localized = $this->verses->localized($verse);
 
             return [
                 'date'        => $item['date'],
                 'id'          => $verse->id,
-                'reference'   => $verse->reference,
-                'verseText'   => $verse->verse_text,
+                'reference'   => $localized['reference'],
+                'verseText'   => $localized['text'],
+                'language'    => $localized['language'],
                 'theme'       => $verse->theme,
                 'themeLabel'  => $verse->themeLabel(),
                 'counts'      => [
@@ -272,11 +292,24 @@ class DailyVerseController extends Controller
             ? ($this->verses->versions($verse, $translation)['versions'][0] ?? null)
             : null;
 
+        // Verset dans la langue de l'application (Accept-Language, langue choisie ou du système) : texte du jour en
+        // français, traduction installée en anglais (KJV…), texte du jour à défaut. Voir docs/fonctionnalites/verset-du-jour.md
+        $localized = $this->verses->localized($verse);
+
         return [
             'id'           => $verse->id,
-            'verseText'    => $verse->verse_text,
-            'reference'    => $verse->reference,
+            'verseText'    => $localized['text'],
+            'reference'    => $localized['reference'],
+            'language'        => $localized['language'],
+            'textTranslation' => $localized['translation'],      // null : texte du jour
+            'textTranslationName' => $localized['translationName'],
+            'originalText'      => $verse->verse_text,
+            'originalReference' => $verse->reference,
             'theme'        => $verse->theme,
+            // Thème de la semaine (verset clé, période) et version du texte, importés par versets:import.
+            'weekTheme'    => $verse->themeSemaine ? new ThemeSemaineResource($verse->themeSemaine) : null,
+            'version'      => $verse->version,
+            'dayName'      => $verse->dayName(),
             'themeLabel'   => $verse->themeLabel(),
             'weekNumber'   => $verse->week_number,
             'date'         => $verse->scheduled_date?->toDateString(),

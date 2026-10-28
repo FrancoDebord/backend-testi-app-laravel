@@ -16,9 +16,30 @@ Lecture publique ; les actions demandent un compte (invité : connexion proposé
 
 | Règle | Détail |
 |---|---|
-| **Choix** | Verset actif programmé ce jour-là (`scheduled_date`, jour du calendrier **Africa/Porto-Novo** depuis le 2026-10-13 : le verset change à minuit au Bénin, en même temps que le [design du jour](designs-du-verset.md)). Sinon, un verset actif choisi **d'après la date** (même verset toute la journée, pour que commentaires et requêtes restent rattachés au verset affiché). Auparavant ce repli était tiré au hasard à chaque appel. |
+| **Choix** | Verset actif programmé ce jour-là (`scheduled_date`, jour du calendrier **Africa/Porto-Novo** depuis le 2026-10-13 : le verset change à minuit au Bénin, en même temps que le [design du jour](designs-du-verset.md)). Sinon (2026-10-27) le verset du **même jour et du même mois** de l'année la plus proche (2028-03-29 → 2027-03-29). Sinon, un verset actif choisi **d'après la date** (même verset toute la journée, pour que commentaires et requêtes restent rattachés au verset affiché). Auparavant ce repli était tiré au hasard à chaque appel. Aucun verset actif : 404 « Aucun verset programmé. ». |
+| **Cache** | Le verset trouvé pour une date est gardé en cache jusqu'à minuit (Africa/Porto-Novo), puis recalculé. Tout enregistrement ou suppression d'un verset invalide ce cache (`DailyVerse::forDate`). |
 | **Référence** | Texte libre saisi par l'équipe (« Jérémie 29 : 11 », « Jean 3:16-17 »). `App\Support\BibleReference` la reconnaît : noms français avec ou sans accents, noms anglais, abréviations courantes (« Jn », « Ps », « 1 Co »…), séparateurs `:` `.` `,`, plages `16-18`, `16–18`, `16 à 18`. Une plage qui déborde sur le chapitre suivant est réduite à son premier chapitre. |
 | **Référence non reconnue** | Seul le **texte du jour** (saisi par l'équipe) est proposé ; pas de versions ni de témoignages liés. |
+
+## Langue du verset (2026-10-27)
+
+Le verset du jour s'affiche directement dans la langue de l'application ou du site.
+
+| Langue | Texte affiché |
+|---|---|
+| Français | Texte du jour (Louis Segond, saisi ou importé). |
+| Anglais | Première traduction anglaise installée qui contient le passage : `KJV`, puis `WEB`, `BBE`, `ASV` (`DailyVerses::TRANSLATIONS_BY_LANGUAGE`), sinon toute traduction anglaise installée (`language: en`, ou noms de livres anglais). Référence dans cette traduction (« John 3:16 »). Aucune : texte du jour en français. |
+
+- **Langue utilisée** :
+  - application : l'en-tête `Accept-Language` qu'elle envoie déjà, c'est-à-dire la langue choisie, sinon celle du système (`AppLanguage.system`, par défaut) ;
+  - site : la langue de la page (sélecteur, compte, puis navigateur ; voir [langues.md](langues.md)).
+- **API** (`GET /daily-verse`, `/daily-verse/{id}`, réactions, `/daily-verse/history`) :
+  - `verseText` et `reference` sont dans cette langue ;
+  - champs ajoutés : `language` (`fr` | `en`), `textTranslation` (code, `null` pour le texte du jour), `textTranslationName`, `originalText`, `originalReference`.
+  - L'application affiche donc le verset traduit sans mise à jour.
+- **Site** : page du verset (version par défaut quand la personne n'en a pas choisi) et carte « Verset du jour » de l'accueil. Un choix de version fait sur la page (`?version=`) reste prioritaire.
+- **Code** : `DailyVerses::localized()`, `translationFor()`.
+- **Limite** : l'image de partage du verset (aperçu des réseaux sociaux) reste en français.
 
 ## Versions de la Bible
 
@@ -54,6 +75,8 @@ Migration : `2026_10_06_400001_create_daily_verse_participation`.
 |---|---|---|---|
 | GET | `/daily-verse?date=AAAA-MM-JJ&translation=KJV` | public | Verset (du jour par défaut). Ajoute `parsed` (livre, chapitre, versets), `translation` (le passage dans cette version, si demandé), `counts.comments`, `counts.prayerRequests` (publiques), `webUrl`. |
 | GET | `/daily-verse/{id}` | public | Même format pour un verset donné |
+| — | (champs ajoutés le 2026-10-27) | | `weekTheme` `{ year, week, theme, keyVerse, period, startDate, endDate }` ou `null`, `version` (« LSG 1910 »), `dayName` (« Dimanche ») |
+| GET | `/daily-verse/weeks/{year}/{week}` | public | Thème de la semaine et ses versets : `{ year, week, theme, keyVerse, period, startDate, endDate, verses: [{ id, date, dayName, reference, verseText, version }] }` ; 404 si la semaine n'existe pas |
 | GET | `/daily-verse/versions?date=` · `/daily-verse/{id}/versions?translation=` | public | Le passage dans chaque version |
 | POST | `/daily-verse/{id}/react` `{ type: like\|pray\|amen, active? }` | connecté | Bascule (ou fixe) une réaction ; renvoie le verset. `POST/DELETE /daily-verse/react` (verset du jour) restent disponibles. Ajouter `pray` exige le [temps de prière](temps-de-priere.md) (2026-10-19, sinon 422) ; `like`, `amen` et les retraits ne sont jamais bloqués. `again: true` : prier encore ; `{ active: false, last: true }` : retirer la dernière prière ; `myPrayerTimes` ([prier-plusieurs-fois.md](prier-plusieurs-fois.md)). |
 | POST | `/daily-verse/{id}/pray/start` | connecté | Commence le temps de prière avant « Je prie » : `{ startedAt, requiredSeconds, confirmableAt }`. Site : `POST /verset-du-jour/{id}/je-prie/commencer` (`daily-verse.pray.start`), le bouton « Je prie » ouvre l'écran « Temps de prière ». |
@@ -138,9 +161,53 @@ php artisan verse:import storage/dailyverse/versets_du_jour.json --start=2026-10
 
 **Effet à connaître** : tant qu'un jour n'a pas de verset programmé, le verset affiché est choisi d'après la date parmi **tous** les versets actifs. Ajouter des versets change donc le verset du **jour de l'import** et celui des jours passés non programmés dans l'historique (`/verset-du-jour/historique`). Commentaires, réactions et requêtes restent rattachés à leur verset. À partir du lendemain, chaque jour a son verset programmé.
 
+## Importer une année de versets par semaine thématique (`versets:import`, 2026-10-27)
+
+### Commande à lancer (sur le serveur, après `php artisan migrate --force`)
+
+1. Déposer le fichier dans `storage/dailyverse/`.
+2. Lancer :
+
+```bash
+# Calendrier du 27 octobre 2026 au 31 décembre 2027 (431 versets, 63 semaines)
+php artisan versets:import dailyverse/versets_du_jour_2026_2027.json
+
+# Année 2027 seule (365 versets) : fichier par défaut, sans argument
+php artisan versets:import
+
+# Repartir de zéro sur la période du fichier (confirmation demandée)
+php artisan versets:import dailyverse/versets_du_jour_2026_2027.json --fresh
+```
+
+- **Chemin** : relatif au dossier `storage/` (`dailyverse/…`), ou absolu.
+- **Résultat** : barre de progression, puis « 63 semaine(s) et 431 verset(s) importés, du 2026-10-27 au 2027-12-31. ».
+- **Relancer** la même commande met à jour sans rien dupliquer.
+- **Aujourd'hui** : importer un fichier qui commence aujourd'hui remplace aussi le verset du jour en cours. Ses commentaires et réactions restent rattachés à la même ligne, mais sous le nouveau texte. Pour l'éviter, importer la veille du premier jour du fichier.
+
+### Format
+
+`version_biblique`, `semaines: [{ annee, semaine, debut, fin, thematique, verset_cle, periode|null, versets: [{ date, jour, reference, texte }] }]`.
+
+- **Année d'une semaine** : son champ `annee`, sinon le champ `annee` du fichier (`versets_du_jour_2027.json`). Un fichier peut ainsi couvrir plusieurs années, et un même numéro de semaine exister pour deux années différentes (semaines 44 à 53 de 2026 et de 2027).
+- Les semaines sont numérotées dans leur année, du dimanche au samedi. La première et la dernière d'un fichier peuvent être incomplètes.
+
+| Règle | Détail |
+|---|---|
+| Où | Dans le verset du jour existant (`daily_verses`) : chaque date reçoit son verset (`scheduled_date`, `reference`, `verse_text`, `version`), son thème (`theme`, `week_number`, `theme_semaine_id`). Le site et l'application l'affichent sans changement, avec réactions, commentaires, designs et versions. |
+| Thèmes | Table `themes_semaine` (`annee`, `numero_semaine` : unique par année, `thematique`, `verset_cle`, `periode`, `date_debut`, `date_fin`), modèle `ThemeSemaine` (`versets()`). |
+| Remplacement | Le verset déjà programmé à une date du fichier est **remplacé** (même ligne : ni doublon, ni changement d'identifiant). |
+| Idempotent | Relancer la commande met à jour (`updateOrCreate` des thèmes, une ligne par date). Le tout dans une transaction : en cas d'erreur, rien n'est écrit. |
+| Validation | Avant toute écriture : clés présentes, année de chaque semaine, numéros de semaine 1 à 53 sans doublon dans une même année, dates `AAAA-MM-JJ` valides, dans l'année et dans la semaine, aucune date en double, référence de 100 caractères au plus. Erreurs listées (15 au plus), code de sortie 1. |
+| `--fresh` | Supprime d'abord les versets programmés **sur la période du fichier** (première → dernière date) **avec leurs réactions et commentaires**, et les thèmes de ses semaines ; une confirmation est demandée. Les jours antérieurs ne sont jamais touchés. |
+| Version | « Louis Segond 1910 (…) » → `LSG 1910` (défaut). |
+| Affichage | Barre de progression, puis « 53 semaine(s) et 365 verset(s) importés pour 2027. » |
+
+Fichiers : `app/Console/Commands/ImportVersetsDuJour.php`, `app/Models/ThemeSemaine.php`, `app/Models/DailyVerse.php` (`themeSemaine`, `scopePourDate`, `dayName`, `forDate`), `app/Http/Resources/ThemeSemaineResource.php`, migrations `2026_10_27_100001_create_themes_semaine_table`, `2026_10_27_100002_add_theme_semaine_to_daily_verses_table`, tests `tests/Feature/VersetsDuJourImportTest.php` (fixture `tests/fixtures/versets_du_jour_test.json`).
+
 ## Tests
 
 - Import : `php artisan test --filter=ImportDailyVersesTest` (textes depuis un fichier Bible ou `bible_verses`, thème, `--save-texts` puis import depuis le fichier seul, pas de doublon, `--start` et dates prises, erreur sans écriture, livres d'un chapitre).
+- Import par semaine : `php artisan test --filter=VersetsDuJourImportTest` (nombre de lignes, second import sans doublon, verset déjà programmé remplacé, `--fresh` et sa confirmation, fichier invalide, verset du jour au fuseau de Porto-Novo, repli sur le même jour d'une autre année, 404, semaine et ses 7 versets).
 - Serveur : `php artisan test --filter=DailyVerseTest` (analyse des références, versions complètes / partielles / absentes, référence non reconnue, réactions, commentaires et droits, mentions, signalements et retrait, requêtes liées et visibilité, témoignages liés, stabilité du verset sans programmation, pages du site).
 - Application : `flutter test test/daily_verse_test.dart` (analyse des références, lecture des réponses, changement de version, version absente, « Comparer », onglets, hors connexion, verset de secours, mode lecture, 320 / 390 px × 1 / 1,3 sans débordement).
 

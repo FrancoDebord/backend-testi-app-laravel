@@ -54,6 +54,8 @@ class StoreTestimonyRequest extends FormRequest
             ...\App\Services\LiveTestimonies::rules(),
             // Crédit de la vidéo YouTube d'origine (docs/fonctionnalites/videos-youtube.md)
             ...\App\Support\YouTubeCredit::rules(),
+            // Publication sur le web, anonymat sur le site, résumé, transcription (docs/fonctionnalites/referencement.md)
+            ...\App\Support\WebPublication::rules(),
         ];
     }
 

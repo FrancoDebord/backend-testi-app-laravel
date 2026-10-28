@@ -4,6 +4,118 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-27 — Référencement Google et publication sur le web
+
+- **Utilisateurs** :
+  - **publication sur le web** : case « Publier aussi sur le web » à la publication, cochée par défaut, et réglage « Sur le web » sur la page de son témoignage. Retirer l'accord retire la page de Google (410) ; l'application n'est pas concernée ;
+  - **option anonyme sur le site** : « Témoignage anonyme », sans nom, photo ni profil. L'application montre toujours l'auteur ;
+  - **texte écrit** pour les audios et vidéos : résumé et transcription, affichés sur la page ;
+  - **nouvelles pages** : `/temoignages/categorie/{slug}` (« Témoignages de guérison », introduction modifiable par l'administration) et `/themes/{slug}` (thème du verset du jour) ;
+  - la page d'un témoignage montre le verset du thème correspondant, le partage WhatsApp et Facebook, et les liens vers l'application ;
+  - le pied de page liste les catégories et les directs.
+- **Confidentialité** :
+  - `/testimonies/{id}` montrait jusqu'ici un témoignage en attente ou réservé aux abonnés à toute personne qui avait le lien. Il répond maintenant 404, comme `/videos/{id}` ;
+  - un témoignage supprimé après sa publication répond 410 ;
+  - toutes les pages sont en `noindex` par défaut, et seules les pages publiques l'ouvrent.
+- **Développeurs** :
+  - colonnes `meta_description`, `resume`, `transcription`, `is_anonymous`, `publication_web(_at, _revoked_at)`, `categories.intro`, `themes_semaine.slug` ;
+  - `Testimony::isOnPublicWeb`, `webStatusFor`, `showsAuthorOnWeb` ; `published()` filtre l'accord web hors API ;
+  - `App\Support\WebPublication`, `Seo`, `StructuredData`, `App\Services\Sitemaps` (sans dépendance), commande `sitemap:generate` (chaque nuit à 3 h 45), `Web\PublicPagesController` (catégories, thèmes, sitemaps, `/robots.txt`), `<x-seo-head>`, `BunnyStream::embedUrl` ;
+  - API : `resume`, `transcription`, `publicationWeb`, `isAnonymous` (facultatifs, aucune route modifiée) ;
+  - tests `SeoTest` ; tests de `SharePreviewTest` adaptés (pages non publiques en 404, robots.txt servi par une route).
+  - Voir [referencement.md](fonctionnalites/referencement.md).
+- **Application** (dépôt Flutter) : case « Publier sur le web » (`publicationWeb`) à ajouter. Sans elle, l'accord est donné par défaut.
+- **Déploiement** (serveur) :
+  1. `php artisan migrate --force`, puis `php artisan optimize:clear` et `php artisan optimize` ;
+  2. supprimer `public/robots.txt` ;
+  3. copier `public/build/` ;
+  4. mettre à jour le `.htaccess` racine ;
+  5. renseigner `GOOGLE_SITE_VERIFICATION` dans `.env` ;
+  6. soumettre `/sitemap.xml` dans Search Console.
+
+`.htaccess` racine recommandé (au-dessus de `public/`) :
+
+```apache
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Jamais redirigés : l'API (une redirection 301 d'un POST perd son contenu : application, webhooks
+    # Bunny et LiveKit, cron) et /.well-known (Android refuse de vérifier les App Links derrière une redirection).
+
+    # 1. HTTPS
+    RewriteCond %{REQUEST_URI} !^/(api|\.well-known)/
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^ https://temoignage.as-krea.com%{REQUEST_URI} [L,R=301,NE]
+
+    # 2. Un seul domaine (www., ancien domaine… → temoignage.as-krea.com)
+    RewriteCond %{REQUEST_URI} !^/(api|\.well-known)/
+    RewriteCond %{HTTP_HOST} !^temoignage\.as-krea\.com$ [NC]
+    RewriteRule ^ https://temoignage.as-krea.com%{REQUEST_URI} [L,R=301,NE]
+
+    # 3. Adresses en /public/… (demandées telles quelles) → sans /public
+    RewriteCond %{THE_REQUEST} \s/+public(/\S*)?\s [NC]
+    RewriteRule ^public/?(.*)$ /$1 [L,R=301,NE]
+
+    # 4. Tout le reste vers public/ (inchangé)
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+```
+
+---
+
+## 2026-10-27 — Import des versets du jour : fichiers sur plusieurs années
+
+- **Développeurs** : `versets:import` accepte le format de `versets_du_jour_2026_2027.json`, où chaque semaine porte son `annee` et où un même numéro de semaine existe en 2026 et en 2027. L'ancien format, avec `annee` global, reste lu. `--fresh` ne supprime plus que la période du fichier, et non des années entières. Résumé « … importés, du 2026-10-27 au 2027-12-31 ». Tests `VersetsDuJourImportTest`. La commande à lancer est rappelée dans [verset-du-jour.md](fonctionnalites/verset-du-jour.md#commande-à-lancer-sur-le-serveur-après-php-artisan-migrate---force).
+- **Déploiement** (serveur) : déposer le fichier dans `storage/dailyverse/`, puis `php artisan versets:import dailyverse/versets_du_jour_2026_2027.json`.
+
+---
+
+## 2026-10-27 — Verset du jour dans la langue de l'application, langue du système par défaut
+
+- **Utilisateurs** :
+  - application et site en anglais : le verset du jour s'affiche directement en anglais (KJV, sinon une autre traduction anglaise installée ; texte français à défaut), avec sa référence anglaise (« John 3:16 ») ;
+  - l'application prenait déjà la langue du système par défaut ; sur le site, un visiteur voit maintenant la langue de son navigateur (le sélecteur et la langue du compte restent prioritaires) ;
+  - un nouveau compte garde la langue de l'inscription au lieu du français forcé (push dans la bonne langue).
+- **Développeurs** :
+  - `DailyVerses::localized()` / `translationFor()` ;
+  - API : `verseText` et `reference` localisés, nouveaux champs `language`, `textTranslation`, `textTranslationName`, `originalText`, `originalReference` ;
+  - `Locales::fromRequest` (navigateur pour un visiteur) ; `User::creating` (locale) ;
+  - `Web\DailyVerseController` (version par défaut) et `VerseOfTheDayCard` ;
+  - tests `DailyVerseLanguageTest`.
+  - Voir [verset-du-jour.md](fonctionnalites/verset-du-jour.md#langue-du-verset-2026-10-27), [langues.md](fonctionnalites/langues.md).
+- **Application** : aucune mise à jour nécessaire (elle envoie déjà `Accept-Language`).
+- **Déploiement** (serveur) : `php artisan view:cache`. Aucune migration, aucune recompilation.
+
+---
+
+## 2026-10-27 — Garde-fou des tests : jamais sur la vraie base
+
+- **Incident** : la configuration de la machine de développement avait été mise en cache (`php artisan optimize`). `php artisan test` a alors ignoré `phpunit.xml` (SQLite en mémoire), et `RefreshDatabase` a vidé la base MySQL locale `testiapp_backend_laravel` (comptes, témoignages…). Aucune sauvegarde locale : à restaurer depuis un export de la production. Le serveur n'a pas été touché.
+- **Développeurs** : `tests/TestCase.php` (`createApplication`) arrête les tests avant toute migration si la configuration est en cache ou si la base n'est pas SQLite en mémoire. Message : lancer `php artisan optimize:clear`. Règle ajoutée à `CLAUDE.md` et au §5 de `docs/README.md` : pas de `php artisan optimize` en développement.
+- **Déploiement** : aucun changement (tests seulement).
+
+---
+
+## 2026-10-27 — Versets du jour 2027 par semaine thématique
+
+- **Utilisateurs** :
+  - une fois importé, chaque jour de 2027 a son verset (Louis Segond 1910) et le thème de sa semaine ; les versets déjà programmés sur ces dates sont remplacés ;
+  - une date sans verset programmé affiche maintenant le verset du même jour et du même mois de l'année la plus proche.
+- **Développeurs** :
+  - commande `versets:import {fichier=dailyverse/versets_du_jour_2027.json} {--fresh}` (validation complète, transaction, idempotente, barre de progression) ;
+  - table et modèle `themes_semaine` / `ThemeSemaine` ;
+  - `daily_verses.theme_semaine_id` et `version` ;
+  - `DailyVerse::pourDate`, `dayName` ; cache de `forDate` jusqu'à minuit (Africa/Porto-Novo), invalidé à chaque changement de verset ;
+  - API : `weekTheme`, `version` et `dayName` dans les réponses du verset ; nouvelle route `GET /api/v1/daily-verse/weeks/{year}/{week}` (`ThemeSemaineResource`) ;
+  - fuseau explicite (`VerseDesignOfTheDay::timezone()`), `APP_TIMEZONE` inchangé (UTC) ;
+  - tests `VersetsDuJourImportTest`.
+  - Voir [verset-du-jour.md](fonctionnalites/verset-du-jour.md).
+- **Déploiement** : `php artisan migrate --force`, puis `php artisan optimize:clear` et `php artisan optimize`. Déployer `storage/dailyverse/versets_du_jour_2027.json`, puis `php artisan versets:import`. Aucune recompilation des assets.
+
+---
+
 ## 2026-10-27 — Texte riche et aperçu avant publication
 
 - **Utilisateurs** (site, « Publier un témoignage ») :

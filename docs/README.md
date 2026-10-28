@@ -38,6 +38,7 @@ Serveur Laravel de **My Testimony** (AIRID) : site web de partage de témoignage
 | [Temps de prière](fonctionnalites/temps-de-priere.md) | « Je prie » (requête de prière, témoignage) ouvre un écran de 5 minutes ; la prière n'est enregistrée qu'après, contrôle par le serveur (`…/pray/start`, 422), `PRAYER_FOCUS_SECONDS` (site et application) |
 | [« J'aime » sur les commentaires](fonctionnalites/jaime-commentaires.md) | Cœur sous les commentaires des témoignages, des événements et du verset du jour (site et API) : un par personne, compteur jamais négatif, `likesCount` / `isLikedByMe`, notification `comment_liked` la première fois |
 | [Réactions (j'aime, je prie…)](fonctionnalites/reactions.md) | Une réaction « j'aime » et une « je prie » au plus par personne : témoignages, événements, requêtes et sessions de prière ; jamais comptées deux fois |
+| [Référencement (Google)](fonctionnalites/referencement.md) | Accord de l'auteur pour le web, anonymat sur le site, 404 / 410, balises (title, description, canonical, robots), JSON-LD (VideoObject, Article, BroadcastEvent, CollectionPage), pages catégories et thèmes, sitemaps (dont vidéo), robots.txt |
 | [Texte riche et aperçu avant publication](fonctionnalites/texte-riche-et-apercu.md) | Éditeur du site : gras, italique, barré, titres, citations, listes, liens, images envoyées ; aperçu du témoignage (texte, audio, vidéo, YouTube) avant de publier |
 | [Prier plusieurs fois](fonctionnalites/prier-plusieurs-fois.md) | « Je prie » ajoute une prière à chaque fois (après le temps de prière), « Retirer ma dernière prière », nombre de fois par personne (`myPrayerTimes`) ; compteur = nombre de personnes |
 | [Qui a réagi ?](fonctionnalites/qui-a-reagi.md) | Effectif de chaque réaction et liste des personnes (popup du site, `GET …/{id}/reactions/people`) : témoignages, verset du jour, requêtes, événements et sessions de prière |
@@ -175,6 +176,10 @@ Page de lecture d'un témoignage (2026-10-23) : aucune migration ; **recompiler 
 En-tête des pages (2026-10-23, `layouts/app`) : aucune migration ; **recompiler et copier `public/build/`**, puis `php artisan view:cache`.
 
 Page de profil (2026-10-23) : aucune migration ; **recompiler et copier `public/build/`** (nouvelles classes du profil), puis `php artisan view:cache`.
+
+Versets du jour 2027 par semaine thématique (2026-10-27) : **migrations** `2026_10_27_100001_create_themes_semaine_table` et `2026_10_27_100002_add_theme_semaine_to_daily_verses_table` (`php artisan migrate --force`), puis `php artisan optimize:clear` et `php artisan optimize` (route `daily-verse/weeks/{year}/{week}`), puis l'import du fichier déposé dans `storage/dailyverse/` : `php artisan versets:import dailyverse/versets_du_jour_2026_2027.json` (27 octobre 2026 → 31 décembre 2027), ou `php artisan versets:import` pour `versets_du_jour_2027.json`. Les versets déjà programmés sur la période sont remplacés. Aucune recompilation des assets ([verset du jour](fonctionnalites/verset-du-jour.md#importer-une-année-de-versets-par-semaine-thématique-versetsimport-2026-10-27)).
+
+Référencement (2026-10-27) : **migration** `2026_10_27_200001_add_web_publication_fields` (`php artisan migrate --force`), puis `php artisan optimize:clear` et `php artisan optimize` (sur le serveur), **supprimer `public/robots.txt`** sur le serveur (remplacé par la route `/robots.txt`), **copier `public/build/`**, variables facultatives `GOOGLE_SITE_VERIFICATION`, `APP_PLAY_STORE_URL`, `APP_STORE_URL`, `IOS_APP_STORE_ID`, et le `.htaccess` racine (HTTPS, domaine unique, pas de `/public/`) : voir [référencement](fonctionnalites/referencement.md#déploiement) et le journal. Le cron existant (`/api/v1/_cron`) lance la régénération nocturne des sitemaps.
 
 Texte riche et aperçu (2026-10-27) : **aucune migration**. Lancer `php artisan optimize:clear` puis `php artisan optimize` (routes `/publish/images`, `/publish/apercu`), puis **recompiler et copier `public/build/`** ; dossier `storage/app/public/testimony-images/` accessible en écriture ([texte riche et aperçu](fonctionnalites/texte-riche-et-apercu.md)).
 
@@ -381,8 +386,11 @@ Puis recharger la page avec Ctrl+F5.
 ## 5. Tests
 
 ```bash
+php artisan optimize:clear   # si la configuration a été mise en cache sur cette machine
 php artisan test
 ```
+
+**Garde-fou (2026-10-27)** : les tests tournent uniquement sur la base SQLite en mémoire de `phpunit.xml`. Si la configuration est en cache (`php artisan optimize`, `config:cache`) ou si une autre base est configurée, `tests/TestCase.php` les arrête avant toute migration : « Tests arrêtés : base « … » au lieu de SQLite en mémoire… ». Sans ce contrôle, `RefreshDatabase` vidait la vraie base de développement. Ne pas lancer `php artisan optimize` en développement : c'est une commande du serveur.
 
 | Fichier | Couvre |
 |---|---|

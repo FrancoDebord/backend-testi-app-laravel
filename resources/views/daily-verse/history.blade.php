@@ -6,6 +6,8 @@
     Un clic ouvre le verset du jour concerné. docs/fonctionnalites/verset-du-jour.md
 --}}
 @section('title', __('daily_verse_history.title'))
+{{-- Page publique indexable (docs/fonctionnalites/referencement.md) --}}
+@section('robots', \App\Support\Seo::INDEX)
 @php
     $header      = __('daily_verse_history.title');
     $subheader   = __('daily_verse_history.subtitle');

@@ -8,7 +8,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Langues de l'interface et de l'API : français (par défaut) et anglais.
- * API : en-tête Accept-Language ; site : choix enregistré en session, sinon langue du compte.
+ * API : en-tête Accept-Language ; site : choix enregistré en session, sinon langue du compte, sinon langue
+ * du navigateur (Accept-Language).
  * Push et e-mails : langue du compte (users.locale). Voir docs/fonctionnalites/langues.md
  */
 final class Locales
@@ -53,7 +54,10 @@ final class Locales
         return $candidates[0][2];
     }
 
-    /** Langue d'une requête : en-tête Accept-Language pour l'API ; session, compte, puis français pour le site. */
+    /**
+     * Langue d'une requête : en-tête Accept-Language pour l'API (langue choisie dans l'application, sinon celle
+     * du système) ; pour le site : session, compte, puis langue du navigateur (français à défaut).
+     */
     public static function fromRequest(Request $request): string
     {
         if ($request->is('api/*')) {
@@ -61,7 +65,8 @@ final class Locales
         }
         $session = $request->hasSession() ? self::normalize($request->session()->get(self::SESSION_KEY)) : null;
 
-        return $session ?? self::forUser($request->user());
+        return $session
+            ?? ($request->user() ? self::forUser($request->user()) : self::fromAcceptLanguage($request->header('Accept-Language')));
     }
 
     /** Langue enregistrée d'un compte (push, e-mails), français par défaut. */

@@ -1,9 +1,15 @@
 @extends('layouts.app')
 @section('title', $live->title)
+{{-- Direct public indexable (docs/fonctionnalites/referencement.md) --}}
+@section('robots', $live->isVisibleTo(null) ? \App\Support\Seo::INDEX : 'noindex, nofollow')
+@section('page_title', \App\Support\Seo::title((string) $live->title, $live->isActive() ? 'Direct' : 'Replay'))
 
 {{-- Aperçu de partage (WhatsApp, Facebook…) : docs/fonctionnalites/apercu-de-partage.md --}}
 @push('meta')
     <x-share-meta :meta="\App\Support\ShareMeta::live($live)" />
+    @if($live->isVisibleTo(null))
+    {{ \App\Support\StructuredData::script(\App\Support\StructuredData::live($live)) }}
+    @endif
 @endpush
 @php
     $header      = $live->title;

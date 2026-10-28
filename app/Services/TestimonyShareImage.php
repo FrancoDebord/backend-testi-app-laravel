@@ -24,7 +24,8 @@ class TestimonyShareImage
     /** Visible de tous, sans compte (les robots des réseaux sociaux ne sont pas connectés). */
     public static function isShareable(Testimony $testimony): bool
     {
-        return $testimony->isVisibleTo(null);
+        // Publié sur le web seulement (accord de l'auteur) : docs/fonctionnalites/referencement.md
+        return $testimony->isOnPublicWeb();
     }
 
     /** Change dès que le titre, l'image, la durée, l'auteur ou la catégorie changent. */
@@ -34,7 +35,7 @@ class TestimonyShareImage
             $testimony->updated_at?->getTimestamp(), $testimony->title, $testimony->type?->value,
             $testimony->cover_url, $testimony->youtube_id, $testimony->bunny_video_id, $testimony->video_status,
             $testimony->duration_sec, $testimony->duration,
-            $testimony->user?->display_name, $testimony->category?->name ?? $testimony->category_slug, $testimony->category?->name_en,
+            $testimony->webAuthorName(null), $testimony->category?->name ?? $testimony->category_slug, $testimony->category?->name_en,
         ]);
     }
 
@@ -67,7 +68,8 @@ class TestimonyShareImage
             return [$this->images->jpeg($photo), true];
         }
 
-        $author = $testimony->user?->display_name;
+        // Témoignage anonyme : jamais le nom de l'auteur sur l'image.
+        $author = $testimony->webAuthorName(null);
         $category = $testimony->category?->displayName();
         $label = collect([$isVideo ? __('share.video') : ($isAudio ? __('share.audio') : __('share.testimony')), $category])
             ->filter()->implode(' · ');

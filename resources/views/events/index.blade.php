@@ -1,5 +1,7 @@
 @extends('layouts.app')
 @section('title', __('layout.nav.events'))
+{{-- Page publique indexable (docs/fonctionnalites/referencement.md) --}}
+@section('robots', \App\Support\Seo::INDEX)
 @php
     $header      = __('events.index.header');
     $subheader   = __('events.index.subheader');
