@@ -24,6 +24,7 @@
         </p>
 
         <p class="mt-0.5 text-sm break-words whitespace-pre-line text-slate-700" data-comment-body>{{ \App\Services\Mentions::html($comment->body) }}</p>
+        <x-link-preview :text="$comment->body" data-comment-preview />
 
         @if($canUpdate)
         <form method="POST" action="{{ route('comments.update', $comment->id) }}" class="mt-2" data-comment-edit data-no-loading hidden>

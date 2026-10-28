@@ -4,6 +4,15 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-28 — Liens cliquables et aperçus de liens
+
+- **Utilisateurs** : une adresse (`https://…`, `http://…`, `www.…`) écrite ou collée devient un lien cliquable dans les témoignages, commentaires et réponses, requêtes de prière, messages d'encouragement, sessions de prière, événements (description, commentaires, avis), commentaires du verset du jour, description d'un direct et bio du profil. Sous les descriptions, commentaires et réponses, le premier lien s'affiche en aperçu : miniature, site, titre, début de la description (YouTube : miniature et titre de la vidéo). Les textes déjà publiés en profitent aussi.
+- **Développeurs** : `App\Support\Linkify` (rendu échappé), `Mentions::html()` rend aussi les liens, `App\Services\LinkPreviews` (Open Graph, cache 7 j / 6 h, adresses privées refusées à chaque redirection, IP figée, 4 s, 512 Ko), composant `<x-link-preview>`, `resources/js/link-previews.js`. Routes `GET /liens/apercu` (`link-preview`, ouvert, 30/min) et `GET /api/v1/link-preview` (Sanctum, 60/min). Modification d'un commentaire : réponse JSON avec `preview`. Tests `LinkPreviewTest`. Voir [liens-et-apercus.md](fonctionnalites/liens-et-apercus.md).
+- **Application** (dépôt Flutter) : rendre les adresses cliquables et afficher l'aperçu avec `GET /api/v1/link-preview`.
+- **Déploiement** : aucune migration. Copier les fichiers PHP, vues et routes, `php artisan optimize:clear` puis `php artisan optimize`, et **copier `public/build/`** (JS modifié).
+
+---
+
 ## 2026-10-28 — Site installable (PWA)
 
 - **Utilisateurs** : le site s'installe sur l'écran d'accueil (Android et ordinateur : menu du navigateur « Installer l'application » ; iPhone : « Partager » puis « Sur l'écran d'accueil ») et s'ouvre en plein écran, aux couleurs Krea. Sans réseau, une page « Vous êtes hors ligne » remplace l'erreur du navigateur et se recharge au retour de la connexion. Raccourcis : Verset du jour, Publier un témoignage.

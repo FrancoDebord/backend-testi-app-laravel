@@ -257,6 +257,7 @@
                             @if($comment->isHidden())<span class="badge-yellow ml-1 text-xs">Retiré</span>@endif
                         </p>
                         <p class="mt-0.5 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ \App\Services\Mentions::html($comment->body) }}</p>
+                        <x-link-preview :text="$comment->body" />
                         <div class="mt-1 flex flex-wrap items-center gap-2">
                             @include('components.comment-like', ['type' => 'verse_comment', 'comment' => $comment, 'url' => route('daily-verse.comments.like', [$verse->id, $comment->id]), 'class' => '-ml-3'])
                             @if($viewer && $comment->canBeDeletedBy($viewer))

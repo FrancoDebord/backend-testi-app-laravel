@@ -146,7 +146,8 @@
             </div>
             <h2 id="event-about" class="card-title mt-4">{{ __('events.show.about') }}</h2>
             @if(filled($event->description))
-                <p class="mt-2 text-sm leading-relaxed break-words whitespace-pre-line text-slate-700">{{ $event->description }}</p>
+                <p class="mt-2 text-sm leading-relaxed break-words whitespace-pre-line text-slate-700">{{ \App\Support\Linkify::html($event->description) }}</p>
+                <x-link-preview :text="$event->description" />
             @else
                 <p class="mt-2 text-sm text-slate-500">{{ __('events.show.no_description') }}</p>
             @endif
@@ -262,6 +263,7 @@
                                 @endif
                             </p>
                             <p class="mt-1 text-sm break-words whitespace-pre-line text-slate-700">{{ \App\Services\Mentions::html($comment->body) }}</p>
+                            <x-link-preview :text="$comment->body" />
 
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 @include('components.comment-like', ['type' => 'event_comment', 'comment' => $comment, 'url' => route('events.comments.like', [$event->id, $comment->id]), 'class' => '-ml-3'])
@@ -514,7 +516,7 @@
                     <span class="{{ $review->attended === 'yes' ? 'badge-validated' : ($review->attended === 'no' ? 'badge-rejected' : 'badge-neutral') }}">{{ \App\Models\EventReview::attendedLabels()[$review->attended] ?? $review->attended }}</span>
                     <time class="text-xs text-slate-500" datetime="{{ $review->updated_at?->toIso8601String() }}">{{ $review->updated_at?->diffForHumans() }}</time>
                 </p>
-                @if($review->body)<p class="mt-1 text-sm break-words whitespace-pre-line text-slate-700">{{ $review->body }}</p>@endif
+                @if($review->body)<p class="mt-1 text-sm break-words whitespace-pre-line text-slate-700">{{ \App\Support\Linkify::html($review->body) }}</p>@endif
             </div>
         </li>
         @endforeach

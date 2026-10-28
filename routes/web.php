@@ -137,6 +137,8 @@ Route::get('/bible/{translation}/{book}/{chapter}/{verses?}', [BibleController::
 Route::get('/reactions/{kind}/{id}', \App\Http\Controllers\Web\ReactionPeopleController::class)
     ->whereIn('kind', \App\Services\ReactionPeople::KINDS)->where('id', '[0-9a-fA-F-]{1,36}')
     ->middleware('throttle:60,1')->name('reactions.people');
+// Aperçu d'un lien collé dans un texte (JSON, components/link-preview) ─ docs/fonctionnalites/liens-et-apercus.md
+Route::get('/liens/apercu', \App\Http\Controllers\Web\LinkPreviewController::class)->middleware('throttle:30,1')->name('link-preview');
 // Verset du jour en plein écran : versions, prière, commentaires, témoignages (docs/fonctionnalites/verset-du-jour.md)
 Route::get('/verset-du-jour/historique', [\App\Http\Controllers\Web\DailyVerseController::class, 'history'])->name('daily-verse.history');
 Route::get('/verset-du-jour/{date?}', [\App\Http\Controllers\Web\DailyVerseController::class, 'show'])

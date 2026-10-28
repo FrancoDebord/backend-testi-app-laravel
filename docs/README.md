@@ -40,6 +40,7 @@ Serveur Laravel de **My Testimony** (AIRID) : site web de partage de témoignage
 | [Réactions (j'aime, je prie…)](fonctionnalites/reactions.md) | Une réaction « j'aime » et une « je prie » au plus par personne : témoignages, événements, requêtes et sessions de prière ; jamais comptées deux fois |
 | [Référencement (Google)](fonctionnalites/referencement.md) | Accord de l'auteur pour le web, anonymat sur le site, 404 / 410, balises (title, description, canonical, robots), JSON-LD (VideoObject, Article, BroadcastEvent, CollectionPage), pages catégories et thèmes, sitemaps (dont vidéo), robots.txt |
 | [Application installable (PWA)](fonctionnalites/pwa.md) | Site installable sur l'écran d'accueil (Android, iPhone, ordinateur) : manifeste, icônes, service worker prudent (fichiers compilés et icônes seulement, jamais les pages ni l'API), page « hors ligne » |
+| [Liens cliquables et aperçus de liens](fonctionnalites/liens-et-apercus.md) | Adresses collées dans les textes (témoignages, commentaires, réponses, requêtes, encouragements, sessions, événements, bio) rendues cliquables ; aperçu (miniature, titre) du premier lien sous les descriptions et commentaires |
 | [Texte riche et aperçu avant publication](fonctionnalites/texte-riche-et-apercu.md) | Éditeur du site : gras, italique, barré, titres, citations, listes, liens, images envoyées ; aperçu du témoignage (texte, audio, vidéo, YouTube) avant de publier |
 | [Prier plusieurs fois](fonctionnalites/prier-plusieurs-fois.md) | « Je prie » ajoute une prière à chaque fois (après le temps de prière), « Retirer ma dernière prière », nombre de fois par personne (`myPrayerTimes`) ; compteur = nombre de personnes |
 | [Qui a réagi ?](fonctionnalites/qui-a-reagi.md) | Effectif de chaque réaction et liste des personnes (popup du site, `GET …/{id}/reactions/people`) : témoignages, verset du jour, requêtes, événements et sessions de prière |
@@ -154,6 +155,10 @@ Les fichiers compilés vont dans `public/build/`, **exclu de git** (`.gitignore`
 - **sinon (cas actuel)** : compiler sur un poste de développement, puis copier le dossier `public/build/` (`manifest.json` + `assets/`) sur le serveur en remplaçant l'existant. Archive prête à envoyer : `build-a-deployer.zip` à la racine du projet, à décompresser dans `public/`.
 
 Symptôme d'assets non à jour : la page s'affiche mais les nouveaux éléments sont mal stylés et les boutons ne réagissent pas (cas rencontré avec l'éditeur de texte). Vérification : les noms `app-XXXX.css` / `app-XXXX.js` du code source de la page doivent être ceux de `public/build/manifest.json`.
+
+### Liens cliquables et aperçus (2026-10-28)
+
+Aucune migration ni variable d'environnement. `php artisan optimize:clear` puis `php artisan optimize` (routes `/liens/apercu`, `/api/v1/link-preview`), puis **copier `public/build/`**. Le serveur fait des requêtes HTTPS sortantes vers les sites cités (4 s au plus, adresses privées refusées). Détails : [liens-et-apercus.md](fonctionnalites/liens-et-apercus.md).
 
 ### Application installable (PWA, 2026-10-28)
 

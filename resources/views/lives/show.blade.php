@@ -133,7 +133,8 @@
             </p>
             @endif
             @if($live->description)
-            <p class="mt-3 text-sm break-words whitespace-pre-line text-slate-700">{{ $live->description }}</p>
+            <p class="mt-3 text-sm break-words whitespace-pre-line text-slate-700">{{ \App\Support\Linkify::html($live->description) }}</p>
+            <x-link-preview :text="$live->description" />
             @endif
 
             @if($live->record)

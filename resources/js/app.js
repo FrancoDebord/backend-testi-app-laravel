@@ -4,6 +4,7 @@ import './prayer-focus'; // temps de prière avant « Je prie » (docs/fonctionn
 import './videos';
 import './comment-likes'; // « J'aime » sur les commentaires (docs/fonctionnalites/jaime-commentaires.md)
 import './tts';
+import './link-previews'; // aperçus des liens collés dans les textes (docs/fonctionnalites/liens-et-apercus.md)
 
 // Designs du verset du jour : chargé seulement sur les pages qui l'affichent.
 if (document.getElementById('verse-style-config')) import('./verse-style');

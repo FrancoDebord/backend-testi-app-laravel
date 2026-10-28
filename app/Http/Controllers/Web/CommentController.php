@@ -95,6 +95,7 @@ class CommentController extends Controller
                 'body'     => Mentions::plain($comment->body),
                 'html'     => (string) Mentions::html($comment->body),
                 'mentions' => Mentions::of($comment->body),
+                'preview'  => \Illuminate\Support\Facades\Blade::render('<x-link-preview :text="$text" data-comment-preview />', ['text' => $comment->body]),
             ]);
         }
 

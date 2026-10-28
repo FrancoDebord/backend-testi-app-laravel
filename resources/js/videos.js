@@ -695,7 +695,10 @@ document.addEventListener('submit', async (e) => {
             const data = await request(form.action, { method: 'PUT', data: { body } });
             const comment = form.closest('[data-comment]');
             const text = comment.querySelector(':scope > div > [data-comment-body]');
-            text.textContent = data.body;
+            // Texte échappé par le serveur, mentions et liens compris ; aperçu du lien remplacé.
+            text.innerHTML = data.html;
+            comment.querySelector(':scope > div > [data-comment-preview]')?.remove();
+            if (data.preview) text.insertAdjacentHTML('afterend', data.preview);
             form.hidden = true;
             text.hidden = false;
             comment.querySelector(':scope > div > [data-comment-actions]').hidden = false;

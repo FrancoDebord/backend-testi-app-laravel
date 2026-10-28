@@ -51,7 +51,7 @@ Merci @[Paul Mbeki](user:0199aaaa-bbbb-7ccc-8ddd-eeeeffff0001) !
 
 | Élément | Fichier |
 |---|---|
-| Service | `app/Services/Mentions.php` : `search()`, `prepare()` (normalise avant enregistrement), `notify()`, `plain()`, `of()`, `ids()`, `html()` (rendu Blade échappé avec liens) |
+| Service | `app/Services/Mentions.php` : `search()`, `prepare()` (normalise avant enregistrement), `notify()`, `plain()`, `of()`, `ids()`, `html()` (rendu Blade échappé avec liens vers les profils, et depuis le 2026-10-28 adresses web cliquables : [liens-et-apercus.md](liens-et-apercus.md)) |
 | Commentaires de témoignages | `Api\CommentController` (`store`, `update`), `Web\CommentController` (`store`, `update`), `Web\TestimonyController::storeComment` ; `CommentResource` (`text` lisible + `mentions`) |
 | Directs | `LiveService::postComment()` (longueur mesurée sur le texte lisible), `LiveComment::toPayload()` (`body` lisible + `mentions`) |
 | Requêtes de prière | `PrayerRequests::addMessage()`, `PrayerRequestMessage::toPayload()` ; texte de la requête : `PrayerRequests::create()` / `update()` → `Mentions::notifyPrayerRequest()` ; `PrayerRequestResource` (`body` lisible + `mentions`) |

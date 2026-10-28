@@ -228,6 +228,7 @@
                         </div>
                     </div>
                     <div id="testimony-body" class="rich-text p-5 text-[15px] leading-relaxed text-slate-800 sm:p-8 sm:text-base">{{ $testimony->body_html }}</div>
+                    <x-link-preview :text="$testimony->body_text" class="mx-5 mb-5 sm:mx-8 sm:mb-8" />
                 </article>
             @endif
 
@@ -410,6 +411,7 @@
                 @if($longDesc)
                 <button type="button" class="-mt-1 text-sm font-semibold text-primary-600 hover:underline" data-expand="video-description" aria-expanded="false" aria-controls="video-description">{{ __('videos.common.show_more') }}</button>
                 @endif
+                <x-link-preview :text="$testimony->body_text" />
                 @elseif($type !== 'text')
                 <p class="text-slate-500">{{ __('videos.common.no_description') }}</p>
                 @endif

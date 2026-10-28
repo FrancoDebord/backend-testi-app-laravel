@@ -48,7 +48,8 @@
                 <span class="badge-neutral">{{ \App\Models\PrayerSession::visibilityLabels()[$session->visibility] }}</span>
             </div>
             @if(filled($session->description))
-            <p class="mt-4 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ $session->description }}</p>
+            <p class="mt-4 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ \App\Support\Linkify::html($session->description) }}</p>
+            <x-link-preview :text="$session->description" />
             @endif
             @if(!empty($session->topics))
             <h3 class="mt-5 text-sm font-semibold text-slate-900">Sujets de prière</h3>

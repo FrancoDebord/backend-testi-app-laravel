@@ -8,6 +8,7 @@ use App\Enums\UserAccountStatus;
 use App\Models\AppNotification;
 use App\Models\Comment;
 use App\Models\User;
+use App\Support\Linkify;
 use App\Support\NotificationText;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
@@ -72,11 +73,12 @@ class Mentions
         preg_match_all(self::TOKEN, $text, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
         foreach ($matches as $m) {
             [$full, $offset] = $m[0];
-            $html .= e(substr($text, $last, $offset - $last));
+            // Adresses web cliquables entre les mentions (docs/fonctionnalites/liens-et-apercus.md).
+            $html .= Linkify::escape(substr($text, $last, $offset - $last));
             $html .= '<a href="' . e(route('profiles.show', strtolower($m[2][0]))) . '" class="font-semibold text-primary-700 hover:underline" data-mention-link="' . e(strtolower($m[2][0])) . '">@' . e($m[1][0]) . '</a>';
             $last = $offset + strlen($full);
         }
-        $html .= e(substr($text, $last));
+        $html .= Linkify::escape(substr($text, $last));
 
         return new HtmlString($html);
     }

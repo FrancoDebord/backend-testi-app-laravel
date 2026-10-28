@@ -144,6 +144,8 @@ Route::prefix('v1')->group(function () {
     // ─ docs/fonctionnalites/abonnements.md, docs/fonctionnalites/mentions.md
     Route::get('users/suggestions',    [\App\Http\Controllers\Api\CommunityController::class, 'suggestions'])->middleware('throttle:60,1');
     Route::get('users/mention-search', [\App\Http\Controllers\Api\CommunityController::class, 'mentionSearch'])->middleware(['auth:sanctum', 'throttle:120,1']);
+    // Aperçu d'un lien collé dans un texte ─ docs/fonctionnalites/liens-et-apercus.md
+    Route::get('link-preview', \App\Http\Controllers\Api\LinkPreviewController::class)->middleware(['auth:sanctum', 'throttle:60,1']);
     Route::get('users/{id}',           [UserController::class, 'show'])->where('id', '(?!me$)[^/]+'); // « me » : profil connecté (plus bas)
     // Communauté : organisations et personnes à suivre (docs/fonctionnalites/abonnements.md)
     Route::get('community',            [\App\Http\Controllers\Api\CommunityController::class, 'index']);

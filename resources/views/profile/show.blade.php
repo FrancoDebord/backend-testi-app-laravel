@@ -74,7 +74,7 @@
         </div>
 
         @if($profile->bio)
-        <p class="mt-4 max-w-3xl text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-700">{{ $profile->bio }}</p>
+        <p class="mt-4 max-w-3xl text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-700">{{ \App\Support\Linkify::html($profile->bio) }}</p>
         @elseif($isOwner)
         <p class="mt-4 text-sm text-slate-500">{{ __('profile.show.no_bio') }} <a href="{{ route('profile.edit') }}" class="font-semibold text-primary-600 hover:underline">{{ __('profile.show.add_bio') }}</a></p>
         @endif

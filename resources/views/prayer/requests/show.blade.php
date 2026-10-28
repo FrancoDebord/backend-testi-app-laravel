@@ -66,6 +66,7 @@
             @endif
 
             <p class="mt-4 text-[15px] leading-relaxed break-words whitespace-pre-line text-slate-800">{{ \App\Services\Mentions::html($prayer->body) }}</p>
+            <x-link-preview :text="$prayer->body" />
 
             @if($prayer->event)
             <a href="{{ route('events.show', $prayer->event_id) }}" class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline">
@@ -127,6 +128,7 @@
                     <div class="min-w-0 flex-1 rounded-lg bg-slate-50 p-3">
                         <p class="text-xs text-slate-500"><span class="font-semibold text-slate-900">{{ $message->user?->display_name }}</span> · {{ $message->created_at?->diffForHumans() }}</p>
                         <p class="mt-1 text-sm break-words whitespace-pre-line text-slate-800">{{ \App\Services\Mentions::html($message->body) }}</p>
+                        <x-link-preview :text="$message->body" />
                         @if($message->bible_reference)
                         <p class="mt-1 text-xs font-semibold text-primary-700"><i class="fa-solid fa-book-bible mr-1" aria-hidden="true"></i>{{ $message->bible_reference }}</p>
                         @endif
