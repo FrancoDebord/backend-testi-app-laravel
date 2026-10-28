@@ -279,6 +279,38 @@ class TestimonyController extends Controller
         );
     }
 
+    /**
+     * PUT /testimonies/{id}/web { publicationWeb?, isAnonymous? } : l'auteur donne ou retire son accord pour le
+     * web (retrait : la page répond 410 Gone et sort des sitemaps) et choisit l'anonymat sur le site.
+     * Même règle que la route du site (Web\TestimonyController::updateWebPublication) : auteur seulement,
+     * sans nouvelle modération, contrairement à PUT /testimonies/{id}. Champs absents : inchangés.
+     * Voir docs/fonctionnalites/referencement.md
+     */
+    public function updateWebPublication(Request $request, string $id): JsonResponse
+    {
+        $testimony = Testimony::find($id);
+        if (!$testimony) return $this->notFound();
+        if ($testimony->user_id !== $request->user()->id) return $this->forbidden();
+
+        $request->validate([
+            'publicationWeb'  => ['nullable', 'boolean'],
+            'publication_web' => ['nullable', 'boolean'],
+            'isAnonymous'     => ['nullable', 'boolean'],
+            'is_anonymous'    => ['nullable', 'boolean'],
+        ]);
+        // Seulement l'accord et l'anonymat (pas le résumé ni la transcription : ce serait une modification).
+        $changes = array_intersect_key(
+            \App\Support\WebPublication::attributes($request),
+            array_flip(['publication_web', 'is_anonymous'])
+        );
+        if ($changes === []) {
+            return $this->error(__('seo.author.nothing_to_change'), 422);
+        }
+        $testimony->update($changes);
+
+        return $this->success(new TestimonyResource($testimony->fresh(['user'])), __('seo.author.saved'));
+    }
+
     public function update(StoreTestimonyRequest $request, string $id): JsonResponse
     {
         $testimony = Testimony::find($id);

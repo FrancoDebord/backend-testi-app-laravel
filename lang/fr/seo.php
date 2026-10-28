@@ -20,6 +20,7 @@ return [
         'publication_web_help' => 'Décoché : la page n\'est plus publique et Google la retire de ses résultats.',
         'save'                 => 'Enregistrer',
         'saved'                => 'Vos choix de publication sur le web sont enregistrés.',
+        'nothing_to_change'    => 'Indiquez publicationWeb ou isAnonymous.',
     ],
 
     'validation' => [

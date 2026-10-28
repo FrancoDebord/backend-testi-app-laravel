@@ -4,6 +4,22 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-28 — Accord pour le web modifiable depuis l'application
+
+- **Utilisateurs** : dans l'application, l'auteur d'un témoignage peut retirer ou redonner son accord pour le web et choisir l'anonymat sur le site, depuis la page de son témoignage, sans que celui-ci repasse en modération.
+- **Développeurs** : `PUT /api/v1/testimonies/{id}/web` (`Api\TestimonyController::updateWebPublication`, throttle 30/min) : `publicationWeb` et/ou `isAnonymous` (ou snake_case), auteur seulement (403 sinon), 422 sans champ, réponse `TestimonyResource`. Même effet que la route du site (`publication_web_revoked_at`, 410, sitemaps). Clé `seo.author.nothing_to_change`. Test `SeoTest::test_application_retire_et_redonne_l_accord_pour_le_web`. Voir [referencement.md](fonctionnalites/referencement.md).
+- **Déploiement** : copier `app/Http/Controllers/Api/TestimonyController.php`, `routes/api.php`, `lang/*/seo.php`, puis `php artisan optimize:clear` et `php artisan optimize` (serveur). Aucune migration.
+
+---
+
+## 2026-10-28 — Images du texte envoyées depuis l'application affichées sur le site
+
+- **Utilisateurs** : une image insérée dans un témoignage écrit depuis l'application s'affiche aussi sur le site (page, modération, aperçu) et compte dans la limite de 10 images.
+- **Développeurs** : `RichText::IMAGE_DIRS` = `testimony-images` (site) et `media/images` (application, `POST /api/v1/media/upload`). Fichier directement dans le dossier (pas de sous-dossier ni de `..`), hôte du site obligatoire ; `media/audios` et `media/videos` restent refusés. Test `TestimonyComposerTest::test_image_envoyee_par_l_application`. Voir [texte-riche-et-apercu.md](fonctionnalites/texte-riche-et-apercu.md).
+- **Déploiement** : copier `app/Support/RichText.php`, puis `php artisan optimize:clear` et `php artisan optimize` (serveur). Aucune migration.
+
+---
+
 ## 2026-10-27 — Référencement Google et publication sur le web
 
 - **Utilisateurs** :

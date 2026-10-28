@@ -60,6 +60,26 @@ class TestimonyComposerTest extends TestCase
             ->assertStatus(422);
     }
 
+    /** Images insérées depuis l'application mobile (POST /api/v1/media/upload → media/images). */
+    public function test_image_envoyee_par_l_application(): void
+    {
+        $base = rtrim((string) config('app.url'), '/');
+
+        $this->assertStringContainsString('<img src="' . $base . '/storage/media/images/abc.jpg"',
+            (string) RichText::toHtml("![]({$base}/storage/media/images/abc.jpg)"));
+        $this->assertSame(["{$base}/storage/media/images/abc.jpg"], RichText::imageUrls("Avant\n![]({$base}/storage/media/images/abc.jpg)"));
+
+        // Ni les autres fichiers envoyés (audio, vidéo), ni un chemin détourné, ni un autre site.
+        foreach ([
+            "{$base}/storage/media/audios/a.jpg",
+            "{$base}/storage/media/videos/v.jpg",
+            "{$base}/storage/media/images/../audios/a.jpg",
+            'https://autre-site.com/storage/media/images/abc.jpg',
+        ] as $url) {
+            $this->assertStringNotContainsString('<img', (string) RichText::toHtml("![]({$url})"), $url);
+        }
+    }
+
     public function test_apercu_du_texte(): void
     {
         $this->actingAs($this->user)->postJson(route('testimonies.preview'), ['body_text' => "# Titre\n**Dieu** est [bon](https://exemple.org)"])

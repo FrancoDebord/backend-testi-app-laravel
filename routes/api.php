@@ -308,6 +308,8 @@ Route::prefix('v1')->group(function () {
             Route::post('videos/{id}/upload-complete',  [\App\Http\Controllers\Api\VideoUploadController::class, 'complete']);
         });
         Route::put('testimonies/{id}',     [TestimonyController::class, 'update']);
+        // Accord pour le web et anonymat sur le site, sans nouvelle modération — docs/fonctionnalites/referencement.md
+        Route::put('testimonies/{id}/web', [TestimonyController::class, 'updateWebPublication'])->whereUuid('id')->middleware('throttle:30,1');
         Route::delete('testimonies/{id}',  [TestimonyController::class, 'destroy']);
         Route::put('testimonies/{id}/save',    [TestimonyController::class, 'save']);
         Route::delete('testimonies/{id}/unsave', [TestimonyController::class, 'unsave']);

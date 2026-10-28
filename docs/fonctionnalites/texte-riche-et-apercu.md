@@ -28,7 +28,7 @@ Les émojis et les mentions « @ » ([mentions.md](mentions.md)) restent disponi
 **Sécurité**
 - Le texte est échappé avant la mise en forme.
 - Les liens ne sont faits que d'adresses `http(s)`, donc jamais de `javascript:`.
-- Une image n'est affichée que si elle a été envoyée sur ce serveur (`/storage/testimony-images/…`, hôte du site). Sinon la ligne n'affiche rien.
+- Une image n'est affichée que si elle a été envoyée sur ce serveur (hôte du site), directement dans `/storage/testimony-images/` (site) ou `/storage/media/images/` (application mobile, `POST /api/v1/media/upload`, depuis le 2026-10-28) : `RichText::IMAGE_DIRS`. Jamais `media/audios`, `media/videos`, un sous-dossier ni un autre site : la ligne n'affiche alors rien.
 
 **Rendu** : `App\Support\RichText::toHtml`. Les paragraphes deviennent des `<p>` et un retour à la ligne devient `<br>`. Les conteneurs utilisent la classe `rich-text` (`resources/css/app.css`) : page du témoignage, description d'une vidéo, modération, aperçu. `RichText::plain` donne le texte sans mise en forme, une ligne par ligne et sans les images (cartes, aperçus de partage).
 

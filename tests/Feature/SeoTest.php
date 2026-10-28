@@ -224,4 +224,35 @@ class SeoTest extends TestCase
         $this->postJson('/api/v1/testimonies', ['title' => 'Sans le web', 'type' => 'text', 'category' => 'guerison', 'body_text' => 'Texte', 'publicationWeb' => false])
             ->assertCreated()->assertJsonPath('data.publicationWeb', false);
     }
+
+    /** Application : PUT /api/v1/testimonies/{id}/web, sans nouvelle modération (docs/fonctionnalites/referencement.md). */
+    public function test_application_retire_et_redonne_l_accord_pour_le_web(): void
+    {
+        $t = $this->testimony();
+        $this->putJson("/api/v1/testimonies/{$t->id}/web", ['publicationWeb' => false])->assertUnauthorized();
+
+        // Autre membre : refusé.
+        $other = User::create(['display_name' => 'Paul', 'email' => 'paul@example.com', 'password' => 'secret123', 'role' => 'utilisateur', 'status' => 'active']);
+        \Laravel\Sanctum\Sanctum::actingAs($other);
+        $this->putJson("/api/v1/testimonies/{$t->id}/web", ['publicationWeb' => false])->assertForbidden();
+
+        \Laravel\Sanctum\Sanctum::actingAs($this->author);
+        $this->putJson("/api/v1/testimonies/{$t->id}/web", [])->assertStatus(422);
+
+        // Retrait : statut et visibilité inchangés, page 410, anonymat inchangé (champ absent).
+        $this->putJson("/api/v1/testimonies/{$t->id}/web", ['publicationWeb' => false])->assertOk()
+            ->assertJsonPath('data.publicationWeb', false)->assertJsonPath('data.isAnonymous', false);
+        $fresh = $t->fresh();
+        $this->assertSame('approved', $fresh->status->value);
+        $this->assertNotNull($fresh->publication_web_revoked_at);
+        auth()->forgetGuards();
+        $this->get("/testimonies/{$t->id}")->assertStatus(410);
+
+        // Accord redonné, anonyme sur le site : de nouveau publié.
+        \Laravel\Sanctum\Sanctum::actingAs($this->author);
+        $this->putJson("/api/v1/testimonies/{$t->id}/web", ['publicationWeb' => true, 'isAnonymous' => true])->assertOk()
+            ->assertJsonPath('data.publicationWeb', true)->assertJsonPath('data.isAnonymous', true);
+        $this->assertNull($t->fresh()->publication_web_revoked_at);
+        $this->assertSame('approved', $t->fresh()->status->value);
+    }
 }

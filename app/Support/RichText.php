@@ -23,6 +23,12 @@ class RichText
     /** Dossier des images insérées dans les témoignages (disque public). */
     public const IMAGE_DIR = 'testimony-images';
 
+    /**
+     * Dossiers d'images acceptés dans le texte : celles du site (IMAGE_DIR, POST /publish/images) et
+     * celles de l'application mobile (media/images, POST /api/v1/media/upload). Jamais media/audios ni media/videos.
+     */
+    public const IMAGE_DIRS = [self::IMAGE_DIR, 'media/images'];
+
     /** Images au plus dans un témoignage. */
     public const MAX_IMAGES = 10;
 
@@ -110,7 +116,7 @@ class RichText
         return $urls;
     }
 
-    /** Image envoyée sur ce serveur (dossier testimony-images) : jamais d'image d'un autre site. */
+    /** Image envoyée sur ce serveur (IMAGE_DIRS) : jamais d'image d'un autre site. */
     public static function isOwnImage(string $url): bool
     {
         $parts = parse_url($url);
@@ -124,7 +130,8 @@ class RichText
         ]);
 
         return in_array(strtolower($parts['host']), array_map('strtolower', $hosts), true)
-            && preg_match('#^/storage/' . self::IMAGE_DIR . '/[A-Za-z0-9._/-]+$#', $parts['path']) === 1;
+            // Fichier directement dans le dossier (pas de « / » : jamais « media/images/../audios/… »).
+            && preg_match('#^/storage/(' . implode('|', array_map(fn ($d) => preg_quote($d, '#'), self::IMAGE_DIRS)) . ')/[A-Za-z0-9._-]+$#', $parts['path']) === 1;
     }
 
     /** @return array{url: string, alt: string}|null */

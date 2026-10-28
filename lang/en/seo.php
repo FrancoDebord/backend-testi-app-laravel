@@ -20,6 +20,7 @@ return [
         'publication_web_help' => 'Unchecked: the page is no longer public and Google removes it from its results.',
         'save'                 => 'Save',
         'saved'                => 'Your web publication choices have been saved.',
+        'nothing_to_change'    => 'Provide publicationWeb or isAnonymous.',
     ],
 
     'validation' => [
