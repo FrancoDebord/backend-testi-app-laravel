@@ -350,6 +350,12 @@
                 </div>
                 @error('visibility')<p class="form-error">{{ $message }}</p>@enderror
             </div>
+            {{-- Liste de témoignages facultative (docs/fonctionnalites/listes-de-temoignages.md) --}}
+            <fieldset class="space-y-2 rounded-lg border border-slate-200 p-4">
+                <legend class="form-label px-1"><i class="fa-solid fa-layer-group mr-1 text-primary-600" aria-hidden="true"></i>{{ __('playlists.composer.section') }}</legend>
+                <p class="form-hint mt-0">{{ __('playlists.composer.help') }} {{ __('playlists.composer.journal_note') }}</p>
+                @include('playlists.partials.composer-fields', ['playlists' => $playlists ?? collect(), 'idPrefix' => 'compose'])
+            </fieldset>
             {{-- Publication sur le web (Google) et anonymat sur le site : docs/fonctionnalites/referencement.md --}}
             <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-4 text-sm text-slate-700 has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50">
                 <input type="hidden" name="publication_web" value="0">

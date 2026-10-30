@@ -299,6 +299,13 @@ class Testimony extends Model
         return $this->hasMany(TestimonyRepost::class);
     }
 
+    /** Listes de témoignages qui contiennent celui-ci (docs/fonctionnalites/listes-de-temoignages.md). */
+    public function playlists(): BelongsToMany
+    {
+        return $this->belongsToMany(TestimonyPlaylist::class, 'testimony_playlist_items', 'testimony_id', 'playlist_id')
+            ->withPivot('position')->withTimestamps();
+    }
+
     public function savedByUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'saved_testimonies', 'testimony_id', 'user_id')

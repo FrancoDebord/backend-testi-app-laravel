@@ -57,7 +57,10 @@ class ProfileController extends Controller
             $conversionTestimony = null;
         }
 
-        return view('profile.show', compact('profile', 'isOwner', 'isFollowing', 'testimonies', 'reposts', 'upcomingEvents', 'pastEvents', 'conversionTestimony'));
+        // Listes de témoignages qui ont au moins un témoignage visible (docs/fonctionnalites/listes-de-temoignages.md).
+        $playlists = app(\App\Services\TestimonyPlaylists::class)->publicOf($profile, auth()->user());
+
+        return view('profile.show', compact('profile', 'isOwner', 'isFollowing', 'testimonies', 'reposts', 'upcomingEvents', 'pastEvents', 'conversionTestimony', 'playlists'));
     }
 
     public function edit(): View

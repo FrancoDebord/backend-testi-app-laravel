@@ -290,7 +290,11 @@ function initQuality(player) {
     };
 }
 
-/** « En boucle » et « Lecture auto » (bandeau « À suivre » avec compte à rebours). */
+/**
+ * « En boucle » et « Lecture auto » (bandeau « À suivre » avec compte à rebours).
+ * Dans une liste de témoignages (data-up-next-mode="playlist", docs/fonctionnalites/listes-de-temoignages.md) :
+ * le suivant de la liste, lecture auto activée par défaut avec son propre réglage (playlistAutoplay).
+ */
 function initRepeatAndNext(player) {
     const prefs = readPrefs();
     const loopButton = document.querySelector('[data-player-loop]');
@@ -329,7 +333,8 @@ function initRepeatAndNext(player) {
     }
     if (!autoButton || !banner || !queue.length) return;
 
-    const next = queue.find((item) => !played.includes(item.id)) ?? queue[0];
+    const inPlaylist = player.dataset.upNextMode === 'playlist';
+    const next = inPlaylist ? queue[0] : (queue.find((item) => !played.includes(item.id)) ?? queue[0]);
     const playLink = banner.querySelector('[data-up-next-play]');
     const count = banner.querySelector('[data-up-next-count]');
     banner.querySelector('[data-up-next-title]').textContent = next.title;
@@ -343,13 +348,14 @@ function initRepeatAndNext(player) {
     };
     const markAutoplay = () => writeJson('sessionStorage', AUTOPLAY_KEY, next.id);
 
-    let autoplay = prefs.autoplay !== false;
+    const prefKey = inPlaylist ? 'playlistAutoplay' : 'autoplay';
+    let autoplay = prefs[prefKey] !== false;
     autoButton.hidden = false;
     setPressed(autoButton, autoplay);
     autoButton.addEventListener('click', () => {
         autoplay = !autoplay;
         setPressed(autoButton, autoplay);
-        savePrefs({ autoplay });
+        savePrefs({ [prefKey]: autoplay });
         if (!autoplay) cancel();
         flash(autoplay ? t('videos.autoplay_on') : t('videos.autoplay_off'));
     });
@@ -373,6 +379,12 @@ function initRepeatAndNext(player) {
         }, 1000);
     });
 }
+
+// Témoignage choisi dans le panneau d'une liste : sa lecture démarre à l'arrivée, comme sur YouTube.
+document.addEventListener('click', (e) => {
+    const link = e.target.closest('[data-playlist-panel] [data-autoplay-id]');
+    if (link) writeJson('sessionStorage', AUTOPLAY_KEY, link.dataset.autoplayId);
+});
 
 function initPlayer() {
     const player = document.querySelector('[data-player]');

@@ -160,6 +160,8 @@ Route::get('/testimonies/{id}',     [TestimonyController::class, 'show'])->name(
 // Preuves : auteur et équipe, ou public si l'auteur l'a accepté (docs/fonctionnalites/preuves.md)
 Route::get('/testimonies/{id}/proofs/{proofId}', [TestimonyController::class, 'proof'])->name('testimonies.proof');
 Route::get('/profiles/{id}',        [ProfileController::class, 'show'])->name('profiles.show');
+// Listes de témoignages : page publique d'une liste ─ docs/fonctionnalites/listes-de-temoignages.md
+Route::get('/listes/{id}',          [\App\Http\Controllers\Web\PlaylistController::class, 'show'])->name('playlists.show');
 
 // ── Communauté et abonnements ─ docs/fonctionnalites/abonnements.md ────────
 Route::get('/communaute', [CommunityController::class, 'index'])->name('community.index');
@@ -374,6 +376,18 @@ Route::middleware('auth')->group(function () {
     // Partage interne « X a partagé » ─ docs/fonctionnalites/partage-interne.md
     Route::post('/testimonies/{id}/repost',    [\App\Http\Controllers\Web\RepostController::class, 'store'])->middleware('throttle:30,1')->name('testimonies.repost');
     Route::delete('/testimonies/{id}/repost',  [\App\Http\Controllers\Web\RepostController::class, 'destroy'])->name('testimonies.unrepost');
+
+    // Listes de témoignages (comme les playlists YouTube) ─ docs/fonctionnalites/listes-de-temoignages.md
+    Route::get('/mes-listes',  [\App\Http\Controllers\Web\PlaylistController::class, 'mine'])->name('playlists.mine');
+    Route::middleware('throttle:60,1')->whereUuid(['id', 'testimonyId'])->group(function () {
+        Route::post('/mes-listes',                                    [\App\Http\Controllers\Web\PlaylistController::class, 'store'])->name('playlists.store');
+        Route::put('/listes/{id}',                                    [\App\Http\Controllers\Web\PlaylistController::class, 'update'])->name('playlists.update');
+        Route::delete('/listes/{id}',                                 [\App\Http\Controllers\Web\PlaylistController::class, 'destroy'])->name('playlists.destroy');
+        Route::post('/listes/{id}/temoignages',                       [\App\Http\Controllers\Web\PlaylistController::class, 'addItem'])->name('playlists.items.store');
+        Route::delete('/listes/{id}/temoignages/{testimonyId}',       [\App\Http\Controllers\Web\PlaylistController::class, 'removeItem'])->name('playlists.items.destroy');
+        Route::post('/listes/{id}/temoignages/{testimonyId}/deplacer', [\App\Http\Controllers\Web\PlaylistController::class, 'moveItem'])->name('playlists.items.move');
+        Route::post('/testimonies/{id}/listes',                       [\App\Http\Controllers\Web\PlaylistController::class, 'attachTestimony'])->name('testimonies.playlists.attach');
+    });
 
     // Carnet privé : visible de son seul auteur ─ docs/fonctionnalites/carnet-prive.md
     Route::get('/carnet',                       [JournalController::class, 'index'])->name('journal.index');

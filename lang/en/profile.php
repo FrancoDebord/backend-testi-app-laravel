@@ -60,6 +60,7 @@ return [
         'events_upcoming' => 'Upcoming and ongoing',
         'events_past'     => 'Past events',
         'reposts'         => 'Shares',
+        'playlists'       => 'Testimony playlists',
         'member_since'    => 'Member since :date',
         'add_bio'         => 'Add an introduction',
         'logout'          => 'Sign out',

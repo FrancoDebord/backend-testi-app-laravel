@@ -171,6 +171,33 @@
     @endif
 </section>
 
+{{-- Listes de témoignages (docs/fonctionnalites/listes-de-temoignages.md) --}}
+@if(($playlists ?? collect())->isNotEmpty())
+<section class="mb-10" aria-labelledby="playlists-title">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 id="playlists-title" class="card-title text-lg"><i class="fa-solid fa-layer-group mr-1.5" aria-hidden="true"></i>{{ __('profile.show.playlists') }}</h2>
+        @if($isOwner)<a href="{{ route('playlists.mine') }}" class="btn-ghost btn-sm">{{ __('playlists.nav') }}</a>@endif
+    </div>
+    <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @foreach($playlists as $playlist)
+        @php $cover = $playlist->firstTestimony?->cover_url; @endphp
+        <li>
+            <a href="{{ route('playlists.show', $playlist->id) }}" class="card flex h-full items-center gap-3 p-3 hover:border-primary-200">
+                <span class="relative flex aspect-video w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-900 text-slate-500" aria-hidden="true">
+                    @if($cover)<img src="{{ $cover }}" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">@else<i class="fa-solid fa-layer-group"></i>@endif
+                    <span class="absolute right-1 bottom-1 rounded bg-slate-900/80 px-1 text-[11px] font-medium text-white tabular-nums"><i class="fa-solid fa-list mr-0.5"></i>{{ $playlist->visible_count }}</span>
+                </span>
+                <span class="min-w-0">
+                    <span class="line-clamp-2 text-sm font-semibold break-words text-slate-900">{{ $playlist->title }}</span>
+                    <span class="mt-0.5 block text-xs text-slate-500">{{ trans_choice('playlists.mine.count', $playlist->visible_count, ['count' => $playlist->visible_count]) }}</span>
+                </span>
+            </a>
+        </li>
+        @endforeach
+    </ul>
+</section>
+@endif
+
 {{-- Événements organisés : à venir / en cours, puis passés (témoignages et commentaires restent consultables). --}}
 @foreach([[__('profile.show.events_upcoming'), $upcomingEvents ?? collect()], [__('profile.show.events_past'), $pastEvents ?? collect()]] as [$eventsTitle, $eventsList])
 @if($eventsList->isNotEmpty())

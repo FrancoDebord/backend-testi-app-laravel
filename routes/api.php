@@ -153,6 +153,17 @@ Route::prefix('v1')->group(function () {
     // Témoignage de conversion publié d'un compte (404 s'il n'en a pas) ─ docs/fonctionnalites/temoignage-de-conversion.md
     Route::get('users/{id}/conversion-testimony', [\App\Http\Controllers\Api\ConversionTestimonyController::class, 'ofUser']);
     Route::get('users/{id}/reposts', [\App\Http\Controllers\Api\RepostController::class, 'ofUser']); // partages internes d'un compte (profil)
+    // Listes de témoignages (playlists) ─ docs/fonctionnalites/listes-de-temoignages.md
+    Route::get('users/{id}/playlists', [\App\Http\Controllers\Api\PlaylistController::class, 'ofUser']);
+    Route::get('playlists/mine', [\App\Http\Controllers\Api\PlaylistController::class, 'mine'])->middleware('auth:sanctum');
+    Route::get('playlists/{id}', [\App\Http\Controllers\Api\PlaylistController::class, 'show'])->whereUuid('id');
+    Route::middleware(['auth:sanctum', 'throttle:60,1'])->whereUuid(['id', 'testimonyId'])->group(function () {
+        Route::post('playlists',                                [\App\Http\Controllers\Api\PlaylistController::class, 'store']);   // { title, description?, testimonyIds? }
+        Route::put('playlists/{id}',                            [\App\Http\Controllers\Api\PlaylistController::class, 'update']);  // { title?, description?, testimonyIds? (ordre) }
+        Route::delete('playlists/{id}',                         [\App\Http\Controllers\Api\PlaylistController::class, 'destroy']);
+        Route::post('playlists/{id}/testimonies',               [\App\Http\Controllers\Api\PlaylistController::class, 'addItem']); // { testimonyId }
+        Route::delete('playlists/{id}/testimonies/{testimonyId}', [\App\Http\Controllers\Api\PlaylistController::class, 'removeItem']);
+    });
 
     // ── Témoignages en direct (lecture publique) ─ docs/fonctionnalites/lives.md
     Route::get('lives',                     [LiveController::class, 'index']);

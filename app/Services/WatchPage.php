@@ -24,9 +24,12 @@ class WatchPage
     /**
      * @param string $pageRoute Route de la page affichée : les liens « Afficher plus de commentaires »
      *                          et « À regarder également » y renvoient.
+     * @param mixed $listId Liste demandée (?list=, ignorée si ce n'est pas un texte) : docs/fonctionnalites/listes-de-temoignages.md
      */
-    public function data(Testimony $testimony, ?User $user, string $pageRoute): array
+    public function data(Testimony $testimony, ?User $user, string $pageRoute, mixed $listId = null): array
     {
+        $playlists = app(TestimonyPlaylists::class);
+
         $userReactions = $user
             ? Reaction::where('testimony_id', $testimony->id)->where('user_id', $user->id)->pluck('type')->map(fn ($t) => $t->value)->all()
             : [];
@@ -43,6 +46,11 @@ class WatchPage
             'isFollowingAuthor' => $testimony->user && app(FollowService::class)->isFollowing($user, $testimony->user),
             'recommended'   => $this->recommendations($testimony, $user),
             'pageRoute'     => $pageRoute,
+            // Liste en cours : les autres témoignages sont proposés et lus à la suite (lecture auto par défaut).
+            'playlist'      => $playlists->contextFor($testimony, $user, is_string($listId) ? $listId : null),
+            // « Ajouter à une liste » (auteur) : ses listes, et celles qui contiennent déjà ce témoignage.
+            'myPlaylists'   => $user && $user->id === $testimony->user_id && !$testimony->isInJournal() ? $playlists->ofUser($user) : collect(),
+            'inPlaylistIds' => $user && $user->id === $testimony->user_id ? $testimony->playlists()->pluck('testimony_playlists.id')->all() : [],
         ];
     }
 

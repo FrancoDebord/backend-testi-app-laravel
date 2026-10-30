@@ -38,7 +38,7 @@ Fichier `config/applinks.php`, alimenté par le `.env` :
 | `ANDROID_APP_SHA256_FINGERPRINTS` | empreinte de la **clé de debug** | Empreintes des certificats autorisés, séparées par des virgules |
 | `IOS_APP_ID` | *(vide)* | `<TEAM_ID>.<bundle id>`, par ex. `ABCDE12345.com.airid.testiApp` |
 
-Chemins concernés : clé `paths` de `config/applinks.php` : témoignages (`/testimonies/*`, `/videos/*`), directs (`/lives/*`), événements (`/evenements/*`), requêtes et sessions de prière (`/priere/requetes/*`, `/priere/sessions/*`), verset du jour (`/verset-du-jour`, `/verset-du-jour/*`) témoignages de conversion (`/temoignages-de-conversion`) — 2026-10-19 — et passages de la Bible (`/bible/*`, [liens-bible.md](liens-bible.md)) — 2026-10-26. L'application Android déclare les mêmes chemins (AndroidManifest.xml) et les traduit vers ses écrans (app_router.dart).
+Chemins concernés : clé `paths` de `config/applinks.php` : témoignages (`/testimonies/*`, `/videos/*`), directs (`/lives/*`), événements (`/evenements/*`), requêtes et sessions de prière (`/priere/requetes/*`, `/priere/sessions/*`), verset du jour (`/verset-du-jour`, `/verset-du-jour/*`) témoignages de conversion (`/temoignages-de-conversion`) — 2026-10-19 — passages de la Bible (`/bible/*`, [liens-bible.md](liens-bible.md)) — 2026-10-26 — et listes de témoignages (`/listes/*`, [listes-de-temoignages.md](listes-de-temoignages.md)) — 2026-10-30. L'application Android déclare les mêmes chemins (AndroidManifest.xml) et les traduit vers ses écrans (app_router.dart).
 
 Identifiant Android : `com.askrea.temoignage` depuis le changement de paquet (l'ancien `com.airid.testi_app` empêchait toute ouverture dans l'app). Empreintes par défaut : clé d'envoi (release, alias `upload`) et clé de debug.
 

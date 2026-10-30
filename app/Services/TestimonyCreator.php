@@ -67,6 +67,12 @@ class TestimonyCreator
             }
         }
 
+        // Liste existante choisie : vérifiée avant la création (docs/fonctionnalites/listes-de-temoignages.md).
+        $playlists = app(TestimonyPlaylists::class);
+        $playlist  = $request->isMethod('post')
+            ? $playlists->existingForComposer($user, $request->input('playlist_id'), $request->input('playlist_title'))
+            : null;
+
         // Témoignage de conversion : compte personnel, un seul par compte (docs/fonctionnalites/temoignage-de-conversion.md).
         $kindFields   = ConversionTestimonies::attributesFor($request);
         $isConversion = $kindFields['kind'] === \App\Enums\TestimonyKind::Conversion->value;
@@ -123,6 +129,9 @@ class TestimonyCreator
         if (!$isJournal) {
             $category?->increment('testimony_count');
         }
+
+        // Liste choisie ou nouvelle liste (jamais pour le carnet privé).
+        $playlists->publishInto($user, $testimony, $playlist, $request->input('playlist_title'));
 
         return $testimony;
     }

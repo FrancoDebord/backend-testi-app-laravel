@@ -36,10 +36,18 @@
     // Lecture (docs/fonctionnalites/affichage-et-lecture.md) : qualités, en boucle, lecture automatique du suivant.
     $hasPlayer  = in_array($type, ['video', 'audio'], true) && $testimony->media_url;
     $renditions = $hasPlayer ? $testimony->playableRenditions() : [];
-    $upNext     = $hasPlayer && !$inJournal
-        ? $recommended->filter(fn ($r) => $r->type === $testimony->type && $r->media_url)
-            ->map(fn ($r) => ['id' => $r->id, 'url' => route($pageRoute, $r->id), 'title' => $r->title])->values()
-        : collect();
+    // Liste de témoignages en cours (docs/fonctionnalites/listes-de-temoignages.md) : le suivant de la liste est
+    // proposé et lu automatiquement (activé par défaut) ; en fin de liste, retour aux recommandations.
+    $playlist      = $playlist ?? null;
+    $myPlaylists   = $myPlaylists ?? collect();
+    $inPlaylistIds = $inPlaylistIds ?? [];
+    $playlistNext  = $playlist['next'] ?? null;
+    $upNext     = match (true) {
+        !$hasPlayer || $inJournal => collect(),
+        $playlistNext !== null    => collect([['id' => $playlistNext->id, 'url' => route($pageRoute, ['id' => $playlistNext->id, 'list' => $playlist['playlist']->id]), 'title' => $playlistNext->title]]),
+        default                   => $recommended->filter(fn ($r) => $r->type === $testimony->type && $r->media_url)
+            ->map(fn ($r) => ['id' => $r->id, 'url' => route($pageRoute, $r->id), 'title' => $r->title])->values(),
+    };
     $playerData = [
         'data-player'     => true,
         'data-view-url'   => route('videos.view', $testimony->id),
@@ -49,6 +57,7 @@
         'data-original'   => $testimony->isHlsMedia() ? ($testimony->mp4PlaybackUrl() ?? '') : $testimony->media_url,
         'data-renditions' => json_encode($renditions, JSON_UNESCAPED_SLASHES),
         'data-up-next'    => json_encode($upNext, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+        'data-up-next-mode' => $playlistNext ? 'playlist' : 'recommended',
     ];
     // Preuves : auteur et équipe de modération (docs/fonctionnalites/preuves.md).
     $proofList = \App\Services\TestimonyProofs::canView(Auth::user(), $testimony) ? $testimony->proofs : collect();
@@ -270,7 +279,7 @@
                 </button>
                 @if($upNext->isNotEmpty())
                 <button type="button" class="chip" data-player-autoplay aria-pressed="false" hidden>
-                    <i class="fa-solid fa-forward-step" aria-hidden="true"></i>{{ __('videos.watch.autoplay') }}
+                    <i class="fa-solid fa-forward-step" aria-hidden="true"></i>{{ $playlistNext ? __('playlists.panel.autoplay') : __('videos.watch.autoplay') }}
                 </button>
                 @endif
             </div>
@@ -288,6 +297,11 @@
                 </div>
             </div>
             @endif
+            @endif
+
+            {{-- ── Liste en cours, sous le lecteur sur mobile et tablette (dans la colonne de droite sur grand écran) ── --}}
+            @if($playlist)
+            <div class="mt-4 xl:hidden">@include('videos.partials.playlist-panel', ['suffix' => 'main'])</div>
             @endif
 
             {{-- ── Titre et informations (vidéo, audio ; pour un texte, en tête de l'article) ── --}}
@@ -319,7 +333,9 @@
                 @php $myPrayerTimes = app(\App\Services\TestimonyReactions::class)->prayerTimes(Auth::user(), $testimony); @endphp
                 <div class="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-slate-600" data-prayer-times-row @if($myPrayerTimes === 0) hidden @endif>
                     <span data-prayer-times-label>{{ trans_choice('reactions.prayer_times.prayed', max(1, $myPrayerTimes), ['count' => max(1, $myPrayerTimes)]) }}</span>
-                    <button type="button" class="btn-ghost btn-sm" data-pray-remove-last>{{ __('reactions.prayer_times.remove_last') }}</button>
+                    <button type="button" class="action-btn-delete" data-pray-remove-last title="{{ __('reactions.prayer_times.remove_last') }}" aria-label="{{ __('reactions.prayer_times.remove_last') }}">
+                        <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                    </button>
                 </div>
                 @endauth
                 <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
@@ -345,6 +361,12 @@
                         <i class="{{ $isSaved ? 'fa-solid' : 'fa-regular' }} fa-bookmark" aria-hidden="true" data-save-icon></i><span data-save-label>{{ $isSaved ? __('videos.watch.saved') : __('videos.watch.save') }}</span>
                     </button>
                     @endauth
+                    @if(!$inJournal && Auth::id() === $testimony->user_id)
+                    {{-- Ajouter à une de ses listes de témoignages (docs/fonctionnalites/listes-de-temoignages.md) --}}
+                    <button type="button" class="chip" data-modal-open="playlist-add-modal" title="{{ __('playlists.composer.add_to_title') }}">
+                        <i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">{{ __('playlists.composer.add_to') }}</span><span class="sr-only">{{ __('playlists.composer.add_to_title') }}</span>
+                    </button>
+                    @endif
                     @if(!$inJournal && Auth::id() === $testimony->user_id)
                     {{-- Retirer du public et ranger dans le carnet privé (docs/fonctionnalites/carnet-prive.md) --}}
                     <button type="button" class="chip" title="{{ __('videos.watch.journal_store_long') }}"
@@ -541,6 +563,9 @@
 
         {{-- ── À regarder également ────────────────────────────────────── --}}
         <aside class="min-w-0" aria-labelledby="recommended-title">
+            @if($playlist)
+            <div class="mb-6 hidden xl:block">@include('videos.partials.playlist-panel', ['suffix' => 'aside'])</div>
+            @endif
             <h2 id="recommended-title" class="card-title mb-4">{{ __('videos.watch.recommended') }}</h2>
             @if($recommended->isEmpty())
                 <p class="text-sm text-slate-500">{{ __('videos.watch.recommended_empty') }}</p>
@@ -588,6 +613,35 @@
         <form id="repost-delete-form" method="POST" action="{{ route('testimonies.unrepost', $testimony->id) }}" hidden>@csrf @method('DELETE')</form>
         @endif
     </div>
+</div>
+@endif
+
+{{-- ── Modale « Ajouter à une liste » (auteur, docs/fonctionnalites/listes-de-temoignages.md) ── --}}
+@if(!$inJournal && Auth::id() === $testimony->user_id)
+<div id="playlist-add-modal" data-modal class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+     role="dialog" aria-modal="true" aria-labelledby="playlist-add-modal-title" @unless($errors->hasAny(['playlist_id', 'playlist_title', 'playlist'])) hidden @endunless>
+    <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
+    <form method="POST" action="{{ route('testimonies.playlists.attach', $testimony->id) }}" class="card relative w-full max-w-lg shadow-xl" data-loading-label="{{ __('videos.watch.saving') }}">
+        @csrf
+        <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+            <h2 id="playlist-add-modal-title" class="text-base font-semibold text-primary-600">{{ __('playlists.composer.add_to_title') }}</h2>
+            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="{{ __('videos.common.close') }}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <div class="space-y-4 px-5 py-4">
+            @if($inPlaylistIds !== [])
+            <p class="text-sm text-slate-600">{{ __('playlists.composer.in_lists') }}
+                @foreach($myPlaylists->whereIn('id', $inPlaylistIds) as $owned)
+                <a href="{{ route('playlists.show', $owned->id) }}" class="font-medium text-primary-600 hover:underline">{{ $owned->title }}</a>@if(!$loop->last), @endif
+                @endforeach
+            </p>
+            @endif
+            @include('playlists.partials.composer-fields', ['playlists' => $myPlaylists->whereNotIn('id', $inPlaylistIds), 'idPrefix' => 'watch'])
+        </div>
+        <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4">
+            <button type="button" class="btn-secondary" data-modal-close>{{ __('videos.common.cancel') }}</button>
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-plus" aria-hidden="true"></i>{{ __('playlists.show.add') }}</button>
+        </div>
+    </form>
 </div>
 @endif
 

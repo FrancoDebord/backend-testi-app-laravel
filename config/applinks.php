@@ -47,6 +47,7 @@ return [
         '/verset-du-jour/*',
         '/temoignages-de-conversion',
         '/bible/*', // passages : /bible/LSG/jean/3/16 (docs/fonctionnalites/liens-bible.md)
+        '/listes/*', // listes de témoignages (docs/fonctionnalites/listes-de-temoignages.md)
     ],
 
 ];

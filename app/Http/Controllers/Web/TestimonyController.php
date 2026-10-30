@@ -38,7 +38,7 @@ class TestimonyController extends Controller
         app(\App\Services\ViewCounter::class)->record($testimony, $request);
 
         // Même page de lecture que /videos/{id} (docs/fonctionnalites/videos.md).
-        return view('testimonies.show', $watch->data($testimony, $request->user(), 'testimonies.show'));
+        return view('testimonies.show', $watch->data($testimony, $request->user(), 'testimonies.show', $request->query('list')));
     }
 
     /**
@@ -84,7 +84,10 @@ class TestimonyController extends Controller
         // Témoigner sur un direct terminé (?live=, docs/fonctionnalites/lives.md) : ignoré s'il n'est pas terminé ou visible.
         $live = $this->linkableLive(old('live_id', $request->query('live')), $request);
 
-        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos', 'conversionTestimony', 'canConversion', 'kind', 'allowedTypes', 'live'));
+        // Listes de témoignages du compte (choix facultatif, docs/fonctionnalites/listes-de-temoignages.md).
+        $playlists = app(\App\Services\TestimonyPlaylists::class)->ofUser($request->user());
+
+        return view('testimonies.create', compact('categories', 'event', 'prophecy', 'bunnyVideos', 'conversionTestimony', 'canConversion', 'kind', 'allowedTypes', 'live', 'playlists'));
     }
 
     /** Direct terminé et visible auquel rattacher le témoignage, sinon null (pré-remplissage du formulaire). */
@@ -154,6 +157,8 @@ class TestimonyController extends Controller
             ...\App\Support\YouTubeCredit::rules(),
             // Publication sur le web, anonymat, résumé, transcription (docs/fonctionnalites/referencement.md)
             ...\App\Support\WebPublication::rules(),
+            // Liste de témoignages facultative (docs/fonctionnalites/listes-de-temoignages.md)
+            ...\App\Services\TestimonyPlaylists::composerRules(),
         ], \App\Support\WebPublication::messages() + \App\Services\ConversionTestimonies::messages() + \App\Services\LiveTestimonies::messages() + \App\Support\YouTubeCredit::messages() + TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
             'title.required'         => __('testimonies.validation.title_required'),
             'youtube_url.required_if' => __('testimonies.validation.youtube_required'),
@@ -192,6 +197,13 @@ class TestimonyController extends Controller
         }
 
         $event     = $this->attachableEvent($data['event_id'] ?? null, $request);
+        // Liste existante choisie : vérifiée avant de créer quoi que ce soit (docs/fonctionnalites/listes-de-temoignages.md).
+        $playlists = app(\App\Services\TestimonyPlaylists::class);
+        try {
+            $playlist = $playlists->existingForComposer($request->user(), $data['playlist_id'] ?? null, $data['playlist_title'] ?? null);
+        } catch (\App\Services\ContentActionException $e) {
+            throw ValidationException::withMessages(['playlist_id' => $e->getMessage()]);
+        }
         // Direct terminé et visible, sinon erreur sous le champ (même règle que l'API).
         try {
             $live = app(\App\Services\LiveTestimonies::class)->resolve($data['live_id'] ?? null, $request->user());
@@ -301,6 +313,9 @@ class TestimonyController extends Controller
         if ($prophecy) {
             $prophecies->attachTestimony($prophecy, $testimony->id, !$isJournal && $request->boolean('prophecy_public'));
         }
+
+        // Liste choisie ou nouvelle liste (jamais pour le carnet privé).
+        $playlists->publishInto($request->user(), $testimony, $playlist, $data['playlist_title'] ?? null);
 
         // Versions allégées produites en file d'attente, puis recopiées sur le témoignage
         // (docs/fonctionnalites/qualites-media.md).

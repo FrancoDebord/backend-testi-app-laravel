@@ -30,6 +30,7 @@
                 ['label' => __('layout.nav.my_feed'),               'icon' => 'fa-house-user',    'url' => route('feed.personal'),               'active' => request()->routeIs('feed.personal')],
                 ['label' => __('layout.nav.publish'), 'icon' => 'fa-pen-to-square', 'url' => route('publish'),                     'active' => request()->routeIs('publish')],
                 ['label' => __('layout.nav.my_testimonies'),       'icon' => 'fa-list',          'url' => route('testimonies.mine'),            'active' => request()->routeIs('testimonies.mine')],
+                ['label' => __('playlists.nav'),                 'icon' => 'fa-layer-group',   'url' => route('playlists.mine'),              'active' => request()->routeIs('playlists.*')],
                 ['label' => __('layout.nav.journal'),          'icon' => 'fa-book-open',     'url' => route('journal.index'),               'active' => request()->routeIs('journal.*')],
                 ['label' => __('layout.nav.prophecies'),  'icon' => 'fa-scroll',        'url' => route('prophecies.index'),            'active' => request()->routeIs('prophecies.*')],
                 ['label' => __('layout.nav.following'),       'icon' => 'fa-user-check',    'url' => route('profile.following'),           'active' => request()->routeIs('profile.following')],

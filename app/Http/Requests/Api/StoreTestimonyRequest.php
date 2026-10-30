@@ -56,6 +56,8 @@ class StoreTestimonyRequest extends FormRequest
             ...\App\Support\YouTubeCredit::rules(),
             // Publication sur le web, anonymat sur le site, résumé, transcription (docs/fonctionnalites/referencement.md)
             ...\App\Support\WebPublication::rules(),
+            // Liste de témoignages facultative à la création : playlist_id, playlist_title (docs/fonctionnalites/listes-de-temoignages.md)
+            ...\App\Services\TestimonyPlaylists::composerRules(),
         ];
     }
 

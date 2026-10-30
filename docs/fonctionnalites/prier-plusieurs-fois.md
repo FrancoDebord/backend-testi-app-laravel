@@ -29,6 +29,8 @@ Publications concernées : témoignages, requêtes de prière, verset du jour, �
 
 Composant : `resources/views/components/prayer-times.blade.php`, un formulaire avec le nombre de prières et le bouton de retrait.
 
+**Bouton de retrait en icône (2026-10-30)** : « Retirer ma dernière prière » n'est plus écrit en toutes lettres. C'est un petit bouton icône (flèche « annuler », `fa-rotate-left`, style `action-btn-delete`) à côté de « Vous avez prié N fois », sur le témoignage, les sujets de prière (page et cartes) et le verset du jour. Le libellé reste dans `title` (info-bulle) et `aria-label` (lecteurs d'écran).
+
 Comme le second appui ne retire plus la prière, le script du temps de prière (`resources/js/prayer-focus.js`) n'utilise plus `data-prayed`.
 
 ## API (`/api/v1`) — pour l'application

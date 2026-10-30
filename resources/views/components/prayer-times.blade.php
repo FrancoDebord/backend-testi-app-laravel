@@ -8,6 +8,9 @@
     <input type="hidden" name="{{ $fieldName }}" value="{{ $fieldValue }}">
     @endforeach
     <span>{{ trans_choice('reactions.prayer_times.prayed', $times, ['count' => $times]) }}</span>
-    <button type="submit" class="btn-ghost btn-sm">{{ __('reactions.prayer_times.remove_last') }}</button>
+    {{-- Icône seule (flèche « annuler ») ; le libellé reste lu par les lecteurs d'écran et affiché au survol. --}}
+    <button type="submit" class="action-btn-delete" title="{{ __('reactions.prayer_times.remove_last') }}" aria-label="{{ __('reactions.prayer_times.remove_last') }}">
+        <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+    </button>
 </form>
 @endif

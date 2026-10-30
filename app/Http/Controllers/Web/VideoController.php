@@ -106,7 +106,7 @@ class VideoController extends Controller
             $this->views->record($testimony, $request);
         }
 
-        return view('videos.show', $this->watch->data($testimony, $request->user(), 'videos.show'));
+        return view('videos.show', $this->watch->data($testimony, $request->user(), 'videos.show', $request->query('list')));
     }
 
     /** Appelé par le lecteur au premier lancement de la lecture. */

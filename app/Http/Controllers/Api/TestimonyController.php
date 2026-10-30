@@ -195,7 +195,14 @@ class TestimonyController extends Controller
             \App\Services\Recommendations::recordView($viewer, $testimony);
         }
 
-        return $this->success(new TestimonyResource($testimony));
+        // Liste en cours (?list=, sinon la plus récente qui le contient) : autres témoignages et suivant à lire
+        // automatiquement ; null s'il n'est dans aucune liste (docs/fonctionnalites/listes-de-temoignages.md).
+        $data = (new TestimonyResource($testimony))->resolve($request);
+        $playlists = app(\App\Services\TestimonyPlaylists::class);
+        $context = $playlists->contextFor($testimony, $viewer, is_string($request->query('list')) ? $request->query('list') : null);
+        $data['playlist'] = $context ? $playlists->contextPayload($context) : null;
+
+        return $this->success($data);
     }
 
     /**

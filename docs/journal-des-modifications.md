@@ -4,6 +4,17 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-10-30 — Listes de témoignages (playlists) et icône « Retirer ma dernière prière »
+
+- **Utilisateurs** : on peut regrouper ses témoignages qui parlent d'une même chose dans une **liste**, comme une playlist YouTube. Au moment de publier, un bloc facultatif propose une liste existante ou une nouvelle liste ; publier sans liste reste possible. Sur la page d'un témoignage d'une liste, un panneau montre les autres témoignages (Précédent / Suivant, « 2 sur 5 ») et, à la fin d'une vidéo ou d'un audio, le suivant de la liste se lance automatiquement (activé par défaut, interrupteur « Lecture auto de la liste »). Nouvelles pages « Mes listes » (`/mes-listes`, menu « Mon espace ») et page publique d'une liste (`/listes/{id}` : Tout lire, Partager, ordre, retrait) ; bouton « Ajouter à une liste » sur ses propres témoignages ; section « Listes de témoignages » du profil.
+- **Utilisateurs** : « Retirer ma dernière prière » est maintenant un bouton icône (flèche « annuler ») à côté de « Vous avez prié N fois », sur les témoignages, les sujets de prière et le verset du jour ; le libellé reste en info-bulle et pour les lecteurs d'écran.
+- **Développeurs** : tables `testimony_playlists` / `testimony_playlist_items`, `App\Models\TestimonyPlaylist`, `App\Services\TestimonyPlaylists`, `Web\PlaylistController`, `Api\PlaylistController`, `WatchPage::data(…, $listId)`, vue `videos/partials/playlist-panel`, `videos.js` (`data-up-next-mode="playlist"`, réglage `playlistAutoplay`). API : `GET /playlists/mine`, `GET /users/{id}/playlists`, `GET|PUT|DELETE /playlists/{id}`, `POST /playlists`, `POST|DELETE /playlists/{id}/testimonies…`, `playlist_id` / `playlist_title` à la création d'un témoignage, champ `playlist` dans `GET /testimonies/{id}?list=`. Tests `TestimonyPlaylistsTest`. Voir [listes-de-temoignages.md](fonctionnalites/listes-de-temoignages.md) et [prier-plusieurs-fois.md](fonctionnalites/prier-plusieurs-fois.md).
+- **Application** (dépôt Flutter) : choix de la liste à la publication, panneau et lecture automatique de la liste dans le lecteur, écrans « Mes listes » et liste, section du profil, icône de retrait de la dernière prière. Détail : [listes-de-temoignages.md](fonctionnalites/listes-de-temoignages.md#application-mobile-à-faire-dans-le-dépôt-flutter).
+- **Liens partagés** : `/listes/*` ajouté aux chemins de `config/applinks.php`, sinon un lien de liste partagé ne s'ouvrait pas dans l'application sur iOS. Voir [app-links.md](fonctionnalites/app-links.md).
+- **Déploiement** : `php artisan migrate`, `php artisan optimize:clear` puis `php artisan optimize`, et **copier `public/build/`** (JS modifié). Aucune variable d'environnement.
+
+---
+
 ## 2026-10-28 — Partager un ancien verset depuis l'historique
 
 - **Utilisateurs** : sur « Versets précédents » (`/verset-du-jour/historique`), chaque verset a un bouton « Partager » (image du verset et lien daté) et un bouton « Copier le lien », sans avoir à ouvrir le verset.
