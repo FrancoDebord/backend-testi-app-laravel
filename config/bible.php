@@ -73,8 +73,22 @@ return [
         ],
 
         // ── Yoruba ────────────────────────────────────────────────────────────
-        'YCB' => [
+        'YORUBA' => [
             'name'      => 'Bíbélì Mímọ́ Yorùbá',
+            'language'  => 'yo',
+            'lang_name' => 'Yoruba',
+            'source'    => 'apibible',
+            'bible_id'  => env('BIBLE_ID_YCB'), // Trouver avec : bible:sources --source=apibible --lang=yo
+        ],
+        'YORUBA2010' => [
+            'name'      => 'Bíbélì Mímọ́ Yorùbá 2010',
+            'language'  => 'yo',
+            'lang_name' => 'Yoruba',
+            'source'    => 'apibible',
+            'bible_id'  => env('BIBLE_ID_YCB'), // Trouver avec : bible:sources --source=apibible --lang=yo
+        ],
+        'YORUBA2014' => [
+            'name'      => 'Bíbélì Mímọ́ Yorùbá 2014',
             'language'  => 'yo',
             'lang_name' => 'Yoruba',
             'source'    => 'apibible',
@@ -82,7 +96,7 @@ return [
         ],
 
         // ── Fongbe ────────────────────────────────────────────────────────────
-        'FON' => [
+        'FONGBE' => [
             'name'       => 'Bible Fongbe',
             'language'   => 'fon',
             'lang_name'  => 'Fongbe',
@@ -98,5 +112,96 @@ return [
             'source'     => 'biblebrain',
             'fileset_id' => env('BIBLEBRAIN_FILESET_GUN'), // Trouver avec : bible:sources --source=biblebrain --lang=gun
         ],
+        'AMPLIFIED' => [
+            'name'       => 'Amplified Bible ',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'BBE' => [
+            'name'       => 'BBE ',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'BDS' => [
+            'name'       => 'Bible Du Semeur ',
+            'language'   => 'fr',
+            'lang_name'  => 'Français',
+        ],
+        'BFC' => [
+            'name'       => 'Bible en Français Courant ',
+            'language'   => 'fr',
+            'lang_name'  => 'Français',
+        ],
+        'EN_ASV' => [
+            'name'       => 'American Standard Version ',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EN_CSB' => [
+            'name'       => 'Christian Standard Bible ',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EN_DARBY' => [
+            'name'       => 'English Darby ',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EN_ERV' => [
+            'name'       => 'Easy-to-Read Version ',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EN_ESV' => [
+            'name'       => 'English Standard Version',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EN_KJ' => [
+            'name'       => 'King James',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EN_NIV' => [
+            'name'       => 'New International Version',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EN_NKJ' => [
+            'name'       => 'New King James',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EN_NLT' => [
+            'name'       => 'New Living Translation',
+            'language'   => 'en',
+            'lang_name'  => 'English',
+        ],
+        'EWE' => [
+            'name'       => 'Bible en EWE',
+            'language'   => 'ewe',
+            'lang_name'  => 'Ewe',
+        ],
+        'FR_DARBY' => [
+            'name'       => 'Bible Darby en Français',
+            'language'   => 'fr',
+            'lang_name'  => 'Français',
+        ],
+        'FR_MARTIN' => [
+            'name'       => 'Bible Version Martin',
+            'language'   => 'fr',
+            'lang_name'  => 'Français',
+        ],
+        'FR_S21' => [
+            'name'       => 'Bible Segond 21',
+            'language'   => 'fr',
+            'lang_name'  => 'Français',
+        ],
+        'PDV2017' => [
+            'name'       => 'Parole De Vie 2017',
+            'language'   => 'fr',
+            'lang_name'  => 'Français',
+        ],
+
     ],
 ];
