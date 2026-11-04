@@ -17,7 +17,10 @@
                 ['label' => __('layout.nav.lives'),  'icon' => 'fa-tower-broadcast',     'url' => route('lives.index'),  'active' => request()->routeIs('lives.index', 'lives.show')],
                 ['label' => __('layout.nav.events'), 'icon' => 'fa-calendar-days',     'url' => route('events.index'), 'active' => request()->routeIs('events.*') && !request()->routeIs('events.past')],
                 ['label' => __('layout.nav.past_events'), 'icon' => 'fa-clock-rotate-left', 'url' => route('events.past'), 'active' => request()->routeIs('events.past')],
-                ['label' => __('layout.nav.conversions'), 'icon' => 'fa-dove', 'url' => route('testimonies.conversions'), 'active' => request()->routeIs('testimonies.conversions')],
+                // Compte organisation : « Genèse des ministères » (docs/fonctionnalites/temoignage-de-conversion.md)
+                auth()->user()?->isOrganization()
+                    ? ['label' => __('layout.nav.ministry_genesis'), 'icon' => 'fa-church', 'url' => route('testimonies.conversions', ['onglet' => 'ministeres']), 'active' => request()->routeIs('testimonies.conversions')]
+                    : ['label' => __('layout.nav.conversions'), 'icon' => 'fa-dove', 'url' => route('testimonies.conversions'), 'active' => request()->routeIs('testimonies.conversions')],
                 ['label' => __('layout.nav.prayer_requests'), 'icon' => 'fa-hands-praying', 'url' => route('prayer.requests.index'), 'active' => request()->routeIs('prayer.requests.*')],
                 ['label' => __('layout.nav.prayer_sessions'), 'icon' => 'fa-person-praying', 'url' => route('prayer.sessions.index'), 'active' => request()->routeIs('prayer.sessions.*')],
                 ['label' => __('layout.nav.community'), 'icon' => 'fa-people-group',      'url' => route('community.index'), 'active' => request()->routeIs('community.*')],

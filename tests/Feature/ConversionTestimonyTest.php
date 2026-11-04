@@ -260,7 +260,11 @@ class ConversionTestimonyTest extends TestCase
         // Organisation : choix « Genèse du ministère », année de fondation, puis modification.
         $this->actingAs($this->org)->get('/publish?kind=conversion')->assertOk()
             ->assertSee('type="radio" name="kind"', false)->assertSee('Genèse du ministère')->assertSee('Année de fondation')
-            ->assertDontSee('Comment vous avez rencontré Jésus');
+            ->assertDontSee('Comment vous avez rencontré Jésus')
+            // Menu : « Genèse des ministères » vers l'onglet des ministères, au lieu de « Témoignages de conversion ».
+            ->assertSee('Genèse des ministères')->assertSee(route('testimonies.conversions', ['onglet' => 'ministeres']), false)
+            ->assertDontSee('Témoignages de conversion');
+        $this->actingAs($this->person)->get('/publish')->assertOk()->assertSee('Témoignages de conversion')->assertDontSee('Genèse des ministères');
         $this->actingAs($this->org)->post('/testimonies', [
             'title' => 'Notre fondation', 'type' => 'text', 'body_text' => 'Tout a commencé dans un salon…', 'kind' => 'conversion',
             'conversion_year' => 1998, 'consent_given' => '1',

@@ -14,6 +14,7 @@ return [
         'daily_verse'       => 'Verse of the day',
         'verse_history'     => 'Previous verses',
         'conversions'       => 'Conversion stories',
+        'ministry_genesis'  => 'Ministry beginnings',
         'prayer_requests'   => 'Prayer requests',
         'prayer_sessions'   => 'Prayer sessions',
         'community'         => 'Community',

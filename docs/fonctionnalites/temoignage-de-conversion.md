@@ -22,6 +22,7 @@ Ajouté le 2026-11-04. Pour une organisation, on ne parle pas de conversion : on
 - Libellés : « Genèse du ministère » (badge, choix au moment de publier, profil, page), « Année de fondation », « Verset fondateur », « Fondé en 1998 », « Raconter la genèse de notre ministère », « Modifier la genèse de notre ministère ». Messages d'erreur (409, année hors limites) et `message` de `/me/conversion-testimony` adaptés aussi.
 - Portées : `Testimony::ministryGenesis()` (auteur organisation) et `Testimony::personalConversion()` (les autres).
 - Section : onglets « Conversions » (`/temoignages-de-conversion`) et « Genèse des ministères » (`?onglet=ministeres`). Le bloc de l'accueil ne montre que les conversions des personnes.
+- Menu « Découvrir » : un compte organisation connecté voit « Genèse des ministères » (icône église, lien vers `?onglet=ministeres`) au lieu de « Témoignages de conversion » (`layout.nav.ministry_genesis`).
 
 ## API (`/api/v1`)
 
