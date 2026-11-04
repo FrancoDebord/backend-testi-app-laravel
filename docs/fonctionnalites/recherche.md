@@ -90,6 +90,19 @@ Public, 30 requêtes par minute. Corps `{ "q": "…" }`. Enregistre une recherch
 - **Cache de 60 s** par portée, limite et préfixe normalisé : la réponse ne dépend pas de la personne (aucune donnée personnelle), elle est donc partagée ; en-tête `Cache-Control: public, max-age=60`.
 - Table `search_queries` (migration `2026_10_07_300001_create_search_queries_table`) : `normalized` (unique), `query`, `hits`, `last_searched_at`. Aucune colonne de personne ni d'adresse IP.
 
+## Page de résultats du site (`/recherche`)
+
+Ajoutée le 2026-11-04. La barre de l'en-tête (et la loupe sur mobile) envoie vers `/recherche?q=` au lieu d'Explorer.
+
+- Recherche dans toute la base, un **onglet par rubrique** avec son nombre de résultats : **Témoignages** (titre ou texte), **Comptes** (nom, nom d'organisation, ville), **Requêtes de prière** (texte), **Événements** (titre, description, ville, lieu), **Sessions de prière** (titre, description).
+- Paramètres : `q` (2 caractères au moins, 100 au plus), `onglet` = `temoignages`, `comptes`, `prieres`, `evenements`, `sessions`. Sans `onglet`, la **première rubrique qui a des résultats** s'ouvre. Pagination par rubrique (24 comptes, 12 autres).
+- Mêmes règles de visibilité que les listes : témoignages publiés seulement ; comptes actifs, ni privés ni organisations refusées ; requêtes de prière visibles de la personne (`PrayerRequest::visibleTo`, réservées aux abonnés pour qui suit l'auteur) ; événements publiés, reportés ou annulés, pas ceux masqués ; sessions visibles (`PrayerSession::visibleTo`). Les caractères `%` et `_` sont cherchés tels quels.
+- Mêmes cartes que les listes : `components/testimony-list`, `community/partials/card`, `prayer/partials/feed-card`, `events/partials/card`, `prayer/partials/session-card`. Champ de recherche en tête de page, avec autocomplétion.
+- **Autocomplétion** : une **suggestion de texte** (ou Entrée) lance cette recherche ; un **résultat direct** (témoignage, compte, événement, session, catégorie, livre) ouvre directement sa page.
+- La recherche lancée est comptée dans les recherches populaires (première page, anonyme).
+- Code : `App\Services\GlobalSearch` (requête et nombre par onglet), `App\Http\Controllers\Web\SearchController`, vue `resources/views/search/index.blade.php`, textes `lang/*/search.php` (`page.*`). Route `search` (60 requêtes par minute). Page non indexée.
+- Tests : `tests/Feature/GlobalSearchTest.php`.
+
 ## Site
 
 Composant `resources/views/components/search-autocomplete.blade.php` (script en ligne, aucune recompilation), inclus une fois par `layouts/app`. Il s'active sur tout `<input data-search-autocomplete="portée">` :
@@ -101,7 +114,7 @@ Composant `resources/views/components/search-autocomplete.blade.php` (script en 
 
 Anti-rebond 250 ms, requête obsolète annulée (`AbortController`), rôle `combobox` + `listbox`, `aria-activedescendant`, annonce du nombre de propositions (`role="status"`). La soumission reste celle du formulaire de la page.
 
-Barres branchées : en-tête (toutes pages, `all`), Explorer (`all`), Vidéos (`testimonies`), Communauté, Mes abonnés, Mes abonnements (`users`), Événements (`events`), carnet privé (`local`), Bible « Aller à un livre » (`bible`, nouveau champ dans la colonne des livres), administration : utilisateurs (`users`) et contenu (`testimonies`).
+Barres branchées : en-tête (toutes pages, `all`, vers `/recherche`), page `/recherche` (`all`), Explorer (`all`), Vidéos (`testimonies`), Communauté, Mes abonnés, Mes abonnements (`users`), Événements (`events`), carnet privé (`local`), Bible « Aller à un livre » (`bible`, nouveau champ dans la colonne des livres), administration : utilisateurs (`users`) et contenu (`testimonies`).
 
 ## Application
 

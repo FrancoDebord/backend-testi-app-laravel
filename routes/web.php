@@ -173,6 +173,9 @@ Route::middleware(['auth', 'throttle:30,1'])->whereUuid('id')->group(function ()
 // ── Langue du site (français / anglais) ─ docs/fonctionnalites/langues.md ──
 Route::post('/langue', [\App\Http\Controllers\Web\LocaleController::class, 'update'])->middleware('throttle:30,1')->name('locale.update');
 
+// ── Recherche globale (barre de l'en-tête) : ?q=&onglet= ─ docs/fonctionnalites/recherche.md
+Route::get('/recherche', \App\Http\Controllers\Web\SearchController::class)->middleware('throttle:60,1')->name('search');
+
 // ── Témoignages de conversion ─ docs/fonctionnalites/temoignage-de-conversion.md
 Route::get('/temoignages-de-conversion', [\App\Http\Controllers\Web\ConversionTestimonyController::class, 'index'])->name('testimonies.conversions');
 Route::middleware('auth')->group(function () {

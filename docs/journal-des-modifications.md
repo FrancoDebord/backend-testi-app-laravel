@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-11-04 — Recherche globale : page de résultats à onglets
+
+- **Utilisateurs** : la barre de recherche de l'en-tête (et la loupe sur mobile) cherche maintenant dans toute la base et affiche les résultats sur une page `/recherche` avec un onglet par rubrique et son nombre de résultats : Témoignages, Comptes, Requêtes de prière, Événements, Sessions de prière. La première rubrique qui a des résultats s'ouvre. Dans l'autocomplétion, une suggestion de texte (ou Entrée) ouvre cette page ; un résultat direct (témoignage, compte, événement, session…) ouvre directement sa page. Libellé de la barre : « Témoignage, compte, prière, événement… ».
+- **Développeurs** : `App\Services\GlobalSearch`, `Web\SearchController` (route `search`, `GET /recherche?q=&onglet=temoignages|comptes|prieres|evenements|sessions`, 60 requêtes par minute), vue `search/index.blade.php`, textes `search.page.*`. Mêmes règles de visibilité que les listes (comptes privés et organisations refusées exclus, requêtes et sessions selon `visibleTo`). Explorer garde sa propre barre. Tests `GlobalSearchTest`. Voir [recherche.md](fonctionnalites/recherche.md#page-de-résultats-du-site-recherche).
+- **Déploiement** : copier les fichiers, puis `php artisan optimize:clear` et `php artisan optimize`. Aucune migration, aucune variable d'environnement, aucune recompilation des assets.
+
+---
+
 ## 2026-11-04 — Organisations : témoignage de la genèse du ministère
 
 - **Utilisateurs** : un compte organisation ne publie pas de témoignage de conversion ; il raconte la **genèse de son ministère** (comment il est né). Au moment de publier, le choix s'appelle « Genèse du ministère », avec l'année de fondation, le lieu et le verset fondateur (facultatifs). Un seul par compte, modifiable, même modération. La section `/temoignages-de-conversion` a deux onglets : « Conversions » (personnes) et « Genèse des ministères » (`?onglet=ministeres`). Le bloc de l'accueil ne montre que les conversions des personnes. Badges, profil, page du témoignage et modération affichent « Genèse du ministère » et « Fondé en … » (icône église). Dans le menu, un compte organisation voit « Genèse des ministères » (vers l'onglet des ministères) au lieu de « Témoignages de conversion ».

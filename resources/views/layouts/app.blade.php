@@ -219,12 +219,13 @@
             <img src="{{ asset('icons/arise-shine-krea.png') }}" alt="ARISE &amp; SHINE Krea" class="h-11 w-auto" width="477" height="493">
         </a>
 
-        {{-- Recherche globale (page Explorer) --}}
-        <form method="GET" action="{{ route('explore') }}" role="search" class="mx-auto hidden w-full max-w-xl md:flex" data-loading-inline>
+        {{-- Recherche globale : page /recherche à onglets (témoignages, comptes, prières, événements, sessions).
+             Une suggestion de texte lance cette recherche ; un résultat direct ouvre sa page. docs/fonctionnalites/recherche.md --}}
+        <form method="GET" action="{{ route('search') }}" role="search" class="mx-auto hidden w-full max-w-xl md:flex" data-loading-inline>
             <label for="global-search" class="sr-only">{{ __('layout.search_label') }}</label>
             <div class="relative min-w-0 flex-1">
                 <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
-                <input id="global-search" type="search" name="q" value="{{ request()->routeIs('explore') ? request('q') : '' }}"
+                <input id="global-search" type="search" name="q" value="{{ request()->routeIs('search', 'explore') ? request('q') : '' }}"
                        class="form-input min-h-10 rounded-full bg-slate-50 pl-9" placeholder="{{ __('layout.search_placeholder') }}"
                        data-search-autocomplete="all" data-search-recent-key="explore">
             </div>
@@ -234,7 +235,7 @@
 
         <div class="ml-auto flex items-center gap-2 md:ml-0">
             <div class="hidden sm:block">@include('components.locale-switcher')</div>
-            <a href="{{ route('explore') }}" class="btn-ghost btn-sm md:hidden" title="{{ __('layout.search') }}" aria-label="{{ __('layout.search') }}">
+            <a href="{{ route('search') }}" class="btn-ghost btn-sm md:hidden" title="{{ __('layout.search') }}" aria-label="{{ __('layout.search') }}">
                 <i class="fa-solid fa-magnifying-glass text-base"></i>
             </a>
             @auth
