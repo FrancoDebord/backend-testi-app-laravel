@@ -431,6 +431,12 @@ class Testimony extends Model
         return $viewer !== null && ($viewer->id === $this->user_id || $viewer->canModerate());
     }
 
+    /** Auteur nommé sur le bouton « Je prie avec … » : jamais pour un témoignage anonyme ni pour l'auteur lui-même. */
+    public function prayWithAuthorFor(?User $viewer): ?User
+    {
+        return !$this->is_anonymous && $viewer?->id !== $this->user_id ? $this->user : null;
+    }
+
     /** Nom affiché sur le site : nom de l'auteur, ou « Témoignage anonyme ». */
     public function webAuthorName(?User $viewer = null): string
     {

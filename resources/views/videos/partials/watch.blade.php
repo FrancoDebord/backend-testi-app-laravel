@@ -11,9 +11,11 @@
     $longDesc    = $description && mb_strlen($testimony->body_plain) > 280;
     // Comme l'application : réactions « j'aime » et un seul « Je prie » (allumé pour toute réaction de prière,
     // y compris les anciennes « Amen » et « Adorer Dieu »). docs/fonctionnalites/reactions.md
+    // « Je prie avec Marie » : prénom court de l'auteur (User::shortFirstName), nom complet dans l'infobulle.
+    $prayWith = $testimony->prayWithAuthorFor(Auth::user());
     $reactionDefs = [
         ['like',    'fa-thumbs-up',      __('reactions.like')],
-        ['pray',    'fa-hands-praying',  __('reactions.i_pray')],
+        ['pray',    'fa-hands-praying',  $prayWith ? __('reactions.i_pray_with', ['name' => $prayWith->shortFirstName()]) : __('reactions.i_pray')],
         ['fire',    'fa-fire',           __('reactions.fire')],
     ];
     $isPraying = array_intersect($userReactions, \App\Enums\ReactionType::valuesOfGroup('prayer')) !== [];
@@ -317,7 +319,7 @@
                      data-pray-excerpt="{{ Str::limit(trim(preg_replace('/\s+/u', ' ', strip_tags((string) $testimony->body_text))), 220) }}" @endauth>
                     @foreach($reactionDefs as [$rType, $rIcon, $rLabel])
                     @php $pressed = $rType === 'pray' ? $isPraying : in_array($rType, $userReactions, true); @endphp
-                    <button type="button" class="{{ $pressed ? 'chip-active' : 'chip' }}" data-reaction="{{ $rType }}" aria-pressed="{{ $pressed ? 'true' : 'false' }}" @if($rType === 'pray') data-pray @endif>
+                    <button type="button" class="{{ $pressed ? 'chip-active' : 'chip' }}" data-reaction="{{ $rType }}" aria-pressed="{{ $pressed ? 'true' : 'false' }}" @if($rType === 'pray') data-pray @if($prayWith) title="{{ __('reactions.i_pray_with', ['name' => $prayWith->display_name]) }}" @endif @endif>
                         <i class="fa-solid {{ $rIcon }}" aria-hidden="true"></i>{{ $rLabel }}
                         @if($rType === 'like')<span class="tabular-nums" data-count="like_count">{{ \App\Support\Locales::number($testimony->like_count) }}</span>@endif
                         @if($rType === 'pray')<span class="tabular-nums" data-count="prayer_count">{{ \App\Support\Locales::number($testimony->prayer_count) }}</span>@endif

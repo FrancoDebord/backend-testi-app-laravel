@@ -4,6 +4,14 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-11-04 — Bouton « Je prie avec Prénom »
+
+- **Utilisateurs** : sur la page d'un témoignage, la page d'une requête de prière et les cartes de requêtes, le bouton « Je prie » devient « Je prie avec Marie » (prénom de l'auteur, ou nom de l'organisation). Un nom de plus de 14 caractères est raccourci avec « … » (« Église de la… ») ; le nom complet s'affiche en infobulle. « Je prie » seul reste affiché pour une publication anonyme, pour l'auteur lui-même et pour le verset du jour.
+- **Développeurs** : `User::shortFirstName()`, `Testimony::prayWithAuthorFor()`, `PrayerRequest::prayWithAuthorFor()`, clé `reactions.i_pray_with`. Tests `PrayWithNameTest`. Voir [reactions.md](fonctionnalites/reactions.md#site).
+- **Déploiement** : copier les fichiers, puis `php artisan optimize:clear` et `php artisan optimize`. Aucune migration, aucune variable d'environnement, aucune recompilation des assets.
+
+---
+
 ## 2026-11-04 — Recherche globale : page de résultats à onglets
 
 - **Utilisateurs** : la barre de recherche de l'en-tête (et la loupe sur mobile) cherche maintenant dans toute la base et affiche les résultats sur une page `/recherche` avec un onglet par rubrique et son nombre de résultats : Témoignages, Comptes, Requêtes de prière, Événements, Sessions de prière. La première rubrique qui a des résultats s'ouvre. Dans l'autocomplétion, une suggestion de texte (ou Entrée) ouvre cette page ; un résultat direct (témoignage, compte, événement, session…) ouvre directement sa page. Libellé de la barre : « Témoignage, compte, prière, événement… ».

@@ -382,6 +382,28 @@ class User extends Authenticatable implements \Illuminate\Contracts\Translation\
         return mb_strtoupper(mb_substr($parts[0], 0, 1) . (isset($parts[1]) ? mb_substr($parts[1], 0, 1) : ''));
     }
 
+    /**
+     * Nom court pour « Je prie avec … » : le prénom (premier mot du nom), ou le nom de l'organisation.
+     * Au-delà de $max caractères, coupé (au dernier espace s'il est assez loin) et terminé par « … ».
+     */
+    public function shortFirstName(int $max = 14): string
+    {
+        $name = trim((string) ($this->isOrganization() ? ($this->organization_name ?: $this->display_name) : $this->display_name));
+        if (!$this->isOrganization()) {
+            $name = preg_split('/\s+/u', $name, 2, PREG_SPLIT_NO_EMPTY)[0] ?? '';
+        }
+        if (mb_strlen($name) <= $max) {
+            return $name;
+        }
+        $cut   = mb_substr($name, 0, $max - 1);
+        $space = mb_strrpos($cut, ' ');
+        if ($space !== false && $space >= intdiv($max, 2)) {
+            $cut = mb_substr($cut, 0, $space);
+        }
+
+        return rtrim($cut, " -'’,.") . '…';
+    }
+
     public function isFollowing(string $userId): bool
     {
         return $this->following()->where('following_id', $userId)->exists();

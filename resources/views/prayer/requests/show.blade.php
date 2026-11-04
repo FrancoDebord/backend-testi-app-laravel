@@ -4,6 +4,7 @@
     $moderator   = (bool) $user?->canModerate();
     $author      = $prayer->revealsAuthorTo($user) ? $prayer->user : null;
     $hasPrayed   = $prayer->hasPrayed($user);
+    $prayWith    = $prayer->prayWithAuthorFor($user); // « Je prie avec Marie » (User::shortFirstName)
     $header      = 'Requête de prière';
     $subheader   = ($author ? $author->display_name : 'Anonyme') . ' · ' . $prayer->created_at?->translatedFormat('j F Y');
     $breadcrumbs = [
@@ -96,8 +97,9 @@
                       data-prayer-focus="{{ route('prayer.requests.pray.start', $prayer->id) }}"
                       data-prayer-excerpt="{{ Str::limit(\App\Services\Mentions::plain($prayer->body), 600) }}">
                     @csrf
-                    <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }}" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}">
-                        <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $hasPrayed ? __('reactions.prayer_times.pray_again') : 'Je prie' }}
+                    <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }}" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}"
+                            @if($prayWith && !$hasPrayed) title="{{ __('reactions.i_pray_with', ['name' => $prayWith->display_name]) }}" @endif>
+                        <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $hasPrayed ? __('reactions.prayer_times.pray_again') : ($prayWith ? __('reactions.i_pray_with', ['name' => $prayWith->shortFirstName()]) : 'Je prie') }}
                     </button>
                 </form>
                 @elseif(!$user)

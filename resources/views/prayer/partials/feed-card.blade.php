@@ -11,6 +11,7 @@
     $showAuthor   = $prayerItem->revealsAuthorTo($viewer);
     $cardAuthor   = $showAuthor ? $prayerItem->user : null;
     $hasPrayed    = $prayerItem->hasPrayed($viewer);
+    $prayWith     = $prayerItem->prayWithAuthorFor($viewer); // « Je prie avec Marie » (User::shortFirstName)
     $compact      = $compact ?? false;
 @endphp
 <article class="card flex h-full flex-col gap-3 p-4 sm:p-5" aria-label="Requête de prière">
@@ -70,8 +71,9 @@
               data-prayer-focus="{{ route('prayer.requests.pray.start', $prayerItem->id) }}"
               data-prayer-excerpt="{{ Str::limit(\App\Services\Mentions::plain($prayerItem->body), 600) }}">
             @csrf
-            <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}">
-                <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $hasPrayed ? __('reactions.prayer_times.pray_again') : 'Je prie' }}
+            <button type="submit" class="{{ $hasPrayed ? 'btn-primary' : 'btn-secondary' }} btn-sm" aria-pressed="{{ $hasPrayed ? 'true' : 'false' }}"
+                    @if($prayWith && !$hasPrayed) title="{{ __('reactions.i_pray_with', ['name' => $prayWith->display_name]) }}" @endif>
+                <i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ $hasPrayed ? __('reactions.prayer_times.pray_again') : ($prayWith ? __('reactions.i_pray_with', ['name' => $prayWith->shortFirstName()]) : 'Je prie') }}
             </button>
         </form>
         @endif

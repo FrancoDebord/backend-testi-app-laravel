@@ -133,6 +133,12 @@ class PrayerRequest extends Model
         return !$this->is_anonymous || $this->isAuthor($user) || (bool) $user?->canModerate();
     }
 
+    /** Auteur nommé sur le bouton « Je prie avec … » : jamais pour une requête anonyme ni pour l'auteur lui-même. */
+    public function prayWithAuthorFor(?User $user): ?User
+    {
+        return !$this->is_anonymous && !$this->isAuthor($user) ? $this->user : null;
+    }
+
     /** L'auteur ou un administrateur ; un modérateur retire la requête (hide) sans la supprimer. */
     public function canBeDeletedBy(?User $user): bool
     {

@@ -59,6 +59,13 @@ Le bouton de réaction du site bascule la réaction : un second appui la retire.
 - bouton et compteur changent tout de suite, puis l'état renvoyé par le serveur fait foi ; en cas d'erreur, l'état d'avant est rétabli ;
 - les cartes des listes affichent le nombre de prières à côté des « j'aime ».
 
+**« Je prie avec Prénom »** (2026-11-04) : sur la page d'un témoignage, la page d'une requête de prière et les cartes de requêtes, le bouton nomme l'auteur : « Je prie avec Marie ».
+
+- Nom court `User::shortFirstName()` : le premier mot du nom (« Marie Dupont » → « Marie », « Jean-Baptiste » gardé entier) ; pour une organisation, son nom.
+- Au-delà de 14 caractères, coupé et terminé par « … ». La coupe se fait au dernier espace s'il est au moins à mi-longueur (« Église de la… »), et un trait d'union final est retiré (« Maximilienne… »). Le nom complet est dans l'infobulle (`title`).
+- « Je prie » seul : témoignage ou requête anonyme (même pour la modération), auteur qui regarde sa propre publication, verset du jour (pas d'auteur). Après une prière, le bouton reste « Prier encore ».
+- Code : `Testimony::prayWithAuthorFor()`, `PrayerRequest::prayWithAuthorFor()`, clé `reactions.i_pray_with`. Tests `PrayWithNameTest`.
+
 L'API ne change pas : `amen` et `worship` restent acceptés et comptés comme des prières.
 
 ## Temps de prière

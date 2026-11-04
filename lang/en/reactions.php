@@ -5,6 +5,8 @@ return [
     // Watch page buttons
     'like'    => 'Like',
     'i_pray'  => 'Praying',
+    // "I pray" button when the author is known: short name (User::shortFirstName), full name in the tooltip.
+    'i_pray_with'      => 'Praying with :name',
     'pray'    => 'Prayer',
     'amen'    => 'Amen',
     'worship' => 'Worship God',

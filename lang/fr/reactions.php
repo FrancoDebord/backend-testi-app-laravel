@@ -6,6 +6,8 @@ return [
     'like'    => 'J\'aime',
     'pray'    => 'Prière',
     'i_pray'  => 'Je prie',
+    // Bouton « Je prie » quand l'auteur est connu : nom court (User::shortFirstName), nom complet dans l'infobulle.
+    'i_pray_with'      => 'Je prie avec :name',
     'amen'    => 'Amen',
     'worship' => 'Adorer Dieu',
     'fire'    => 'Feu',
