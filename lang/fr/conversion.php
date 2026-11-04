@@ -3,7 +3,6 @@
 // Témoignage de conversion (docs/fonctionnalites/temoignage-de-conversion.md) : API et site.
 return [
     // Règles et erreurs
-    'individual_only'     => 'Seul un compte personnel peut publier un témoignage de conversion.',
     'already_exists'      => 'Vous avez déjà un témoignage de conversion : modifiez-le plutôt que d\'en publier un autre.',
     'invalid_verse'       => 'Référence biblique non reconnue (exemple : Jean 3:16).',
     'year_range'          => 'L\'année de conversion doit être comprise entre :min et :max.',
@@ -47,5 +46,38 @@ return [
     'body_label'          => 'Votre histoire',
     'sign_in_to_share'    => 'Se connecter pour raconter ma conversion',
     'see_all'             => 'Tout voir',
-    'moderation_filter'   => 'Témoignages de conversion',
+    'moderation_filter'   => 'Conversions et genèses de ministère',
+
+    // Onglets de la section : conversions des personnes, genèses des ministères (organisations)
+    'tab_conversions'          => 'Conversions',
+    'tab_genesis'              => 'Genèse des ministères',
+    'genesis_section_title'    => 'Genèse des ministères',
+    'genesis_section_subtitle' => 'Comment les ministères de la communauté sont nés.',
+    'genesis_empty'            => 'Aucune genèse de ministère publiée pour le moment.',
+
+    // Compte organisation : témoignage de la genèse du ministère (remplace les clés ci-dessus)
+    'genesis' => [
+        'already_exists'       => 'Vous avez déjà un témoignage de la genèse de votre ministère : modifiez-le plutôt que d\'en publier un autre.',
+        'year_range'           => 'L\'année de fondation doit être comprise entre :min et :max.',
+        'not_found'            => 'Aucun témoignage de la genèse du ministère publié pour ce compte.',
+        'none_yet'             => 'Vous n\'avez pas encore de témoignage de la genèse de votre ministère.',
+        'section_title'        => 'Genèse des ministères',
+        'badge'                => 'Genèse du ministère',
+        'kind_standard_help'   => 'Ce que Dieu a fait à travers votre ministère.',
+        'kind_conversion'      => 'Genèse du ministère',
+        'kind_conversion_help' => 'Comment votre ministère est né. Un seul par compte, modifiable.',
+        'already_have'         => 'Vous avez déjà publié le témoignage de la genèse de votre ministère.',
+        'view_mine'            => 'Voir la genèse de notre ministère',
+        'details'              => 'Genèse du ministère',
+        'year'                 => 'Année de fondation',
+        'year_placeholder'     => 'Exemple : 1998',
+        'place_placeholder'    => 'Ville, quartier, lieu de la première réunion…',
+        'verse'                => 'Verset fondateur',
+        'converted_in'         => 'Fondé en :year',
+        'share_yours'          => 'Raconter la genèse de notre ministère',
+        'profile_title'        => 'Genèse du ministère',
+        'edit_title'           => 'Modifier la genèse de notre ministère',
+        'updated'              => 'Témoignage de la genèse du ministère mis à jour.',
+        'body_label'           => 'L\'histoire de votre ministère',
+    ],
 ];

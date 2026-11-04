@@ -35,6 +35,8 @@ class TestimonyResource extends JsonResource
             // (docs/fonctionnalites/temoignage-de-conversion.md).
             'kind'         => $this->kind?->value ?? \App\Enums\TestimonyKind::Standard->value,
             'isConversion' => $this->resource->isConversion(),
+            // Témoignage de conversion d'une organisation : genèse du ministère (libellés propres, année de fondation).
+            'isMinistryGenesis' => $this->resource->isMinistryGenesis(),
             'conversion'   => $this->resource->conversionDetails(),
             'category'     => $this->category_slug,
             // Événement auquel le témoignage est rattaché (docs/fonctionnalites/evenements.md).

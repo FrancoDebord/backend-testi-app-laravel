@@ -59,7 +59,7 @@
             @elseif($status)
             <span class="{{ $status->badgeClass() }} absolute top-2 left-2">{{ $status->label() }}</span>
             @elseif($testimony->isConversion())
-            <span class="badge-yellow absolute top-2 left-2"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>
+            <span class="badge-yellow absolute top-2 left-2"><i class="{{ $testimony->conversionIcon() }}" aria-hidden="true"></i>{{ $testimony->conversionLabel('badge') }}</span>
             @endif
 
             <span class="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-xs {{ $isYouTube ? 'text-error-500' : 'text-primary-600' }} shadow-soft" title="{{ $isYouTube ? 'YouTube' : $testimony->type->label() }}">

@@ -5,7 +5,7 @@
 --}}
 <div class="flex flex-wrap items-center gap-2">
     @if($testimony->isConversion())
-    <span class="badge-yellow"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.kind_conversion') }}</span>
+    <span class="badge-yellow"><i class="{{ $testimony->conversionIcon() }}" aria-hidden="true"></i>{{ $testimony->conversionLabel('kind_conversion') }}</span>
     @endif
     @if($testimony->category)
     <a href="{{ route('videos.index', ['category' => $testimony->category->slug]) }}" class="badge-blue hover:underline">{{ $testimony->category->displayName() }}</a>
@@ -27,12 +27,12 @@
     @endif
 </ul>
 
-{{-- Témoignage de conversion : année, lieu, verset ; « Modifier » pour l'auteur (docs/fonctionnalites/temoignage-de-conversion.md) --}}
+{{-- Témoignage de conversion (genèse du ministère pour une organisation) : année, lieu, verset ; « Modifier » pour l'auteur (docs/fonctionnalites/temoignage-de-conversion.md) --}}
 @if($testimony->isConversion())
 @php $conversion = $testimony->conversionDetails(); @endphp
 @if($conversion['year'] || $conversion['place'] || $conversion['verse'] || auth()->id() === $testimony->user_id)
 <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-sun-50 px-4 py-3 text-sm text-slate-700">
-    @if($conversion['year'])<span><i class="fa-regular fa-calendar mr-1 text-sun-700" aria-hidden="true"></i>{{ __('conversion.converted_in', ['year' => $conversion['year']]) }}</span>@endif
+    @if($conversion['year'])<span><i class="fa-regular fa-calendar mr-1 text-sun-700" aria-hidden="true"></i>{{ $testimony->conversionLabel('converted_in', ['year' => $conversion['year']]) }}</span>@endif
     @if($conversion['place'])<span><i class="fa-solid fa-location-dot mr-1 text-sun-700" aria-hidden="true"></i>{{ __('conversion.converted_at', ['place' => $conversion['place']]) }}</span>@endif
     @if($conversion['verse'])<span><i class="fa-solid fa-book-bible mr-1 text-sun-700" aria-hidden="true"></i>{{ $conversion['verse'] }}</span>@endif
     @if(auth()->id() === $testimony->user_id)

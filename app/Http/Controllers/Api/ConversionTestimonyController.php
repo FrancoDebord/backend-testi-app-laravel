@@ -23,13 +23,14 @@ class ConversionTestimonyController extends Controller
     // GET /users/{id}/conversion-testimony  (public) : le témoignage publié, 404 s'il n'y en a pas.
     public function ofUser(Request $request, string $id): JsonResponse
     {
-        if (!User::whereKey($id)->exists()) {
+        $author = User::find($id);
+        if (!$author) {
             return $this->notFound();
         }
         $testimony = $this->conversions->publishedOf($id);
         // Témoignage réservé aux abonnés : seulement pour qui peut le voir.
         if (!$testimony || !$testimony->isVisibleTo($request->user() ?? $request->user('sanctum'))) {
-            return $this->notFound(__('conversion.not_found'));
+            return $this->notFound(ConversionTestimonies::label('not_found', $author));
         }
 
         return $this->success(new TestimonyResource($testimony->load('user')));
@@ -37,7 +38,7 @@ class ConversionTestimonyController extends Controller
 
     /**
      * GET /me/conversion-testimony : le mien, quel que soit son statut (en attente, refusé…) ; data = null s'il
-     * n'existe pas. can_create : compte personnel sans témoignage de conversion.
+     * n'existe pas. can_create : compte sans témoignage de conversion (genèse du ministère pour une organisation).
      */
     public function mine(Request $request): JsonResponse
     {
@@ -48,7 +49,7 @@ class ConversionTestimonyController extends Controller
             'success'    => true,
             'data'       => $testimony ? (new TestimonyResource($testimony->load('user')))->resolve($request) : null,
             'can_create' => !$testimony && ConversionTestimonies::canPublish($user),
-            'message'    => $testimony ? '' : __('conversion.none_yet'),
+            'message'    => $testimony ? '' : ConversionTestimonies::label('none_yet', $user),
         ]);
     }
 }

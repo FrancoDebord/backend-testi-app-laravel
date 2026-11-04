@@ -77,8 +77,9 @@ class HomeController extends Controller
             // Sessions de prière programmées (bandeau masqué s'il n'y en a pas) : docs/fonctionnalites/sessions-de-priere.md
             'prayerSessions' => app(\App\Services\PrayerSessions::class)->list($viewer, 'upcoming')->limit(6)->get(),
             'shorts'   => Testimony::with('user')->published()->shorts()->latestPublished()->limit(12)->get(),
-            // Témoignages de conversion (bloc masqué s'il n'y en a pas) : docs/fonctionnalites/temoignage-de-conversion.md
-            'conversions' => Testimony::with('user')->published()->conversion()->latestPublished()->limit(3)->get(),
+            // Témoignages de conversion des personnes, sans les genèses de ministère (bloc masqué s'il n'y en a pas) :
+            // docs/fonctionnalites/temoignage-de-conversion.md
+            'conversions' => Testimony::with('user')->published()->personalConversion()->latestPublished()->limit(3)->get(),
             // Chiffres publics, relus au plus toutes les 5 minutes.
             'stats'    => Cache::remember('home.stats', 300, fn () => [
                 'testimonies' => Testimony::published()->count(),

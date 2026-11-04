@@ -69,6 +69,12 @@ class TestimonyController extends Controller
         if ($kind = \App\Enums\TestimonyKind::tryFrom((string) $request->query('kind'))) {
             $query->where('kind', $kind->value);
         }
+        // ?kind=conversion&author_type=individual | organization : conversions des personnes ou genèses des ministères.
+        match ($request->query('author_type')) {
+            'organization' => $query->whereHas('user', fn ($u) => $u->where('account_type', \App\Enums\AccountType::Organization->value)),
+            'individual'   => $query->whereDoesntHave('user', fn ($u) => $u->where('account_type', \App\Enums\AccountType::Organization->value)),
+            default        => null,
+        };
 
         // Delta sync: return only records updated after cursor
         if ($after = $request->query('after')) {

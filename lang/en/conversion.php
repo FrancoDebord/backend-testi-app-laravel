@@ -3,7 +3,6 @@
 // Conversion story (docs/fonctionnalites/temoignage-de-conversion.md): API and website.
 return [
     // Rules and errors
-    'individual_only'     => 'Only a personal account can publish a conversion story.',
     'already_exists'      => 'You already have a conversion story: edit it instead of publishing another one.',
     'invalid_verse'       => 'Bible reference not recognized (example: John 3:16).',
     'year_range'          => 'The conversion year must be between :min and :max.',
@@ -47,5 +46,38 @@ return [
     'body_label'          => 'Your story',
     'sign_in_to_share'    => 'Sign in to tell my conversion story',
     'see_all'             => 'See all',
-    'moderation_filter'   => 'Conversion stories',
+    'moderation_filter'   => 'Conversion and ministry founding stories',
+
+    // Section tabs: conversions of individuals, founding stories of ministries (organizations)
+    'tab_conversions'          => 'Conversions',
+    'tab_genesis'              => 'Ministry beginnings',
+    'genesis_section_title'    => 'Ministry beginnings',
+    'genesis_section_subtitle' => 'How the ministries of the community were born.',
+    'genesis_empty'            => 'No ministry founding stories published yet.',
+
+    // Organization account: the founding story of the ministry (replaces the keys above)
+    'genesis' => [
+        'already_exists'       => 'You already have a founding story for your ministry: edit it instead of publishing another one.',
+        'year_range'           => 'The founding year must be between :min and :max.',
+        'not_found'            => 'No published ministry founding story for this account.',
+        'none_yet'             => 'You do not have a founding story for your ministry yet.',
+        'section_title'        => 'Ministry beginnings',
+        'badge'                => 'Ministry beginnings',
+        'kind_standard_help'   => 'What God has done through your ministry.',
+        'kind_conversion'      => 'Ministry founding story',
+        'kind_conversion_help' => 'How your ministry was born. One per account, and you can edit it.',
+        'already_have'         => 'You have already published your ministry founding story.',
+        'view_mine'            => 'View our ministry founding story',
+        'details'              => 'Ministry beginnings',
+        'year'                 => 'Year founded',
+        'year_placeholder'     => 'Example: 1998',
+        'place_placeholder'    => 'City, neighborhood, place of the first meeting…',
+        'verse'                => 'Founding verse',
+        'converted_in'         => 'Founded in :year',
+        'share_yours'          => 'Tell our ministry founding story',
+        'profile_title'        => 'Ministry founding story',
+        'edit_title'           => 'Edit our ministry founding story',
+        'updated'              => 'Ministry founding story updated.',
+        'body_label'           => 'The story of your ministry',
+    ],
 ];

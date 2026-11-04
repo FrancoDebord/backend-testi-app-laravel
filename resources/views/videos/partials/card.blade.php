@@ -49,7 +49,7 @@
         @elseif($status)
         <span class="{{ $status->badgeClass() }} absolute top-2 left-2">{{ $status->label() }}</span>
         @elseif($testimony->isConversion())
-        <span class="badge-yellow absolute top-2 left-2"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>
+        <span class="badge-yellow absolute top-2 left-2"><i class="{{ $testimony->conversionIcon() }}" aria-hidden="true"></i>{{ $testimony->conversionLabel('badge') }}</span>
         @elseif($pill)
         <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold text-slate-800">
             <i class="fa-solid {{ $pill[0] }} text-[10px]" aria-hidden="true"></i>{{ $pill[1] }}

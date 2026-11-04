@@ -98,12 +98,41 @@ class ConversionTestimonyTest extends TestCase
         $this->assertSame(1, Testimony::conversion()->count());
     }
 
-    public function test_organizations_cannot_publish_a_conversion_testimony(): void
+    public function test_organizations_publish_the_genesis_of_their_ministry(): void
     {
-        Sanctum::actingAs($this->org);
-        $this->postJson('/api/v1/testimonies', $this->payload())->assertForbidden()
-            ->assertJsonPath('message', 'Seul un compte personnel peut publier un témoignage de conversion.');
-        $this->assertSame(0, Testimony::count());
+        Category::create(['name' => 'Ministère', 'slug' => 'ministere', 'is_active' => true, 'display_order' => 3]);
+        $genesis = $this->createConversion($this->org, ['title' => 'Comment notre église est née', 'conversion_year' => 1998]);
+        $this->assertSame('ministere', $genesis->category_slug); // catégorie par défaut d'une organisation
+        $this->getJson("/api/v1/testimonies/{$genesis->id}")->assertOk()
+            ->assertJsonPath('data.isConversion', true)->assertJsonPath('data.isMinistryGenesis', true);
+
+        // Un seul par compte, message propre à l'organisation.
+        $this->postJson('/api/v1/testimonies', $this->payload())->assertStatus(409)
+            ->assertJsonPath('message', "Vous avez déjà un témoignage de la genèse de votre ministère : modifiez-le plutôt que d'en publier un autre.");
+        $this->postJson('/api/v1/testimonies', $this->payload(['conversion_year' => now()->year + 1]))->assertUnprocessable()
+            ->assertJsonValidationErrors(['conversion_year' => "L'année de fondation doit être comprise entre 1900 et " . now()->year . '.']);
+
+        // Section : onglet « Genèse des ministères », séparé des conversions des personnes ; accueil sans les genèses.
+        $conversion = $this->createConversion();
+        $this->assertFalse($conversion->fresh()->isMinistryGenesis());
+        app(TestimonyModeration::class)->approve($genesis, $this->moderator);
+        app(TestimonyModeration::class)->approve($conversion, $this->moderator);
+        $this->app['auth']->forgetGuards();
+
+        $this->getJson('/api/v1/testimonies?kind=conversion&author_type=organization')->assertOk()
+            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $genesis->id);
+        $this->getJson('/api/v1/testimonies?kind=conversion&author_type=individual')->assertOk()
+            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $conversion->id);
+
+        $this->get('/temoignages-de-conversion')->assertOk()->assertSee($conversion->title)->assertDontSee($genesis->title);
+        $this->get('/temoignages-de-conversion?onglet=ministeres')->assertOk()
+            ->assertSee('Genèse des ministères')->assertSee($genesis->title)->assertSee('Fondé en 1998')
+            ->assertSee('fa-church', false)->assertDontSee($conversion->title);
+        $this->get('/')->assertOk()->assertViewHas('conversions', fn ($c) => $c->pluck('id')->all() === [$conversion->id]);
+
+        // Profil et page du témoignage.
+        $this->get("/profiles/{$this->org->id}")->assertOk()->assertSee('Genèse du ministère')->assertDontSee('Converti en');
+        $this->get("/testimonies/{$genesis->id}")->assertOk()->assertSee('Genèse du ministère')->assertSee('Fondé en 1998');
     }
 
     public function test_conversion_fields_are_validated(): void
@@ -169,8 +198,10 @@ class ConversionTestimonyTest extends TestCase
         $this->getJson('/api/v1/me/conversion-testimony')->assertOk()
             ->assertJsonPath('data', null)->assertJsonPath('can_create', true);
 
+        // Organisation : genèse du ministère.
         Sanctum::actingAs($this->org);
-        $this->getJson('/api/v1/me/conversion-testimony')->assertOk()->assertJsonPath('can_create', false);
+        $this->getJson('/api/v1/me/conversion-testimony')->assertOk()->assertJsonPath('can_create', true)
+            ->assertJsonPath('message', "Vous n'avez pas encore de témoignage de la genèse de votre ministère.");
     }
 
     public function test_website_section_cards_and_profile_highlight(): void
@@ -226,11 +257,17 @@ class ConversionTestimonyTest extends TestCase
         ])->assertRedirect(route('testimonies.show', $testimony->id));
         $this->assertSame('Abomey', $testimony->fresh()->conversion_place);
 
-        // Organisation : pas de choix « conversion », envoi refusé.
-        $this->actingAs($this->org)->get('/publish?kind=conversion')->assertOk()->assertDontSee('type="radio" name="kind"', false);
-        $this->actingAs($this->org)->from('/publish')->post('/testimonies', [
-            'title' => 'Org', 'type' => 'text', 'body_text' => 'Texte', 'kind' => 'conversion', 'consent_given' => '1',
-        ])->assertSessionHasErrors(['kind' => 'Seul un compte personnel peut publier un témoignage de conversion.']);
+        // Organisation : choix « Genèse du ministère », année de fondation, puis modification.
+        $this->actingAs($this->org)->get('/publish?kind=conversion')->assertOk()
+            ->assertSee('type="radio" name="kind"', false)->assertSee('Genèse du ministère')->assertSee('Année de fondation')
+            ->assertDontSee('Comment vous avez rencontré Jésus');
+        $this->actingAs($this->org)->post('/testimonies', [
+            'title' => 'Notre fondation', 'type' => 'text', 'body_text' => 'Tout a commencé dans un salon…', 'kind' => 'conversion',
+            'conversion_year' => 1998, 'consent_given' => '1',
+        ])->assertRedirect();
+        $this->assertSame(1, Testimony::conversion()->where('user_id', $this->org->id)->count());
+        $this->actingAs($this->org)->get('/temoignages-de-conversion/le-mien/modifier')->assertOk()
+            ->assertSee('Modifier la genèse de notre ministère')->assertSee('Verset fondateur');
     }
 
     public function test_moderation_shows_and_filters_conversion_testimonies(): void

@@ -13,21 +13,27 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 /**
- * Section « Témoignages de conversion » du site et modification de son propre témoignage de conversion.
- * Mêmes règles que l'API (App\Services\ConversionTestimonies). docs/fonctionnalites/temoignage-de-conversion.md
+ * Section « Témoignages de conversion » du site (onglets : conversions des personnes, genèse des ministères des
+ * organisations) et modification de son propre témoignage. Mêmes règles que l'API (App\Services\ConversionTestimonies).
+ * docs/fonctionnalites/temoignage-de-conversion.md
  */
 class ConversionTestimonyController extends Controller
 {
     public function __construct(private readonly ConversionTestimonies $conversions) {}
 
-    public function index(): View
+    /** GET /temoignages-de-conversion  ?onglet=ministeres : genèses des ministères. */
+    public function index(Request $request): View
     {
         $user = Auth::user();
         $mine = $user ? $this->conversions->of($user) : null;
+        $tab  = $request->query('onglet') === 'ministeres' ? 'ministeres' : 'conversions';
+
+        $query = Testimony::query()->published()->with('user');
+        $tab === 'ministeres' ? $query->ministryGenesis() : $query->personalConversion();
 
         return view('testimonies.conversions', [
-            'testimonies'   => Testimony::query()->conversion()->published()->with('user')->latestPublished()
-                ->orderByDesc('id')->paginate(12),
+            'testimonies'   => $query->latestPublished()->orderByDesc('id')->paginate(12)->withQueryString(),
+            'tab'           => $tab,
             'mine'          => $mine,
             'canCreate'     => $user !== null && $mine === null && ConversionTestimonies::canPublish($user) && $user->canPublish(),
         ]);
@@ -40,7 +46,7 @@ class ConversionTestimonyController extends Controller
             return redirect()->route('publish', ['kind' => 'conversion']);
         }
 
-        return view('testimonies.conversion-edit', ['testimony' => $testimony]);
+        return view('testimonies.conversion-edit', ['testimony' => $testimony->load('user')]);
     }
 
     /** Titre, texte et champs propres ; renvoyé en modération comme toute modification par l'auteur. */
@@ -53,7 +59,7 @@ class ConversionTestimonyController extends Controller
             'title'     => ['required', 'string', 'max:200'],
             'body_text' => [$testimony->type->value === 'text' ? 'required' : 'nullable', 'string'],
             ...collect(ConversionTestimonies::rules())->except('kind')->all(),
-        ], ConversionTestimonies::messages());
+        ], ConversionTestimonies::messages($request->user()));
 
         try {
             $fields = $this->conversions->attributesForUpdate($testimony, $request);
@@ -70,6 +76,7 @@ class ConversionTestimonyController extends Controller
         ]);
         $moderation->editedByAuthor($testimony->refresh(), $request->user());
 
-        return redirect()->route('testimonies.show', $testimony->id)->with('success', __('conversion.updated'));
+        return redirect()->route('testimonies.show', $testimony->id)
+            ->with('success', ConversionTestimonies::label('updated', $request->user()));
     }
 }

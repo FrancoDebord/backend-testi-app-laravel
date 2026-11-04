@@ -73,7 +73,8 @@ class TestimonyController extends Controller
         // Vidéo envoyée directement à Bunny Stream par le navigateur (docs/fonctionnalites/videos-bunny-stream.md).
         $bunnyVideos = app(\App\Services\BunnyStream::class)->isConfigured();
 
-        // Témoignage de conversion (docs/fonctionnalites/temoignage-de-conversion.md) : compte personnel, un seul.
+        // Témoignage de conversion, ou genèse du ministère pour une organisation : un seul par compte
+        // (docs/fonctionnalites/temoignage-de-conversion.md).
         $conversionTestimony = app(\App\Services\ConversionTestimonies::class)->of($request->user());
         $canConversion = !$conversionTestimony && \App\Services\ConversionTestimonies::canPublish($request->user());
         $kind = $canConversion && $request->query('kind') === 'conversion' ? 'conversion' : 'standard';
@@ -159,7 +160,7 @@ class TestimonyController extends Controller
             ...\App\Support\WebPublication::rules(),
             // Liste de témoignages facultative (docs/fonctionnalites/listes-de-temoignages.md)
             ...\App\Services\TestimonyPlaylists::composerRules(),
-        ], \App\Support\WebPublication::messages() + \App\Services\ConversionTestimonies::messages() + \App\Services\LiveTestimonies::messages() + \App\Support\YouTubeCredit::messages() + TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
+        ], \App\Support\WebPublication::messages() + \App\Services\ConversionTestimonies::messages($request->user()) + \App\Services\LiveTestimonies::messages() + \App\Support\YouTubeCredit::messages() + TestimonyProofs::messages('proof_1') + TestimonyProofs::messages('proof_2') + [
             'title.required'         => __('testimonies.validation.title_required'),
             'youtube_url.required_if' => __('testimonies.validation.youtube_required'),
             'category.required'      => __('testimonies.validation.category_required'),
@@ -249,7 +250,7 @@ class TestimonyController extends Controller
 
         $kindFields   = \App\Services\ConversionTestimonies::attributesFor($request);
         $isConversion = $kindFields['kind'] === \App\Enums\TestimonyKind::Conversion->value;
-        $data['category'] = ($data['category'] ?? null) ?: ($isConversion && Category::where('slug', 'conversion')->exists() ? 'conversion' : 'autre');
+        $data['category'] = ($data['category'] ?? null) ?: ($isConversion ? \App\Services\ConversionTestimonies::defaultCategory($request->user()) : 'autre');
         $category  = Category::where('slug', $data['category'])->first();
         $isJournal = ($data['visibility'] ?? 'public') === 'private';
         $tags     = !empty($data['tags']) ? array_map('trim', explode(',', $data['tags'])) : [];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AccountType;
 use App\Enums\TestimonyKind;
 use App\Enums\TestimonyType;
 use App\Enums\TestimonyStatus;
@@ -320,9 +321,38 @@ class Testimony extends Model
         return $query->where($query->qualifyColumn('kind'), TestimonyKind::Conversion->value);
     }
 
+    /** Genèse du ministère : témoignage de conversion d'une organisation. */
+    public function scopeMinistryGenesis($query)
+    {
+        return $query->conversion()->whereHas('user', fn ($u) => $u->where('account_type', AccountType::Organization->value));
+    }
+
+    /** Témoignage de conversion d'une personne (les comptes sans type sont des personnes). */
+    public function scopePersonalConversion($query)
+    {
+        return $query->conversion()->whereDoesntHave('user', fn ($u) => $u->where('account_type', AccountType::Organization->value));
+    }
+
     public function isConversion(): bool
     {
         return $this->kind === TestimonyKind::Conversion;
+    }
+
+    public function isMinistryGenesis(): bool
+    {
+        return $this->isConversion() && (bool) $this->user?->isOrganization();
+    }
+
+    /** Libellé conversion.* adapté à l'auteur (genèse du ministère pour une organisation). */
+    public function conversionLabel(string $key, array $replace = []): string
+    {
+        return \App\Services\ConversionTestimonies::label($key, $this->user, $replace);
+    }
+
+    /** Icône Font Awesome du badge : église pour une genèse du ministère, colombe pour une conversion. */
+    public function conversionIcon(): string
+    {
+        return $this->isMinistryGenesis() ? 'fa-solid fa-church' : 'fa-solid fa-dove';
     }
 
     /** Année, lieu et verset d'un témoignage de conversion ; null pour un témoignage standard. */

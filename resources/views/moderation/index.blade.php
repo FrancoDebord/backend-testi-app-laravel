@@ -130,7 +130,7 @@
                         <span class="{{ $item->status->badgeClass() }}">{{ $item->status->label() }}</span>
                         @if($item->is_verified)<span class="badge-blue"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>{{ __('moderation.common.label') }}</span>@endif
                         @if($item->isManuallyFeatured())<span class="badge-orange"><i class="fa-solid fa-star" aria-hidden="true"></i>{{ __('moderation.tabs.featured') }}</span>@endif
-                        @if($item->isConversion())<span class="badge-yellow"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>@endif
+                        @if($item->isConversion())<span class="badge-yellow"><i class="{{ $item->conversionIcon() }}" aria-hidden="true"></i>{{ $item->conversionLabel('badge') }}</span>@endif
                     </div>
                 </div>
             </div>
@@ -178,7 +178,7 @@
                                 <span class="{{ $item->status->badgeClass() }}">{{ $item->status->label() }}</span>
                                 @if($item->is_verified)<span class="badge-blue" title="{{ __('moderation.common.label_title') }}"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>{{ __('moderation.common.label') }}</span>@endif
                                 @if($item->isManuallyFeatured())<span class="badge-orange"><i class="fa-solid fa-star" aria-hidden="true"></i>{{ __('moderation.index.featured_short') }}</span>@endif
-                                @if($item->isConversion())<span class="badge-yellow"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>@endif
+                                @if($item->isConversion())<span class="badge-yellow"><i class="{{ $item->conversionIcon() }}" aria-hidden="true"></i>{{ $item->conversionLabel('badge') }}</span>@endif
                             </div>
                         </td>
                         <td class="table-td whitespace-nowrap text-slate-500">

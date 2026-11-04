@@ -3,17 +3,20 @@
 namespace App\Services;
 
 use App\Enums\TestimonyKind;
+use App\Models\Category;
 use App\Models\Testimony;
 use App\Models\User;
 use App\Support\BibleReference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Validation\Rule;
 
 /**
- * Témoignage de conversion (docs/fonctionnalites/temoignage-de-conversion.md) : réservé aux comptes
- * personnels (account_type = individual), un seul par compte (corbeille exclue), modifiable par son
- * auteur, même modération que les autres témoignages. Champs propres facultatifs : année, lieu, verset.
+ * Témoignage de conversion (docs/fonctionnalites/temoignage-de-conversion.md) : un seul par compte (corbeille
+ * exclue), modifiable par son auteur, même modération que les autres témoignages. Champs propres facultatifs :
+ * année, lieu, verset. Pour une organisation, c'est le témoignage de la genèse du ministère : même sorte
+ * « conversion », libellés conversion.genesis.*, l'année est celle de la fondation.
  */
 class ConversionTestimonies
 {
@@ -38,17 +41,36 @@ class ConversionTestimonies
         ];
     }
 
-    public static function messages(): array
+    public static function messages(?User $author = null): array
     {
         return [
-            'conversion_year.between' => __('conversion.year_range', ['min' => self::MIN_YEAR, 'max' => now()->year]),
+            'conversion_year.between' => self::label('year_range', $author, ['min' => self::MIN_YEAR, 'max' => now()->year]),
         ];
     }
 
-    /** Compte personnel : les comptes sans type enregistré (anciens comptes) sont des personnes. */
+    /** Tout compte : témoignage de conversion pour une personne, genèse du ministère pour une organisation. */
     public static function canPublish(?User $user): bool
     {
-        return $user !== null && !$user->isOrganization();
+        return $user !== null;
+    }
+
+    /**
+     * Libellé selon l'auteur : conversion.genesis.{clé} pour une organisation (genèse du ministère) s'il existe,
+     * sinon conversion.{clé}.
+     */
+    public static function label(string $key, ?User $author, array $replace = []): string
+    {
+        $genesis = 'conversion.genesis.' . $key;
+
+        return __($author?->isOrganization() && Lang::has($genesis) ? $genesis : 'conversion.' . $key, $replace);
+    }
+
+    /** Catégorie par défaut : « ministere » (organisation) ou « conversion » si elle existe, sinon « autre ». */
+    public static function defaultCategory(?User $author): string
+    {
+        $slug = $author?->isOrganization() ? 'ministere' : 'conversion';
+
+        return Category::where('slug', $slug)->exists() ? $slug : 'autre';
     }
 
     /** Témoignage de conversion du compte (tous statuts, carnet compris ; corbeille exclue). */
@@ -69,18 +91,16 @@ class ConversionTestimonies
     }
 
     /**
-     * Le compte peut-il avoir ce témoignage de conversion ? 403 pour une organisation, 409 s'il en a déjà un.
+     * Le compte peut-il avoir ce témoignage de conversion (ou de genèse du ministère) ? 409 s'il en a déjà un.
      *
      * @throws ContentActionException
      */
     public function ensureAllowed(User $author, ?string $ignoreId = null): void
     {
-        if (!self::canPublish($author)) {
-            throw new ContentActionException(__('conversion.individual_only'), 403, ['kind' => [__('conversion.individual_only')]]);
-        }
         if ($existing = $this->of($author, $ignoreId)) {
-            throw new ContentActionException(__('conversion.already_exists'), 409, [
-                'kind'                   => [__('conversion.already_exists')],
+            $message = self::label('already_exists', $author);
+            throw new ContentActionException($message, 409, [
+                'kind'                   => [$message],
                 'conversion_testimony_id' => [$existing->id],
             ]);
         }

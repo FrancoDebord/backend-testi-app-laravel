@@ -54,7 +54,7 @@
                 @elseif($status)
                 <span class="{{ $status->badgeClass() }}">{{ $status->label() }}</span>
                 @elseif($testimony->isConversion())
-                <span class="badge-yellow"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>
+                <span class="badge-yellow"><i class="{{ $testimony->conversionIcon() }}" aria-hidden="true"></i>{{ $testimony->conversionLabel('badge') }}</span>
                 @elseif($pill)
                 <span class="inline-flex items-center gap-1 font-medium text-slate-600"><i class="fa-solid {{ $pill[0] }} text-[10px] text-slate-400" aria-hidden="true"></i>{{ $pill[1] }}</span>
                 @endif

@@ -63,7 +63,7 @@ class StoreTestimonyRequest extends FormRequest
 
     public function messages(): array
     {
-        return \App\Services\ConversionTestimonies::messages()
+        return \App\Services\ConversionTestimonies::messages($this->user())
             + \App\Services\LiveTestimonies::messages()
             + \App\Support\YouTubeCredit::messages();
     }

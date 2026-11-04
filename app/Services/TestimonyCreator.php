@@ -73,12 +73,13 @@ class TestimonyCreator
             ? $playlists->existingForComposer($user, $request->input('playlist_id'), $request->input('playlist_title'))
             : null;
 
-        // Témoignage de conversion : compte personnel, un seul par compte (docs/fonctionnalites/temoignage-de-conversion.md).
+        // Témoignage de conversion (genèse du ministère pour une organisation), un seul par compte
+        // (docs/fonctionnalites/temoignage-de-conversion.md).
         $kindFields   = ConversionTestimonies::attributesFor($request);
         $isConversion = $kindFields['kind'] === \App\Enums\TestimonyKind::Conversion->value;
 
         $isJournal    = $request->visibility === TestimonyVisibility::Private->value;
-        $categorySlug = $request->category ?: ($isConversion && Category::where('slug', 'conversion')->exists() ? 'conversion' : 'autre');
+        $categorySlug = $request->category ?: ($isConversion ? ConversionTestimonies::defaultCategory($user) : 'autre');
         $category     = Category::where('slug', $categorySlug)->first();
         $mediaUrl     = ($isBunny || $youtubeId) ? null : $request->media_url;
 

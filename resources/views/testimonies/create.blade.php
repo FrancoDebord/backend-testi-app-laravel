@@ -96,25 +96,27 @@
         </div>
         @endif
 
-        {{-- Témoignage de conversion : compte personnel, un seul par compte (docs/fonctionnalites/temoignage-de-conversion.md) --}}
+        {{-- Témoignage de conversion (genèse du ministère pour une organisation), un seul par compte
+             (docs/fonctionnalites/temoignage-de-conversion.md) --}}
+        @php $conversionLabel = fn (string $key) => \App\Services\ConversionTestimonies::label($key, request()->user()); @endphp
         @if($canConversion)
         @php $currentKind = old('kind', $kind); @endphp
         <section class="space-y-4 p-5 sm:p-6" data-kind-picker>
             <fieldset>
-                <legend class="form-label">{{ __('conversion.kind_label') }}</legend>
+                <legend class="form-label">{{ $conversionLabel('kind_label') }}</legend>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 has-[:checked]:border-primary-600 has-[:checked]:bg-primary-50">
                         <input type="radio" name="kind" value="standard" class="mt-1" @checked($currentKind !== 'conversion')>
                         <span>
-                            <span class="block font-semibold text-slate-900">{{ __('conversion.kind_standard') }}</span>
-                            <span class="block text-xs text-slate-500">{{ __('conversion.kind_standard_help') }}</span>
+                            <span class="block font-semibold text-slate-900">{{ $conversionLabel('kind_standard') }}</span>
+                            <span class="block text-xs text-slate-500">{{ $conversionLabel('kind_standard_help') }}</span>
                         </span>
                     </label>
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 has-[:checked]:border-sun-400 has-[:checked]:bg-sun-50">
                         <input type="radio" name="kind" value="conversion" class="mt-1" @checked($currentKind === 'conversion')>
                         <span>
-                            <span class="flex items-center gap-2 font-semibold text-slate-900"><i class="fa-solid fa-dove text-sun-700" aria-hidden="true"></i>{{ __('conversion.kind_conversion') }}</span>
-                            <span class="block text-xs text-slate-500">{{ __('conversion.kind_conversion_help') }}</span>
+                            <span class="flex items-center gap-2 font-semibold text-slate-900"><i class="{{ request()->user()?->isOrganization() ? 'fa-solid fa-church' : 'fa-solid fa-dove' }} text-sun-700" aria-hidden="true"></i>{{ $conversionLabel('kind_conversion') }}</span>
+                            <span class="block text-xs text-slate-500">{{ $conversionLabel('kind_conversion_help') }}</span>
                         </span>
                     </label>
                 </div>
@@ -123,21 +125,21 @@
 
             <div class="grid gap-4 sm:grid-cols-3" data-kind-section="conversion" @if($currentKind !== 'conversion') hidden @endif>
                 <div>
-                    <label for="conversion_year" class="form-label">{{ __('conversion.year') }} <span class="font-normal text-slate-500">({{ __('conversion.optional') }})</span></label>
+                    <label for="conversion_year" class="form-label">{{ $conversionLabel('year') }} <span class="font-normal text-slate-500">({{ $conversionLabel('optional') }})</span></label>
                     <input id="conversion_year" type="number" name="conversion_year" value="{{ old('conversion_year') }}" min="{{ \App\Services\ConversionTestimonies::MIN_YEAR }}" max="{{ now()->year }}"
-                           inputmode="numeric" class="form-input" placeholder="{{ __('conversion.year_placeholder') }}">
+                           inputmode="numeric" class="form-input" placeholder="{{ $conversionLabel('year_placeholder') }}">
                     @error('conversion_year')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="conversion_place" class="form-label">{{ __('conversion.place') }} <span class="font-normal text-slate-500">({{ __('conversion.optional') }})</span></label>
+                    <label for="conversion_place" class="form-label">{{ $conversionLabel('place') }} <span class="font-normal text-slate-500">({{ $conversionLabel('optional') }})</span></label>
                     <input id="conversion_place" type="text" name="conversion_place" value="{{ old('conversion_place') }}" maxlength="150" class="form-input"
-                           placeholder="{{ __('conversion.place_placeholder') }}">
+                           placeholder="{{ $conversionLabel('place_placeholder') }}">
                     @error('conversion_place')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="conversion_verse" class="form-label">{{ __('conversion.verse') }} <span class="font-normal text-slate-500">({{ __('conversion.optional') }})</span></label>
+                    <label for="conversion_verse" class="form-label">{{ $conversionLabel('verse') }} <span class="font-normal text-slate-500">({{ $conversionLabel('optional') }})</span></label>
                     <input id="conversion_verse" type="text" name="conversion_verse" value="{{ old('conversion_verse') }}" maxlength="100" class="form-input"
-                           placeholder="{{ __('conversion.verse_placeholder') }}">
+                           placeholder="{{ $conversionLabel('verse_placeholder') }}">
                     @error('conversion_verse')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
             </div>
@@ -146,7 +148,7 @@
         <div class="p-5 sm:p-6">
             <div class="alert-info" role="status">
                 <i class="fa-solid fa-dove mt-0.5" aria-hidden="true"></i>
-                <p>{{ __('conversion.already_have') }} <a href="{{ route('testimonies.conversion.edit') }}" class="font-semibold underline">{{ __('conversion.edit_title') }}</a></p>
+                <p>{{ $conversionLabel('already_have') }} <a href="{{ route('testimonies.conversion.edit') }}" class="font-semibold underline">{{ $conversionLabel('edit_title') }}</a></p>
             </div>
         </div>
         @endif
@@ -470,15 +472,17 @@
         }
     }
 
-    // Témoignage de conversion : champs propres affichés, catégorie « Conversion » proposée.
+    // Témoignage de conversion : champs propres affichés, catégorie « Conversion » proposée
+    // (« Ministère » pour la genèse du ministère d'une organisation).
     const conversionFields = form.querySelector('[data-kind-section="conversion"]');
+    const conversionCategory = @json(request()->user()?->isOrganization() ? 'ministere' : 'conversion');
     function syncKind() {
         if (!conversionFields) return;
         const isConversion = form.querySelector('input[name="kind"]:checked')?.value === 'conversion';
         conversionFields.hidden = !isConversion;
         const category = form.querySelector('#category');
-        if (isConversion && category && !category.value && category.querySelector('option[value="conversion"]')) {
-            category.value = 'conversion';
+        if (isConversion && category && !category.value && category.querySelector('option[value="' + conversionCategory + '"]')) {
+            category.value = conversionCategory;
         }
     }
 

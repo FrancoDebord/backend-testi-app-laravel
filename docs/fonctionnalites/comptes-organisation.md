@@ -21,6 +21,7 @@ Les **comptes personnels** peuvent aussi demander un badge (« Compte vérifié 
 | Modifier une organisation refusée | La demande est **renvoyée en vérification** (statut `pending`) |
 | Ville, site, type | Modifiables sans perdre la vérification |
 | Prévenir l'organisation | Notification dans l'application (`organization_verified` / `organization_rejected`) |
+| Témoignage mis en avant | **Genèse du ministère** au lieu du témoignage de conversion (un seul, année de fondation) : [temoignage-de-conversion.md](temoignage-de-conversion.md#comptes-organisation--genèse-du-ministère) |
 
 La notification apparaît dans la liste des notifications de l'application et part aussi en **notification push** (« Organisation vérifiée » / « Vérification refusée ») sur les appareils de l'organisation, si FCM est configuré ([notifications-push.md](notifications-push.md)).
 

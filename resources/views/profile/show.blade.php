@@ -20,7 +20,7 @@
         [route('profile.saved'), 'fa-bookmark', __('profile.show.shortcuts.saved')],
         [route('journal.index'), 'fa-book-open', __('profile.show.shortcuts.journal')],
         $verification ? [route('profile.verification'), 'fa-circle-check', $verification] : null,
-        !$conversionTestimony && \App\Services\ConversionTestimonies::canPublish($profile) ? [route('publish', ['kind' => 'conversion']), 'fa-dove', __('conversion.share_yours')] : null,
+        !$conversionTestimony && \App\Services\ConversionTestimonies::canPublish($profile) ? [route('publish', ['kind' => 'conversion']), $profile->isOrganization() ? 'fa-church' : 'fa-dove', \App\Services\ConversionTestimonies::label('share_yours', $profile)] : null,
         [route('profile.settings'), 'fa-gear', __('profile.show.shortcuts.settings')],
     ])) : [];
     $meta = array_values(array_filter([
@@ -137,11 +137,11 @@
 </section>
 @endif
 
-{{-- Témoignage de conversion mis en avant (docs/fonctionnalites/temoignage-de-conversion.md) --}}
+{{-- Témoignage de conversion (genèse du ministère pour une organisation) mis en avant (docs/fonctionnalites/temoignage-de-conversion.md) --}}
 @if($conversionTestimony)
 <section class="mb-10" aria-labelledby="conversion-title">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 id="conversion-title" class="card-title text-lg"><i class="fa-solid fa-dove mr-1.5 text-sun-700" aria-hidden="true"></i>{{ __('conversion.profile_title') }}</h2>
+        <h2 id="conversion-title" class="card-title text-lg"><i class="{{ $conversionTestimony->conversionIcon() }} mr-1.5 text-sun-700" aria-hidden="true"></i>{{ $conversionTestimony->conversionLabel('profile_title') }}</h2>
         @if($isOwner)
         <a href="{{ route('testimonies.conversion.edit') }}" class="btn-ghost btn-sm"><i class="fa-solid fa-pen" aria-hidden="true"></i>{{ __('conversion.edit') }}</a>
         @endif

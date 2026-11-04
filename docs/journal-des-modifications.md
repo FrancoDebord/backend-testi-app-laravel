@@ -4,6 +4,15 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-11-04 — Organisations : témoignage de la genèse du ministère
+
+- **Utilisateurs** : un compte organisation ne publie pas de témoignage de conversion ; il raconte la **genèse de son ministère** (comment il est né). Au moment de publier, le choix s'appelle « Genèse du ministère », avec l'année de fondation, le lieu et le verset fondateur (facultatifs). Un seul par compte, modifiable, même modération. La section `/temoignages-de-conversion` a deux onglets : « Conversions » (personnes) et « Genèse des ministères » (`?onglet=ministeres`). Le bloc de l'accueil ne montre que les conversions des personnes. Badges, profil, page du témoignage et modération affichent « Genèse du ministère » et « Fondé en … » (icône église).
+- **Développeurs** : même sorte `kind = conversion` et mêmes colonnes ; seul le type de compte de l'auteur change les libellés (`lang/*/conversion.php`, clés `genesis.*`, via `ConversionTestimonies::label()` et `Testimony::conversionLabel()` / `conversionIcon()`). `ConversionTestimonies::canPublish()` accepte tous les comptes (plus de 403 ; clé `conversion.individual_only` supprimée). Catégorie par défaut d'une organisation : `ministere` (`ConversionTestimonies::defaultCategory()`). Portées `Testimony::ministryGenesis()` / `personalConversion()`. API : champ `isMinistryGenesis` dans `TestimonyResource`, filtre `GET /testimonies?kind=conversion&author_type=organization|individual`, `can_create` vrai pour une organisation sur `/me/conversion-testimony`. Tests `ConversionTestimonyTest`. Voir [temoignage-de-conversion.md](fonctionnalites/temoignage-de-conversion.md#comptes-organisation--genèse-du-ministère).
+- **Application** (dépôt Flutter) : pour un compte organisation, afficher « Genèse du ministère » au lieu de « Témoignage de conversion » (formulaire, profil, badges ; `isMinistryGenesis` sur un témoignage), proposer la création (`can_create`).
+- **Déploiement** : copier les fichiers modifiés, puis `php artisan optimize:clear` et `php artisan optimize`. Aucune migration, aucune variable d'environnement, aucune recompilation des assets.
+
+---
+
 ## 2026-10-30 — Listes de témoignages (playlists) et icône « Retirer ma dernière prière »
 
 - **Utilisateurs** : on peut regrouper ses témoignages qui parlent d'une même chose dans une **liste**, comme une playlist YouTube. Au moment de publier, un bloc facultatif propose une liste existante ou une nouvelle liste ; publier sans liste reste possible. Sur la page d'un témoignage d'une liste, un panneau montre les autres témoignages (Précédent / Suivant, « 2 sur 5 ») et, à la fin d'une vidéo ou d'un audio, le suivant de la liste se lance automatiquement (activé par défaut, interrupteur « Lecture auto de la liste »). Nouvelles pages « Mes listes » (`/mes-listes`, menu « Mon espace ») et page publique d'une liste (`/listes/{id}` : Tout lire, Partager, ordre, retrait) ; bouton « Ajouter à une liste » sur ses propres témoignages ; section « Listes de témoignages » du profil.

@@ -1,5 +1,6 @@
 {{--
-    Carte mise en avant d'un témoignage de conversion (section « Témoignages de conversion », profil de l'auteur).
+    Carte mise en avant d'un témoignage de conversion, ou de la genèse du ministère pour une organisation
+    (section « Témoignages de conversion », profil de l'auteur, accueil).
     docs/fonctionnalites/temoignage-de-conversion.md
     @include('components.conversion-card', ['testimony' => $t, 'showAuthor' => true, 'large' => false])
     Toute la carte est cliquable (lien étiré sur le titre) ; l'auteur reste un lien distinct.
@@ -12,12 +13,12 @@
 @endphp
 <article class="card group relative flex min-w-0 flex-col overflow-hidden ring-2 ring-sun-400 transition-shadow hover:shadow-lg">
     <div class="flex flex-wrap items-center gap-2 bg-sun-50 px-5 py-3">
-        <span class="badge-yellow"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>
+        <span class="badge-yellow"><i class="{{ $testimony->conversionIcon() }}" aria-hidden="true"></i>{{ $testimony->conversionLabel('badge') }}</span>
         @if($status)
         <span class="{{ $status->badgeClass() }}">{{ $status->label() }}</span>
         @endif
         @if(!empty($details['year']))
-        <span class="ml-auto text-sm font-semibold text-primary-700">{{ __('conversion.converted_in', ['year' => $details['year']]) }}</span>
+        <span class="ml-auto text-sm font-semibold text-primary-700">{{ $testimony->conversionLabel('converted_in', ['year' => $details['year']]) }}</span>
         @endif
     </div>
     <div class="flex flex-1 flex-col gap-3 p-5">
@@ -33,7 +34,7 @@
             <li class="flex min-w-0 items-center gap-1.5"><i class="fa-solid fa-location-dot text-slate-400" aria-hidden="true"></i><span class="sr-only">{{ __('conversion.place') }} : </span><span class="truncate">{{ $details['place'] }}</span></li>
             @endif
             @if(!empty($details['verse']))
-            <li class="flex min-w-0 items-center gap-1.5"><i class="fa-solid fa-book-bible text-slate-400" aria-hidden="true"></i><span class="sr-only">{{ __('conversion.verse') }} : </span><span class="truncate">{{ $details['verse'] }}</span></li>
+            <li class="flex min-w-0 items-center gap-1.5"><i class="fa-solid fa-book-bible text-slate-400" aria-hidden="true"></i><span class="sr-only">{{ $testimony->conversionLabel('verse') }} : </span><span class="truncate">{{ $details['verse'] }}</span></li>
             @endif
         </ul>
         @endif

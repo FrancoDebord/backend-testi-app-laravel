@@ -31,12 +31,12 @@
                         @if($testimony->trashed())<span class="badge-rejected">{{ __('moderation.tabs.trash') }}</span>@endif
                         @if($testimony->is_verified)<span class="badge-blue"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>{{ __('moderation.show.approved_testimony') }}</span>@endif
                         @if($testimony->isManuallyFeatured())<span class="badge-orange"><i class="fa-solid fa-star" aria-hidden="true"></i>{{ __('moderation.tabs.featured') }}</span>@endif
-                        @if($testimony->isConversion())<span class="badge-yellow"><i class="fa-solid fa-dove" aria-hidden="true"></i>{{ __('conversion.badge') }}</span>@endif
+                        @if($testimony->isConversion())<span class="badge-yellow"><i class="{{ $testimony->conversionIcon() }}" aria-hidden="true"></i>{{ $testimony->conversionLabel('badge') }}</span>@endif
                     </dd></div>
                 @if($testimony->isConversion())
                 @php $conversion = $testimony->conversionDetails(); @endphp
-                <div class="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><dt class="text-slate-500">{{ __('conversion.details') }}</dt>
-                    <dd class="text-right text-slate-900">{{ collect([$conversion['year'] ? __('conversion.converted_in', ['year' => $conversion['year']]) : null, $conversion['place'], $conversion['verse']])->filter()->implode(' · ') ?: '—' }}</dd></div>
+                <div class="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><dt class="text-slate-500">{{ $testimony->conversionLabel('details') }}</dt>
+                    <dd class="text-right text-slate-900">{{ collect([$conversion['year'] ? $testimony->conversionLabel('converted_in', ['year' => $conversion['year']]) : null, $conversion['place'], $conversion['verse']])->filter()->implode(' · ') ?: '—' }}</dd></div>
                 @endif
                 <div class="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><dt class="text-slate-500">{{ __('moderation.common.author') }}</dt><dd class="text-slate-900">{{ $testimony->user?->display_name }}@if($testimony->user?->country) · {{ $testimony->user->country }}@endif</dd></div>
                 <div class="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2"><dt class="text-slate-500">{{ __('moderation.common.submitted_on') }}</dt><dd class="text-slate-900">{{ $testimony->created_at->format(__('moderation.common.datetime_format')) }}</dd></div>
