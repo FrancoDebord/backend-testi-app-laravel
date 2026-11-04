@@ -50,4 +50,36 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 422);
             }
         });
+
+        // Erreurs et pages d'erreur (docs/fonctionnalites/pages-erreur.md) : l'API répond toujours en JSON,
+        // même sans en-tête Accept ; le site affiche resources/views/errors/*.blade.php dans la langue du visiteur.
+        $exceptions->shouldRenderJsonWhen(fn ($request) => $request->is('api/*') || $request->expectsJson());
+
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($e instanceof \Illuminate\Validation\ValidationException
+                || $e instanceof \Illuminate\Auth\AuthenticationException
+                || $e instanceof \Illuminate\Http\Exceptions\HttpResponseException) {
+                return null;
+            }
+
+            $json = $request->is('api/*') || $request->expectsJson();
+            $status = \App\Support\HttpErrors::status($e);
+            // Une adresse inconnue n'a traversé aucun middleware : la langue n'est pas encore appliquée.
+            // rescue : base indisponible (lecture du compte) pendant une erreur 500.
+            rescue(fn () => \App\Support\Locales::apply(\App\Support\Locales::fromRequest($request)), null, false);
+
+            // En développement, une erreur interne garde la page de diagnostic de Laravel.
+            if (!$json || ($status >= 500 && config('app.debug'))) {
+                return null;
+            }
+
+            $headers = $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface ? $e->getHeaders() : [];
+
+            return response()->json([
+                'success' => false,
+                'data'    => null,
+                'message' => \App\Support\HttpErrors::apiMessage($e),
+                'errors'  => null,
+            ], $status, $headers);
+        });
     })->create();

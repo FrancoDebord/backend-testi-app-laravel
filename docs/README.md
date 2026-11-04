@@ -49,6 +49,7 @@ Serveur Laravel de **My Testimony** (AIRID) : site web de partage de témoignage
 | [Preuves d'un témoignage](fonctionnalites/preuves.md) | Deux images ou PDF par témoignage, privés (auteur et équipe de modération) |
 | [Vidéos sur Bunny Stream](fonctionnalites/videos-bunny-stream.md) | Envoi direct de l'application à Bunny (TUS, sans passer par le serveur), états `uploading` → `processing` → `ready`, webhook, objet `video` (HLS, MP4), envois abandonnés, reprise des anciennes vidéos |
 | [Vidéos YouTube](fonctionnalites/videos-youtube.md) | Publication d'un témoignage par lien YouTube (administrateurs et profils autorisés), lecture avec le lecteur YouTube, crédit de la vidéo d'origine (auteur, chaîne, lien) |
+| [Pages d'erreur](fonctionnalites/pages-erreur.md) | Pages 404, 403, 419, 429, 500, 503… aux couleurs de la charte (recherche et liens sur le 404, connexion sur le 403), messages techniques masqués ; API : toujours du JSON `{success: false, message}`, même sans en-tête `Accept` |
 | [Paramètres globaux](fonctionnalites/parametres-globaux.md) | Mêmes réglages sur le site (Administration › Paramètres) et dans l'application : `SettingsSchema` (groupes, ordre, libellés, descriptions traduits, réglages obsolètes masqués), `GET /admin/settings/schema`, `PUT /admin/settings` validé (422) |
 | [Types de témoignages autorisés](fonctionnalites/types-de-temoignages.md) | Interrupteurs globaux texte / audio / vidéo / lien YouTube (Administration › Paramètres › Publication), exceptions par profil (Par défaut / Autorisé / Interdit), refus 403, `allowed_testimony_types`, `GET /me/publishing`, `/admin/users/{id}/publishing` |
 | [Direct avec une caméra IP](fonctionnalites/lives-camera-ip.md) | Caméra IP, OBS ou encodeur (RTMP, ou adresse du flux) via LiveKit Ingress ; aperçu et lancement depuis le studio |
@@ -156,6 +157,10 @@ Les fichiers compilés vont dans `public/build/`, **exclu de git** (`.gitignore`
 - **sinon (cas actuel)** : compiler sur un poste de développement, puis copier le dossier `public/build/` (`manifest.json` + `assets/`) sur le serveur en remplaçant l'existant. Archive prête à envoyer : `build-a-deployer.zip` à la racine du projet, à décompresser dans `public/`.
 
 Symptôme d'assets non à jour : la page s'affiche mais les nouveaux éléments sont mal stylés et les boutons ne réagissent pas (cas rencontré avec l'éditeur de texte). Vérification : les noms `app-XXXX.css` / `app-XXXX.js` du code source de la page doivent être ceux de `public/build/manifest.json`.
+
+### Pages d'erreur (2026-11-05)
+
+Aucune migration ni variable d'environnement nouvelle. Vérifier **`APP_DEBUG=false`** sur le serveur (sinon une erreur 500 affiche la page de diagnostic de Laravel). `php artisan optimize:clear` puis `php artisan optimize`, puis **copier `public/build/`** (nouvelles classes des pages d'erreur). Détails : [pages-erreur.md](fonctionnalites/pages-erreur.md).
 
 ### Listes de témoignages et icône « Retirer ma dernière prière » (2026-10-30)
 

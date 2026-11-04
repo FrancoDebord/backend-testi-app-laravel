@@ -4,6 +4,15 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-11-05 — Pages d'erreur et gestion des exceptions
+
+- **Utilisateurs** : une adresse inconnue ou un contenu supprimé affiche une page « Page introuvable » aux couleurs de la charte, avec un champ de recherche, des liens (Explorer, Requêtes de prière, Événements, Directs), « Retour à l'accueil » et « Page précédente ». Les autres erreurs ont aussi leur page : accès refusé (avec « Se connecter » pour un visiteur), session expirée (« Recharger la page »), trop de requêtes, erreur du serveur, maintenance… Elles s'affichent dans la langue du visiteur et ne montrent jamais de message technique.
+- **Développeurs** : `resources/views/errors/page.blade.php` (page autonome, sans `layouts.guest`), incluse par `errors/{401,402,403,404,405,410,413,419,422,429,500,502,503,504,4xx,5xx}.blade.php` ; `App\Support\HttpErrors` (code, titre et texte, filtre des messages du framework) ; `lang/*/errors.php`. Le message d'un `abort(…, __('…'))` reste affiché ; celui d'une erreur 5xx jamais. API : toute erreur sous `api/*` répond en JSON, même sans en-tête `Accept`, au format `{success: false, data: null, message, errors: null}` (avant : `{message}` en anglais, ou une page HTML). Validation (422) et 401 inchangés. Avec `APP_DEBUG=true`, une exception interne garde la page de diagnostic. Tests `ErrorPagesTest`. Voir [pages-erreur.md](fonctionnalites/pages-erreur.md).
+- **Application** (dépôt Flutter) : les erreurs de l'API ont toutes un `message` traduit (`success: false`), y compris 404, 403, 405, 429 et 500.
+- **Déploiement** : copier les fichiers, vérifier `APP_DEBUG=false`, puis `php artisan optimize:clear` et `php artisan optimize`, puis **copier `public/build/`** (`build-a-deployer.zip`). Aucune migration, aucune variable d'environnement nouvelle.
+
+---
+
 ## 2026-11-04 — Bouton « Je prie avec Prénom »
 
 - **Utilisateurs** : sur la page d'un témoignage, la page d'une requête de prière et les cartes de requêtes, le bouton « Je prie » devient « Je prie avec Marie » (prénom de l'auteur, ou nom de l'organisation). Un nom de plus de 14 caractères est raccourci avec « … » (« Église de la… ») ; le nom complet s'affiche en infobulle. « Je prie » seul reste affiché pour une publication anonyme, pour l'auteur lui-même et pour le verset du jour.
