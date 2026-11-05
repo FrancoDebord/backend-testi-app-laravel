@@ -235,6 +235,11 @@ class TestimonyController extends Controller
             $path     = $file->store('media', 'public');
             $mediaUrl = asset('storage/' . $path);
             $mimeType = (string) $file->getMimeType();
+            // Audio illisible dans Chrome (trame de configuration AAC) ; .m4a annoncé « video/mp4 » : docs/fonctionnalites/lecture-audio.md
+            \App\Support\Mp4AudioRepair::repairStored('public', $path);
+            if (str_starts_with($mimeType, 'video/') && \App\Support\Mp4AudioRepair::isAudioOnly(\Illuminate\Support\Facades\Storage::disk('public')->path($path))) {
+                $mimeType = 'audio/mp4';
+            }
 
             $media = MediaFile::create([
                 'user_id'       => Auth::id(),

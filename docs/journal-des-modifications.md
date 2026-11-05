@@ -4,6 +4,16 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-11-05 — Audios illisibles sur le site : réparés
+
+- **Utilisateurs** : les témoignages audio enregistrés avec l'application se lisent de nouveau sur le site (Chrome, Edge), y compris ceux déjà publiés une fois la commande de réparation lancée.
+- **Cause** : l'enregistreur Android écrit la configuration du codec AAC (2 octets) comme premier échantillon audio ; Chrome refuse alors tout le fichier (`PIPELINE_ERROR_DECODE`). En plus, ces fichiers annoncés `video/mp4` étaient rangés comme vidéos (`media/videos/`, type `video`), et leur conversion ne pouvait pas aboutir.
+- **Développeurs** : `App\Support\Mp4AudioRepair` (PHP seul, sans ffmpeg : retire l'échantillon fautif des tables MP4, ne touche pas aux données audio), appelé après chaque envoi dans `Api\MediaController::upload`, `Web\TestimonyController::store` et `Web\ProphecyController`. Un MP4 sans piste vidéo est classé `audio` (`media/audios/`, conversion 32k / 64k / 128k). Commande `php artisan media:repair-audio [--dry-run]` pour les fichiers existants (adresses renouvelées avec `?v=` pour contourner le cache navigateur de 7 jours, reclassement en audio). Tests `AudioRepairTest`. Voir [lecture-audio.md](fonctionnalites/lecture-audio.md).
+- **Application** (dépôt Flutter) : corriger l'enregistreur Android (première trame), même si le serveur répare chaque envoi. `POST /media/upload` peut maintenant répondre `type: "audio"` pour un `.m4a`.
+- **Déploiement** : copier les fichiers, `php artisan optimize:clear` puis `php artisan optimize`, puis une fois `php artisan media:repair-audio`. Vérifier la file des conversions avec `php artisan media:check` (fichiers restés « pending » en production). Aucune migration, aucune variable d'environnement, aucune recompilation des assets.
+
+---
+
 ## 2026-11-05 — Tests du verset du jour : date du Bénin
 
 - **Développeurs** : `DailyVerseTest > share link is dated on web and api` échouait entre 23 h et minuit UTC (minuit à 1 h au Bénin), donc parfois au déploiement. Les tests créaient le verset à la date UTC (`now()->toDateString()`) alors que le jour du verset suit `Africa/Porto-Novo` (`VerseDesignOfTheDay::todayDate()`). Les tests (`DailyVerseTest`, `CommentLikesTest`, `PrayMultipleTimesTest`, `PrayerFocusOtherKindsTest`, `ReactionPeopleTest`) utilisent maintenant `VerseDesignOfTheDay::todayDate()`. Règle : dans un test, dater un verset du jour avec cette méthode, jamais avec `now()`.

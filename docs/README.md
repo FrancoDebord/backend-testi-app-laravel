@@ -32,6 +32,7 @@ Serveur Laravel de **My Testimony** (AIRID) : site web de partage de témoignage
 | [À la une](fonctionnalites/a-la-une.md) | Témoignages publiés depuis moins de 7 jours ou mis en avant manuellement |
 | [Affichage et lecture](fonctionnalites/affichage-et-lecture.md) | Site : choix de la qualité, en boucle, lecture automatique du suivant ; grandes cartes ou liste compacte dépliable |
 | [Lecture à voix haute](fonctionnalites/lecture-vocale.md) | Écouter un témoignage écrit (synthèse vocale de l'appareil) en français ou en anglais : site et application, vitesse, voix, lecture automatique (application) |
+| [Lecture des audios](fonctionnalites/lecture-audio.md) | Audios de téléphone illisibles dans Chrome / Edge (configuration AAC écrite comme première trame) : réparation à l'envoi, MP4 sans image classé en audio, commande `media:repair-audio` |
 | [Qualités des médias](fonctionnalites/qualites-media.md) | Versions 240p–720p et 32k–128k produites par ffmpeg, champ `renditions` de l'API, commande `media:transcode` |
 | [Recommandations et fil « Pour vous »](fonctionnalites/recommandations.md) | Récents et plus vus pour un nouveau venu ; recommandations selon le témoignage en cours, les centres d'intérêt et les comptes suivis ; **Mon fil** (tous les témoignages, comptes suivis et leurs partages d'abord ; événements, sessions et requêtes de prière, paroles prophétiques publiques insérés) |
 | [Localisation et fils par zone](fonctionnalites/localisation.md) | « Pour vous » et Mon fil classés du plus proche (village, ville, région, pays, continent) au plus lointain, puis selon les goûts : position GPS avec consentement (arrondie à ≈ 1 km), ville et pays du profil, pays déduit ; jamais publique, effacement immédiat |
@@ -157,6 +158,10 @@ Les fichiers compilés vont dans `public/build/`, **exclu de git** (`.gitignore`
 - **sinon (cas actuel)** : compiler sur un poste de développement, puis copier le dossier `public/build/` (`manifest.json` + `assets/`) sur le serveur en remplaçant l'existant. Archive prête à envoyer : `build-a-deployer.zip` à la racine du projet, à décompresser dans `public/`.
 
 Symptôme d'assets non à jour : la page s'affiche mais les nouveaux éléments sont mal stylés et les boutons ne réagissent pas (cas rencontré avec l'éditeur de texte). Vérification : les noms `app-XXXX.css` / `app-XXXX.js` du code source de la page doivent être ceux de `public/build/manifest.json`.
+
+### Lecture des audios (2026-11-05)
+
+Aucune migration, aucune variable d'environnement, aucune recompilation des assets. Après la copie des fichiers : `php artisan optimize:clear`, `php artisan optimize`, puis **une fois** `php artisan media:repair-audio --dry-run` (liste) et `php artisan media:repair-audio` (répare les audios déjà en ligne et renouvelle leurs liens). Vérifier aussi la file d'attente des conversions : `php artisan media:check`. Détails : [lecture-audio.md](fonctionnalites/lecture-audio.md).
 
 ### Pages d'erreur (2026-11-05)
 

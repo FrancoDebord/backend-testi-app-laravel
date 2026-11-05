@@ -159,6 +159,8 @@ class ProphecyController extends Controller
 
         if ($request->hasFile('audio')) {
             $path = $request->file('audio')->store('media', 'public');
+            // Audio illisible dans Chrome (trame de configuration AAC) : docs/fonctionnalites/lecture-audio.md
+            \App\Support\Mp4AudioRepair::repairStored('public', $path);
             $data['audio_url'] = asset('storage/' . $path);
             $data['audio_duration'] = (int) ($data['audio_duration'] ?? 0);
         } elseif ($current && !$keepAudio) {

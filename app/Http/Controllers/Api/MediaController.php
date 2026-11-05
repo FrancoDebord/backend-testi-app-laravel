@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
+use App\Support\Mp4AudioRepair;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,9 +23,16 @@ class MediaController extends Controller
 
         $file     = $request->file('file');
         $mimeType = $file->getMimeType();
+        // Enregistrement .m4a : finfo répond « video/mp4 » ; sans piste vidéo, c'est un audio
+        // (dossier media/audios, conversion 32k / 64k / 128k). docs/fonctionnalites/lecture-audio.md
+        if (str_starts_with((string) $mimeType, 'video/') && Mp4AudioRepair::isAudioOnly($file->getRealPath())) {
+            $mimeType = 'audio/mp4';
+        }
         $type     = $this->detectType($mimeType);
         $path     = $file->store("media/{$type}s", 'public');
         $url      = asset('storage/' . $path);
+        // Trame de configuration AAC écrite comme son par certains téléphones : illisible dans Chrome.
+        Mp4AudioRepair::repairStored('public', $path);
 
         $media = MediaFile::create([
             'user_id'       => $request->user()->id,
