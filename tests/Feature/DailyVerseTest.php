@@ -35,7 +35,7 @@ class DailyVerseTest extends TestCase
 
         $this->verse = DailyVerse::create([
             'verse_text' => 'Car Dieu a tant aimé le monde…', 'reference' => 'Jean 3 : 16-17',
-            'scheduled_date' => now()->toDateString(), 'is_active' => true,
+            'scheduled_date' => \App\Services\VerseDesignOfTheDay::todayDate(), 'is_active' => true,
         ]);
 
         // Deux traductions : LSG a la plage complète, KJV seulement le verset 16.
@@ -237,7 +237,7 @@ class DailyVerseTest extends TestCase
         // Version mémorisée en session.
         $this->get('/verset-du-jour')->assertSee('For God so loved the world');
         $this->get('/verset-du-jour?comparer=1')->assertOk()->assertSee("Dieu, en effet, n'a pas envoyé son Fils");
-        $this->get('/verset-du-jour/' . now()->toDateString())->assertOk();
+        $this->get('/verset-du-jour/' . \App\Services\VerseDesignOfTheDay::todayDate())->assertOk();
         $this->get('/verset-du-jour/2026-13-45')->assertNotFound();
         $this->get('/')->assertSee(route('daily-verse.show'), false);
     }

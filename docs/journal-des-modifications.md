@@ -4,6 +4,13 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-11-05 — Tests du verset du jour : date du Bénin
+
+- **Développeurs** : `DailyVerseTest > share link is dated on web and api` échouait entre 23 h et minuit UTC (minuit à 1 h au Bénin), donc parfois au déploiement. Les tests créaient le verset à la date UTC (`now()->toDateString()`) alors que le jour du verset suit `Africa/Porto-Novo` (`VerseDesignOfTheDay::todayDate()`). Les tests (`DailyVerseTest`, `CommentLikesTest`, `PrayMultipleTimesTest`, `PrayerFocusOtherKindsTest`, `ReactionPeopleTest`) utilisent maintenant `VerseDesignOfTheDay::todayDate()`. Règle : dans un test, dater un verset du jour avec cette méthode, jamais avec `now()`.
+- **Utilisateurs**, **déploiement** : aucun changement (tests seulement).
+
+---
+
 ## 2026-11-05 — Pages d'erreur et gestion des exceptions
 
 - **Utilisateurs** : une adresse inconnue ou un contenu supprimé affiche une page « Page introuvable » aux couleurs de la charte, avec un champ de recherche, des liens (Explorer, Requêtes de prière, Événements, Directs), « Retour à l'accueil » et « Page précédente ». Les autres erreurs ont aussi leur page : accès refusé (avec « Se connecter » pour un visiteur), session expirée (« Recharger la page »), trop de requêtes, erreur du serveur, maintenance… Elles s'affichent dans la langue du visiteur et ne montrent jamais de message technique.

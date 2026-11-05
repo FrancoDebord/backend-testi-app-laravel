@@ -212,7 +212,7 @@ class CommentLikesTest extends TestCase
 
     public function test_daily_verse_comment_likes(): void
     {
-        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => now()->toDateString(), 'is_active' => true]);
+        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => \App\Services\VerseDesignOfTheDay::todayDate(), 'is_active' => true]);
         $comment = DailyVerseComment::create(['daily_verse_id' => $verse->id, 'user_id' => $this->author->id, 'body' => 'Merci Seigneur']);
         $url = "/api/v1/daily-verse/{$verse->id}/comments/{$comment->id}/like";
 
@@ -254,7 +254,7 @@ class CommentLikesTest extends TestCase
         $this->actingAs($this->fan)->get(route('events.show', [$event->id, 'section' => 'commentaires']))->assertOk()
             ->assertSee('data-comment-like="' . route('events.comments.like', [$event->id, $eventComment->id]) . '"', false);
 
-        $verse = DailyVerse::create(['verse_text' => 'Le Seigneur est mon berger', 'reference' => 'Psaume 23:1', 'scheduled_date' => now()->toDateString(), 'is_active' => true]);
+        $verse = DailyVerse::create(['verse_text' => 'Le Seigneur est mon berger', 'reference' => 'Psaume 23:1', 'scheduled_date' => \App\Services\VerseDesignOfTheDay::todayDate(), 'is_active' => true]);
         $verseComment = DailyVerseComment::create(['daily_verse_id' => $verse->id, 'user_id' => $this->author->id, 'body' => 'Amen']);
         $this->actingAs($this->fan)->postJson(route('daily-verse.comments.like', [$verse->id, $verseComment->id]))->assertOk()->assertJsonPath('data.isLikedByMe', true);
         $this->actingAs($this->fan)->get('/verset-du-jour?onglet=commentaires')->assertOk()

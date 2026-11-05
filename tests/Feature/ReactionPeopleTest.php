@@ -136,7 +136,7 @@ class ReactionPeopleTest extends TestCase
 
     public function test_verset_du_jour(): void
     {
-        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => now()->toDateString(), 'is_active' => true]);
+        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => \App\Services\VerseDesignOfTheDay::todayDate(), 'is_active' => true]);
         DailyVerseReaction::create(['daily_verse_id' => $verse->id, 'user_id' => $this->user('Ama')->id, 'type' => 'like']);
 
         $this->getJson("/api/v1/daily-verse/{$verse->id}/reactions/people")->assertOk()

@@ -58,7 +58,7 @@ class PrayerFocusOtherKindsTest extends TestCase
     {
         return DailyVerse::create([
             'verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16',
-            'scheduled_date' => now()->toDateString(), 'is_active' => true,
+            'scheduled_date' => \App\Services\VerseDesignOfTheDay::todayDate(), 'is_active' => true,
         ]);
     }
 

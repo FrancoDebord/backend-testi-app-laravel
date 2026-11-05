@@ -81,7 +81,7 @@ class PrayMultipleTimesTest extends TestCase
 
     public function test_cartes_des_sujets_de_priere(): void
     {
-        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => now()->toDateString(), 'is_active' => true]);
+        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => \App\Services\VerseDesignOfTheDay::todayDate(), 'is_active' => true]);
         $prayer = PrayerRequest::create(['user_id' => $this->author->id, 'body' => 'Pour ma famille', 'visibility' => 'public', 'daily_verse_id' => $verse->id]);
         $popup = 'data-reaction-people="' . e(route('reactions.people', ['kind' => 'prayer_request', 'id' => $prayer->id, 'type' => 'pray'])) . '"';
 
@@ -102,7 +102,7 @@ class PrayMultipleTimesTest extends TestCase
 
     public function test_verset_du_jour(): void
     {
-        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => now()->toDateString(), 'is_active' => true]);
+        $verse = DailyVerse::create(['verse_text' => 'Car Dieu a tant aimé le monde', 'reference' => 'Jean 3:16', 'scheduled_date' => \App\Services\VerseDesignOfTheDay::todayDate(), 'is_active' => true]);
         $url = "/api/v1/daily-verse/{$verse->id}/react";
         Sanctum::actingAs($this->me);
 
