@@ -49,13 +49,13 @@ class PrayerRequestController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate(PrayerRequests::rules(), PrayerRequests::MESSAGES);
+        $data = $request->validate(PrayerRequests::rules(), PrayerRequests::messages());
         $data['is_anonymous'] = $request->boolean('is_anonymous');
 
         return $this->attempt(function () use ($data) {
             $prayer = $this->requests->create(Auth::user(), $data);
 
-            return redirect()->route('prayer.requests.show', $prayer->id)->with('success', 'Votre requête est publiée. Que Dieu vous réponde !');
+            return redirect()->route('prayer.requests.show', $prayer->id)->with('success', __('prayer.flash.request_published'));
         }, withInput: true);
     }
 
@@ -77,7 +77,7 @@ class PrayerRequestController extends Controller
         return $this->attempt(function () use ($id) {
             $this->requests->delete($this->find($id), Auth::user());
 
-            return redirect()->route('prayer.requests.index')->with('success', 'Requête supprimée.');
+            return redirect()->route('prayer.requests.index')->with('success', __('prayer.flash.request_deleted'));
         });
     }
 
@@ -89,11 +89,11 @@ class PrayerRequestController extends Controller
             if ($request->boolean('last')) {
                 $this->requests->removeLastPrayer($prayer, Auth::user());
 
-                return back()->with('success', 'Dernière prière retirée.');
+                return back()->with('success', __('prayer.flash.last_prayer_removed'));
             }
             $this->requests->setPrayed($prayer, Auth::user(), true, again: true);
 
-            return back()->with('success', 'Merci de prier pour cette requête.');
+            return back()->with('success', __('prayer.flash.prayed'));
         });
     }
 
@@ -119,7 +119,7 @@ class PrayerRequestController extends Controller
         return $this->attempt(function () use ($request, $id) {
             $this->requests->setAnswered($this->find($id), Auth::user(), true, $request->input('note'));
 
-            return back()->with('success', 'Gloire à Dieu ! Pensez à témoigner de cet exaucement.');
+            return back()->with('success', __('prayer.flash.answered'));
         });
     }
 
@@ -128,18 +128,18 @@ class PrayerRequestController extends Controller
         return $this->attempt(function () use ($id) {
             $this->requests->setAnswered($this->find($id), Auth::user(), false);
 
-            return back()->with('success', 'Requête remise en attente.');
+            return back()->with('success', __('prayer.flash.reopened'));
         });
     }
 
     public function storeMessage(Request $request, string $id): RedirectResponse
     {
-        $data = $request->validate(PrayerRequests::messageRules(), PrayerRequests::MESSAGES);
+        $data = $request->validate(PrayerRequests::messageRules(), PrayerRequests::messages());
 
         return $this->attempt(function () use ($data, $id) {
             $this->requests->addMessage($this->find($id), Auth::user(), $data['message'], $data['bible_reference'] ?? null);
 
-            return redirect()->to(route('prayer.requests.show', $id) . '#encouragements')->with('success', 'Merci pour votre encouragement !');
+            return redirect()->to(route('prayer.requests.show', $id) . '#encouragements')->with('success', __('prayer.flash.message_sent'));
         }, withInput: true);
     }
 
@@ -150,18 +150,18 @@ class PrayerRequestController extends Controller
             $row    = $prayer->messages()->findOrFail($message);
             $this->requests->deleteMessage($prayer, $row, Auth::user());
 
-            return back()->with('success', 'Message supprimé.');
+            return back()->with('success', __('prayer.flash.message_deleted'));
         });
     }
 
     public function report(Request $request, string $id): RedirectResponse
     {
-        $data = $request->validate(PrayerRequests::reportRules(), PrayerRequests::MESSAGES);
+        $data = $request->validate(PrayerRequests::reportRules(), PrayerRequests::messages());
 
         return $this->attempt(function () use ($data, $id) {
             $this->requests->report($this->find($id), Auth::user(), $data['reason'], $data['comment'] ?? null);
 
-            return back()->with('success', 'Signalement enregistré. Merci pour votre vigilance.');
+            return back()->with('success', __('prayer.flash.reported'));
         });
     }
 
@@ -185,7 +185,7 @@ class PrayerRequestController extends Controller
         return $this->attempt(function () use ($request, $id) {
             $this->requests->hide($this->find($id), Auth::user(), $request->input('reason'));
 
-            return back()->with('success', 'Requête retirée.');
+            return back()->with('success', __('prayer.flash.hidden'));
         });
     }
 
@@ -194,7 +194,7 @@ class PrayerRequestController extends Controller
         return $this->attempt(function () use ($id) {
             $this->requests->restore($this->find($id), Auth::user());
 
-            return back()->with('success', 'Requête rétablie.');
+            return back()->with('success', __('prayer.flash.restored'));
         });
     }
 

@@ -20,8 +20,8 @@
     'compact' => false,
 ])
 @php
-    $verses = array_values(config('encouragements.verses', []));
-    $calls  = array_values(config('encouragements.calls', []));
+    $verses = \App\Support\Encouragements::verses();
+    $calls  = \App\Support\Encouragements::calls();
     // Sans index : message du jour (change chaque jour, identique pour tous).
     $i      = (int) ($index ?? now()->dayOfYear);
 
@@ -48,7 +48,7 @@
 @if($chosenVerse || $chosenCall)
 @if($variant === 'feed' && $compact)
 {{-- Ligne de la liste compacte --}}
-<aside {{ $attributes->merge(['class' => 'flex flex-wrap items-center gap-x-4 gap-y-2 bg-sun-50 px-4 py-3']) }} aria-label="Encouragement à témoigner">
+<aside {{ $attributes->merge(['class' => 'flex flex-wrap items-center gap-x-4 gap-y-2 bg-sun-50 px-4 py-3']) }} aria-label="{{ __('models.components.encouragement.aria') }}">
     <i class="fa-solid fa-sun text-sun-500" aria-hidden="true"></i>
     <p class="min-w-0 flex-1 text-sm text-slate-900">
         @if($chosenVerse)
@@ -59,12 +59,12 @@
         @endif
     </p>
     @if($showAction)
-    <a href="{{ $actionUrl }}" class="btn-secondary btn-sm shrink-0"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Témoigner</a>
+    <a href="{{ $actionUrl }}" class="btn-secondary btn-sm shrink-0"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ __('models.components.encouragement.action') }}</a>
     @endif
 </aside>
 @else
 {{-- Bandeau (pages) ou carte pleine largeur (grilles de témoignages) --}}
-<aside {{ $attributes->merge(['class' => ($variant === 'feed' ? 'col-span-full ' : '') . 'card-insight flex flex-col gap-4 p-5 sm:flex-row sm:items-center']) }} aria-label="Encouragement à témoigner">
+<aside {{ $attributes->merge(['class' => ($variant === 'feed' ? 'col-span-full ' : '') . 'card-insight flex flex-col gap-4 p-5 sm:flex-row sm:items-center']) }} aria-label="{{ __('models.components.encouragement.aria') }}">
     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-sun-500 shadow-soft" aria-hidden="true">
         <i class="fa-solid {{ $chosenVerse ? 'fa-book-bible' : 'fa-sun' }}"></i>
     </span>
@@ -78,7 +78,7 @@
     </div>
     @if($showAction)
     <a href="{{ $actionUrl }}" class="btn-primary btn-sm shrink-0 self-start sm:self-center">
-        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Témoigner
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ __('models.components.encouragement.action') }}
     </a>
     @endif
 </aside>

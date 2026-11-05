@@ -49,6 +49,14 @@ Accept-Language: en
 - **Notifications** : `App\Support\NotificationText::fields($cle, $parametres, $payload)` enregistre le texte français dans `message` et la clé et ses paramètres dans `payload.i18n`. L'attribut `AppNotification::message` est rendu dans la langue courante ; `PushNotifications::dispatchFor()` calcule titre et texte avec `Locales::using(langue du destinataire)`. Les notifications créées avant cette version gardent leur texte français.
 - **Site** : `<html lang>` suit la langue ; les scripts lisent leurs textes dans `window.I18N` (fichier `lang/*/js.php`), exposé par les gabarits.
 - **Nombres** : `Locales::number()` (« 1 245 » / « 1,245 »).
+- **Ponctuation** : guillemets `bible.quote_open` / `quote_close` (« … » / “…”), deux-points d'étiquette `layout.colon` (« Lieu : » / « Place: »), pourcentage `admin.formats.percent` (« 85 % » / « 85% »). Formats de date propres à une page dans sa clé (`prophecies.date_format`, `admin.formats.*`, `profile.date_format`…), toujours avec `translatedFormat()`.
+- **Versets bibliques** : Louis Segond en français ; sur le site en anglais, King James Version (`config/encouragements.php` › `english`, voir [encouragements.md](encouragements.md)). Le verset du jour a sa propre règle ([verset-du-jour.md](verset-du-jour.md#langue-du-verset-2026-10-27)).
+
+### Site entièrement traduit (2026-11-05)
+
+Toutes les pages du site (accueil, explorer, fil, carnet, paroles prophétiques, verset du jour, Bible, requêtes et sessions de prière, communauté, profil, réglages, vérification, notifications, administration, composants partagés) passent par `__()` : plus aucun texte français écrit en dur dans les vues. Nouveaux fichiers `lang/*/prayer.php` et `lang/*/bible.php` ; compléments dans `admin`, `daily_verse`, `discover`, `journal`, `prophecies`, `profile`, `community`, `verification`, `notifications`, `models`, `layout`. Les messages de validation des prières et du téléphone viennent de `PrayerRequests::messages()` et `PhoneNumber::messages()` (anciennes constantes françaises supprimées). Les notifications de prière (encouragement reçu, salle ouverte, rappel de session) suivent la langue du destinataire (`NotificationText`).
+
+Règle : un nouveau texte visible va dans `lang/fr` **et** `lang/en` ; jamais de phrase française dans une vue ou un message de contrôleur. `tests/Feature/EnglishSiteTest.php` ouvre les pages principales en anglais (membre, contenu, administration, visiteur) et échoue s'il y trouve un mot français courant.
 
 Ajouter un texte : créer la clé dans `lang/fr/<fichier>.php` **et** `lang/en/<fichier>.php`, puis `__('fichier.cle', ['nom' => …])` (ou `trans_choice` pour un pluriel).
 
@@ -60,12 +68,16 @@ Migration `2026_10_15_200001_add_locale_conversion_and_push_device_fields` : `us
 
 `tests/Feature/DailyVerseLanguageTest.php` : verset du jour en français / anglais (API, historique, site), langue du navigateur pour un visiteur, choix du sélecteur et langue du compte prioritaires, langue d'un nouveau compte.
 
+`tests/Feature/EnglishSiteTest.php` : pages du site en anglais sans texte français (texte visible et attributs `aria-label`, `title`, `placeholder`, `alt`).
+
 `tests/Unit/TranslationKeysTest.php` (parité des clés et des paramètres) ; `tests/Feature/LocaleTest.php` : `Accept-Language` (défaut, poids, langue inconnue), erreurs 401/422 traduites, `PUT /me`, push et liste des notifications dans la langue du destinataire, sélecteur du site et langue du compte. `tests/TestCase.php` envoie les requêtes de test sans `Accept-Language` (Symfony ajouterait `en-us` par défaut), comme l'application.
 
 ## Limites connues
 
 - Les sorties des commandes artisan et les journaux restent en français.
 - Les valeurs saisies par les membres (titres, catégories créées par les administrateurs, motifs écrits à la main) ne sont pas traduites.
+- Textes enregistrés en base au moment de l'action, donc en français : motif de masquage automatique (« Retirée après plusieurs signalements… », « Masqué par la modération. »), motif de suppression du journal d'administration, nom « (caméra) » du participant caméra d'un direct.
+- L'image de partage du verset du jour (générée une fois, gardée en cache) garde les guillemets français.
 
 ## Fichiers
 

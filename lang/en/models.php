@@ -71,4 +71,47 @@ return [
         'revoked'  => 'Verification withdrawn',
     ],
     'prophecy_received_at' => ':date at :time',
+    // Shared components (resources/views/components) without their own language file
+    'components' => [
+        'layout_toggle' => 'List display',
+        'encouragement' => [
+            'aria'   => 'Encouragement to testify',
+            'action' => 'Testify',
+        ],
+        'mention' => [
+            'too_many'    => 'Too many searches. Please wait a moment.',
+            'unavailable' => 'Search unavailable.',
+            'none'        => 'No account found.',
+            'type'        => 'Type a name after “@”.',
+        ],
+        'autocomplete' => [
+            'types' => [
+                'testimony'      => 'Testimony',
+                'user'           => 'Account',
+                'event'          => 'Event',
+                'category'       => 'Category',
+                'bible'          => 'Book of the Bible',
+                'prayer_session' => 'Prayer session',
+            ],
+            'listbox'       => 'Search suggestions',
+            'recent_title'  => 'Recent searches',
+            'clear_all'     => 'Clear all',
+            'cleared'       => 'Recent searches cleared.',
+            'recent_sr'     => ':q, recent search',
+            'remove_recent' => 'Remove “:q” from recent searches',
+            'recent_count'  => [
+                'one'   => ':count recent search. Use the up and down arrows to browse.',
+                'other' => ':count recent searches. Use the up and down arrows to browse.',
+            ],
+            'recent_short'  => 'Recent',
+            'complete'      => 'Complete with “:q”',
+            'suggestions'   => 'Suggestions',
+            'direct'        => 'Direct access',
+            'verified'      => ', verified',
+            'count'         => [
+                'one'   => ':count suggestion. Use the up and down arrows to browse, Enter to choose.',
+                'other' => ':count suggestions. Use the up and down arrows to browse, Enter to choose.',
+            ],
+        ],
+    ],
 ];

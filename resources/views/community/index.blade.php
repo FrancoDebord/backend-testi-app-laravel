@@ -1,37 +1,37 @@
 @extends('layouts.app')
-@section('title', 'Communauté')
+@section('title', __('community.index.title'))
 @php
-    $header      = 'Communauté';
-    $subheader   = 'Églises, ministères, associations et personnes : suivez-les pour être prévenu de leurs témoignages et de leurs directs.';
+    $header      = __('community.index.title');
+    $subheader   = __('community.index.subheader');
     $breadcrumbs = [
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Communauté'],
+        ['label' => __('profile.breadcrumb.home'), 'url' => route('home')],
+        ['label' => __('community.index.title')],
     ];
     $empty = match ($tab) {
-        'people'        => ['Aucune personne pour le moment.', 'Les personnes inscrites apparaîtront ici.'],
-        'organizations' => ['Aucune organisation pour le moment.', 'Les églises, ministères et associations inscrits apparaîtront ici.'],
-        default         => ['Aucun compte pour le moment.', 'Les personnes et organisations inscrites apparaîtront ici.'],
+        'people'        => [__('community.index.empty_people'), __('community.index.empty_people_text')],
+        'organizations' => [__('community.index.empty_organizations'), __('community.index.empty_organizations_text')],
+        default         => [__('community.index.empty_all'), __('community.index.empty_all_text')],
     };
 @endphp
 
 @section('content')
-<form method="GET" action="{{ route('community.index') }}" role="search" class="mb-5 flex max-w-2xl gap-2" data-loading-inline data-loading-label="Recherche…">
+<form method="GET" action="{{ route('community.index') }}" role="search" class="mb-5 flex max-w-2xl gap-2" data-loading-inline data-loading-label="{{ __('js.app.searching') }}">
     @if($tab !== 'all')<input type="hidden" name="tab" value="{{ $tab }}">@endif
-    <label for="community-q" class="sr-only">Rechercher un compte</label>
+    <label for="community-q" class="sr-only">{{ __('community.index.search_label') }}</label>
     <div class="relative min-w-0 flex-1">
         <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
         <input id="community-q" type="search" name="q" value="{{ $q }}" data-search-autocomplete="users" data-search-recent-key="community" maxlength="100" autocomplete="off"
-               class="form-input pl-9" placeholder="{{ $tab === 'people' ? 'Nom, pays…' : 'Nom, ville, pays…' }}">
+               class="form-input pl-9" placeholder="{{ $tab === 'people' ? __('community.index.placeholder_people') : __('community.search.placeholder') }}">
     </div>
-    <button type="submit" class="btn-primary"><i class="fa-solid fa-magnifying-glass sm:hidden" aria-hidden="true"></i><span class="max-sm:sr-only">Rechercher</span></button>
+    <button type="submit" class="btn-primary"><i class="fa-solid fa-magnifying-glass sm:hidden" aria-hidden="true"></i><span class="max-sm:sr-only">{{ __('layout.search') }}</span></button>
 </form>
 
 {{-- Suggestions personnalisées du type de l'onglet (première page, sans recherche) ─ docs/fonctionnalites/abonnements.md --}}
 @if($q === '' && (int) request('page', 1) <= 1)
-    @include('community.partials.suggested', ['suggestedTitle' => 'Suggestions pour vous', 'suggestedMore' => false, 'suggestedType' => $tab])
+    @include('community.partials.suggested', ['suggestedTitle' => __('community.index.suggested_title'), 'suggestedMore' => false, 'suggestedType' => $tab])
 @endif
 
-<nav aria-label="Type de compte" class="mb-6 border-b border-slate-200">
+<nav aria-label="{{ __('community.index.tabs_aria') }}" class="mb-6 border-b border-slate-200">
     <ul class="-mb-px flex gap-5 overflow-x-auto">
         @foreach(\App\Services\CommunityDirectory::tabs() as $key => $label)
         <li>
@@ -46,16 +46,16 @@
 
 @if($q !== '')
 <p class="mb-4 text-sm text-slate-600" role="status">
-    {{ $accounts->total() }} résultat{{ $accounts->total() > 1 ? 's' : '' }} pour <span class="font-semibold text-slate-900">« {{ $q }} »</span>
+    {{ trans_choice('community.search.results', $accounts->total(), ['count' => $accounts->total()]) }} <span class="font-semibold text-slate-900">{{ __('community.search.quoted', ['q' => $q]) }}</span>
 </p>
 @endif
 
 @if($accounts->isEmpty())
     @include('components.empty-state', [
-        'title'       => $q !== '' ? 'Aucun compte ne correspond à votre recherche.' : $empty[0],
-        'text'        => $q !== '' ? "Vérifiez l'orthographe ou essayez un autre nom." : $empty[1],
+        'title'       => $q !== '' ? __('community.index.no_match') : $empty[0],
+        'text'        => $q !== '' ? __('community.search.retry') : $empty[1],
         'actionUrl'   => $q !== '' ? route('community.index', array_filter(['tab' => $tab !== 'all' ? $tab : null])) : null,
-        'actionLabel' => 'Effacer la recherche',
+        'actionLabel' => __('community.search.clear'),
     ])
 @else
     <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

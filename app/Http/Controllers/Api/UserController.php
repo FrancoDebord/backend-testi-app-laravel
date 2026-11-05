@@ -51,7 +51,7 @@ class UserController extends Controller
             'avatar_url'   => ['nullable', 'string'],
             // Langue des push et des e-mails (docs/fonctionnalites/langues.md)
             'locale'       => ['sometimes', 'string', Rule::in(\App\Support\Locales::SUPPORTED)],
-        ] + $phoneRules + OrganizationAccounts::updateRules($user), PhoneNumber::MESSAGES + [
+        ] + $phoneRules + OrganizationAccounts::updateRules($user), PhoneNumber::messages() + [
             'phone.unique' => __('profile.api.phone_taken'),
         ]);
 

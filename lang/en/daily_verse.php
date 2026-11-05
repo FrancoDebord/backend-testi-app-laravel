@@ -4,6 +4,7 @@
 return [
     'title'            => 'Verse of the day',
     'title_with_ref'   => 'Verse of the day — :reference',
+    'page_title'       => 'Verse of the day: :reference',
     'home'             => 'Home',
     'original'         => 'Text of the day',
     'image_label'      => 'VERSE OF THE DAY',
@@ -77,6 +78,12 @@ return [
         'alignment'        => 'Alignment',
         'guest_saved'      => 'Your choices are kept on this device. :link to find them everywhere.',
         'copied'           => 'Copied!',
+        'share_title'      => 'Share this verse',
+        'share_link_label' => 'Link to the verse',
+        'copy_link'        => 'Copy link',
+        'link_copied'      => 'Link copied',
+        'download_image'   => 'Download image',
+        'share_link_hint'  => 'This link always leads to the verse for :date, with its image in link previews.',
     ],
 
     'card' => [
@@ -107,6 +114,9 @@ return [
         'cannot_delete'     => 'You cannot delete this comment.',
         'own_comment'       => 'You cannot report your own comment.',
         'account_inactive'  => 'Your account does not allow this action.',
+        'prayer_saved'      => 'Thank you, your prayer has been recorded.',
+        'last_prayer_removed' => 'Last prayer removed.',
+        'no_theme'          => 'No theme for week :week of :year.',
     ],
 
     'report_reasons' => [

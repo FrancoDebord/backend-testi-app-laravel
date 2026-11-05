@@ -18,6 +18,7 @@
 <script>
 (function () {
     const SEARCH_URL = @json(route('users.mentions'));
+    const L = {{ \Illuminate\Support\Js::from(['verified' => __('community.reasons.verified_account'), 'following' => __('js.app.follow.following'), 'tooMany' => __('models.components.mention.too_many'), 'unavailable' => __('models.components.mention.unavailable'), 'none' => __('models.components.mention.none'), 'type' => __('models.components.mention.type')]) }};
     const store = new WeakMap(); // champ (textarea ou zone contenteditable) → Map(nom → id)
     const FIELD = 'textarea[data-mention-input], [contenteditable="true"][data-mention-input]';
     const mentionsOf = (ta) => { if (!store.has(ta)) store.set(ta, new Map()); return store.get(ta); };
@@ -88,13 +89,13 @@
             if (p.isVerified) {
                 const badge = document.createElement('i');
                 badge.className = 'fa-solid fa-circle-check text-primary-600';
-                badge.setAttribute('aria-label', 'Compte vérifié');
+                badge.setAttribute('aria-label', L.verified);
                 li.append(badge);
             }
             if (p.isFollowing) {
                 const tag = document.createElement('span');
                 tag.className = 'text-xs text-slate-500';
-                tag.textContent = 'Abonné';
+                tag.textContent = L.following;
                 li.append(tag);
             }
             li.addEventListener('mousedown', (e) => { e.preventDefault(); choose(p); });
@@ -167,11 +168,11 @@
                 signal: controller.signal,
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
-            if (!res.ok) throw new Error(res.status === 429 ? 'Trop de recherches. Patientez un instant.' : 'Recherche indisponible.');
+            if (!res.ok) throw new Error(res.status === 429 ? L.tooMany : L.unavailable);
             const people = (await res.json()).data ?? [];
             if (document.activeElement !== ta) return;
             const keep = range;
-            render(ta, people, r.q ? 'Aucun compte trouvé.' : 'Tapez un nom après « @ ».');
+            render(ta, people, r.q ? L.none : L.type);
             range = keep;
         } catch (err) {
             if (err.name !== 'AbortError') render(ta, [], err.message);

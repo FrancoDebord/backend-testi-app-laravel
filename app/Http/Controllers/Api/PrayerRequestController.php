@@ -58,22 +58,22 @@ class PrayerRequestController extends Controller
     /** Publication directe (pas de relecture). */
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate(PrayerRequests::rules(), PrayerRequests::MESSAGES);
+        $data = $request->validate(PrayerRequests::rules(), PrayerRequests::messages());
 
         return $this->attempt(fn () => $this->created(
             new PrayerRequestResource($this->requests->create($request->user(), $data)),
-            'Votre requête est publiée. Que Dieu vous réponde !'
+            __('prayer.flash.request_published')
         ));
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $data = $request->validate(PrayerRequests::rules(partial: true), PrayerRequests::MESSAGES);
+        $data = $request->validate(PrayerRequests::rules(partial: true), PrayerRequests::messages());
 
         return $this->attempt(function () use ($request, $id, $data) {
             $prayer = $this->requests->find($request->user(), $id);
 
-            return $this->success(new PrayerRequestResource($this->requests->update($prayer, $request->user(), $data)), 'Requête mise à jour.');
+            return $this->success(new PrayerRequestResource($this->requests->update($prayer, $request->user(), $data)), __('prayer.flash.request_updated'));
         });
     }
 
@@ -82,7 +82,7 @@ class PrayerRequestController extends Controller
         return $this->attempt(function () use ($request, $id) {
             $this->requests->delete($this->requests->find($request->user(), $id), $request->user());
 
-            return $this->success(null, 'Requête supprimée.');
+            return $this->success(null, __('prayer.flash.request_deleted'));
         });
     }
 
@@ -103,7 +103,7 @@ class PrayerRequestController extends Controller
             }
 
             return $this->success(new PrayerRequestResource($prayer->refresh()->load(['user', 'event'])->setAttribute('has_prayed', $prayed)->setAttribute('my_prayer_times', $times)),
-                $prayed ? 'Merci de prier pour cette requête.' : 'Prière retirée.');
+                $prayed ? __('prayer.flash.prayed') : __('prayer.flash.prayer_removed'));
         });
     }
 
@@ -129,7 +129,7 @@ class PrayerRequestController extends Controller
             $prayer = $this->requests->find($request->user(), $id);
 
             return $this->success(new PrayerRequestResource($this->requests->setAnswered($prayer, $request->user(), true, $request->input('note'))),
-                'Gloire à Dieu ! Pensez à témoigner de cet exaucement.');
+                __('prayer.flash.answered'));
         });
     }
 
@@ -138,7 +138,7 @@ class PrayerRequestController extends Controller
         return $this->attempt(function () use ($request, $id) {
             $prayer = $this->requests->find($request->user(), $id);
 
-            return $this->success(new PrayerRequestResource($this->requests->setAnswered($prayer, $request->user(), false)), 'Requête remise en attente.');
+            return $this->success(new PrayerRequestResource($this->requests->setAnswered($prayer, $request->user(), false)), __('prayer.flash.reopened'));
         });
     }
 
@@ -158,13 +158,13 @@ class PrayerRequestController extends Controller
 
     public function storeMessage(Request $request, string $id): JsonResponse
     {
-        $data = $request->validate(PrayerRequests::messageRules(), PrayerRequests::MESSAGES);
+        $data = $request->validate(PrayerRequests::messageRules(), PrayerRequests::messages());
 
         return $this->attempt(function () use ($request, $id, $data) {
             $prayer  = $this->requests->find($request->user(), $id);
             $message = $this->requests->addMessage($prayer, $request->user(), $data['message'], $data['bible_reference'] ?? null);
 
-            return $this->created($message->toPayload($request->user(), $prayer), 'Merci pour votre encouragement !');
+            return $this->created($message->toPayload($request->user(), $prayer), __('prayer.flash.message_sent'));
         });
     }
 
@@ -173,10 +173,10 @@ class PrayerRequestController extends Controller
         return $this->attempt(function () use ($request, $id, $messageId) {
             $prayer  = $this->requests->find($request->user(), $id);
             $message = $prayer->messages()->find($messageId);
-            abort_if(!$message, 404, 'Message introuvable.');
+            abort_if(!$message, 404, __('prayer.errors.message_not_found'));
             $this->requests->deleteMessage($prayer, $message, $request->user());
 
-            return $this->success(null, 'Message supprimé.');
+            return $this->success(null, __('prayer.flash.message_deleted'));
         });
     }
 
@@ -184,12 +184,12 @@ class PrayerRequestController extends Controller
 
     public function report(Request $request, string $id): JsonResponse
     {
-        $data = $request->validate(PrayerRequests::reportRules(), PrayerRequests::MESSAGES);
+        $data = $request->validate(PrayerRequests::reportRules(), PrayerRequests::messages());
 
         return $this->attempt(function () use ($request, $id, $data) {
             $this->requests->report($this->requests->find($request->user(), $id), $request->user(), $data['reason'], $data['comment'] ?? null);
 
-            return $this->success(null, 'Signalement enregistré. Merci pour votre vigilance.');
+            return $this->success(null, __('prayer.flash.reported'));
         });
     }
 
@@ -219,7 +219,7 @@ class PrayerRequestController extends Controller
             $prayer = $this->requests->find($request->user(), $id);
 
             return $this->success(new PrayerRequestResource($this->requests->hide($prayer, $request->user(), $request->input('reason'))->load(['user', 'event'])),
-                'Requête retirée.');
+                __('prayer.flash.hidden'));
         });
     }
 
@@ -229,7 +229,7 @@ class PrayerRequestController extends Controller
             $prayer = $this->requests->find($request->user(), $id);
 
             return $this->success(new PrayerRequestResource($this->requests->restore($prayer, $request->user())->load(['user', 'event'])),
-                'Requête rétablie.');
+                __('prayer.flash.restored'));
         });
     }
 

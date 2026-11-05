@@ -54,12 +54,17 @@ final class Encouragements
         return self::merge(array_values($verses), self::lines($key));
     }
 
-    /** Versets bibliques : jamais traduits (texte et référence de config/encouragements.php, en français). */
+    /**
+     * Versets bibliques : Louis Segond en français ; King James Version sur le site en anglais
+     * (config/encouragements.php › english, retrouvé par le texte français). source_ref garde la référence française.
+     */
     private static function merge(array $verses, array $lines): array
     {
+        $english = app()->getLocale() === 'en' ? config('encouragements.english', []) : [];
+
         return array_map(fn (array $verse) => [
-            'ref'        => $verse['ref'],
-            'text'       => $verse['text'],
+            'ref'        => $english[$verse['text']]['ref'] ?? $verse['ref'],
+            'text'       => $english[$verse['text']]['text'] ?? $verse['text'],
             'source_ref' => $verse['ref'],
         ], $verses);
     }

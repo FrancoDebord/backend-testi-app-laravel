@@ -110,7 +110,7 @@ class BibleAnnotationController extends Controller
             $bookmark->update(['tag' => $request->tag]);
         }
 
-        return $this->success($bookmark, $bookmark->wasRecentlyCreated ? 'Verset marqué' : 'Étiquette mise à jour');
+        return $this->success($bookmark, $bookmark->wasRecentlyCreated ? __('bible.messages.bookmark_saved') : __('bible.messages.bookmark_updated'));
     }
 
     // DELETE /bible/bookmarks/{id}
@@ -120,7 +120,7 @@ class BibleAnnotationController extends Controller
                                 ->where('user_id', $request->user()->id)
                                 ->delete();
 
-        return $deleted ? $this->success(null, 'Signet supprimé') : $this->notFound();
+        return $deleted ? $this->success(null, __('bible.messages.bookmark_deleted')) : $this->notFound();
     }
 
     // ── Surlignages ──────────────────────────────────────────────────────
@@ -147,7 +147,7 @@ class BibleAnnotationController extends Controller
             ['color' => $request->color]
         );
 
-        return $this->success($highlight, 'Surlignage enregistré');
+        return $this->success($highlight, __('bible.messages.highlight_saved'));
     }
 
     // DELETE /bible/highlights/{id}
@@ -157,7 +157,7 @@ class BibleAnnotationController extends Controller
                                  ->where('user_id', $request->user()->id)
                                  ->delete();
 
-        return $deleted ? $this->success(null, 'Surlignage supprimé') : $this->notFound();
+        return $deleted ? $this->success(null, __('bible.messages.highlight_deleted')) : $this->notFound();
     }
 
     // ── Notes ────────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ class BibleAnnotationController extends Controller
             ['note' => $request->note]
         );
 
-        return $this->success($note, 'Note enregistrée');
+        return $this->success($note, __('bible.messages.note_saved'));
     }
 
     // DELETE /bible/notes/{id}
@@ -194,7 +194,7 @@ class BibleAnnotationController extends Controller
                             ->where('user_id', $request->user()->id)
                             ->delete();
 
-        return $deleted ? $this->success(null, 'Note supprimée') : $this->notFound();
+        return $deleted ? $this->success(null, __('bible.messages.note_deleted')) : $this->notFound();
     }
 
     // ── Partage ──────────────────────────────────────────────────────────

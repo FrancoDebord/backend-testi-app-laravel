@@ -13,6 +13,7 @@ use App\Models\PrayerRequestPrayer;
 use App\Models\PrayerRequestReport;
 use App\Models\Testimony;
 use App\Models\User;
+use App\Support\NotificationText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,19 +28,23 @@ class PrayerRequests
     /** Listes : all (tout ce que je peux voir) · feed (publiques) · following (comptes suivis) · mine · event · verse (verset du jour). */
     public const SCOPES = ['all', 'feed', 'following', 'mine', 'event', 'verse'];
 
-    public const MESSAGES = [
-        'body.required'      => 'Écrivez votre requête de prière.',
-        'body.min'           => 'Votre requête est trop courte (10 caractères au moins).',
-        'body.max'           => '2 000 caractères au plus.',
-        'visibility.in'      => 'Choisissez qui peut voir la requête.',
-        'event_id.uuid'      => 'Événement introuvable.',
-        'daily_verse_id.exists' => 'Verset du jour introuvable.',
-        'source_testimony_id.uuid' => 'Témoignage introuvable.',
-        'message.required'   => "Écrivez votre message d'encouragement.",
-        'message.max'        => '1 000 caractères au plus.',
-        'reason.required'    => 'Choisissez la raison du signalement.',
-        'reason.in'          => 'Choisissez la raison du signalement.',
-    ];
+    /** Messages de validation dans la langue courante (lang/{fr,en}/prayer.php › validation). */
+    public static function messages(): array
+    {
+        return [
+            'body.required'            => __('prayer.validation.body_required'),
+            'body.min'                 => __('prayer.validation.body_min'),
+            'body.max'                 => __('prayer.validation.body_max'),
+            'visibility.in'            => __('prayer.validation.visibility_request'),
+            'event_id.uuid'            => __('prayer.validation.event_not_found'),
+            'daily_verse_id.exists'    => __('prayer.validation.verse_not_found'),
+            'source_testimony_id.uuid' => __('prayer.validation.testimony_not_found'),
+            'message.required'         => __('prayer.validation.message_required'),
+            'message.max'              => __('prayer.validation.message_max'),
+            'reason.required'          => __('prayer.validation.reason_required'),
+            'reason.in'                => __('prayer.validation.reason_required'),
+        ];
+    }
 
     public static function rules(bool $partial = false): array
     {
@@ -47,7 +52,7 @@ class PrayerRequests
 
         return [
             // Longueur mesurée sur le texte affiché : un jeton de mention compte comme « @Nom ».
-            'body'         => [$req, 'string', 'min:10', new \App\Rules\VisibleLength(2000, '2 000 caractères au plus.')],
+            'body'         => [$req, 'string', 'min:10', new \App\Rules\VisibleLength(2000, __('prayer.validation.body_max'))],
             // Mentions « @ » choisies dans l'autocomplétion, si le texte est envoyé lisible (docs/fonctionnalites/mentions.md).
             'mention_ids'  => ['sometimes', 'array', 'max:20'],
             'mention_ids.*' => ['string'],
@@ -115,7 +120,7 @@ class PrayerRequests
     {
         $request = Str::isUuid($id) ? PrayerRequest::with(['user', 'event', 'sourceTestimony:id,title'])->withPrayedBy($viewer)->find($id) : null;
         if (!$request || !$request->isVisibleTo($viewer)) {
-            throw new PrayerActionException('Requête de prière introuvable.', 404);
+            throw new PrayerActionException(__('prayer.errors.request_not_found'), 404);
         }
 
         return $request;
@@ -161,7 +166,7 @@ class PrayerRequests
         if (array_key_exists('testimony_id', $data)) {
             $testimony = $data['testimony_id'] ? Testimony::find($data['testimony_id']) : null;
             if ($data['testimony_id'] && (!$testimony || $testimony->user_id !== $user->id)) {
-                throw new PrayerActionException('Ce témoignage ne vous appartient pas.', 422);
+                throw new PrayerActionException(__('prayer.errors.testimony_not_yours'), 422);
             }
             $changes['testimony_id'] = $testimony?->id;
             // Un témoignage rattaché : la requête est exaucée.
@@ -183,7 +188,7 @@ class PrayerRequests
     public function delete(PrayerRequest $request, User $user): void
     {
         if (!$request->canBeDeletedBy($user)) {
-            throw new PrayerActionException('Vous ne pouvez pas supprimer cette requête.', 403);
+            throw new PrayerActionException(__('prayer.errors.cannot_delete_request'), 403);
         }
         $request->delete();
     }
@@ -198,7 +203,7 @@ class PrayerRequests
     {
         $this->ensureActive($user);
         if ($request->isHidden()) {
-            throw new PrayerActionException('Cette requête a été retirée par la modération.', 409);
+            throw new PrayerActionException(__('prayer.errors.request_hidden'), 409);
         }
 
         return app(PrayerFocus::class)->start($user, 'prayer_request', $request->id);
@@ -214,7 +219,7 @@ class PrayerRequests
     {
         $this->ensureActive($user);
         if ($request->isHidden()) {
-            throw new PrayerActionException('Cette requête a été retirée par la modération.', 409);
+            throw new PrayerActionException(__('prayer.errors.request_hidden'), 409);
         }
 
         $added  = false;
@@ -295,8 +300,7 @@ class PrayerRequests
                     'actor_name'   => $actor->display_name,
                     'actor_avatar' => $actor->avatar_url,
                     'type'         => NotificationType::PrayerRequestPrayed->value,
-                    'message'      => $actor->display_name . ' prie pour votre requête de prière',
-                    'payload'      => ['prayer_request_id' => $request->id],
+                    ...NotificationText::fields('notifications.fallback.prayer_request_prayed', ['actor' => $actor->display_name], ['prayer_request_id' => $request->id]),
                     'created_at'   => now(),
                 ]);
             }
@@ -310,7 +314,7 @@ class PrayerRequests
     {
         $this->ensureAuthor($request, $user);
         if (!$answered && $request->testimony_id) {
-            throw new PrayerActionException('Un témoignage est rattaché : la requête reste exaucée.', 409);
+            throw new PrayerActionException(__('prayer.errors.testimony_linked'), 409);
         }
         $request->update($answered
             ? ['status' => PrayerRequest::ANSWERED, 'answered_at' => $request->answered_at ?? now(), 'answer_note' => filled($note) ? trim($note) : $request->answer_note]
@@ -325,7 +329,7 @@ class PrayerRequests
     {
         $this->ensureActive($user);
         if (!$request->acceptsMessagesFrom($user)) {
-            throw new PrayerActionException("Les messages ne sont pas ouverts pour cette requête.", 403);
+            throw new PrayerActionException(__('prayer.errors.messages_closed'), 403);
         }
 
         // Mentions « @ » (docs/fonctionnalites/mentions.md)
@@ -353,7 +357,7 @@ class PrayerRequests
             $visible = User::whereIn('id', $mentions['ids'])->get()
                 ->filter(fn (User $u) => $request->isVisibleTo($u))->pluck('id')->all();
             Mentions::notify($visible, $user, [
-                'where'   => 'un message de prière',
+                'where_key' => 'prayer_message',
                 'payload' => ['prayer_request_id' => $request->id],
             ], [$request->user_id]);
         }
@@ -364,7 +368,7 @@ class PrayerRequests
     public function deleteMessage(PrayerRequest $request, PrayerRequestMessage $message, User $user): void
     {
         if (!$message->canBeDeletedBy($user, $request)) {
-            throw new PrayerActionException('Vous ne pouvez pas supprimer ce message.', 403);
+            throw new PrayerActionException(__('prayer.errors.cannot_delete_message'), 403);
         }
         $message->delete();
         PrayerRequest::whereKey($request->id)->where('message_count', '>', 0)->decrement('message_count');
@@ -380,8 +384,7 @@ class PrayerRequests
                 'actor_name'   => $actor->display_name,
                 'actor_avatar' => $actor->avatar_url,
                 'type'         => NotificationType::PrayerEncouragement->value,
-                'message'      => 'vous a laissé un message d\'encouragement sous votre requête de prière.',
-                'payload'      => ['prayer_request_id' => $request->id],
+                ...NotificationText::fields('prayer.notify.encouragement', [], ['prayer_request_id' => $request->id]),
                 'created_at'   => now(),
             ]);
         } catch (\Throwable $e) {
@@ -396,7 +399,7 @@ class PrayerRequests
     {
         $this->ensureActive($user);
         if ($request->isAuthor($user)) {
-            throw new PrayerActionException('Vous ne pouvez pas signaler votre propre requête.', 422);
+            throw new PrayerActionException(__('prayer.errors.cannot_report_own'), 422);
         }
 
         DB::transaction(function () use ($request, $user, $reason, $comment) {
@@ -453,7 +456,7 @@ class PrayerRequests
         if (blank($testimonyId)) return null;
         $testimony = Str::isUuid($testimonyId) ? Testimony::published()->find($testimonyId) : null;
         if (!$testimony) {
-            throw new PrayerActionException('Témoignage introuvable.', 422);
+            throw new PrayerActionException(__('prayer.errors.testimony_not_found'), 422);
         }
 
         return $testimony;
@@ -464,10 +467,10 @@ class PrayerRequests
         if (blank($eventId)) return null;
         $event = Str::isUuid($eventId) ? Event::find($eventId) : null;
         if (!$event || !$event->isVisibleTo($user)) {
-            throw new PrayerActionException('Événement introuvable.', 422);
+            throw new PrayerActionException(__('prayer.errors.event_not_found'), 422);
         }
         if ($event->status !== EventStatus::Published && !$event->canBeManagedBy($user)) {
-            throw new PrayerActionException("Cet événement n'accepte pas de requêtes de prière.", 422);
+            throw new PrayerActionException(__('prayer.errors.event_closed'), 422);
         }
 
         return $event;
@@ -476,21 +479,21 @@ class PrayerRequests
     private function ensureAuthor(PrayerRequest $request, User $user): void
     {
         if (!$request->isAuthor($user)) {
-            throw new PrayerActionException('Seul l\'auteur peut modifier cette requête.', 403);
+            throw new PrayerActionException(__('prayer.errors.author_only'), 403);
         }
     }
 
     private function ensureModerator(User $user): void
     {
         if (!$user->canModerate()) {
-            throw new PrayerActionException('Action réservée à la modération.', 403);
+            throw new PrayerActionException(__('prayer.errors.moderators_only'), 403);
         }
     }
 
     private function ensureActive(User $user): void
     {
         if ($user->status !== UserAccountStatus::Active) {
-            throw new PrayerActionException('Votre compte ne permet pas cette action.', 403);
+            throw new PrayerActionException(__('prayer.errors.account_inactive'), 403);
         }
     }
 }

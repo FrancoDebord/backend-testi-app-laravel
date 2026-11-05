@@ -20,9 +20,9 @@
     <div id="bible-backdrop" class="fixed inset-0 top-16 z-20 bg-slate-900/40 md:hidden" hidden></div>
     <aside id="bible-sidebar"
            class="fixed top-16 bottom-0 left-0 z-30 hidden w-72 shrink-0 overflow-y-auto border-r border-slate-200 bg-white md:sticky md:block md:h-[calc(100vh-4rem)]"
-           aria-label="Livres de la Bible">
+           aria-label="{{ __('bible.reader.books_aria') }}">
         <div class="border-b border-slate-100 p-4">
-            <label for="translation-select" class="form-label">Traduction</label>
+            <label for="translation-select" class="form-label">{{ __('bible.reader.translation') }}</label>
             <select id="translation-select" class="form-input">
                 @foreach($translations as $t)
                 <option value="{{ $t }}" @selected($t === $translation)>{{ $t }}</option>
@@ -30,10 +30,10 @@
             </select>
             {{-- Aller à un livre (autocomplétion) ─ docs/fonctionnalites/recherche.md --}}
             <form method="GET" action="{{ route('bible.reader') }}" role="search" class="mt-3">
-                <label for="bible-book-q" class="sr-only">Aller à un livre de la Bible</label>
+                <label for="bible-book-q" class="sr-only">{{ __('bible.reader.goto_book_label') }}</label>
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
-                    <input id="bible-book-q" type="search" maxlength="60" class="form-input pl-9" placeholder="Aller à un livre…"
+                    <input id="bible-book-q" type="search" maxlength="60" class="form-input pl-9" placeholder="{{ __('bible.reader.goto_book') }}"
                            data-search-autocomplete="bible" data-search-submit="first-result" data-search-recent-key="bible"
                            data-search-translation="{{ $translation }}">
                 </div>
@@ -45,7 +45,7 @@
             @foreach($books as $book)
                 @if($book->testament !== $currentTestament)
                     @php $currentTestament = $book->testament; @endphp
-                    <p class="section-title px-3 pt-3 pb-1">{{ $book->testament === 'OT' ? 'Ancien Testament' : 'Nouveau Testament' }}</p>
+                    <p class="section-title px-3 pt-3 pb-1">{{ $book->testament === 'OT' ? __('bible.reader.old_testament') : __('bible.reader.new_testament') }}</p>
                 @endif
                 <a href="#"
                    class="book-item {{ $currentBook?->number === $book->number ? 'bg-primary-50 font-semibold text-primary-700' : 'text-slate-700 hover:bg-slate-50' }} block rounded-lg px-3 py-1.5 text-sm"
@@ -59,7 +59,7 @@
         <div id="chapter-panel" class="p-3" hidden>
             <div class="mb-3 flex items-center justify-between gap-2">
                 <span id="chapter-book-name" class="truncate text-sm font-semibold text-slate-900"></span>
-                <button type="button" id="back-to-books" class="btn-ghost btn-sm"><i class="fa-solid fa-arrow-left"></i>Livres</button>
+                <button type="button" id="back-to-books" class="btn-ghost btn-sm"><i class="fa-solid fa-arrow-left"></i>{{ __('bible.reader.books') }}</button>
             </div>
             <div id="chapter-grid" class="grid grid-cols-6 gap-1"></div>
         </div>
@@ -70,14 +70,14 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
             <div class="flex min-w-0 items-center gap-3">
                 <button type="button" id="bible-sidebar-toggle" class="btn-secondary btn-sm md:hidden" aria-controls="bible-sidebar" aria-expanded="false">
-                    <i class="fa-solid fa-list"></i>Livres
+                    <i class="fa-solid fa-list"></i>{{ __('bible.reader.books') }}
                 </button>
                 <h1 class="truncate text-lg font-semibold text-primary-600">
                     @if($selected)
                         {{ $passage }}
                     @else
                         {{ $currentBook?->name ?? '—' }}
-                        @if($currentBook)<span class="font-normal text-slate-500">chapitre {{ $chapter }}</span>@endif
+                        @if($currentBook)<span class="font-normal text-slate-500">{{ __('bible.reader.chapter_lower', ['number' => $chapter]) }}</span>@endif
                     @endif
                 </h1>
                 <span class="badge-neutral">{{ $translation }}</span>
@@ -88,15 +88,15 @@
                 @if($shareUrl && $verses->isNotEmpty())
                 {{-- Partage la sélection, sinon le chapitre. --}}
                 <button type="button" class="btn-secondary btn-sm" data-bible-share>
-                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>Partager
+                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>{{ __('bible.reader.share') }}
                 </button>
                 @endif
                 @if($prevChapter)
-                <a href="{{ $chapterUrl($prevChapter) }}" class="action-btn-view" aria-label="Chapitre précédent"><i class="fa-solid fa-chevron-left"></i></a>
+                <a href="{{ $chapterUrl($prevChapter) }}" class="action-btn-view" aria-label="{{ __('bible.reader.previous_chapter') }}"><i class="fa-solid fa-chevron-left"></i></a>
                 @endif
                 <span class="text-sm text-slate-500">{{ $chapter }} / {{ $currentBook->chapters_count }}</span>
                 @if($nextChapter)
-                <a href="{{ $chapterUrl($nextChapter) }}" class="action-btn-view" aria-label="Chapitre suivant"><i class="fa-solid fa-chevron-right"></i></a>
+                <a href="{{ $chapterUrl($nextChapter) }}" class="action-btn-view" aria-label="{{ __('bible.reader.next_chapter') }}"><i class="fa-solid fa-chevron-right"></i></a>
                 @endif
             </div>
             @endif
@@ -105,21 +105,21 @@
         <div class="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
             @if($verses->isEmpty())
                 <div class="card px-6 py-12 text-center">
-                    <p class="text-sm font-semibold text-slate-900">Aucun verset disponible</p>
-                    <p class="mt-1 text-sm text-slate-500">La traduction {{ $translation }} n’a pas encore été importée.</p>
+                    <p class="text-sm font-semibold text-slate-900">{{ __('bible.reader.no_verses') }}</p>
+                    <p class="mt-1 text-sm text-slate-500">{{ __('bible.reader.not_imported', ['translation' => $translation]) }}</p>
                     @if(Auth::user()?->isAdmin())
                     <code class="mt-3 inline-block rounded bg-slate-100 px-2 py-1 text-xs break-all text-slate-700">php artisan bible:import {{ $translation }} storage/bible/…</code>
                     @endif
                 </div>
             @else
-                <p class="mb-3 text-sm text-slate-500"><i class="fa-regular fa-hand-pointer mr-1" aria-hidden="true"></i>Touchez un ou plusieurs versets pour les partager.</p>
+                <p class="mb-3 text-sm text-slate-500"><i class="fa-regular fa-hand-pointer mr-1" aria-hidden="true"></i>{{ __('bible.reader.tap_hint') }}</p>
                 <div class="card divide-y divide-slate-100 px-5 sm:px-6">
                     @foreach($verses as $verse)
                     @php $isSelected = in_array($verse->verse, $selected, true); @endphp
                     {{-- Toucher le verset (ou son numéro, au clavier) l'ajoute à la sélection à partager. --}}
                     <div id="v{{ $verse->verse }}" data-verse="{{ $verse->verse }}"
                          class="flex cursor-pointer scroll-mt-24 gap-3 py-2.5 leading-relaxed {{ $isSelected ? '-mx-5 bg-sun-50 px-5 sm:-mx-6 sm:px-6' : '' }}">
-                        <button type="button" data-verse-toggle aria-pressed="{{ $isSelected ? 'true' : 'false' }}" aria-label="Sélectionner le verset {{ $verse->verse }}"
+                        <button type="button" data-verse-toggle aria-pressed="{{ $isSelected ? 'true' : 'false' }}" aria-label="{{ __('bible.reader.select_verse', ['number' => $verse->verse]) }}"
                                 class="w-6 shrink-0 self-start pt-1 text-right text-xs font-semibold {{ $isSelected ? 'text-primary-700' : 'text-slate-400' }} hover:text-primary-700">{{ $verse->verse }}</button>
                         <span data-verse-text class="min-w-0 text-[17px] break-words text-slate-800">{{ $verse->text }}</span>
                     </div>
@@ -128,12 +128,12 @@
 
                 <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
                     @if($prevChapter)
-                    <a href="{{ $chapterUrl($prevChapter) }}" class="btn-secondary btn-sm"><i class="fa-solid fa-chevron-left"></i>Chapitre {{ $prevChapter }}</a>
+                    <a href="{{ $chapterUrl($prevChapter) }}" class="btn-secondary btn-sm"><i class="fa-solid fa-chevron-left"></i>{{ __('bible.reader.chapter', ['number' => $prevChapter]) }}</a>
                     @else
                     <span></span>
                     @endif
                     @if($nextChapter)
-                    <a href="{{ $chapterUrl($nextChapter) }}" class="btn-secondary btn-sm">Chapitre {{ $nextChapter }}<i class="fa-solid fa-chevron-right"></i></a>
+                    <a href="{{ $chapterUrl($nextChapter) }}" class="btn-secondary btn-sm">{{ __('bible.reader.chapter', ['number' => $nextChapter]) }}<i class="fa-solid fa-chevron-right"></i></a>
                     @endif
                 </div>
 
@@ -147,14 +147,14 @@
 @if($verses->isNotEmpty())
 {{-- Versets sélectionnés : partager, copier le texte ou le lien (docs/fonctionnalites/liens-bible.md) --}}
 <div id="verse-actions" class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white px-4 py-3 shadow-lg" @if(!$selected) hidden @endif
-     role="region" aria-label="Versets sélectionnés">
+     role="region" aria-label="{{ __('bible.reader.selected_aria') }}">
     <div class="mx-auto flex max-w-3xl flex-wrap items-center gap-2">
         <p class="min-w-0 flex-1 basis-40 truncate text-sm font-semibold text-primary-700" data-selection-label aria-live="polite">{{ $selected ? $passage : '' }}</p>
         <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="btn-primary btn-sm" data-selection-share><i class="fa-solid fa-share-nodes" aria-hidden="true"></i>Partager</button>
-            <button type="button" class="btn-secondary btn-sm" data-selection-copy="text"><i class="fa-regular fa-copy" aria-hidden="true"></i>Copier le texte</button>
-            <button type="button" class="btn-secondary btn-sm" data-selection-copy="link"><i class="fa-solid fa-link" aria-hidden="true"></i>Copier le lien</button>
-            <button type="button" class="btn-ghost btn-sm" data-selection-clear aria-label="Effacer la sélection"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <button type="button" class="btn-primary btn-sm" data-selection-share><i class="fa-solid fa-share-nodes" aria-hidden="true"></i>{{ __('bible.reader.share') }}</button>
+            <button type="button" class="btn-secondary btn-sm" data-selection-copy="text"><i class="fa-regular fa-copy" aria-hidden="true"></i>{{ __('bible.reader.copy_text') }}</button>
+            <button type="button" class="btn-secondary btn-sm" data-selection-copy="link"><i class="fa-solid fa-link" aria-hidden="true"></i>{{ __('bible.reader.copy_link') }}</button>
+            <button type="button" class="btn-ghost btn-sm" data-selection-clear aria-label="{{ __('bible.reader.clear_selection') }}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
     </div>
 </div>
@@ -173,6 +173,8 @@
     const CHAPTER_PATH   = @json($currentBook ? BibleReference::passagePath($translation, $currentBook->number, $chapter) : null);
     const BOOK_NAME      = @json($currentBook?->name);
     const MAX_RANGES     = {{ BibleReference::MAX_RANGES }};
+    const QUOTE_OPEN     = @json(__('bible.quote_open'));
+    const QUOTE_CLOSE    = @json(__('bible.quote_close'));
 
     const sidebar  = document.getElementById('bible-sidebar');
     const backdrop = document.getElementById('bible-backdrop');
@@ -219,7 +221,7 @@
             return parts.join(' ');
         }).join(' … ');
     }
-    const shareBody = rs => '« ' + quote(rs) + ' »\n— ' + label(rs) + ' (' + translation + ')';
+    const shareBody = rs => QUOTE_OPEN + quote(rs) + QUOTE_CLOSE + '\n— ' + label(rs) + ' (' + translation + ')';
 
     function render() {
         const rs = ranges();
@@ -257,7 +259,7 @@
             await navigator.clipboard.writeText(text);
             window.flash?.(message);
         } catch (e) {
-            window.flash?.('Copie impossible dans ce navigateur.', 'error');
+            window.flash?.(@json(__('bible.reader.copy_failed')), 'error');
         }
     }
 
@@ -269,7 +271,7 @@
             try { await navigator.share(data); } catch (e) { /* partage annulé */ }
             return;
         }
-        copy(rs.length ? data.text + '\n' + data.url : data.url, 'Lien copié.');
+        copy(rs.length ? data.text + '\n' + data.url : data.url, @json(__('bible.reader.link_copied')));
     }
 
     document.querySelector('[data-bible-share]')?.addEventListener('click', share);
@@ -277,8 +279,8 @@
     bar?.querySelectorAll('[data-selection-copy]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const rs = ranges();
-            if (btn.dataset.selectionCopy === 'link') copy(link(rs), 'Lien copié.');
-            else copy(shareBody(rs) + '\n' + link(rs), 'Versets copiés.');
+            if (btn.dataset.selectionCopy === 'link') copy(link(rs), @json(__('bible.reader.link_copied')));
+            else copy(shareBody(rs) + '\n' + link(rs), @json(__('bible.reader.verses_copied')));
         });
     });
     bar?.querySelector('[data-selection-clear]').addEventListener('click', function () { selected.clear(); render(); });

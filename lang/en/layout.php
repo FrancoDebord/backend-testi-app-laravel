@@ -69,6 +69,8 @@ return [
     'breadcrumb'       => 'Breadcrumb',
     'close'            => 'Close',
     'back_to_site'     => 'Back to the site',
+    // Label colon ("Place: …"): no space before it in English.
+    'colon'            => ': ',
     'guest' => [
         'tagline'       => 'God is still at work.',
         'intro'         => 'My Testimony gathers testimonies from the community to encourage, build up and give glory to God.',

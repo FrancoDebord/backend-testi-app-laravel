@@ -25,7 +25,7 @@ return [
         'sending'                 => 'Sending testimony…',
         'event_before'            => 'Event testimony:',
         'event_after'             => '. It will appear on the event page once published.',
-        'prophecy_before'         => 'Fulfilment of the word',
+        'prophecy_before'         => 'Fulfillment of the word',
         'prophecy_received_on'    => 'received on :date',
         'date_format'             => 'F j, Y',
         'prophecy_after'          => '. It will be marked as fulfilled.',
@@ -118,7 +118,7 @@ return [
         'no_text'     => 'No text yet.',
         'no_media'    => 'No file chosen: add your audio or video.',
         'youtube'     => 'YouTube video',
-        'youtube_bad' => 'YouTube link not recognised.',
+        'youtube_bad' => 'YouTube link not recognized.',
         'loading'     => 'Preparing the preview…',
         'failed'      => 'Text preview unavailable. Please try again.',
     ],
@@ -134,8 +134,8 @@ return [
         'media_mimetypes'      => 'The file must be an audio or video recording.',
         'consent'              => 'Please confirm your commitment before sending.',
         'youtube_admin_only'   => 'Only administrators can publish a YouTube video.',
-        'youtube_invalid'      => 'This YouTube link is not recognised (example: https://www.youtube.com/watch?v=…).',
-        'youtube_unrecognized' => 'This YouTube link is not recognised.',
+        'youtube_invalid'      => 'This YouTube link is not recognized (example: https://www.youtube.com/watch?v=…).',
+        'youtube_unrecognized' => 'This YouTube link is not recognized.',
     ],
 
     // Website messages (flash)

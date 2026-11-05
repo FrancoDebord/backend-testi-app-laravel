@@ -1,21 +1,21 @@
 @extends('layouts.app')
-@section('title', 'Témoignages sauvegardés')
+@section('title', __('profile.saved.title'))
 @php
-    $header      = 'Témoignages sauvegardés';
-    $subheader   = 'Les témoignages que vous avez mis de côté pour les relire.';
+    $header      = __('profile.saved.title');
+    $subheader   = __('profile.saved.subheader');
     $breadcrumbs = [
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Sauvegardes'],
+        ['label' => __('profile.breadcrumb.home'), 'url' => route('home')],
+        ['label' => __('profile.show.shortcuts.saved')],
     ];
 @endphp
 
 @section('content')
 @if($testimonies->isEmpty())
     @include('components.empty-state', [
-        'title' => 'Aucune sauvegarde',
-        'text' => 'Utilisez le bouton « Sauvegarder » sur un témoignage pour le retrouver ici.',
+        'title' => __('profile.saved.empty_title'),
+        'text' => __('profile.saved.empty_text'),
         'actionUrl' => route('explore'),
-        'actionLabel' => 'Explorer les témoignages',
+        'actionLabel' => __('profile.saved.empty_action'),
     ])
 @else
     <div class="mb-3 flex justify-end">@include('components.layout-toggle')</div>

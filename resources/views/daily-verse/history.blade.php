@@ -50,7 +50,7 @@
                     <i class="fa-solid fa-chevron-right shrink-0 text-slate-400" aria-hidden="true"></i>
                 </p>
                 <blockquote class="mt-2 text-lg leading-relaxed text-slate-900">
-                    <a href="{{ $url }}" class="rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">« {{ \Illuminate\Support\Str::limit(trim($v->verse_text), 280) }} »</a>
+                    <a href="{{ $url }}" class="rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">{{ __('bible.quote_open') }}{{ \Illuminate\Support\Str::limit(trim($v->verse_text), 280) }}{{ __('bible.quote_close') }}</a>
                 </blockquote>
                 <p class="mt-1 text-sm font-bold text-primary-700">{{ $v->reference }}</p>
                 <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -67,7 +67,7 @@
                 {{-- Partage sans ouvrir le verset : au-dessus du lien étiré de la carte (z-10). Lien toujours daté. --}}
                 <div class="relative z-10 flex shrink-0 items-center gap-1"
                      data-history-share data-share-url="{{ $shareUrl }}"
-                     data-share-text="« {{ trim($v->verse_text) }} »&#10;— {{ $v->reference }}"
+                     data-share-text="{{ __('bible.quote_open') }}{{ trim($v->verse_text) }}{{ __('bible.quote_close') }}&#10;— {{ $v->reference }}"
                      data-share-image="{{ route('daily-verse.image', ['date' => $item['date']]) }}" data-share-filename="verset-du-jour-{{ $item['date'] }}.png">
                     <button type="button" class="btn-secondary btn-sm" data-history-share-open>
                         <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>{{ __('daily_verse_history.share') }}

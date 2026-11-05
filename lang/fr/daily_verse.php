@@ -4,6 +4,7 @@
 return [
     'title'            => 'Verset du jour',
     'title_with_ref'   => 'Verset du jour — :reference',
+    'page_title'       => 'Verset du jour : :reference',
     'home'             => 'Accueil',
     'original'         => 'Texte du jour',
     'image_label'      => 'VERSET DU JOUR',
@@ -77,6 +78,12 @@ return [
         'alignment'        => 'Alignement',
         'guest_saved'      => 'Vos choix sont gardés sur cet appareil. :link pour les retrouver partout.',
         'copied'           => 'Copié !',
+        'share_title'      => 'Partager ce verset',
+        'share_link_label' => 'Lien du verset',
+        'copy_link'        => 'Copier le lien',
+        'link_copied'      => 'Lien copié',
+        'download_image'   => "Télécharger l'image",
+        'share_link_hint'  => 'Ce lien mène toujours au verset du :date, avec son image dans les aperçus.',
     ],
 
     'card' => [
@@ -107,6 +114,9 @@ return [
         'cannot_delete'     => 'Vous ne pouvez pas supprimer ce commentaire.',
         'own_comment'       => 'Vous ne pouvez pas signaler votre propre commentaire.',
         'account_inactive'  => 'Votre compte ne permet pas cette action.',
+        'prayer_saved'      => 'Merci, votre prière est enregistrée.',
+        'last_prayer_removed' => 'Dernière prière retirée.',
+        'no_theme'          => 'Aucun thème pour la semaine :week de :year.',
     ],
 
     'report_reasons' => [

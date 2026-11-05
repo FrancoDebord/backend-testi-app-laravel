@@ -4,7 +4,7 @@
 --}}
 @php($currentLayout = \App\Support\FeedLayout::current())
 <form method="POST" action="{{ route('preferences.layout') }}" class="flex shrink-0 items-center gap-1.5" data-no-loading
-      role="group" aria-label="Affichage de la liste">
+      role="group" aria-label="{{ __('models.components.layout_toggle') }}">
     @csrf
     @foreach([\App\Support\FeedLayout::CARDS => 'fa-table-cells-large', \App\Support\FeedLayout::COMPACT => 'fa-list'] as $layoutKey => $layoutIcon)
     <button type="submit" name="layout" value="{{ $layoutKey }}" class="{{ $currentLayout === $layoutKey ? 'chip-active' : 'chip' }}"

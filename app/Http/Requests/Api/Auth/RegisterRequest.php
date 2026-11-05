@@ -33,7 +33,7 @@ class RegisterRequest extends FormRequest
 
     public function messages(): array
     {
-        return PhoneNumber::MESSAGES + ['accepted_privacy.accepted' => __('privacy.consent.required')];
+        return PhoneNumber::messages() + ['accepted_privacy.accepted' => __('privacy.consent.required')];
     }
 
     public function attributes(): array

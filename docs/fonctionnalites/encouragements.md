@@ -9,6 +9,7 @@ Rappeler à chacun que témoigner rend gloire à Dieu et fortifie les autres : d
 `config/encouragements.php` (source unique du site) :
 
 - `verses` : 14 versets (Louis Segond 1910), `{ ref, text }` ;
+- `english` : le même verset en King James Version (domaine public) pour le site en anglais, retrouvé par le texte français exact (`Encouragements::merge`), avec la numérotation anglaise des Psaumes (LSG 9:2 = KJV 9:1, LSG 40:10 = KJV 40:9). Un texte français modifié sans mise à jour de `english` reste affiché en français (2026-11-05 ; auparavant, versets toujours en français) ;
 - `calls` : 4 invitations sans verset ;
 - `feed_every` : un message tous les **8** témoignages dans un fil.
 

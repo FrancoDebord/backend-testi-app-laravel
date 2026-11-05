@@ -8,7 +8,7 @@
     <p class="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-accent-700">
         <i class="fa-solid fa-retweet" aria-hidden="true"></i>
         <a href="{{ route('profiles.show', $repost->user_id) }}" class="truncate hover:underline">{{ $repost->user?->display_name }}</a>
-        <span class="shrink-0">a partagé</span>
+        <span class="shrink-0">{{ __('discover.repost.shared') }}</span>
         @if($repost->created_at)<time class="shrink-0 font-normal text-slate-500" datetime="{{ $repost->created_at->toIso8601String() }}">· {{ $repost->created_at->diffForHumans() }}</time>@endif
     </p>
     @if(filled($repost->comment))

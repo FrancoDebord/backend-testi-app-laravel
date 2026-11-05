@@ -1,12 +1,12 @@
 @extends('layouts.app')
-@section('title', 'Catégories')
+@section('title', __('layout.nav.categories'))
 @php
-    $header      = 'Catégories';
-    $subheader   = 'Catégories proposées lors de la publication d’un témoignage.';
+    $header      = __('layout.nav.categories');
+    $subheader   = __('admin.categories.subheader');
     $breadcrumbs = [
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Administration', 'url' => route('admin.dashboard')],
-        ['label' => 'Catégories'],
+        ['label' => __('layout.nav.home'), 'url' => route('home')],
+        ['label' => __('layout.nav.administration'), 'url' => route('admin.dashboard')],
+        ['label' => __('layout.nav.categories')],
     ];
     // Les champs du formulaire d'ajout ne sont repris que si l'erreur vient de lui.
     $fromCreate = old('_form') === 'create';
@@ -16,13 +16,13 @@
 
 {{-- ── Ajout ─────────────────────────────────────────────────────────── --}}
 <section class="card mb-6 p-5 sm:p-6">
-    <h2 class="card-title mb-4">Nouvelle catégorie</h2>
-    <form method="POST" action="{{ route('admin.categories.store') }}" data-loading-label="Création de la catégorie…">
+    <h2 class="card-title mb-4">{{ __('admin.categories.new') }}</h2>
+    <form method="POST" action="{{ route('admin.categories.store') }}" data-loading-label="{{ __('admin.categories.creating') }}">
         @csrf
         <input type="hidden" name="_form" value="create">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div class="lg:col-span-2">
-                <label for="new-name" class="form-label">Nom *</label>
+                <label for="new-name" class="form-label">{{ __('admin.categories.name') }}</label>
                 <input id="new-name" type="text" name="name" value="{{ $fromCreate ? old('name') : '' }}" required maxlength="50" class="form-input">
                 @if($fromCreate)@error('name')<p class="form-error">{{ $message }}</p>@enderror @endif
             </div>
@@ -33,34 +33,34 @@
                 @if($fromCreate)@error('name_en')<p class="form-error">{{ $message }}</p>@enderror @endif
             </div>
             <div>
-                <label for="new-slug" class="form-label">Identifiant *</label>
+                <label for="new-slug" class="form-label">{{ __('admin.categories.slug') }}</label>
                 <input id="new-slug" type="text" name="slug" value="{{ $fromCreate ? old('slug') : '' }}" required maxlength="30" pattern="[a-z0-9\-]+"
                        class="form-input" placeholder="guerison">
-                <p class="form-hint">Minuscules, chiffres et tirets.</p>
+                <p class="form-hint">{{ __('admin.categories.slug_hint') }}</p>
                 @if($fromCreate)@error('slug')<p class="form-error">{{ $message }}</p>@enderror @endif
             </div>
             <div>
-                <label for="new-icon" class="form-label">Icône (appli mobile)</label>
+                <label for="new-icon" class="form-label">{{ __('admin.categories.icon') }}</label>
                 <input id="new-icon" type="text" name="icon" value="{{ $fromCreate ? old('icon') : '' }}" class="form-input">
             </div>
             <div>
-                <label for="new-color" class="form-label">Couleur (appli mobile)</label>
+                <label for="new-color" class="form-label">{{ __('admin.categories.color') }}</label>
                 <input id="new-color" type="text" name="color" value="{{ $fromCreate ? old('color') : '' }}" maxlength="10" class="form-input" placeholder="#C10202">
                 @if($fromCreate)@error('color')<p class="form-error">{{ $message }}</p>@enderror @endif
             </div>
         </div>
         <div class="mt-5 flex justify-end border-t border-slate-100 pt-5">
-            <button type="submit" class="btn-primary">Créer la catégorie</button>
+            <button type="submit" class="btn-primary">{{ __('admin.categories.create') }}</button>
         </div>
     </form>
 </section>
 
 {{-- ── Liste ─────────────────────────────────────────────────────────── --}}
 @if($categories->isEmpty())
-    @include('components.empty-state', ['title' => 'Aucune catégorie', 'text' => 'Créez une première catégorie ci-dessus.'])
+    @include('components.empty-state', ['title' => __('admin.categories.empty_title'), 'text' => __('admin.categories.empty_text')])
 @else
     @foreach($categories as $cat)
-    <form id="delete-cat-{{ $cat->id }}" method="POST" action="{{ route('admin.categories.destroy', $cat->id) }}" data-loading-label="Suppression…" hidden>
+    <form id="delete-cat-{{ $cat->id }}" method="POST" action="{{ route('admin.categories.destroy', $cat->id) }}" data-loading-label="{{ __('admin.common.deleting') }}" hidden>
         @csrf @method('DELETE')
     </form>
     @endforeach
@@ -84,19 +84,19 @@
         <li class="card p-4">
             <div class="flex items-start justify-between gap-3">
                 <p class="min-w-0 font-medium break-words text-slate-900">{{ $cat->name }}</p>
-                <span class="{{ $cat->is_active ? 'badge-active' : 'badge-draft' }}">{{ $cat->is_active ? 'Active' : 'Inactive' }}</span>
+                <span class="{{ $cat->is_active ? 'badge-active' : 'badge-draft' }}">{{ $cat->is_active ? __('admin.common.active') : __('admin.common.inactive') }}</span>
             </div>
             <dl class="mt-3 space-y-1 text-sm">
                 <div class="flex justify-between gap-4"><dt class="text-slate-500">{{ __('admin.categories.english') }}</dt><dd class="min-w-0 break-words text-right text-slate-900">{{ $cat->name_en ?: '—' }}</dd></div>
-                <div class="flex justify-between gap-4"><dt class="text-slate-500">Identifiant</dt><dd class="truncate font-mono text-xs text-slate-900">{{ $cat->slug }}</dd></div>
-                <div class="flex justify-between gap-4"><dt class="text-slate-500">Ordre</dt><dd class="text-slate-900">{{ $cat->display_order }}</dd></div>
-                <div class="flex justify-between gap-4"><dt class="text-slate-500">Témoignages</dt><dd class="text-slate-900">{{ number_format($cat->testimony_count, 0, ',', ' ') }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">{{ __('admin.categories.slug_label') }}</dt><dd class="truncate font-mono text-xs text-slate-900">{{ $cat->slug }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">{{ __('admin.categories.order') }}</dt><dd class="text-slate-900">{{ $cat->display_order }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">{{ __('admin.common.testimonies') }}</dt><dd class="text-slate-900">{{ number_format($cat->testimony_count, 0, ',', ' ') }}</dd></div>
             </dl>
             <div class="mt-3 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
-                <button type="button" class="action-btn-edit" data-category-edit='@json($catEditData($cat))'><i class="fa-solid fa-pen"></i>Modifier</button>
+                <button type="button" class="action-btn-edit" data-category-edit='@json($catEditData($cat))'><i class="fa-solid fa-pen"></i>{{ __('admin.common.edit') }}</button>
                 <button type="button" class="action-btn-delete"
-                        onclick="openConfirmModal('delete-cat-{{ $cat->id }}', @js('La catégorie « ' . $cat->name . ' » sera supprimée définitivement.'), 'Supprimer la catégorie', 'Supprimer', 'fa-trash-can')">
-                    <i class="fa-regular fa-trash-can"></i>Supprimer
+                        onclick="openConfirmModal('delete-cat-{{ $cat->id }}', @js(__('admin.categories.delete_confirm', ['name' => $cat->name])), @js(__('admin.categories.delete_title')), @js(__('admin.common.delete')), 'fa-trash-can')">
+                    <i class="fa-regular fa-trash-can"></i>{{ __('admin.common.delete') }}
                 </button>
             </div>
         </li>
@@ -109,13 +109,13 @@
             <table class="min-w-full">
                 <thead>
                     <tr>
-                        <th class="table-th">Ordre</th>
-                        <th class="table-th">Catégorie</th>
+                        <th class="table-th">{{ __('admin.categories.order') }}</th>
+                        <th class="table-th">{{ __('admin.categories.category') }}</th>
                         <th class="table-th">{{ __('admin.categories.english') }}</th>
-                        <th class="table-th">Identifiant</th>
-                        <th class="table-th text-right">Témoignages</th>
-                        <th class="table-th">Statut</th>
-                        <th class="table-th text-right">Actions</th>
+                        <th class="table-th">{{ __('admin.categories.slug_label') }}</th>
+                        <th class="table-th text-right">{{ __('admin.common.testimonies') }}</th>
+                        <th class="table-th">{{ __('admin.common.status') }}</th>
+                        <th class="table-th text-right">{{ __('admin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -126,14 +126,14 @@
                         <td class="table-td text-slate-600">{{ $cat->name_en ?: '—' }}</td>
                         <td class="table-td font-mono text-xs text-slate-500">{{ $cat->slug }}</td>
                         <td class="table-td text-right">{{ number_format($cat->testimony_count, 0, ',', ' ') }}</td>
-                        <td class="table-td"><span class="{{ $cat->is_active ? 'badge-active' : 'badge-draft' }}">{{ $cat->is_active ? 'Active' : 'Inactive' }}</span></td>
+                        <td class="table-td"><span class="{{ $cat->is_active ? 'badge-active' : 'badge-draft' }}">{{ $cat->is_active ? __('admin.common.active') : __('admin.common.inactive') }}</span></td>
                         <td class="table-td">
                             <div class="flex justify-end gap-2">
-                                <button type="button" class="action-btn-edit" title="Modifier" aria-label="Modifier" data-category-edit='@json($catEditData($cat))'>
+                                <button type="button" class="action-btn-edit" title="{{ __('admin.common.edit') }}" aria-label="{{ __('admin.common.edit') }}" data-category-edit='@json($catEditData($cat))'>
                                     <i class="fa-solid fa-pen"></i>
                                 </button>
-                                <button type="button" class="action-btn-delete" title="Supprimer" aria-label="Supprimer"
-                                        onclick="openConfirmModal('delete-cat-{{ $cat->id }}', @js('La catégorie « ' . $cat->name . ' » sera supprimée définitivement.'), 'Supprimer la catégorie', 'Supprimer', 'fa-trash-can')">
+                                <button type="button" class="action-btn-delete" title="{{ __('admin.common.delete') }}" aria-label="{{ __('admin.common.delete') }}"
+                                        onclick="openConfirmModal('delete-cat-{{ $cat->id }}', @js(__('admin.categories.delete_confirm', ['name' => $cat->name])), @js(__('admin.categories.delete_title')), @js(__('admin.common.delete')), 'fa-trash-can')">
                                     <i class="fa-regular fa-trash-can"></i>
                                 </button>
                             </div>
@@ -152,15 +152,15 @@
 <div id="category-edit-modal" data-modal class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
      role="dialog" aria-modal="true" aria-labelledby="category-edit-title" hidden>
     <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
-    <form id="category-edit-form" method="POST" action="" class="card relative w-full max-w-lg shadow-xl" data-loading-label="Enregistrement…">
+    <form id="category-edit-form" method="POST" action="" class="card relative w-full max-w-lg shadow-xl" data-loading-label="{{ __('admin.common.saving') }}">
         @csrf @method('PUT')
         <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
-            <h2 id="category-edit-title" class="text-base font-semibold text-primary-600">Modifier la catégorie</h2>
-            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            <h2 id="category-edit-title" class="text-base font-semibold text-primary-600">{{ __('admin.categories.edit_title') }}</h2>
+            <button type="button" class="btn-ghost btn-sm" data-modal-close aria-label="{{ __('layout.close') }}"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="grid grid-cols-1 gap-4 px-5 py-4 sm:grid-cols-2">
             <div class="sm:col-span-2">
-                <label for="edit-name" class="form-label">Nom *</label>
+                <label for="edit-name" class="form-label">{{ __('admin.categories.name') }}</label>
                 <input id="edit-name" type="text" name="name" required maxlength="50" class="form-input">
             </div>
             <div class="sm:col-span-2">
@@ -175,25 +175,25 @@
                 <p id="edit-intro-hint" class="form-hint">{{ __('seo.admin.intro_hint') }}</p>
             </div>
             <div>
-                <label for="edit-icon" class="form-label">Icône (appli mobile)</label>
+                <label for="edit-icon" class="form-label">{{ __('admin.categories.icon') }}</label>
                 <input id="edit-icon" type="text" name="icon" class="form-input">
             </div>
             <div>
-                <label for="edit-color" class="form-label">Couleur (appli mobile)</label>
+                <label for="edit-color" class="form-label">{{ __('admin.categories.color') }}</label>
                 <input id="edit-color" type="text" name="color" maxlength="10" class="form-input">
             </div>
             <div>
-                <label for="edit-order" class="form-label">Ordre d’affichage</label>
+                <label for="edit-order" class="form-label">{{ __('admin.categories.display_order') }}</label>
                 <input id="edit-order" type="number" name="display_order" class="form-input">
             </div>
             <label class="flex items-center gap-2 self-end pb-2 text-sm text-slate-700">
                 <input id="edit-active" type="checkbox" name="is_active" value="1" class="rounded">
-                Catégorie active
+                {{ __('admin.categories.is_active') }}
             </label>
         </div>
         <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4">
-            <button type="button" class="btn-secondary" data-modal-close>Annuler</button>
-            <button type="submit" class="btn-primary">Enregistrer</button>
+            <button type="button" class="btn-secondary" data-modal-close>{{ __('admin.common.cancel') }}</button>
+            <button type="submit" class="btn-primary">{{ __('admin.common.save') }}</button>
         </div>
     </form>
 </div>

@@ -1,48 +1,48 @@
 @extends('layouts.app')
-@section('title', 'Accueil')
+@section('title', __('layout.nav.home'))
 {{-- Page publique indexable (docs/fonctionnalites/referencement.md) --}}
 @section('robots', \App\Support\Seo::INDEX)
-@section('page_title', 'My Testimony – Témoignages chrétiens de guérison, délivrance, salut')
+@section('page_title', __('discover.home.page_title'))
 @php
     // Accueil selon la maquette « My Testimony » et la charte ARISE & SHINE Krea.
     // Voir docs/fonctionnalites/accueil.md. Les blocs n'apparaissent que sur la première page sans filtre ;
     // avec un filtre ou une autre page : seulement la liste des témoignages.
-    $typeFilters = ['' => 'Tous', 'video' => 'Vidéos', 'audio' => 'Audios', 'text' => 'Textes'];
+    $typeFilters = ['' => __('discover.home.types.all'), 'video' => __('discover.home.types.video'), 'audio' => __('discover.home.types.audio'), 'text' => __('discover.home.types.text')];
     $hasFilters  = request('category') || request('type');
     $activeCategory = $category ? $categories->firstWhere('slug', $category) : null;
     $viewer      = auth()->user();
     $canModerate = $viewer?->canModerate() ?? false;
-    $n = fn ($v) => number_format((int) $v, 0, ',', ' ');
+    $n = fn ($v) => \App\Support\Locales::number((int) $v);
 
     if ($showShelves) {
         $hero     = $featured->first();
 
         $statStrip = [
-            ['fa-play',           'bg-primary-600', 'text-white',       $n($stats['testimonies']), 'Témoignages publiés'],
-            ['fa-users',          'bg-primary-600', 'text-white',       $n($stats['users']),       'Utilisateurs actifs'],
-            ['fa-heart',          'bg-accent-500',  'text-white',       $n($stats['views']),       'Vues totales'],
-            ['fa-hands-praying',  'bg-sun-400',     'text-primary-700', $n($stats['prayers']),     'Prières reçues'],
+            ['fa-play',           'bg-primary-600', 'text-white',       $n($stats['testimonies']), __('discover.home.stats.testimonies')],
+            ['fa-users',          'bg-primary-600', 'text-white',       $n($stats['users']),       __('discover.home.stats.users')],
+            ['fa-heart',          'bg-accent-500',  'text-white',       $n($stats['views']),       __('discover.home.stats.views')],
+            ['fa-hands-praying',  'bg-sun-400',     'text-primary-700', $n($stats['prayers']),     __('discover.home.stats.prayers')],
         ];
 
         // Actions rapides selon le rôle : [adresse, icône, libellé, style]
         $quickActions = match (true) {
             $viewer === null => [
-                [route('login'),        'fa-right-to-bracket', 'Se connecter',              'btn-primary'],
-                [route('register'),     'fa-user-plus',        'Créer mon compte',          'btn-cta'],
-                [route('explore'),      'fa-compass',          'Explorer les témoignages',  'btn-soft'],
-                [route('lives.index'),  'fa-tower-broadcast',  'Voir les directs',          'btn-soft'],
+                [route('login'),        'fa-right-to-bracket', __('discover.home.actions.login'), 'btn-primary'],
+                [route('register'),     'fa-user-plus',        __('discover.home.actions.register'), 'btn-cta'],
+                [route('explore'),      'fa-compass',          __('discover.home.actions.explore'), 'btn-soft'],
+                [route('lives.index'),  'fa-tower-broadcast',  __('discover.home.actions.lives'), 'btn-soft'],
             ],
             $canModerate => array_values(array_filter([
-                [route('publish'),              'fa-plus',            'Ajouter un témoignage',   'btn-primary'],
-                $viewer->isAdmin() ? [route('admin.users.index'), 'fa-user-gear', 'Gérer les utilisateurs', 'btn-soft'] : null,
-                [route('moderation.index'),     'fa-shield-halved',   'Voir la file de modération', 'btn-accent'],
-                $viewer->isAdmin() ? [route('admin.settings'), 'fa-gear', 'Paramètres', 'btn-soft'] : [route('profile.settings'), 'fa-gear', 'Paramètres', 'btn-soft'],
+                [route('publish'),              'fa-plus',            __('discover.home.actions.add'), 'btn-primary'],
+                $viewer->isAdmin() ? [route('admin.users.index'), 'fa-user-gear', __('discover.home.actions.users'), 'btn-soft'] : null,
+                [route('moderation.index'),     'fa-shield-halved',   __('discover.home.actions.moderation'), 'btn-accent'],
+                $viewer->isAdmin() ? [route('admin.settings'), 'fa-gear', __('discover.home.actions.settings'), 'btn-soft'] : [route('profile.settings'), 'fa-gear', __('discover.home.actions.settings'), 'btn-soft'],
             ])),
             default => [
-                [route('publish'),            'fa-plus',        'Ajouter un témoignage', 'btn-primary'],
-                [route('testimonies.mine'),   'fa-list',        'Mes témoignages',       'btn-soft'],
-                [route('profile.following'),  'fa-user-check',  'Mes abonnements',       'btn-soft'],
-                [route('profile.settings'),   'fa-gear',        'Paramètres',            'btn-soft'],
+                [route('publish'),            'fa-plus',        __('discover.home.actions.add'), 'btn-primary'],
+                [route('testimonies.mine'),   'fa-list',        __('discover.home.actions.my_testimonies'), 'btn-soft'],
+                [route('profile.following'),  'fa-user-check',  __('discover.home.actions.following'), 'btn-soft'],
+                [route('profile.settings'),   'fa-gear',        __('discover.home.actions.settings'), 'btn-soft'],
             ],
         };
 
@@ -53,9 +53,9 @@
             round(10 + $i * (280 / max(1, count($days) - 1)), 1) . ',' . round(110 - $d[$key] / $chartMax * 95, 1)
         )->implode(' ');
         $changes = [
-            ['Nouveaux témoignages', $activity['testimonies'], \App\Support\WeeklyActivity::change($activity['testimonies'], $activity['previousTestimonies'])],
-            ['Nouveaux utilisateurs', $activity['users'],      \App\Support\WeeklyActivity::change($activity['users'], $activity['previousUsers'])],
-            ['Vues totales',          $stats['views'],         null],
+            [__('discover.home.activity.testimonies'), $activity['testimonies'], \App\Support\WeeklyActivity::change($activity['testimonies'], $activity['previousTestimonies'])],
+            [__('discover.home.activity.users'), $activity['users'],      \App\Support\WeeklyActivity::change($activity['users'], $activity['previousUsers'])],
+            [__('discover.home.stats.views'), $stats['views'],         null],
         ];
 
         $typeIcons = ['video' => 'fa-video', 'audio' => 'fa-microphone', 'text' => 'fa-file-lines'];
@@ -64,7 +64,7 @@
 
 
 @section('content')
-<h1 class="sr-only">Accueil — My Testimony</h1>
+<h1 class="sr-only">{{ __('discover.home.sr_title') }}</h1>
 
 @if($showShelves)
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
@@ -107,8 +107,8 @@
 
         <div class="flex min-h-[27rem] flex-col p-5 sm:p-8 lg:min-h-[25rem]">
             <h2 id="home-hero-title" class="text-[28px] leading-tight font-extrabold text-primary-600 sm:text-4xl lg:text-[44px]"><span class="text-primary-600">My</span> <span class="text-accent-500">Testimony</span></h2>
-            <p class="mt-1 text-base font-medium text-primary-700 sm:text-lg">Des vies transformées pour la gloire de Dieu</p>
-            <p class="pointer-events-none absolute top-6 right-6 hidden -rotate-6 text-right text-4xl leading-none text-primary-600 md:block lg:text-5xl font-script" aria-hidden="true">Dieu<br>agit encore !</p>
+            <p class="mt-1 text-base font-medium text-primary-700 sm:text-lg">{{ __('discover.home.tagline') }}</p>
+            <p class="pointer-events-none absolute top-6 right-6 hidden -rotate-6 text-right text-4xl leading-none text-primary-600 md:block lg:text-5xl font-script" aria-hidden="true">{!! __('discover.home.script') !!}</p>
 
             <dl class="mt-auto grid grid-cols-2 gap-4 rounded-xl bg-white/95 p-4 shadow-card lg:grid-cols-4">
                 @foreach($statStrip as [$icon, $bubble, $iconColor, $value, $label])
@@ -126,7 +126,7 @@
 
     {{-- ── Actions rapides ──────────────────────────────────────────────── --}}
     <section class="card p-5" aria-labelledby="home-actions-title">
-        <h2 id="home-actions-title" class="card-title mb-4">Actions rapides</h2>
+        <h2 id="home-actions-title" class="card-title mb-4">{{ __('discover.home.quick_actions') }}</h2>
         <div class="grid gap-3">
             @foreach($quickActions as [$url, $icon, $label, $style])
             <a href="{{ $url }}" class="{{ $style }} w-full justify-start">
@@ -155,7 +155,7 @@
         {{-- Comptes à suivre (masqué s'il n'y en a pas) : docs/fonctionnalites/abonnements.md --}}
         @include('community.partials.suggested', ['suggestedLimit' => 8])
 
-        @include('home.partials.recent', ['title' => 'Témoignages récents'])
+        @include('home.partials.recent', ['title' => __('discover.home.recent')])
 
         {{-- Prières récentes, séparées des témoignages (masqué s'il n'y en a pas) --}}
         @include('home.partials.recent-prayers', ['prayers' => $recentPrayers])
@@ -164,11 +164,11 @@
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
             <section class="card p-5" aria-labelledby="home-categories-title">
                 <div class="mb-4 flex items-center justify-between gap-2">
-                    <h2 id="home-categories-title" class="card-title">Catégories populaires</h2>
-                    <a href="{{ route('explore') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">Voir tout<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
+                    <h2 id="home-categories-title" class="card-title">{{ __('discover.home.popular_categories') }}</h2>
+                    <a href="{{ route('explore') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('discover.home.see_all') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
                 </div>
                 @if($popularCategories->isEmpty())
-                <p class="text-sm text-slate-500">Aucune catégorie pour le moment.</p>
+                <p class="text-sm text-slate-500">{{ __('discover.home.no_categories') }}</p>
                 @else
                 <ul class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
                     @foreach($popularCategories as $cat)
@@ -178,7 +178,7 @@
                             <span class="{{ $look['soft'] }} {{ $look['text'] }} flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden="true"><i class="fa-solid {{ $look['icon'] }}"></i></span>
                             <span class="min-w-0">
                                 <span class="block truncate text-sm font-semibold text-primary-700">{{ $cat->displayName() }}</span>
-                                <span class="block text-[11px] text-slate-500">{{ $n($cat->published_count) }} témoignage{{ $cat->published_count > 1 ? 's' : '' }}</span>
+                                <span class="block text-[11px] text-slate-500">{{ trans_choice('discover.home.category_count', $cat->published_count, ['count' => $n($cat->published_count)]) }}</span>
                             </span>
                         </a>
                     </li>
@@ -189,11 +189,11 @@
 
             <section class="card flex flex-col p-5" aria-labelledby="home-stats-title">
                 <div class="mb-3 flex items-center justify-between gap-2">
-                    <h2 id="home-stats-title" class="card-title">Statistiques globales</h2>
-                    <span class="chip pointer-events-none text-xs">7 derniers jours</span>
+                    <h2 id="home-stats-title" class="card-title">{{ __('discover.home.global_stats') }}</h2>
+                    <span class="chip pointer-events-none text-xs">{{ __('discover.home.last_7_days') }}</span>
                 </div>
                 <svg viewBox="0 0 300 120" class="h-32 w-full" role="img"
-                     aria-label="{{ $activity['testimonies'] }} témoignage(s) et {{ $activity['users'] }} inscription(s) sur les 7 derniers jours">
+                     aria-label="{{ __('discover.home.chart_label', ['testimonies' => $activity['testimonies'], 'users' => $activity['users']]) }}">
                     @foreach([15, 47, 79, 110] as $y)
                     <line x1="10" x2="290" y1="{{ $y }}" y2="{{ $y }}" stroke="#E4E7EC" stroke-width="1"/>
                     @endforeach
@@ -204,8 +204,8 @@
                     @foreach($days as $d)<span>{{ $d['date']->translatedFormat('D') }}</span>@endforeach
                 </p>
                 <p class="mt-2 flex gap-4 text-[11px] text-slate-500">
-                    <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-primary-600" aria-hidden="true"></span>Témoignages</span>
-                    <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-accent-500" aria-hidden="true"></span>Inscriptions</span>
+                    <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-primary-600" aria-hidden="true"></span>{{ __('discover.home.legend_testimonies') }}</span>
+                    <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-accent-500" aria-hidden="true"></span>{{ __('discover.home.legend_signups') }}</span>
                 </p>
                 <dl class="mt-4 grid grid-cols-3 gap-2">
                     @foreach($changes as [$label, $value, $change])
@@ -215,10 +215,10 @@
                         @if($change !== null)
                         <dd class="{{ $change >= 0 ? 'text-success-700' : 'text-error-700' }} text-[11px] font-semibold">
                             <i class="fa-solid {{ $change >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' }} text-[9px]" aria-hidden="true"></i>
-                            {{ $change >= 0 ? '+' : '' }}{{ $change }} %<span class="sr-only"> par rapport à la semaine précédente</span>
+                            {{ $change >= 0 ? '+' : '' }}{{ $change }} %<span class="sr-only"> {{ __('discover.home.vs_previous_week') }}</span>
                         </dd>
                         @else
-                        <dd class="text-[11px] text-slate-400">{{ $label === 'Vues totales' ? 'au total' : 'cette semaine' }}</dd>
+                        <dd class="text-[11px] text-slate-400">{{ $label === __('discover.home.stats.views') ? __('discover.home.in_total') : __('discover.home.this_week') }}</dd>
                         @endif
                     </div>
                     @endforeach
@@ -230,8 +230,8 @@
         @if($hero)
         <section class="card p-5" aria-labelledby="home-featured">
             <div class="mb-4 flex items-center justify-between gap-2">
-                <h2 id="home-featured" class="card-title flex items-center gap-2"><i class="fa-solid fa-star text-sun-400" aria-hidden="true"></i>À la une</h2>
-                <a href="{{ route('explore') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">Tout explorer<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
+                <h2 id="home-featured" class="card-title flex items-center gap-2"><i class="fa-solid fa-star text-sun-400" aria-hidden="true"></i>{{ __('discover.home.featured') }}</h2>
+                <a href="{{ route('explore') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('discover.home.explore_all') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
             </div>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                 @foreach($featured->take(4) as $item)
@@ -264,8 +264,8 @@
         @if($shorts->isNotEmpty())
         <section class="card p-5" aria-labelledby="home-shorts">
             <div class="mb-4 flex items-center justify-between gap-2">
-                <h2 id="home-shorts" class="card-title flex items-center gap-2"><i class="fa-solid fa-bolt text-accent-500" aria-hidden="true"></i>Shorts</h2>
-                <a href="{{ route('videos.index', ['tab' => 'shorts']) }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">Tout voir<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
+                <h2 id="home-shorts" class="card-title flex items-center gap-2"><i class="fa-solid fa-bolt text-accent-500" aria-hidden="true"></i>{{ __('videos.tabs.shorts') }}</h2>
+                <a href="{{ route('videos.index', ['tab' => 'shorts']) }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('discover.home.see_all_shorts') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
             </div>
             <div class="-mx-5 flex snap-x scroll-px-5 gap-3 overflow-x-auto px-5 pb-2">
                 @foreach($shorts as $shortItem)
@@ -280,14 +280,14 @@
         {{-- Gestion des contenus (équipe) ou Mes témoignages (personne connectée) --}}
         @if($canModerate)
             @include('home.partials.content-table', [
-                'tableTitle' => 'Gestion des contenus',
+                'tableTitle' => __('discover.home.content_management'),
                 'items'      => $contentItems,
                 'tabs'       => \App\Http\Controllers\Web\HomeController::contentTabs(),
                 'moreUrl'    => $viewer->isAdmin() ? route('admin.content.index') : route('moderation.index'),
             ])
         @elseif($viewer)
             @include('home.partials.content-table', [
-                'tableTitle' => 'Mes témoignages',
+                'tableTitle' => __('discover.home.actions.my_testimonies'),
                 'items'      => $myItems,
                 'tabs'       => null,
                 'moreUrl'    => route('testimonies.mine'),
@@ -302,8 +302,8 @@
         @if($canModerate)
         <section class="card flex flex-col" aria-labelledby="home-moderation-title">
             <div class="flex items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
-                <h2 id="home-moderation-title" class="card-title">Modération rapide</h2>
-                <a href="{{ route('moderation.index') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">Voir tout<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
+                <h2 id="home-moderation-title" class="card-title">{{ __('discover.home.quick_moderation') }}</h2>
+                <a href="{{ route('moderation.index') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('discover.home.see_all') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
             </div>
             <ul class="divide-y divide-slate-100">
                 @forelse($pendingItems as $t)
@@ -316,18 +316,18 @@
                             <span class="block truncate text-sm font-semibold text-primary-700">{{ $t->title }}</span>
                             <span class="block truncate text-[11px] text-slate-500">{{ $t->type->label() }}@if($t->durationLabel()) · {{ $t->durationLabel() }}@endif · {{ $t->user?->display_name }}</span>
                         </span>
-                        <span class="badge-orange shrink-0">À vérifier</span>
+                        <span class="badge-orange shrink-0">{{ __('discover.home.to_review') }}</span>
                     </a>
                 </li>
                 @empty
                 <li class="flex flex-col items-center gap-2 px-5 py-6 text-center text-sm text-slate-500">
                     <i class="fa-solid fa-circle-check text-2xl text-success-500" aria-hidden="true"></i>
-                    <span>Rien à relire pour le moment.</span>
+                    <span>{{ __('discover.home.nothing_to_review') }}</span>
                 </li>
                 @endforelse
             </ul>
             <div class="p-5 pt-2">
-                <a href="{{ route('moderation.index') }}" class="btn-primary w-full">Voir toute la file{{ $pendingCount ? ' (' . $pendingCount . ')' : '' }}</a>
+                <a href="{{ route('moderation.index') }}" class="btn-primary w-full">{{ __('discover.home.see_queue') }}{{ $pendingCount ? ' (' . $pendingCount . ')' : '' }}</a>
             </div>
         </section>
         @endif
@@ -335,8 +335,8 @@
         {{-- Témoignages les plus populaires --}}
         <section class="card" aria-labelledby="home-popular-title">
             <div class="flex items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
-                <h2 id="home-popular-title" class="card-title">Les plus populaires</h2>
-                <a href="{{ route('explore') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">Voir tout<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
+                <h2 id="home-popular-title" class="card-title">{{ __('discover.home.most_popular') }}</h2>
+                <a href="{{ route('explore') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('discover.home.see_all') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
             </div>
             <ol class="divide-y divide-slate-100">
                 @forelse($popular as $t)
@@ -350,12 +350,12 @@
                         @endif
                         <span class="min-w-0 flex-1">
                             <span class="line-clamp-2 text-sm leading-snug font-semibold text-primary-700">{{ $t->title }}</span>
-                            <span class="block text-[11px] text-slate-500">{{ $t->viewsLabel() }} · {{ $n($t->like_count ?? 0) }} j’aime</span>
+                            <span class="block text-[11px] text-slate-500">{{ $t->viewsLabel() }} · {{ trans_choice('discover.home.likes', (int) ($t->like_count ?? 0), ['count' => $n($t->like_count ?? 0)]) }}</span>
                         </span>
                     </a>
                 </li>
                 @empty
-                <li class="px-5 py-6 text-center text-sm text-slate-500">Les témoignages les plus regardés apparaîtront ici.</li>
+                <li class="px-5 py-6 text-center text-sm text-slate-500">{{ __('discover.home.popular_empty') }}</li>
                 @endforelse
             </ol>
         </section>
@@ -374,6 +374,6 @@
 
 @else
     {{-- Filtre ou page suivante : seulement la liste --}}
-    @include('home.partials.recent', ['title' => 'Résultats'])
+    @include('home.partials.recent', ['title' => __('discover.home.results')])
 @endif
 @endsection

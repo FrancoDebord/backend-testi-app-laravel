@@ -105,7 +105,7 @@
                 <p class="text-xs text-slate-500">
                     @if($t->name_en)<span>{{ $t->name_en }}</span> · @endif
                     <span class="font-mono">{{ $t->slug }}</span> ·
-                    <span>{{ __('event_types.admin.events') }} : {{ number_format($count, 0, ',', ' ') }}</span>
+                    <span>{{ __('event_types.admin.events') }}{{ __('layout.colon') }}{{ \App\Support\Locales::number($count) }}</span>
                 </p>
             </div>
             <span class="{{ $t->is_active ? 'badge-active' : 'badge-draft' }}">{{ $t->is_active ? __('event_types.admin.active') : __('event_types.admin.inactive') }}</span>
@@ -153,7 +153,7 @@
                 <input id="edit-name-en" type="text" name="name_en" maxlength="80" class="form-input">
                 <p class="form-hint">{{ __('event_types.admin.name_en_hint') }}</p>
             </div>
-            <p class="text-sm text-slate-500">{{ __('event_types.admin.slug') }} : <span id="edit-slug" class="font-mono text-slate-900"></span></p>
+            <p class="text-sm text-slate-500">{{ __('event_types.admin.slug') }}{{ __('layout.colon') }}<span id="edit-slug" class="font-mono text-slate-900"></span></p>
             <fieldset>
                 <legend class="form-label">{{ __('event_types.admin.icon') }}</legend>
                 @include('admin.event-types.partials.icon-picker', ['prefix' => 'edit', 'selected' => null])

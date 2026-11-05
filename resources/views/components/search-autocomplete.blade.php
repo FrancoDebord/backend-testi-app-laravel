@@ -41,7 +41,11 @@
         category: 'fa-solid fa-tag', bible: 'fa-solid fa-book-bible', prayer_session: 'fa-solid fa-hands-praying',
         suggestion: 'fa-solid fa-magnifying-glass', recent: 'fa-solid fa-clock-rotate-left',
     };
-    const TYPE_NAMES = { testimony: 'Témoignage', user: 'Compte', event: 'Événement', category: 'Catégorie', bible: 'Livre de la Bible', prayer_session: 'Session de prière' };
+    const L = {{ \Illuminate\Support\Js::from(__('models.components.autocomplete')) }};
+    const TYPE_NAMES = L.types;
+    // Texte traduit avec ses paramètres (« :q », « :count ») ; pluriel : L.x.one / L.x.other.
+    const fmt = (s, p = {}) => String(s).replace(/:(\w+)/g, (m, k) => (k in p ? String(p[k]) : m));
+    const plural = (forms, n) => fmt(n > 1 ? forms.other : forms.one, { count: n });
     let seq = 0;
 
     // Pliage sans accents ni casse, caractère par caractère (garde les positions d'origine).
@@ -95,7 +99,7 @@
         box.className = 'sa-box';
         box.id = id + '-list';
         box.setAttribute('role', 'listbox');
-        box.setAttribute('aria-label', 'Suggestions de recherche');
+        box.setAttribute('aria-label', L.listbox);
         box.hidden = true;
         const live = document.createElement('div');
         live.className = 'sa-sr';
@@ -206,13 +210,13 @@
             close();
             const recent = storage.get(input);
             if (!recent.length) return;
-            header('Recherches récentes', { label: 'Tout effacer', run: () => { storage.set(input, []); close(); live.textContent = 'Recherches récentes effacées.'; } });
+            header(L.recent_title, { label: L.clear_all, run: () => { storage.set(input, []); close(); live.textContent = L.cleared; } });
             recent.forEach((q) => option({
-                icon: ICONS.recent, label: q, srLabel: `${q}, recherche récente`,
+                icon: ICONS.recent, label: q, srLabel: fmt(L.recent_sr, { q }),
                 onChoose: () => submit(q),
-                extra: { icon: 'fa-solid fa-xmark', title: `Retirer « ${q} » des recherches récentes`, run: () => { storage.remove(input, q); renderRecent(); input.focus(); } },
+                extra: { icon: 'fa-solid fa-xmark', title: fmt(L.remove_recent, { q }), run: () => { storage.remove(input, q); renderRecent(); input.focus(); } },
             }));
-            show(`${recent.length} recherche${recent.length > 1 ? 's' : ''} récente${recent.length > 1 ? 's' : ''}. Flèches haut et bas pour parcourir.`);
+            show(plural(L.recent_count, recent.length));
         }
 
         function render(q, data) {
@@ -221,27 +225,27 @@
             const suggestions = (data?.suggestions || []).filter((s) => !recent.includes(s.text));
             const results = data?.results || [];
             if (recent.length) {
-                header('Récentes');
-                recent.forEach((s) => option({ icon: ICONS.recent, label: s, range: findMatch(s, q), srLabel: `${s}, recherche récente`,
+                header(L.recent_short);
+                recent.forEach((s) => option({ icon: ICONS.recent, label: s, range: findMatch(s, q), srLabel: fmt(L.recent_sr, { q: s }),
                     onChoose: () => submit(s),
-                    extra: { icon: 'fa-solid fa-arrow-up', rotate: true, title: `Compléter avec « ${s} »`, run: () => fill(s), fillText: s } }));
+                    extra: { icon: 'fa-solid fa-arrow-up', rotate: true, title: fmt(L.complete, { q: s }), run: () => fill(s), fillText: s } }));
             }
             if (suggestions.length) {
-                header('Suggestions');
+                header(L.suggestions);
                 suggestions.forEach((s) => option({ icon: ICONS.suggestion, label: s.text, range: s.highlight || findMatch(s.text, q), srLabel: s.text,
                     onChoose: () => submit(s.text),
-                    extra: { icon: 'fa-solid fa-arrow-up', rotate: true, title: `Compléter avec « ${s.text} »`, run: () => fill(s.text), fillText: s.text } }));
+                    extra: { icon: 'fa-solid fa-arrow-up', rotate: true, title: fmt(L.complete, { q: s.text }), run: () => fill(s.text), fillText: s.text } }));
             }
             if (results.length) {
-                header('Accès direct');
+                header(L.direct);
                 results.forEach((r) => option({ icon: ICONS[r.type] || ICONS.suggestion, avatar: r.avatar, label: r.label,
                     range: r.highlight || findMatch(r.label, q), sub: r.sublabel || TYPE_NAMES[r.type],
-                    srLabel: `${r.label}, ${TYPE_NAMES[r.type] || ''}${r.verified ? ', vérifié' : ''}${r.sublabel ? ', ' + r.sublabel : ''}`,
+                    srLabel: `${r.label}, ${TYPE_NAMES[r.type] || ''}${r.verified ? L.verified : ''}${r.sublabel ? ', ' + r.sublabel : ''}`,
                     onChoose: () => open(r) }));
                 options.forEach((o, i) => { if (i >= options.length - results.length) o.result = results[i - (options.length - results.length)]; });
             }
             const n = options.length;
-            show(n ? `${n} proposition${n > 1 ? 's' : ''}. Flèches haut et bas pour parcourir, Entrée pour choisir.` : '');
+            show(n ? plural(L.count, n) : '');
         }
 
         async function query() {

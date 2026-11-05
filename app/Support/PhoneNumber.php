@@ -102,10 +102,7 @@ final class PhoneNumber
         ];
     }
 
-    /**
-     * Messages de validation dans la langue courante (lang/{fr,en}/support.php). MESSAGES garde le texte
-     * français d'origine pour les appels existants ; préférer messages().
-     */
+    /** Messages de validation dans la langue courante (lang/{fr,en}/support.php). */
     public static function messages(): array
     {
         return [
@@ -115,11 +112,4 @@ final class PhoneNumber
             'phone_country.in'            => __('support.phone.country_unknown'),
         ];
     }
-
-    public const MESSAGES = [
-        'phone.required'            => 'Le numéro de téléphone est obligatoire.',
-        'phone.required_if'         => 'Le numéro de téléphone est obligatoire pour une organisation.',
-        'phone_country.required_with' => 'Choisissez l\'indicatif du pays.',
-        'phone_country.in'          => 'Indicatif inconnu.',
-    ];
 }

@@ -1,12 +1,12 @@
 @extends('layouts.app')
-@section('title', 'Paramètres')
+@section('title', __('layout.nav.admin_settings'))
 @php
-    $header      = 'Paramètres de l’application';
-    $subheader   = 'Réglages généraux partagés par le site et l’application mobile.';
+    $header      = __('admin.settings.header');
+    $subheader   = __('admin.settings.subheader');
     $breadcrumbs = [
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Administration', 'url' => route('admin.dashboard')],
-        ['label' => 'Paramètres'],
+        ['label' => __('layout.nav.home'), 'url' => route('home')],
+        ['label' => __('layout.nav.administration'), 'url' => route('admin.dashboard')],
+        ['label' => __('layout.nav.admin_settings')],
     ];
 @endphp
 
@@ -15,11 +15,11 @@
      (GET /api/v1/admin/settings/schema ─ docs/fonctionnalites/parametres-globaux.md). --}}
 @if(empty($groups))
     @include('components.empty-state', [
-        'title' => 'Aucun paramètre configuré',
-        'text' => 'Lancez le seeder des paramètres pour initialiser les valeurs par défaut.',
+        'title' => __('admin.settings.empty_title'),
+        'text' => __('admin.settings.empty_text'),
     ])
 @else
-<form method="POST" action="{{ route('admin.settings.update') }}" class="max-w-4xl space-y-6" data-loading-label="Enregistrement des paramètres…">
+<form method="POST" action="{{ route('admin.settings.update') }}" class="max-w-4xl space-y-6" data-loading-label="{{ __('admin.settings.saving') }}">
     @csrf @method('PUT')
 
     @if($errors->any())
@@ -66,7 +66,7 @@
     @endforeach
 
     <div class="flex justify-end">
-        <button type="submit" class="btn-primary">Enregistrer les paramètres</button>
+        <button type="submit" class="btn-primary">{{ __('admin.settings.save') }}</button>
     </div>
 </form>
 @endif

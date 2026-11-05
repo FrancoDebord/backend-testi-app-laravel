@@ -4,6 +4,15 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-11-05 — Site entièrement traduit en anglais
+
+- **Utilisateurs** : en anglais (sélecteur de langue, langue du compte ou du navigateur), plus aucune page ne garde de texte français : accueil, explorer, fil, carnet et paroles prophétiques, verset du jour et lecteur de la Bible, requêtes et sessions de prière, communauté, profil, réglages, vérification, notifications, administration. Nombres (« 1,245 »), dates (« November 5, 2026 »), guillemets (“…”) et pourcentages à l'anglaise. Les versets d'encouragement s'affichent en King James Version. Le français est inchangé.
+- **Développeurs** : environ 950 clés ajoutées ; nouveaux fichiers `lang/*/prayer.php` et `lang/*/bible.php`. `PrayerRequests::MESSAGES` et `PhoneNumber::MESSAGES` supprimés au profit de `messages()` (langue courante). Notifications de prière (encouragement, salle ouverte, rappel) traduites selon le destinataire. Clés de ponctuation `layout.colon`, `bible.quote_open` / `quote_close`, `admin.formats.*`. `config/encouragements.php` › `english` (versets KJV). Orthographe anglaise américaine (organizations, recognized, fulfillment). Test `EnglishSiteTest` (pages principales sans mot français). Voir [langues.md](fonctionnalites/langues.md#site-entièrement-traduit-2026-11-05).
+- **Restent en français** : textes enregistrés en base au moment de l'action (motifs de masquage automatique, motif de suppression du journal d'administration), image de partage du verset, sorties des commandes artisan et journaux.
+- **Déploiement** : copier les fichiers, puis `php artisan optimize:clear` et `php artisan optimize`. Aucune migration, aucune variable d'environnement, aucune recompilation des assets (CSS et JS inchangés).
+
+---
+
 ## 2026-11-05 — Audios illisibles sur le site : réparés
 
 - **Utilisateurs** : les témoignages audio enregistrés avec l'application se lisent de nouveau sur le site (Chrome, Edge), y compris ceux déjà publiés une fois la commande de réparation lancée.

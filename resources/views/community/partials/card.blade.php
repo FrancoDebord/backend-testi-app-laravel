@@ -20,11 +20,11 @@
             <p class="truncate text-xs text-slate-500">{{ $subtitle }}</p>
             @endif
             <p class="mt-1 text-xs text-slate-600">
-                <span data-follower-count="{{ $account->id }}" class="font-semibold text-slate-900">{{ number_format($account->follower_count, 0, ',', ' ') }}</span>
-                abonné{{ $account->follower_count > 1 ? 's' : '' }}
+                <span data-follower-count="{{ $account->id }}" class="font-semibold text-slate-900">{{ \App\Support\Locales::number($account->follower_count) }}</span>
+                {{ trans_choice('community.card.followers', (int) $account->follower_count) }}
                 <span aria-hidden="true">·</span>
                 @php($testimonies = $account->publishedTestimonyCount())
-                {{ number_format($testimonies, 0, ',', ' ') }} témoignage{{ $testimonies > 1 ? 's' : '' }}
+                {{ trans_choice('community.card.testimonies', $testimonies, ['count' => \App\Support\Locales::number($testimonies)]) }}
             </p>
         </div>
     </div>
@@ -33,6 +33,6 @@
     @endif
     <div class="mt-auto flex flex-wrap items-center gap-2">
         @include('components.follow-button', ['user' => $account, 'following' => (bool) ($account->is_followed ?? false), 'small' => true, 'idleLabel' => $followIdleLabel ?? null])
-        <a href="{{ $profileUrl }}" class="btn-ghost btn-sm">Voir le profil</a>
+        <a href="{{ $profileUrl }}" class="btn-ghost btn-sm">{{ __('community.card.view_profile') }}</a>
     </div>
 </article>

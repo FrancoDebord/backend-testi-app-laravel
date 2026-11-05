@@ -1,25 +1,30 @@
 @extends('layouts.app')
-@section('title', 'Sessions de prière')
+@section('title', __('prayer.sessions.title'))
 @php
-    $header      = 'Sessions de prière';
-    $subheader   = 'Priez ensemble, en direct : inscrivez-vous, puis rejoignez la salle à l\'heure prévue.';
+    $header      = __('prayer.sessions.title');
+    $subheader   = __('prayer.sessions.subheader');
     $breadcrumbs = [
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Sessions de prière'],
+        ['label' => __('layout.nav.home'), 'url' => route('home')],
+        ['label' => __('prayer.sessions.title')],
     ];
-    $tabs = \App\Http\Controllers\Web\PrayerSessionController::TABS;
+    $tabs = [
+        'upcoming' => __('prayer.sessions.tabs.upcoming'),
+        'joined'   => __('prayer.sessions.tabs.joined'),
+        'mine'     => __('prayer.sessions.tabs.mine'),
+        'past'     => __('prayer.sessions.tabs.past'),
+    ];
     if (!Auth::check()) unset($tabs['joined'], $tabs['mine']);
 @endphp
 
 @section('headerActions')
     @auth
-    <a href="{{ route('prayer.sessions.create') }}" class="btn-primary"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>Programmer une session</a>
+    <a href="{{ route('prayer.sessions.create') }}" class="btn-primary"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>{{ __('prayer.sessions.schedule') }}</a>
     @endauth
-    <a href="{{ route('prayer.requests.index') }}" class="btn-secondary"><i class="fa-solid fa-hands-praying" aria-hidden="true"></i>Requêtes de prière</a>
+    <a href="{{ route('prayer.requests.index') }}" class="btn-secondary"><i class="fa-solid fa-hands-praying" aria-hidden="true"></i>{{ __('layout.nav.prayer_requests') }}</a>
 @endsection
 
 @section('content')
-<nav aria-label="Sessions" class="mb-5 border-b border-slate-200">
+<nav aria-label="{{ __('prayer.sessions.tabs_label') }}" class="mb-5 border-b border-slate-200">
     <ul class="-mb-px flex gap-5 overflow-x-auto">
         @foreach($tabs as $key => $label)
         @php $active = $tab === $key; @endphp
@@ -34,14 +39,14 @@
 @if($items->isEmpty())
     @include('components.empty-state', [
         'title'         => match ($tab) {
-            'joined' => "Vous n'êtes inscrit à aucune session",
-            'mine'   => "Vous n'animez aucune session",
-            'past'   => 'Aucune session passée',
-            default  => 'Aucune session de prière programmée',
+            'joined' => __('prayer.sessions.empty_joined'),
+            'mine'   => __('prayer.sessions.empty_mine'),
+            'past'   => __('prayer.sessions.empty_past'),
+            default  => __('prayer.sessions.empty_upcoming'),
         },
-        'text'          => 'Programmez un temps de prière : les inscrits sont prévenus, et vous ouvrez la salle à l\'heure prévue.',
+        'text'          => __('prayer.sessions.empty_text'),
         'actionUrl'     => Auth::check() ? route('prayer.sessions.create') : null,
-        'actionLabel'   => 'Programmer une session',
+        'actionLabel'   => __('prayer.sessions.schedule'),
         'actionPrimary' => true,
     ])
 @else

@@ -21,12 +21,8 @@ use Illuminate\View\View;
  */
 class PrayerSessionController extends Controller
 {
-    public const TABS = [
-        'upcoming' => 'À venir',
-        'joined'   => 'Mes inscriptions',
-        'mine'     => 'Que j\'anime',
-        'past'     => 'Passées',
-    ];
+    /** Onglets (libellés : lang/{fr,en}/prayer.php › sessions.tabs). */
+    public const TABS = ['upcoming', 'joined', 'mine', 'past'];
 
     public function __construct(
         private readonly PrayerSessions $sessions,
@@ -36,7 +32,7 @@ class PrayerSessionController extends Controller
     public function index(Request $request): View
     {
         $user = Auth::user();
-        $tab  = array_key_exists($request->query('onglet'), self::TABS) ? $request->query('onglet') : 'upcoming';
+        $tab  = in_array($request->query('onglet'), self::TABS, true) ? $request->query('onglet') : 'upcoming';
         if (!$user && in_array($tab, ['joined', 'mine'], true)) $tab = 'upcoming';
 
         return view('prayer.sessions.index', [
@@ -63,7 +59,7 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($data) {
             $session = $this->sessions->create(Auth::user(), $data);
 
-            return redirect()->route('prayer.sessions.show', $session->id)->with('success', 'Session de prière programmée.');
+            return redirect()->route('prayer.sessions.show', $session->id)->with('success', __('prayer.flash.session_created'));
         }, withInput: true);
     }
 
@@ -98,7 +94,7 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($session, $data) {
             $this->sessions->update($session, Auth::user(), $data);
 
-            return redirect()->route('prayer.sessions.show', $session->id)->with('success', 'Session mise à jour.');
+            return redirect()->route('prayer.sessions.show', $session->id)->with('success', __('prayer.flash.session_updated'));
         }, withInput: true);
     }
 
@@ -107,7 +103,7 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($id) {
             $this->sessions->delete($this->find($id), Auth::user());
 
-            return redirect()->route('prayer.sessions.index')->with('success', 'Session supprimée.');
+            return redirect()->route('prayer.sessions.index')->with('success', __('prayer.flash.session_deleted'));
         });
     }
 
@@ -116,7 +112,7 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($id) {
             $this->sessions->cancel($this->find($id), Auth::user());
 
-            return back()->with('success', 'Session annulée.');
+            return back()->with('success', __('prayer.flash.session_cancelled'));
         });
     }
 
@@ -125,7 +121,7 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($id) {
             $this->sessions->register($this->find($id), Auth::user());
 
-            return back()->with('success', 'Inscription enregistrée : vous serez prévenu à l\'ouverture de la salle.');
+            return back()->with('success', __('prayer.flash.registered'));
         });
     }
 
@@ -134,7 +130,7 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($id) {
             $this->sessions->unregister($this->find($id), Auth::user());
 
-            return back()->with('success', 'Inscription retirée.');
+            return back()->with('success', __('prayer.flash.unregistered'));
         });
     }
 
@@ -157,7 +153,7 @@ class PrayerSessionController extends Controller
             return redirect()->route('lives.studio', $live->id);
         }
         if (!$live || !$live->isVisibleTo(Auth::user())) {
-            return redirect()->route('prayer.sessions.show', $session->id)->with('error', "La salle n'est pas encore ouverte.");
+            return redirect()->route('prayer.sessions.show', $session->id)->with('error', __('prayer.errors.room_not_open'));
         }
 
         return redirect()->route('lives.show', $live->id);
@@ -171,7 +167,7 @@ class PrayerSessionController extends Controller
         $request->validate([
             'date' => [$partial ? 'sometimes' : 'required', 'date_format:Y-m-d'],
             'time' => [$partial ? 'sometimes' : 'required', 'date_format:H:i'],
-        ], ['date.required' => 'Indiquez la date.', 'time.required' => "Indiquez l'heure."]);
+        ], ['date.required' => __('prayer.validation.date_required'), 'time.required' => __('prayer.validation.time_required')]);
 
         $input = $request->only(['title', 'description', 'visibility', 'duration_minutes', 'event_id']);
         if ($request->filled('date') && $request->filled('time')) {
@@ -182,7 +178,7 @@ class PrayerSessionController extends Controller
         }
         $request->merge($input);
 
-        return $request->validate(PrayerSessions::rules($partial), PrayerSessions::MESSAGES);
+        return $request->validate(PrayerSessions::rules($partial), PrayerSessions::messages());
     }
 
     private function find(string $id): PrayerSession

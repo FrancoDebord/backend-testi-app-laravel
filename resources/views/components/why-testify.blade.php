@@ -16,7 +16,7 @@
     'action'      => true,
 ])
 @php
-    $reasons    = array_values(config('encouragements.why_testify', []));
+    $reasons    = \App\Support\Encouragements::whyTestify();
     $uid        = 'why-testify-' . substr(md5(uniqid('', true)), 0, 8);
     $verseCount = array_sum(array_map(fn ($r) => count($r['verses'] ?? []), $reasons));
     $showAction = $action && Route::has('publish');
@@ -32,8 +32,8 @@
             <i class="fa-solid fa-book-bible"></i>
         </span>
         <span class="min-w-0 flex-1">
-            <span id="{{ $uid }}-title" class="block text-base leading-tight font-bold text-primary-600 @md:text-lg">Pourquoi témoigner ?</span>
-            <span class="mt-0.5 block text-sm text-slate-500">{{ count($reasons) }} raisons et {{ $verseCount }} versets de la Bible</span>
+            <span id="{{ $uid }}-title" class="block text-base leading-tight font-bold text-primary-600 @md:text-lg">{{ __('discover.why_testify.title') }}</span>
+            <span class="mt-0.5 block text-sm text-slate-500">{{ __('discover.why_testify.summary', ['reasons' => count($reasons), 'verses' => $verseCount]) }}</span>
         </span>
         @if($collapsible)
         <span class="accordion-chevron group-open/why:rotate-180" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
@@ -52,13 +52,13 @@
                     <span class="mt-0.5 block text-xs leading-snug text-slate-500 @md:text-sm">{{ $reason['summary'] }}</span>
                     @endif
                 </span>
-                <span class="hidden shrink-0 text-xs text-slate-400 @sm:inline">{{ count($reason['verses']) }} {{ count($reason['verses']) > 1 ? 'versets' : 'verset' }}</span>
+                <span class="hidden shrink-0 text-xs text-slate-400 @sm:inline">{{ trans_choice('discover.why_testify.verses', count($reason['verses'])) }}</span>
                 <span class="accordion-chevron group-open:rotate-180" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
             </summary>
             <div class="accordion-panel">
                 @foreach($reason['verses'] as $v)
                 <figure class="why-testify-verse">
-                    <blockquote class="text-[15px] leading-relaxed break-words text-slate-900 italic">« {{ $v['text'] }} »</blockquote>
+                    <blockquote class="text-[15px] leading-relaxed break-words text-slate-900 italic">{{ __('prophecies.quoted', ['text' => $v['text']]) }}</blockquote>
                     <figcaption class="mt-1.5 text-sm font-semibold text-primary-700">{{ $v['ref'] }}</figcaption>
                 </figure>
                 @endforeach
@@ -69,9 +69,9 @@
 
     @if($showAction)
     <div class="flex flex-col gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4 @sm:px-5 @lg:flex-row @lg:items-center @lg:justify-between">
-        <p class="text-sm text-slate-600">Dieu a agi dans votre vie ? Votre histoire peut fortifier quelqu'un.</p>
+        <p class="text-sm text-slate-600">{{ __('discover.why_testify.call') }}</p>
         <a href="{{ $actionUrl }}" class="btn-primary btn-sm shrink-0 self-start @lg:self-auto">
-            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Témoigner
+            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ __('discover.why_testify.action') }}
         </a>
     </div>
     @endif

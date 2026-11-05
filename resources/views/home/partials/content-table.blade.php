@@ -13,7 +13,7 @@
     <div class="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-slate-100 px-5 py-4">
         <h2 id="home-content-title" class="card-title">{{ $tableTitle }}</h2>
         @if($tabs)
-        <nav class="-mx-5 flex min-w-0 flex-1 gap-2 overflow-x-auto px-5 sm:mx-0 sm:px-0" aria-label="Filtrer par statut">
+        <nav class="-mx-5 flex min-w-0 flex-1 gap-2 overflow-x-auto px-5 sm:mx-0 sm:px-0" aria-label="{{ __('discover.home.table.filter_status') }}">
             @foreach($tabs as $key => $label)
             <a href="{{ route('home', array_filter(['gestion' => $key ?: null])) }}#gestion"
                class="{{ $currentTab === $key ? 'chip-active' : 'chip' }} text-xs" @if($currentTab === $key) aria-current="true" @endif>
@@ -24,24 +24,24 @@
         @else
         <span class="flex-1"></span>
         @endif
-        <a href="{{ $moreUrl }}" class="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">Voir tout<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
+        <a href="{{ $moreUrl }}" class="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('discover.home.see_all') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
     </div>
 
     @if($items->isEmpty())
-    <p class="px-5 py-8 text-center text-sm text-slate-500">{{ $tabs ? 'Aucun contenu dans cette catégorie.' : "Vous n'avez encore publié aucun témoignage." }}</p>
+    <p class="px-5 py-8 text-center text-sm text-slate-500">{{ $tabs ? __('discover.home.table.empty_tab') : __('discover.home.table.empty_mine') }}</p>
     @else
     {{-- Tableau (768 px et plus) --}}
     <div class="hidden overflow-x-auto md:block">
         <table class="min-w-full">
             <thead>
                 <tr>
-                    <th scope="col" class="table-th">Titre</th>
-                    <th scope="col" class="table-th hidden 2xl:table-cell">Type</th>
-                    <th scope="col" class="table-th hidden 2xl:table-cell">Catégorie</th>
-                    @if($tabs)<th scope="col" class="table-th">Auteur</th>@endif
-                    <th scope="col" class="table-th">Date</th>
-                    <th scope="col" class="table-th">Statut</th>
-                    <th scope="col" class="table-th text-right">Actions</th>
+                    <th scope="col" class="table-th">{{ __('discover.home.table.title') }}</th>
+                    <th scope="col" class="table-th hidden 2xl:table-cell">{{ __('discover.home.table.type') }}</th>
+                    <th scope="col" class="table-th hidden 2xl:table-cell">{{ __('discover.home.table.category') }}</th>
+                    @if($tabs)<th scope="col" class="table-th">{{ __('discover.home.table.author') }}</th>@endif
+                    <th scope="col" class="table-th">{{ __('discover.home.table.date') }}</th>
+                    <th scope="col" class="table-th">{{ __('discover.home.table.status') }}</th>
+                    <th scope="col" class="table-th text-right">{{ __('discover.home.table.actions') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -58,11 +58,11 @@
                     <td class="table-td hidden whitespace-nowrap 2xl:table-cell">{{ $t->type->label() }}</td>
                     <td class="table-td hidden 2xl:table-cell">@if($t->category)<span class="{{ $t->category->presentation()['badge'] }}">{{ $t->category->displayName() }}</span>@else<span class="text-slate-400">—</span>@endif</td>
                     @if($tabs)<td class="table-td max-w-36"><span class="block truncate">{{ $t->user?->display_name }}</span></td>@endif
-                    <td class="table-td whitespace-nowrap">{{ $t->created_at->format('d/m/Y') }}</td>
+                    <td class="table-td whitespace-nowrap">{{ $t->created_at->format(__('discover.home.table.date_format')) }}</td>
                     <td class="table-td"><span class="{{ $t->status->badgeClass() }}">{{ $t->status->label() }}</span></td>
                     <td class="table-td text-right">
                         <a href="{{ $openUrl($t) }}" class="{{ $t->status->value === 'pending' && $tabs ? 'action-btn-edit' : 'action-btn-view' }}"
-                           title="{{ $t->status->value === 'pending' && $tabs ? 'Modérer' : 'Voir' }}" aria-label="{{ $t->status->value === 'pending' && $tabs ? 'Modérer' : 'Voir' }} « {{ $t->title }} »">
+                           title="{{ $t->status->value === 'pending' && $tabs ? __('discover.home.table.moderate') : __('discover.home.table.view') }}" aria-label="{{ $t->status->value === 'pending' && $tabs ? __('discover.home.table.moderate_label', ['title' => $t->title]) : __('discover.home.table.view_label', ['title' => $t->title]) }}">
                             <i class="fa-solid {{ $t->status->value === 'pending' && $tabs ? 'fa-pen' : 'fa-eye' }}" aria-hidden="true"></i>
                         </a>
                     </td>
@@ -82,7 +82,7 @@
                 </span>
                 <span class="min-w-0 flex-1">
                     <span class="block truncate text-sm font-semibold text-primary-700">{{ $t->title }}</span>
-                    <span class="block truncate text-[11px] text-slate-500">{{ $t->type->label() }}@if($tabs) · {{ $t->user?->display_name }}@endif · {{ $t->created_at->format('d/m/Y') }}</span>
+                    <span class="block truncate text-[11px] text-slate-500">{{ $t->type->label() }}@if($tabs) · {{ $t->user?->display_name }}@endif · {{ $t->created_at->format(__('discover.home.table.date_format')) }}</span>
                 </span>
                 <span class="{{ $t->status->badgeClass() }} shrink-0">{{ $t->status->label() }}</span>
             </a>

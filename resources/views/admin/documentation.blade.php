@@ -1,12 +1,12 @@
 @extends('layouts.app')
-@section('title', 'Documentation — ' . $title)
+@section('title', __('layout.nav.documentation') . ' — ' . $title)
 @php
     $header      = $title;
-    $subheader   = 'Documentation du serveur · mise à jour le ' . $updated;
+    $subheader   = __('admin.documentation.subheader', ['date' => $updated]);
     $breadcrumbs = array_values(array_filter([
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Administration', 'url' => route('admin.dashboard')],
-        $current === 'README' ? ['label' => 'Documentation'] : ['label' => 'Documentation', 'url' => route('admin.documentation')],
+        ['label' => __('layout.nav.home'), 'url' => route('home')],
+        ['label' => __('layout.nav.administration'), 'url' => route('admin.dashboard')],
+        $current === 'README' ? ['label' => __('layout.nav.documentation')] : ['label' => __('layout.nav.documentation'), 'url' => route('admin.documentation')],
         $current === 'README' ? null : ['label' => $title],
     ]));
     $docUrl = fn (string $key) => $key === 'README' ? route('admin.documentation') : route('admin.documentation', ['page' => $key]);
@@ -17,9 +17,9 @@
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
 
     {{-- ── Sommaire ────────────────────────────────────────────────────── --}}
-    <nav aria-label="Pages de la documentation" class="min-w-0">
+    <nav aria-label="{{ __('admin.documentation.nav_label') }}" class="min-w-0">
         <button type="button" class="btn-secondary w-full justify-between lg:hidden" data-toggle="doc-nav" aria-controls="doc-nav" aria-expanded="false">
-            <span class="truncate">Sommaire</span><i class="fa-solid fa-chevron-down"></i>
+            <span class="truncate">{{ __('admin.documentation.contents') }}</span><i class="fa-solid fa-chevron-down"></i>
         </button>
         <div id="doc-nav" class="card mt-2 hidden p-3 lg:sticky lg:top-20 lg:mt-0 lg:block">
             @foreach($groups as $group => $groupPages)

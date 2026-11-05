@@ -24,10 +24,10 @@
 <section class="mb-8" aria-labelledby="{{ $suggestedHeadingId }}">
     <div class="mb-3 flex items-center justify-between gap-3">
         <h2 id="{{ $suggestedHeadingId }}" class="text-base font-semibold text-slate-900">
-            <i class="fa-solid fa-user-plus mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $suggestedTitle ?? 'Comptes à suivre' }}
+            <i class="fa-solid fa-user-plus mr-1.5 text-primary-600" aria-hidden="true"></i>{{ $suggestedTitle ?? __('community.suggested.title') }}
         </h2>
         @if($suggestedMore ?? true)
-        <a href="{{ route('community.index') }}" class="btn-ghost btn-sm">Voir plus<i class="fa-solid fa-chevron-right text-xs" aria-hidden="true"></i></a>
+        <a href="{{ route('community.index') }}" class="btn-ghost btn-sm">{{ __('community.suggested.more') }}<i class="fa-solid fa-chevron-right text-xs" aria-hidden="true"></i></a>
         @endif
     </div>
     <ul class="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2" role="list">
@@ -46,8 +46,8 @@
             </h3>
             <p class="line-clamp-2 text-xs text-slate-500">{{ $item['reason'] }}</p>
             <p class="text-xs text-slate-600">
-                <span data-follower-count="{{ $suggestedUser->id }}" class="font-semibold text-slate-900">{{ number_format($suggestedUser->follower_count, 0, ',', ' ') }}</span>
-                abonné{{ $suggestedUser->follower_count > 1 ? 's' : '' }}
+                <span data-follower-count="{{ $suggestedUser->id }}" class="font-semibold text-slate-900">{{ \App\Support\Locales::number($suggestedUser->follower_count) }}</span>
+                {{ trans_choice('community.card.followers', (int) $suggestedUser->follower_count) }}
             </p>
             <div class="mt-auto">
                 @include('components.follow-button', ['user' => $suggestedUser, 'following' => false, 'small' => true])

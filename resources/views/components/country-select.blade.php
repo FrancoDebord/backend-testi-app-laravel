@@ -10,7 +10,7 @@
 @endphp
 <select id="{{ $id ?? 'country' }}" name="{{ $name ?? 'country' }}" class="form-input" data-country-select autocomplete="country-name"
         @error($name ?? 'country') aria-invalid="true" @enderror>
-    <option value="">Choisir un pays</option>
+    <option value="">{{ __('profile.country_placeholder') }}</option>
     @if($countryExtra)
     <option value="{{ $countryValue }}" selected>{{ $countryValue }}</option>
     @endif

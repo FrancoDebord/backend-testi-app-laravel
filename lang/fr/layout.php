@@ -69,6 +69,8 @@ return [
     'breadcrumb'       => "Fil d'Ariane",
     'close'            => 'Fermer',
     'back_to_site'     => 'Retour au site',
+    // Deux-points d'une étiquette (« Lieu : … ») : espace avant en français.
+    'colon'            => ' : ',
     'guest' => [
         'tagline'       => 'Dieu agit encore.',
         'intro'         => 'My Testimony rassemble les témoignages de la communauté pour encourager, édifier et rendre gloire à Dieu.',

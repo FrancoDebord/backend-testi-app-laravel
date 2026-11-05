@@ -7,8 +7,8 @@
 @if(collect($prayers ?? [])->isNotEmpty())
 <section class="card p-5" aria-labelledby="home-prayers">
     <div class="mb-4 flex items-center justify-between gap-2">
-        <h2 id="home-prayers" class="card-title flex items-center gap-2"><i class="fa-solid fa-hands-praying text-accent-500" aria-hidden="true"></i>Prières récentes</h2>
-        <a href="{{ route('prayer.requests.index') }}" class="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">Voir tout<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
+        <h2 id="home-prayers" class="card-title flex items-center gap-2"><i class="fa-solid fa-hands-praying text-accent-500" aria-hidden="true"></i>{{ __('prayer.requests.home_title') }}</h2>
+        <a href="{{ route('prayer.requests.index') }}" class="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('prayer.common.see_all') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
     </div>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach($prayers as $prayerItem)

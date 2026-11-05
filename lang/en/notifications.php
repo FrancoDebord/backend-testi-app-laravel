@@ -90,4 +90,25 @@ return [
             'disabled'      => 'Push not configured',
         ],
     ],
+    // Website notifications page (notifications/index)
+    'page' => [
+        'title'         => 'Notifications',
+        'subheader'     => 'Reactions, comments and updates on your testimonies.',
+        'filters'       => [
+            'all'       => 'All',
+            'unread'    => 'Unread',
+            'comments'  => 'Comments',
+            'reactions' => 'Reactions',
+        ],
+        'filters_aria'  => 'Filter notifications',
+        'updating'      => 'Updating…',
+        'mark_all'      => 'Mark all as read',
+        'empty_title'   => 'No notifications',
+        'empty_text'    => 'You will be notified here of reactions and comments on your testimonies.',
+        'unread'        => 'Unread',
+        'quoted'        => '“:title”',
+        'give_feedback' => 'Give my feedback',
+        'view_event'    => 'View the event',
+        'mark_read'     => 'Mark as read',
+    ],
 ];

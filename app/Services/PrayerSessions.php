@@ -11,6 +11,7 @@ use App\Models\LiveSession;
 use App\Models\PrayerSession;
 use App\Models\PrayerSessionParticipant;
 use App\Models\User;
+use App\Support\NotificationText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -29,18 +30,22 @@ class PrayerSessions
     public const MIN_DURATION = 15;
     public const MAX_DURATION = 480;
 
-    public const MESSAGES = [
-        'title.required'            => 'Donnez un titre à la session.',
-        'title.max'                 => '150 caractères au plus.',
-        'starts_at.required'        => "Indiquez la date et l'heure.",
-        'starts_at.date'            => "Indiquez la date et l'heure.",
-        'starts_at.after'           => "La session doit être programmée dans le futur.",
-        'duration_minutes.min'      => 'Durée : 15 minutes au moins.',
-        'duration_minutes.max'      => 'Durée : 8 heures au plus.',
-        'topics.max'                => '10 sujets de prière au plus.',
-        'topics.*.max'              => 'Chaque sujet : 150 caractères au plus.',
-        'visibility.in'             => 'Choisissez qui peut voir la session.',
-    ];
+    /** Messages de validation dans la langue courante (lang/{fr,en}/prayer.php › validation). */
+    public static function messages(): array
+    {
+        return [
+            'title.required'       => __('prayer.validation.title_required'),
+            'title.max'            => __('prayer.validation.title_max'),
+            'starts_at.required'   => __('prayer.validation.starts_at_required'),
+            'starts_at.date'       => __('prayer.validation.starts_at_required'),
+            'starts_at.after'      => __('prayer.validation.starts_at_future'),
+            'duration_minutes.min' => __('prayer.validation.duration_min'),
+            'duration_minutes.max' => __('prayer.validation.duration_max'),
+            'topics.max'           => __('prayer.validation.topics_max'),
+            'topics.*.max'         => __('prayer.validation.topic_max'),
+            'visibility.in'        => __('prayer.validation.visibility_session'),
+        ];
+    }
 
     public function __construct(private readonly LiveService $lives) {}
 
@@ -92,7 +97,7 @@ class PrayerSessions
             ? PrayerSession::with(['host', 'event', 'lives' => fn ($l) => $l->active()->latest()])->withRegistrationOf($viewer)->find($id)
             : null;
         if (!$session || !$session->isVisibleTo($viewer)) {
-            throw new PrayerActionException('Session de prière introuvable.', 404);
+            throw new PrayerActionException(__('prayer.errors.session_not_found'), 404);
         }
 
         return $session;
@@ -109,7 +114,7 @@ class PrayerSessions
     public function create(User $host, array $data): PrayerSession
     {
         if (!$this->canCreate($host)) {
-            throw new PrayerActionException('Votre compte ne permet pas cette action.', 403);
+            throw new PrayerActionException(__('prayer.errors.account_inactive'), 403);
         }
         $startsAt = Carbon::parse($data['starts_at']);
         $duration = (int) ($data['duration_minutes'] ?? 60);
@@ -130,7 +135,7 @@ class PrayerSessions
     public function update(PrayerSession $session, User $user, array $data): PrayerSession
     {
         if (!$session->canBeEditedBy($user)) {
-            throw new PrayerActionException('Seul l\'hôte peut modifier cette session, tant qu\'elle n\'est pas terminée.', 403);
+            throw new PrayerActionException(__('prayer.errors.host_only_edit'), 403);
         }
 
         $changes = collect($data)->only(['title', 'description', 'visibility', 'duration_minutes'])->all();
@@ -141,7 +146,7 @@ class PrayerSessions
             // Même horaire (à la seconde près, l'application renvoie tout le formulaire) : rien ne change.
             if ($startsAt->getTimestamp() !== $session->starts_at->getTimestamp()) {
                 if ($startsAt->isPast()) {
-                    throw new PrayerActionException('La session doit être programmée dans le futur.', 422);
+                    throw new PrayerActionException(__('prayer.validation.starts_at_future'), 422);
                 }
                 $changes['starts_at'] = $startsAt;
                 $changes['reminder_sent_at'] = null; // nouvel horaire : nouveau rappel
@@ -158,7 +163,7 @@ class PrayerSessions
     public function cancel(PrayerSession $session, User $user): PrayerSession
     {
         if (!$session->canBeDeletedBy($user)) {
-            throw new PrayerActionException('Vous ne pouvez pas annuler cette session.', 403);
+            throw new PrayerActionException(__('prayer.errors.cannot_cancel_session'), 403);
         }
         $this->closeRoom($session, $user);
         $session->update(['status' => PrayerSession::CANCELLED]);
@@ -169,7 +174,7 @@ class PrayerSessions
     public function delete(PrayerSession $session, User $user): void
     {
         if (!$session->canBeDeletedBy($user)) {
-            throw new PrayerActionException('Vous ne pouvez pas supprimer cette session.', 403);
+            throw new PrayerActionException(__('prayer.errors.cannot_delete_session'), 403);
         }
         $this->closeRoom($session, $user);
         $session->delete();
@@ -181,10 +186,10 @@ class PrayerSessions
     public function register(PrayerSession $session, User $user): void
     {
         if ($user->status !== UserAccountStatus::Active) {
-            throw new PrayerActionException('Votre compte ne permet pas cette action.', 403);
+            throw new PrayerActionException(__('prayer.errors.account_inactive'), 403);
         }
         if (in_array($session->phase(), ['ended', 'cancelled'], true)) {
-            throw new PrayerActionException('Cette session est ' . ($session->phase() === 'ended' ? 'terminée.' : 'annulée.'), 409);
+            throw new PrayerActionException($session->phase() === 'ended' ? __('prayer.errors.session_ended') : __('prayer.errors.session_cancelled'), 409);
         }
         DB::transaction(function () use ($session, $user) {
             $row = PrayerSessionParticipant::firstOrCreate(['prayer_session_id' => $session->id, 'user_id' => $user->id]);
@@ -216,18 +221,18 @@ class PrayerSessions
     public function start(PrayerSession $session, User $user): LiveSession
     {
         if (!$session->isHost($user)) {
-            throw new PrayerActionException("Seul l'hôte peut ouvrir la salle de cette session.", 403);
+            throw new PrayerActionException(__('prayer.errors.host_only_open'), 403);
         }
         if ($session->status === PrayerSession::CANCELLED) {
-            throw new PrayerActionException('Cette session est annulée.', 409);
+            throw new PrayerActionException(__('prayer.errors.session_cancelled'), 409);
         }
         if ($live = $session->lives()->active()->latest()->first()) {
             return $live;
         }
         if (!$session->isInOpeningWindow()) {
             throw new PrayerActionException(now()->lessThan($session->starts_at)
-                ? 'La salle pourra être ouverte ' . PrayerSession::OPEN_BEFORE_MINUTES . ' minutes avant l\'heure prévue.'
-                : "L'horaire de cette session est passé.", 409);
+                ? __('prayer.errors.room_too_early', ['minutes' => PrayerSession::OPEN_BEFORE_MINUTES])
+                : __('prayer.errors.room_too_late'), 409);
         }
 
         try {
@@ -246,7 +251,7 @@ class PrayerSessions
         $session->update(['opened_at' => $session->opened_at ?? now()]);
         if ($first) {
             $this->notifyParticipants($session, NotificationType::PrayerSessionStarted,
-                "a ouvert la salle de prière « {$session->title} ». Rejoignez-la !", $live);
+                NotificationText::fields('prayer.notify.session_started', ['title' => $session->title]), $live);
         }
 
         return $live;
@@ -279,27 +284,32 @@ class PrayerSessions
                 $claimed = PrayerSession::whereKey($session->id)->whereNull('reminder_sent_at')->update(['reminder_sent_at' => now()]);
                 if (!$claimed) return;
                 $sent += $this->notifyParticipants($session, NotificationType::PrayerSessionReminder,
-                    "La session de prière « {$session->title} » commence dans quelques minutes.", null, includeHost: true);
+                    NotificationText::fields('prayer.notify.session_reminder', ['title' => $session->title]), null, includeHost: true);
             });
 
         return $sent;
     }
 
-    /** Notification + push à chaque inscrit (et à l'hôte pour le rappel). Ne bloque jamais l'action. */
-    private function notifyParticipants(PrayerSession $session, NotificationType $type, string $message, ?LiveSession $live = null, bool $includeHost = false): int
+    /**
+     * Notification + push à chaque inscrit (et à l'hôte pour le rappel). Ne bloque jamais l'action.
+     * $text : NotificationText::fields() (texte traduit dans la langue du destinataire).
+     *
+     * @param array{message: string, payload: array<string, mixed>} $text
+     */
+    private function notifyParticipants(PrayerSession $session, NotificationType $type, array $text, ?LiveSession $live = null, bool $includeHost = false): int
     {
         $count = 0;
         try {
             $host = $session->host;
-            $send = function (string $recipientId) use ($session, $type, $message, $live, $host, &$count) {
+            $send = function (string $recipientId) use ($session, $type, $text, $live, $host, &$count) {
                 AppNotification::create([
                     'recipient_id' => $recipientId,
                     'actor_id'     => $host?->id,
                     'actor_name'   => $type === NotificationType::PrayerSessionStarted ? $host?->display_name : null,
                     'actor_avatar' => $host?->avatar_url,
                     'type'         => $type->value,
-                    'message'      => $message,
-                    'payload'      => array_filter(['prayer_session_id' => $session->id, 'live_id' => $live?->id]),
+                    'message'      => $text['message'],
+                    'payload'      => array_filter(['prayer_session_id' => $session->id, 'live_id' => $live?->id]) + $text['payload'],
                     'created_at'   => now(),
                 ]);
                 $count++;
@@ -335,13 +345,13 @@ class PrayerSessions
         if (blank($eventId)) return null;
         $event = Str::isUuid($eventId) ? Event::find($eventId) : null;
         if (!$event || !$event->isVisibleTo($user)) {
-            throw new PrayerActionException('Événement introuvable.', 422);
+            throw new PrayerActionException(__('prayer.errors.event_not_found'), 422);
         }
         if (!$event->canBeManagedBy($user)) {
-            throw new PrayerActionException("Seuls les gestionnaires de l'événement peuvent y rattacher une session de prière.", 403);
+            throw new PrayerActionException(__('prayer.errors.event_managers_only'), 403);
         }
         if ($event->status !== EventStatus::Published) {
-            throw new PrayerActionException("L'événement doit être publié.", 422);
+            throw new PrayerActionException(__('prayer.errors.event_not_published'), 422);
         }
 
         return $event;

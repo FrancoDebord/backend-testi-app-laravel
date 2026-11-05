@@ -13,13 +13,13 @@
     <span class="verse-design__bg" aria-hidden="true"></span>
     <span class="verse-design__quote" aria-hidden="true">&rdquo;</span>
     <span class="verse-design__content verse-design__align block">
-        <span id="home-verse-title" class="verse-design__label mb-3 flex items-center gap-2 text-xs font-bold tracking-wide uppercase"><i class="fa-solid fa-sun" aria-hidden="true"></i>Verset du jour</span>
+        <span id="home-verse-title" class="verse-design__label mb-3 flex items-center gap-2 text-xs font-bold tracking-wide uppercase"><i class="fa-solid fa-sun" aria-hidden="true"></i>{{ __('daily_verse.title') }}</span>
         <span class="verse-design__line mb-3" aria-hidden="true"></span>
         <span class="verse-design__text block">{{ $text }}</span>
         <span class="verse-design__ref mt-3 block text-sm">{{ $reference }}</span>
         <span class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold">
-            <span data-verse-more hidden>Lire en entier</span>
-            <span>Méditer, prier, commenter <i class="fa-solid fa-arrow-right ml-1" aria-hidden="true"></i></span>
+            <span data-verse-more hidden>{{ __('daily_verse.card.read_more') }}</span>
+            <span>{{ __('daily_verse.card.meditate') }} <i class="fa-solid fa-arrow-right ml-1" aria-hidden="true"></i></span>
         </span>
     </span>
 </a>

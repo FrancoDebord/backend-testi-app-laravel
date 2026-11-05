@@ -37,7 +37,7 @@ class DailyVerseController extends Controller
     {
         $verse = $this->verses->forDate($request->query('date'));
         if (!$verse) {
-            return $this->error('Aucun verset programmé.', 404);
+            return $this->error(__('daily_verse.messages.no_verse'), 404);
         }
 
         return $this->success($this->payload($verse, $request));
@@ -52,7 +52,7 @@ class DailyVerseController extends Controller
         $theme = ThemeSemaine::with(['versets' => fn ($q) => $q->where('is_active', true)])
             ->where('annee', $year)->where('numero_semaine', $week)->first();
         if (!$theme) {
-            return $this->error("Aucun thème pour la semaine {$week} de {$year}.", 404);
+            return $this->error(__('daily_verse.messages.no_theme', ['week' => $week, 'year' => $year]), 404);
         }
 
         return $this->success(new ThemeSemaineResource($theme));
@@ -112,7 +112,7 @@ class DailyVerseController extends Controller
     {
         $verse = $id ? $this->find($id) : $this->verses->forDate($request->query('date'));
         if (!$verse) {
-            return $this->error('Aucun verset programmé.', 404);
+            return $this->error(__('daily_verse.messages.no_verse'), 404);
         }
         $only = $request->query('translation');
 
@@ -134,7 +134,7 @@ class DailyVerseController extends Controller
         return $this->attempt(function () use ($verse, $request) {
             $this->verses->setReaction($verse, $request->user(), $request->type, true);
 
-            return $this->success(null, 'Réaction enregistrée');
+            return $this->success(null, __('daily_verse.messages.reaction_saved'));
         });
     }
 
@@ -149,7 +149,7 @@ class DailyVerseController extends Controller
         return $this->attempt(function () use ($verse, $request) {
             $this->verses->setReaction($verse, $request->user(), $request->type, false);
 
-            return $this->success(null, 'Réaction retirée');
+            return $this->success(null, __('daily_verse.messages.reaction_removed'));
         });
     }
 
@@ -166,7 +166,7 @@ class DailyVerseController extends Controller
                 : $this->verses->setReaction($verse, $request->user(), $request->type,
                     $request->has('active') ? $request->boolean('active') : null, $request->boolean('again'));
 
-            return $this->success($this->payload($verse->refresh(), $request), $active ? 'Réaction enregistrée' : 'Réaction retirée');
+            return $this->success($this->payload($verse->refresh(), $request), $active ? __('daily_verse.messages.reaction_saved') : __('daily_verse.messages.reaction_removed'));
         });
     }
 
@@ -189,7 +189,7 @@ class DailyVerseController extends Controller
 
         $verse->increment('share_count');
 
-        return $this->success(['shareUrl' => DailyVerses::shareUrl()], 'Partage enregistré');
+        return $this->success(['shareUrl' => DailyVerses::shareUrl()], __('daily_verse.messages.share_saved'));
     }
 
     // ─── Commentaires ────────────────────────────────────────────────────────
@@ -214,17 +214,17 @@ class DailyVerseController extends Controller
     public function storeComment(Request $request, int $id): JsonResponse
     {
         $data = $request->validate([
-            'body' => ['required', 'string', 'min:2', new VisibleLength(2000, '2 000 caractères au plus.')],
+            'body' => ['required', 'string', 'min:2', new VisibleLength(2000, __('daily_verse.messages.comment_max'))],
             'mention_ids' => 'sometimes|array|max:10', 'mention_ids.*' => 'string',
         ], [
-            'body.required' => 'Écrivez votre commentaire.',
-            'body.min'      => 'Votre commentaire est trop court.',
+            'body.required' => __('daily_verse.messages.comment_required'),
+            'body.min'      => __('daily_verse.messages.comment_too_short'),
         ]);
         $verse = $this->find($id);
 
         return $this->attempt(fn () => $this->created(
             new DailyVerseCommentResource($this->verses->addComment($verse, $request->user(), $data['body'], $data['mention_ids'] ?? [])),
-            'Merci pour votre commentaire !'
+            __('daily_verse.messages.comment_thanks')
         ));
     }
 
@@ -236,7 +236,7 @@ class DailyVerseController extends Controller
         return $this->attempt(function () use ($request, $verse, $commentId) {
             $this->verses->deleteComment($this->verses->findComment($verse, $commentId), $request->user());
 
-            return $this->success(null, 'Commentaire supprimé.');
+            return $this->success(null, __('daily_verse.messages.comment_deleted'));
         });
     }
 
@@ -244,13 +244,13 @@ class DailyVerseController extends Controller
     public function reportComment(Request $request, int $id, string $commentId): JsonResponse
     {
         $request->validate(['reason' => ['required', Rule::in(array_keys(DailyVerses::REPORT_REASONS))]],
-            ['reason.required' => 'Choisissez la raison du signalement.', 'reason.in' => 'Choisissez la raison du signalement.']);
+            ['reason.required' => __('daily_verse.messages.reason_required'), 'reason.in' => __('daily_verse.messages.reason_required')]);
         $verse = $this->find($id);
 
         return $this->attempt(function () use ($request, $verse, $commentId) {
             $this->verses->reportComment($this->verses->findComment($verse, $commentId), $request->user(), $request->input('reason'));
 
-            return $this->success(null, 'Merci, le commentaire a été signalé à la modération.');
+            return $this->success(null, __('daily_verse.messages.reported'));
         });
     }
 
@@ -361,7 +361,7 @@ class DailyVerseController extends Controller
     private function find(int $id): DailyVerse
     {
         $verse = DailyVerse::where('is_active', true)->find($id);
-        abort_if(!$verse, 404, 'Verset introuvable.');
+        abort_if(!$verse, 404, __('daily_verse.messages.not_found'));
 
         return $verse;
     }

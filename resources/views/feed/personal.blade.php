@@ -1,12 +1,12 @@
 @extends('layouts.app')
-@section('title', 'Mon fil')
+@section('title', __('layout.nav.my_feed'))
 @php
     // Mon fil : tous les témoignages, les comptes suivis (et leurs partages) d'abord (App\Services\Recommendations::personalFeed).
-    $header      = 'Mon fil';
-    $subheader   = 'Les comptes que vous suivez d’abord, puis des témoignages choisis pour vous.';
+    $header      = __('layout.nav.my_feed');
+    $subheader   = __('discover.feed.subheader');
     $breadcrumbs = [
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Mon fil'],
+        ['label' => __('layout.nav.home'), 'url' => route('home')],
+        ['label' => __('layout.nav.my_feed')],
     ];
 @endphp
 
@@ -18,10 +18,10 @@
 
 @if($items->isEmpty())
     @include('components.empty-state', [
-        'title'       => 'Votre fil est encore vide',
-        'text'        => 'Suivez des personnes et des organisations : leurs témoignages apparaîtront ici dès leur publication.',
+        'title'       => __('discover.feed.empty_title'),
+        'text'        => __('discover.feed.empty_text'),
         'actionUrl'   => route('community.index'),
-        'actionLabel' => 'Découvrir la communauté',
+        'actionLabel' => __('discover.feed.empty_action'),
     ])
     {{-- Fil vide : événements, sessions et requêtes de prière, paroles prophétiques restent visibles. --}}
     @if(collect($inserts)->isNotEmpty())
@@ -37,7 +37,7 @@
     @include('community.partials.suggested')
     <div class="alert-info mb-4" role="status">
         <i class="fa-solid fa-circle-info mt-0.5" aria-hidden="true"></i>
-        <p>Vous ne suivez encore personne : voici des suggestions. <a href="{{ route('community.index') }}" class="font-semibold underline">Trouvez des comptes à suivre</a> dans la Communauté.</p>
+        <p>{{ __('discover.feed.no_follows') }} <a href="{{ route('community.index') }}" class="font-semibold underline">{{ __('discover.feed.no_follows_link') }}</a> {{ __('discover.feed.no_follows_after') }}</p>
     </div>
     @endunless
 
@@ -57,7 +57,7 @@
     @if($items->hasMorePages())
     <div class="mt-8 flex justify-center">
         {{-- Sans JavaScript : lien vers la page suivante. Avec : les cartes suivantes sont ajoutées à la liste. --}}
-        <a href="{{ $items->nextPageUrl() }}" class="btn-secondary" data-load-more="personal-feed">Afficher plus</a>
+        <a href="{{ $items->nextPageUrl() }}" class="btn-secondary" data-load-more="personal-feed">{{ __('discover.feed.show_more') }}</a>
     </div>
     @endif
 @endif

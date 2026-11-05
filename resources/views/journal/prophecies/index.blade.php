@@ -1,38 +1,38 @@
 @extends('layouts.app')
-@section('title', 'Paroles prophétiques')
+@section('title', __('layout.nav.prophecies'))
 @php
-    $header      = 'Paroles prophétiques';
-    $subheader   = 'Gardez les paroles reçues, priez dessus, puis témoignez de leur accomplissement.';
+    $header      = __('layout.nav.prophecies');
+    $subheader   = __('prophecies.index.subheader');
     $breadcrumbs = [
-        ['label' => 'Accueil', 'url' => route('home')],
-        ['label' => 'Carnet privé', 'url' => route('journal.index')],
-        ['label' => 'Paroles prophétiques'],
+        ['label' => __('layout.nav.home'), 'url' => route('home')],
+        ['label' => __('layout.nav.journal'), 'url' => route('journal.index')],
+        ['label' => __('layout.nav.prophecies')],
     ];
     $tabs = [
-        \App\Models\Prophecy::WAITING   => 'En attente',
-        \App\Models\Prophecy::FULFILLED => 'Accomplies',
+        \App\Models\Prophecy::WAITING   => __('prophecies.status.waiting'),
+        \App\Models\Prophecy::FULFILLED => __('prophecies.index.tab_fulfilled'),
     ];
-    $verse = config('encouragements.prophecy_verses.0');
+    $verse = \App\Support\Encouragements::prophecyVerses()[0] ?? null;
 @endphp
 
 @section('headerActions')
-    <a href="{{ route('prophecies.create') }}" class="btn-primary"><i class="fa-solid fa-plus" aria-hidden="true"></i>Nouvelle parole</a>
+    <a href="{{ route('prophecies.create') }}" class="btn-primary"><i class="fa-solid fa-plus" aria-hidden="true"></i>{{ __('prophecies.index.new') }}</a>
 @endsection
 
 @section('content')
 @include('journal.partials.tabs', ['current' => 'prophecies'])
 
 @if($status === \App\Models\Prophecy::WAITING && $verse)
-<aside class="card-insight mb-5 flex gap-4 p-5" aria-label="Verset">
+<aside class="card-insight mb-5 flex gap-4 p-5" aria-label="{{ __('prophecies.verse') }}">
     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-sun-500 shadow-soft" aria-hidden="true"><i class="fa-solid fa-book-bible"></i></span>
     <div class="min-w-0">
-        <blockquote class="text-[15px] leading-relaxed break-words text-slate-900 italic">« {{ $verse['text'] }} »</blockquote>
+        <blockquote class="text-[15px] leading-relaxed break-words text-slate-900 italic">{{ __('prophecies.quoted', ['text' => $verse['text']]) }}</blockquote>
         <p class="mt-1 text-sm font-semibold text-primary-700">{{ $verse['ref'] }}</p>
     </div>
 </aside>
 @endif
 
-<div class="mb-5 flex gap-2" role="group" aria-label="État des paroles">
+<div class="mb-5 flex gap-2" role="group" aria-label="{{ __('prophecies.index.status_group') }}">
     @foreach($tabs as $value => $label)
     <a href="{{ route('prophecies.index', $value === \App\Models\Prophecy::WAITING ? [] : ['statut' => $value]) }}"
        class="{{ $status === $value ? 'chip-active' : 'chip' }}" @if($status === $value) aria-current="true" @endif>
@@ -43,12 +43,12 @@
 
 @if($items->isEmpty())
     @include('components.empty-state', [
-        'title'         => $status === \App\Models\Prophecy::WAITING ? 'Aucune parole en attente' : 'Aucune parole accomplie pour le moment',
+        'title'         => $status === \App\Models\Prophecy::WAITING ? __('prophecies.index.empty_waiting') : __('prophecies.index.empty_fulfilled'),
         'text'          => $status === \App\Models\Prophecy::WAITING
-            ? "Notez la parole reçue lors d'un culte, d'une prière ou d'un rêve : la date, qui l'a donnée, une échéance si elle a été annoncée."
-            : "Quand une parole s'accomplit, marquez-la accomplie ou témoignez : elle apparaîtra ici.",
+            ? __('prophecies.index.empty_waiting_text')
+            : __('prophecies.index.empty_fulfilled_text'),
         'actionUrl'     => $status === \App\Models\Prophecy::WAITING ? route('prophecies.create') : null,
-        'actionLabel'   => 'Garder une parole',
+        'actionLabel'   => __('prophecies.index.keep'),
         'actionPrimary' => true,
     ])
 @else

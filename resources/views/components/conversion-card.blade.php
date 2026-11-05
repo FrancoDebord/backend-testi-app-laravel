@@ -31,10 +31,10 @@
         @if(!empty($details['place']) || !empty($details['verse']))
         <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
             @if(!empty($details['place']))
-            <li class="flex min-w-0 items-center gap-1.5"><i class="fa-solid fa-location-dot text-slate-400" aria-hidden="true"></i><span class="sr-only">{{ __('conversion.place') }} : </span><span class="truncate">{{ $details['place'] }}</span></li>
+            <li class="flex min-w-0 items-center gap-1.5"><i class="fa-solid fa-location-dot text-slate-400" aria-hidden="true"></i><span class="sr-only">{{ __('conversion.place') }}{{ __('layout.colon') }}</span><span class="truncate">{{ $details['place'] }}</span></li>
             @endif
             @if(!empty($details['verse']))
-            <li class="flex min-w-0 items-center gap-1.5"><i class="fa-solid fa-book-bible text-slate-400" aria-hidden="true"></i><span class="sr-only">{{ $testimony->conversionLabel('verse') }} : </span><span class="truncate">{{ $details['verse'] }}</span></li>
+            <li class="flex min-w-0 items-center gap-1.5"><i class="fa-solid fa-book-bible text-slate-400" aria-hidden="true"></i><span class="sr-only">{{ $testimony->conversionLabel('verse') }}{{ __('layout.colon') }}</span><span class="truncate">{{ $details['verse'] }}</span></li>
             @endif
         </ul>
         @endif

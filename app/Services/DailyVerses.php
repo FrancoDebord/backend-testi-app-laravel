@@ -33,6 +33,17 @@ class DailyVerses
         'other'                 => 'Autre raison',
     ];
 
+    /** Libellés des raisons de signalement dans la langue de la page (mêmes clés que REPORT_REASONS). */
+    public static function reportReasons(): array
+    {
+        return [
+            'inappropriate_content' => __('daily_verse.report_reasons.inappropriate_content'),
+            'hate_speech'           => __('daily_verse.report_reasons.hate_speech'),
+            'spam'                  => __('daily_verse.report_reasons.spam'),
+            'other'                 => __('daily_verse.report_reasons.other'),
+        ];
+    }
+
     /** Version proposée par défaut (texte du verset saisi par l'équipe = Louis Segond). */
     public const DEFAULT_TRANSLATION = 'LSG';
 
@@ -184,7 +195,7 @@ class DailyVerses
             'reference' => $verse->reference,
             'parsed'    => $ref ? [...$ref, 'bookName' => BibleReference::bookName($ref['book']), 'label' => BibleReference::label($ref)] : null,
             // Texte saisi par l'équipe, toujours disponible (repli hors traductions).
-            'original'  => ['code' => null, 'name' => 'Texte du jour', 'text' => $verse->verse_text],
+            'original'  => ['code' => null, 'name' => __('daily_verse.original'), 'text' => $verse->verse_text],
             'defaultTranslation' => self::DEFAULT_TRANSLATION,
             'versions'  => $versions,
         ];
@@ -199,7 +210,7 @@ class DailyVerses
      */
     public function setReaction(DailyVerse $verse, User $user, string $type, ?bool $on = null, bool $again = false): bool
     {
-        $field = self::REACTIONS[$type] ?? throw new PrayerActionException('Réaction inconnue.', 422);
+        $field = self::REACTIONS[$type] ?? throw new PrayerActionException(__('daily_verse.messages.unknown_reaction'), 422);
         $this->ensureActive($user);
         $again = $again && $type === 'pray';
 
@@ -279,7 +290,7 @@ class DailyVerses
         $this->ensureActive($user);
         $body = trim($body);
         if (mb_strlen(Mentions::plain($body)) < 2) {
-            throw new PrayerActionException('Votre commentaire est trop court.', 422);
+            throw new PrayerActionException(__('daily_verse.messages.comment_too_short'), 422);
         }
         ['text' => $text, 'ids' => $ids] = Mentions::prepare($body, $mentionIds);
 
@@ -298,7 +309,7 @@ class DailyVerses
     {
         $comment = Str::isUuid($commentId) ? DailyVerseComment::where('daily_verse_id', $verse->id)->find($commentId) : null;
         if (!$comment) {
-            throw new PrayerActionException('Commentaire introuvable.', 404);
+            throw new PrayerActionException(__('daily_verse.messages.comment_not_found'), 404);
         }
 
         return $comment;
@@ -307,7 +318,7 @@ class DailyVerses
     public function deleteComment(DailyVerseComment $comment, User $user): void
     {
         if (!$comment->canBeDeletedBy($user)) {
-            throw new PrayerActionException('Vous ne pouvez pas supprimer ce commentaire.', 403);
+            throw new PrayerActionException(__('daily_verse.messages.cannot_delete'), 403);
         }
         $comment->delete();
     }
@@ -317,10 +328,10 @@ class DailyVerses
     {
         $this->ensureActive($user);
         if (!array_key_exists($reason, self::REPORT_REASONS)) {
-            throw new PrayerActionException('Choisissez la raison du signalement.', 422);
+            throw new PrayerActionException(__('daily_verse.messages.reason_required'), 422);
         }
         if ($comment->user_id === $user->id) {
-            throw new PrayerActionException('Vous ne pouvez pas signaler votre propre commentaire.', 422);
+            throw new PrayerActionException(__('daily_verse.messages.own_comment'), 422);
         }
 
         DB::transaction(function () use ($comment, $user, $reason) {
@@ -429,7 +440,7 @@ class DailyVerses
     private function ensureActive(User $user): void
     {
         if ($user->status !== UserAccountStatus::Active) {
-            throw new PrayerActionException('Votre compte ne permet pas cette action.', 403);
+            throw new PrayerActionException(__('daily_verse.messages.account_inactive'), 403);
         }
     }
 }

@@ -32,7 +32,7 @@ class VerseOfTheDayCard extends Component
     {
         // Dans la langue de la page (docs/fonctionnalites/verset-du-jour.md).
         $localized = app(\App\Services\DailyVerses::class)->localized($this->verse);
-        $text = '« ' . trim($localized['text']) . ' »';
+        $text = __('bible.quote_open') . trim($localized['text']) . __('bible.quote_close');
         $view = app(VerseStyles::class)->forView(Auth::user(), VerseDesignOfTheDay::todayDate());
 
         return view('components.verse-of-the-day-card', [

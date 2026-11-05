@@ -1,6 +1,6 @@
 <?php
 
-// Invitations to testify and reasons (Bible verses are never translated: config/encouragements.php); config/encouragements.php keeps the order, icons and rhythm.
+// Invitations to testify and reasons (Bible verses: Louis Segond in French, King James Version in English, in config/encouragements.php); config/encouragements.php keeps the order, icons and rhythm.
 return [
 
     'calls' => [

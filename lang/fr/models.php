@@ -71,4 +71,47 @@ return [
         'revoked'  => 'Vérification retirée',
     ],
     'prophecy_received_at' => ':date à :time',
+    // Composants partagés (resources/views/components) sans fichier de langue propre
+    'components' => [
+        'layout_toggle' => 'Affichage de la liste',
+        'encouragement' => [
+            'aria'   => 'Encouragement à témoigner',
+            'action' => 'Témoigner',
+        ],
+        'mention' => [
+            'too_many'    => 'Trop de recherches. Patientez un instant.',
+            'unavailable' => 'Recherche indisponible.',
+            'none'        => 'Aucun compte trouvé.',
+            'type'        => 'Tapez un nom après « @ ».',
+        ],
+        'autocomplete' => [
+            'types' => [
+                'testimony'      => 'Témoignage',
+                'user'           => 'Compte',
+                'event'          => 'Événement',
+                'category'       => 'Catégorie',
+                'bible'          => 'Livre de la Bible',
+                'prayer_session' => 'Session de prière',
+            ],
+            'listbox'       => 'Suggestions de recherche',
+            'recent_title'  => 'Recherches récentes',
+            'clear_all'     => 'Tout effacer',
+            'cleared'       => 'Recherches récentes effacées.',
+            'recent_sr'     => ':q, recherche récente',
+            'remove_recent' => 'Retirer « :q » des recherches récentes',
+            'recent_count'  => [
+                'one'   => ':count recherche récente. Flèches haut et bas pour parcourir.',
+                'other' => ':count recherches récentes. Flèches haut et bas pour parcourir.',
+            ],
+            'recent_short'  => 'Récentes',
+            'complete'      => 'Compléter avec « :q »',
+            'suggestions'   => 'Suggestions',
+            'direct'        => 'Accès direct',
+            'verified'      => ', vérifié',
+            'count'         => [
+                'one'   => ':count proposition. Flèches haut et bas pour parcourir, Entrée pour choisir.',
+                'other' => ':count propositions. Flèches haut et bas pour parcourir, Entrée pour choisir.',
+            ],
+        ],
+    ],
 ];

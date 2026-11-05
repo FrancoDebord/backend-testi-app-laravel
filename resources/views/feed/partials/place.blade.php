@@ -6,15 +6,15 @@
     <a href="{{ route('profile.settings') }}#localisation"
        class="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-700 hover:bg-primary-100">
         <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
-        <span>Près de chez vous · {{ $place['label'] }}</span>
+        <span>{{ __('discover.place.near_you', ['place' => $place['label']]) }}</span>
     </a>
     @endif
     @if(($place['source'] ?? null) !== 'gps')
     <div class="alert-info hidden" role="status" data-location-prompt>
         <i class="fa-solid fa-location-crosshairs mt-0.5" aria-hidden="true"></i>
-        <p class="flex-1">Activez votre position pour des témoignages proches de vous.
-            <a href="{{ route('profile.settings') }}#localisation" class="font-semibold underline">Activer</a></p>
-        <button type="button" class="ml-2 text-slate-500 hover:text-slate-700" aria-label="Fermer" data-location-prompt-close>
+        <p class="flex-1">{{ __('discover.place.prompt') }}
+            <a href="{{ route('profile.settings') }}#localisation" class="font-semibold underline">{{ __('discover.place.enable') }}</a></p>
+        <button type="button" class="ml-2 text-slate-500 hover:text-slate-700" aria-label="{{ __('discover.place.close') }}" data-location-prompt-close>
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
     </div>

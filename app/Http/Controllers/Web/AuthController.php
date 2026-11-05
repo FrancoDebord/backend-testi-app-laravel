@@ -117,7 +117,7 @@ class AuthController extends Controller
             'country'               => ['nullable', 'string', 'max:100', Rule::in(Countries::all())],
             // Case « J'accepte la politique de confidentialité » (docs/fonctionnalites/confidentialite-et-suppression.md)
             'accepted_privacy'      => 'accepted',
-        ] + PhoneNumber::rules('required_if:account_type,organization') + OrganizationAccounts::registerRules(), PhoneNumber::MESSAGES + [
+        ] + PhoneNumber::rules('required_if:account_type,organization') + OrganizationAccounts::registerRules(), PhoneNumber::messages() + [
             'country.in'                    => __('account.register.country_in'),
             'accepted_privacy.accepted'     => __('privacy.consent.required'),
             'display_name.required_unless'  => __('account.register.display_name_required'),

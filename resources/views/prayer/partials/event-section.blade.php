@@ -12,7 +12,7 @@
     $canAddSession  = $event->canBeManagedBy($prayerViewer) && $event->status === \App\Enums\EventStatus::Published;
 @endphp
 <section class="card p-5" aria-labelledby="event-prayer-title">
-    <h2 id="event-prayer-title" class="card-title"><i class="fa-solid fa-hands-praying mr-1 text-primary-600" aria-hidden="true"></i>Prière</h2>
+    <h2 id="event-prayer-title" class="card-title"><i class="fa-solid fa-hands-praying mr-1 text-primary-600" aria-hidden="true"></i>{{ __('prayer.requests.event.title') }}</h2>
 
     @if($eventSessions->isNotEmpty())
     <ul class="mt-3 space-y-2">
@@ -22,7 +22,7 @@
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-700" aria-hidden="true"><i class="fa-solid fa-people-group"></i></span>
                 <span class="min-w-0">
                     <span class="block truncate text-sm font-semibold text-slate-900">{{ $eventSession->title }}</span>
-                    <span class="block text-xs text-slate-500">{{ $eventSession->phase() === 'live' ? 'En cours' : $eventSession->starts_at->translatedFormat('D j M, H:i') }}</span>
+                    <span class="block text-xs text-slate-500">{{ $eventSession->phase() === 'live' ? __('prayer.requests.event.live') : $eventSession->starts_at->translatedFormat('D j M, H:i') }}</span>
                 </span>
             </a>
         </li>
@@ -31,12 +31,12 @@
     @endif
 
     <p class="mt-3 text-sm text-slate-600">
-        <span class="font-semibold text-slate-900">{{ $requestTotal }}</span> {{ $requestTotal > 1 ? 'requêtes de prière' : 'requête de prière' }}
+        <span class="font-semibold text-slate-900">{{ $requestTotal }}</span> {{ trans_choice('prayer.requests.event.count', $requestTotal) }}
     </p>
     @foreach($eventRequests as $eventRequest)
     <div class="mt-2 rounded-lg bg-slate-50 p-3 text-sm break-words text-slate-700">
         <span class="flex items-center justify-between gap-2 text-xs font-semibold text-slate-500">
-            <span class="min-w-0 truncate">{{ $eventRequest->revealsAuthorTo($prayerViewer) ? $eventRequest->user?->display_name : 'Anonyme' }}</span>
+            <span class="min-w-0 truncate">{{ $eventRequest->revealsAuthorTo($prayerViewer) ? $eventRequest->user?->display_name : __('prayer.common.anonymous') }}</span>
             {{-- Qui a prié, et combien de fois (docs/fonctionnalites/qui-a-reagi.md) --}}
             <button type="button" class="shrink-0 rounded-lg px-1 hover:text-primary-600" data-reaction-people="{{ route('reactions.people', ['kind' => 'prayer_request', 'id' => $eventRequest->id, 'type' => 'pray']) }}"
                     aria-haspopup="dialog" title="{{ __('reactions.people.open_prayers') }}">
@@ -49,12 +49,12 @@
 
     <div class="mt-4 grid grid-cols-1 gap-2">
         @if($prayerViewer)
-        <a href="{{ route('prayer.requests.create', ['evenement' => $event->id]) }}" class="btn-secondary w-full"><i class="fa-solid fa-plus" aria-hidden="true"></i>Confier une requête</a>
+        <a href="{{ route('prayer.requests.create', ['evenement' => $event->id]) }}" class="btn-secondary w-full"><i class="fa-solid fa-plus" aria-hidden="true"></i>{{ __('prayer.requests.share') }}</a>
         @else
-        <a href="{{ route('login') }}" class="btn-secondary w-full"><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>Se connecter pour prier</a>
+        <a href="{{ route('login') }}" class="btn-secondary w-full"><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>{{ __('prayer.common.login_to_pray') }}</a>
         @endif
         @if($canAddSession)
-        <a href="{{ route('prayer.sessions.create', ['evenement' => $event->id]) }}" class="btn-ghost btn-sm w-full"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>Programmer une session de prière</a>
+        <a href="{{ route('prayer.sessions.create', ['evenement' => $event->id]) }}" class="btn-ghost btn-sm w-full"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>{{ __('prayer.requests.event.add_session') }}</a>
         @endif
     </div>
 </section>

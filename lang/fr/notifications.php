@@ -90,4 +90,25 @@ return [
             'disabled'      => 'Push non configurés',
         ],
     ],
+    // Page Notifications du site (notifications/index)
+    'page' => [
+        'title'         => 'Notifications',
+        'subheader'     => 'Réactions, commentaires et suivi de vos témoignages.',
+        'filters'       => [
+            'all'       => 'Toutes',
+            'unread'    => 'Non lues',
+            'comments'  => 'Commentaires',
+            'reactions' => 'Réactions',
+        ],
+        'filters_aria'  => 'Filtrer les notifications',
+        'updating'      => 'Mise à jour…',
+        'mark_all'      => 'Tout marquer comme lu',
+        'empty_title'   => 'Aucune notification',
+        'empty_text'    => 'Vous serez averti ici des réactions et commentaires sur vos témoignages.',
+        'unread'        => 'Non lue',
+        'quoted'        => '« :title »',
+        'give_feedback' => 'Donner mon avis',
+        'view_event'    => 'Voir l\'événement',
+        'mark_read'     => 'Marquer comme lue',
+    ],
 ];

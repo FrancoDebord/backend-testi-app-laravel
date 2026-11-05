@@ -51,23 +51,23 @@ class PrayerSessionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate(PrayerSessions::rules(), PrayerSessions::MESSAGES);
+        $data = $request->validate(PrayerSessions::rules(), PrayerSessions::messages());
 
         return $this->attempt(function () use ($request, $data) {
             $session = $this->sessions->create($request->user(), $data);
 
-            return $this->created(new PrayerSessionResource($session), 'Session de prière programmée.');
+            return $this->created(new PrayerSessionResource($session), __('prayer.flash.session_created'));
         });
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $data = $request->validate(PrayerSessions::rules(partial: true), PrayerSessions::MESSAGES);
+        $data = $request->validate(PrayerSessions::rules(partial: true), PrayerSessions::messages());
 
         return $this->attempt(function () use ($request, $id, $data) {
             $session = $this->sessions->find($request->user(), $id);
 
-            return $this->success(new PrayerSessionResource($this->sessions->update($session, $request->user(), $data)), 'Session mise à jour.');
+            return $this->success(new PrayerSessionResource($this->sessions->update($session, $request->user(), $data)), __('prayer.flash.session_updated'));
         });
     }
 
@@ -76,7 +76,7 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($request, $id) {
             $this->sessions->delete($this->sessions->find($request->user(), $id), $request->user());
 
-            return $this->success(null, 'Session supprimée.');
+            return $this->success(null, __('prayer.flash.session_deleted'));
         });
     }
 
@@ -85,7 +85,7 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($request, $id) {
             $session = $this->sessions->cancel($this->sessions->find($request->user(), $id), $request->user());
 
-            return $this->success(new PrayerSessionResource($session->load(['host', 'event'])), 'Session annulée.');
+            return $this->success(new PrayerSessionResource($session->load(['host', 'event'])), __('prayer.flash.session_cancelled'));
         });
     }
 
@@ -97,7 +97,7 @@ class PrayerSessionController extends Controller
             $this->sessions->register($session, $request->user());
 
             return $this->success(new PrayerSessionResource($session->refresh()->load(['host', 'event'])->setAttribute('is_registered', true)),
-                'Inscription enregistrée : vous serez prévenu à l\'ouverture de la salle.');
+                __('prayer.flash.registered'));
         });
     }
 
@@ -108,7 +108,7 @@ class PrayerSessionController extends Controller
             $this->sessions->unregister($session, $request->user());
 
             return $this->success(new PrayerSessionResource($session->refresh()->load(['host', 'event'])->setAttribute('is_registered', false)),
-                'Inscription retirée.');
+                __('prayer.flash.unregistered'));
         });
     }
 
@@ -118,13 +118,13 @@ class PrayerSessionController extends Controller
         return $this->attempt(function () use ($request, $id) {
             $session = $this->sessions->find($request->user(), $id);
             if (!$session->canBeDeletedBy($request->user())) {
-                throw new PrayerActionException("Seul l'hôte voit la liste des inscrits.", 403);
+                throw new PrayerActionException(__('prayer.errors.host_only_participants'), 403);
             }
             $items = $session->participants()->with('user')->latest()->paginate(50);
 
             return $this->paginated(collect($items->items())->map(fn ($p) => [
                 'id'           => $p->user_id,
-                'displayName'  => $p->user?->display_name ?? 'Utilisateur',
+                'displayName'  => $p->user?->display_name ?? __('prayer.common.user'),
                 'initials'     => $p->user?->initials,
                 'avatarUrl'    => $p->user?->avatar_url,
                 'registeredAt' => $p->created_at?->toIso8601String(),
@@ -153,7 +153,7 @@ class PrayerSessionController extends Controller
                 'session' => new PrayerSessionResource($this->sessions->find($user, $id)),
                 'live'    => new LiveSessionResource($live->load(['host', 'prayerSession'])),
                 'video'   => $video,
-            ], 'Salle ouverte : passez à l\'antenne pour commencer la prière.');
+            ], __('prayer.flash.room_opened'));
         });
     }
 

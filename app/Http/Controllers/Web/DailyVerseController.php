@@ -88,7 +88,7 @@ class DailyVerseController extends Controller
             'comments'     => $this->verses->comments($verse, $viewer)->limit(50)->get(),
             'commentCount' => $this->verses->commentCount($verse),
             'testimonies'  => $this->verses->linkedTestimonies($verse, 12),
-            'reasons'      => DailyVerses::REPORT_REASONS,
+            'reasons'      => DailyVerses::reportReasons(),
             // Designs : docs/fonctionnalites/designs-du-verset.md
             'designDate'   => $designDate,
             ...app(VerseStyles::class)->forView($viewer, $designDate),
@@ -131,15 +131,15 @@ class DailyVerseController extends Controller
                 if ($request->boolean('last')) {
                     $this->verses->removeLastPrayer($verse, Auth::user());
 
-                    return back()->with('success', 'Dernière prière retirée.');
+                    return back()->with('success', __('daily_verse.messages.last_prayer_removed'));
                 }
                 $this->verses->setReaction($verse, Auth::user(), 'pray', true, again: true);
 
-                return back()->with('success', 'Merci, votre prière est enregistrée.');
+                return back()->with('success', __('daily_verse.messages.prayer_saved'));
             }
             $active = $this->verses->setReaction($verse, Auth::user(), $request->input('type'));
 
-            return back()->with('success', $active ? 'Merci, votre réaction est enregistrée.' : 'Réaction retirée.');
+            return back()->with('success', $active ? __('daily_verse.messages.reaction_saved_web') : __('daily_verse.messages.reaction_removed_web'));
         });
     }
 
@@ -160,29 +160,29 @@ class DailyVerseController extends Controller
 
     public function storePrayer(Request $request, int $id): RedirectResponse
     {
-        $data = $request->validate(PrayerRequests::rules(), PrayerRequests::MESSAGES);
+        $data = $request->validate(PrayerRequests::rules(), PrayerRequests::messages());
         $data['is_anonymous']   = $request->boolean('is_anonymous');
         $data['daily_verse_id'] = $this->find($id)->id;
 
         return $this->attempt(function () use ($data) {
             app(PrayerRequests::class)->create(Auth::user(), $data);
 
-            return back()->withFragment('verse-tabs')->with('success', 'Votre requête est publiée. Que Dieu vous réponde !');
+            return back()->withFragment('verse-tabs')->with('success', __('daily_verse.messages.prayer_published'));
         }, withInput: true);
     }
 
     public function storeComment(Request $request, int $id): RedirectResponse
     {
         $data = $request->validate(['body' => 'required|string|min:2|max:1000'], [
-            'body.required' => 'Écrivez votre commentaire.',
-            'body.min'      => 'Votre commentaire est trop court.',
-            'body.max'      => '1 000 caractères au plus.',
+            'body.required' => __('daily_verse.messages.comment_required'),
+            'body.min'      => __('daily_verse.messages.comment_too_short'),
+            'body.max'      => __('daily_verse.messages.comment_max_web'),
         ]);
 
         return $this->attempt(function () use ($data, $id) {
             $this->verses->addComment($this->find($id), Auth::user(), $data['body']);
 
-            return back()->withFragment('verse-tabs')->with('success', 'Merci pour votre commentaire !');
+            return back()->withFragment('verse-tabs')->with('success', __('daily_verse.messages.comment_thanks'));
         }, withInput: true);
     }
 
@@ -191,7 +191,7 @@ class DailyVerseController extends Controller
         return $this->attempt(function () use ($id, $comment) {
             $this->verses->deleteComment($this->verses->findComment($this->find($id), $comment), Auth::user());
 
-            return back()->withFragment('verse-tabs')->with('success', 'Commentaire supprimé.');
+            return back()->withFragment('verse-tabs')->with('success', __('daily_verse.messages.comment_deleted'));
         });
     }
 
@@ -202,7 +202,7 @@ class DailyVerseController extends Controller
         return $this->attempt(function () use ($request, $id, $comment) {
             $this->verses->reportComment($this->verses->findComment($this->find($id), $comment), Auth::user(), $request->input('reason'));
 
-            return back()->withFragment('verse-tabs')->with('success', 'Merci, le commentaire a été signalé à la modération.');
+            return back()->withFragment('verse-tabs')->with('success', __('daily_verse.messages.reported'));
         });
     }
 

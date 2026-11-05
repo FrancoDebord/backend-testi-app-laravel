@@ -91,7 +91,7 @@ class ProfileController extends Controller
         ]
         // Numéro vérifié par SMS : non modifiable ici (il sert à la connexion par téléphone, depuis l'application).
         + ($user->hasVerifiedPhone() ? [] : PhoneNumber::rules($isOrg, $user))
-        + OrganizationAccounts::updateRules($user), PhoneNumber::MESSAGES + ProfileCover::messages() + [
+        + OrganizationAccounts::updateRules($user), PhoneNumber::messages() + ProfileCover::messages() + [
             'country.in' => __('account.register.country_in'),
         ]);
 
