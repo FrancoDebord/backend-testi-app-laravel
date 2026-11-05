@@ -159,6 +159,10 @@ Les fichiers compilés vont dans `public/build/`, **exclu de git** (`.gitignore`
 
 Symptôme d'assets non à jour : la page s'affiche mais les nouveaux éléments sont mal stylés et les boutons ne réagissent pas (cas rencontré avec l'éditeur de texte). Vérification : les noms `app-XXXX.css` / `app-XXXX.js` du code source de la page doivent être ceux de `public/build/manifest.json`.
 
+### « À la une » en gros plan (2026-11-05)
+
+Aucune migration ni variable d'environnement. **Recompiler et copier `public/build/`** (nouvelles classes de l'accueil), puis `php artisan optimize:clear` et `php artisan optimize`. Détails : [accueil.md](fonctionnalites/accueil.md).
+
 ### Lecture des audios (2026-11-05)
 
 Aucune migration, aucune variable d'environnement, aucune recompilation des assets. Après la copie des fichiers : `php artisan optimize:clear`, `php artisan optimize`, puis **une fois** `php artisan media:repair-audio --dry-run` (liste) et `php artisan media:repair-audio` (répare les audios déjà en ligne et renouvelle leurs liens). Vérifier aussi la file d'attente des conversions : `php artisan media:check`. Détails : [lecture-audio.md](fonctionnalites/lecture-audio.md).

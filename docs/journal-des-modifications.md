@@ -4,6 +4,12 @@ Entrées les plus récentes en premier. Chaque entrée indique ce qui change pou
 
 ---
 
+## 2026-11-05 — « À la une » en gros plan sur l'accueil
+
+- **Utilisateurs** : sur l'accueil, la section « À la une » est en tête de la colonne principale (juste après les directs). Le premier témoignage mis en avant y est affiché en gros plan : grande image, badge « À la une », catégorie, titre en grand, extrait, auteur, vues et bouton « Regarder / Écouter / Lire le témoignage ». Au survol d'une vidéo, un court aperçu muet se lance. Les 4 témoignages suivants sont affichés en vignettes sous le gros plan.
+- **Développeurs** : nouvelle vue `resources/views/home/partials/featured-spotlight.blade.php` ; clés `discover.home.spotlight.*`. Nouveau test dans `FeaturedTestimoniesTest`. Voir [accueil.md](fonctionnalites/accueil.md).
+- **Déploiement** : recompiler et copier `public/build/` (nouvelles classes CSS), puis `php artisan optimize:clear` et `php artisan optimize`. Aucune migration.
+
 ## 2026-11-05 — Site entièrement traduit en anglais
 
 - **Utilisateurs** : en anglais (sélecteur de langue, langue du compte ou du navigateur), plus aucune page ne garde de texte français : accueil, explorer, fil, carnet et paroles prophétiques, verset du jour et lecteur de la Bible, requêtes et sessions de prière, communauté, profil, réglages, vérification, notifications, administration. Nombres (« 1,245 »), dates (« November 5, 2026 »), guillemets (“…”) et pourcentages à l'anglaise. Les versets d'encouragement s'affichent en King James Version. Le français est inchangé.

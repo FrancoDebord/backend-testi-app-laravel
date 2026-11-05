@@ -13,11 +13,11 @@ Présenter la plateforme selon la maquette « My Testimony » et la charte ARISE
 | **Bandeau « My Testimony »** | Titre « My Testimony » (« My » en bleu `primary-600`, « Testimony » en orange `accent-500`, nom de marque jamais traduit), « Des vies transformées pour la gloire de Dieu », « Dieu agit encore ! » (écriture manuscrite Caveat, dès 768 px), illustration (lever de soleil, montagnes, personne les bras levés, dessinée en SVG aux couleurs de la charte) ; chiffres : témoignages publiés, utilisateurs actifs, vues totales, prières reçues | Tous |
 | **Actions rapides** | Visiteur : Se connecter, Créer mon compte (orange), Explorer, Voir les directs. Membre : Ajouter un témoignage, Mes témoignages, Mes abonnements, Paramètres. Équipe : Ajouter un témoignage, Gérer les utilisateurs (administrateur), Voir la file de modération (jaune, avec le nombre en attente), Paramètres | Tous |
 | **En direct** | Directs à l'antenne (bandeau fin) | Tous, s'il y en a |
+| **À la une** (gros plan) | En tête de la colonne principale. Le premier témoignage mis en avant ([gestion-des-temoignages.md](gestion-des-temoignages.md)) en gros plan : grande image (aperçu vidéo muet au survol), badge « À la une », catégorie, titre en grand, extrait, auteur, vues, bouton « Regarder / Écouter / Lire le témoignage » selon le type ; toute la carte est cliquable. À partir de 768 px, image à gauche (3/5) et texte à droite (2/5) ; en dessous, empilés. Les 4 suivants en vignettes (1 colonne sur mobile, 2 sur tablette, 4 sur très grand écran) | Tous, s'il y en a |
 | **Témoignages récents** | Filtres Tous / Vidéos / Audios / Textes, choix Grandes cartes / Liste compacte, cartes encadrées (catégorie, titre, extrait, auteur, vues, date, J'aime / commentaires / partages), 12 par page. Uniquement des témoignages : toutes les cartes ont la même hauteur | Tous |
 | **Prières récentes** | Requêtes de prière publiques, les plus proches d'abord ([localisation.md](localisation.md)), dans une section à part sous « Témoignages récents » : 3 cartes sur mobile, 4 sur tablette, 6 sur grand écran, texte limité à 160 caractères, lien « Voir tout » vers `/priere/requetes`. Première page sans filtre seulement | Tous, s'il y en a |
 | **Catégories populaires** | 6 catégories actives, triées par témoignages publiés (comptés en direct) ; icône et teinte de la marque ; un clic filtre la liste | Tous |
 | **Statistiques globales** | Courbes des 7 derniers jours (témoignages en bleu, inscriptions en orange), nouveaux témoignages et nouveaux utilisateurs avec l'évolution par rapport à la semaine précédente (flèche verte ou rouge), vues totales | Tous |
-| **À la une** | Témoignages mis en avant de la semaine (jusqu'à 4 cartes) | Tous |
 | **Shorts** | Étagère horizontale | Tous |
 | **Modération rapide** | 4 plus anciens témoignages en attente (« À vérifier », lien vers la relecture), bouton « Voir toute la file » | Modérateurs, administrateurs |
 | **Les plus populaires** | 5 témoignages les plus vus | Tous |
@@ -49,6 +49,7 @@ Avec un filtre (`?type=`, `?category=`) ou à partir de la page 2 : seulement la
 | Activité des 7 jours | `app/Support/WeeklyActivity.php` (aussi pour le tableau de bord de l'administration) |
 | Présentation d'une catégorie | `Category::presentation()` |
 | Page | `resources/views/home/index.blade.php` |
+| À la une en gros plan | `resources/views/home/partials/featured-spotlight.blade.php` (aperçu vidéo : `data-preview`, `resources/js/videos.js`) |
 | Liste des témoignages récents | `resources/views/home/partials/recent.blade.php` |
 | Prières récentes | `resources/views/home/partials/recent-prayers.blade.php` (cartes `prayer/partials/feed-card`, `compact`) |
 | Tableau des contenus | `resources/views/home/partials/content-table.blade.php` |
@@ -61,7 +62,7 @@ Aucune migration. Recompiler et copier `public/build/` ; `php artisan view:cache
 
 ## Tests
 
-`tests/Feature/HomePageTest.php` (4 tests) : blocs publics pour un visiteur, « Mes témoignages » pour un membre, modération rapide et gestion des contenus par statut pour l'équipe, filtres → liste seule. Restent valables : `FeaturedTestimoniesTest` (À la une), `VideoPageTest` (Shorts), `DisplayAndPlaybackTest` (liste compacte).
+`tests/Feature/HomePageTest.php` (4 tests) : blocs publics pour un visiteur, « Mes témoignages » pour un membre, modération rapide et gestion des contenus par statut pour l'équipe, filtres → liste seule. Restent valables : `FeaturedTestimoniesTest` (À la une, gros plan avant « Témoignages récents »), `VideoPageTest` (Shorts), `DisplayAndPlaybackTest` (liste compacte).
 
 Contrôle dans Chrome (visiteur et administrateur, 390, 768, 1440 px) : aucun défilement horizontal, aucune erreur JavaScript.
 

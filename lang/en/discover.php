@@ -59,6 +59,12 @@ return [
         'this_week'          => 'this week',
         'featured'           => 'Featured',
         'explore_all'        => 'Explore all',
+        'spotlight'          => [
+            'badge'  => 'Featured',
+            'watch'  => 'Watch the testimony',
+            'listen' => 'Listen to the testimony',
+            'read'   => 'Read the testimony',
+        ],
         'see_all_shorts'     => 'See all',
         'content_management' => 'Content management',
         'quick_moderation'   => 'Quick moderation',

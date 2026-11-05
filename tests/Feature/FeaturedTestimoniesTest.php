@@ -82,4 +82,15 @@ class FeaturedTestimoniesTest extends TestCase
 
         $this->get('/')->assertOk()->assertSeeInOrder(['À la une', 'Témoignage de cette semaine']);
     }
+
+    public function test_home_page_shows_the_first_featured_testimony_in_close_up(): void
+    {
+        $this->testimony('Le plus récent', ['approved_at' => now()->subHour()]);
+        $this->testimony('Un peu plus ancien', ['approved_at' => now()->subDays(2)]);
+
+        // Gros plan (bouton selon le type) en tête, puis les autres en vignettes, avant « Témoignages récents ».
+        $this->get('/')->assertOk()->assertSeeInOrder([
+            'id="home-featured"', 'Le plus récent', 'Lire le témoignage', 'Un peu plus ancien', 'Témoignages récents',
+        ], false);
+    }
 }

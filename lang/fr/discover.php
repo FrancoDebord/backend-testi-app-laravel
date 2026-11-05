@@ -59,6 +59,12 @@ return [
         'this_week'          => 'cette semaine',
         'featured'           => 'À la une',
         'explore_all'        => 'Tout explorer',
+        'spotlight'          => [
+            'badge'  => 'À la une',
+            'watch'  => 'Regarder le témoignage',
+            'listen' => 'Écouter le témoignage',
+            'read'   => 'Lire le témoignage',
+        ],
         'see_all_shorts'     => 'Tout voir',
         'content_management' => 'Gestion des contenus',
         'quick_moderation'   => 'Modération rapide',

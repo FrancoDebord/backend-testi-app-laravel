@@ -149,6 +149,11 @@
         {{-- En direct --}}
         @include('lives.partials.now', ['lives' => $lives])
 
+        {{-- À la une en gros plan, en tête de page --}}
+        @if($hero)
+            @include('home.partials.featured-spotlight', ['featured' => $featured])
+        @endif
+
         {{-- Sessions de prière à venir (masqué s'il n'y en a pas) --}}
         @include('prayer.partials.upcoming-strip', ['sessions' => $prayerSessions ?? collect()])
 
@@ -225,23 +230,6 @@
                 </dl>
             </section>
         </div>
-
-        {{-- À la une --}}
-        @if($hero)
-        <section class="card p-5" aria-labelledby="home-featured">
-            <div class="mb-4 flex items-center justify-between gap-2">
-                <h2 id="home-featured" class="card-title flex items-center gap-2"><i class="fa-solid fa-star text-sun-400" aria-hidden="true"></i>{{ __('discover.home.featured') }}</h2>
-                <a href="{{ route('explore') }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">{{ __('discover.home.explore_all') }}<i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i></a>
-            </div>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                @foreach($featured->take(4) as $item)
-                <div class="{{ $loop->index === 3 ? 'sm:block lg:hidden 2xl:block' : '' }} min-w-0">
-                    @include('videos.partials.tile', ['testimony' => $item, 'url' => route('testimonies.show', $item->id)])
-                </div>
-                @endforeach
-            </div>
-        </section>
-        @endif
 
         {{-- Témoignages de conversion (docs/fonctionnalites/temoignage-de-conversion.md) --}}
         @if(($conversions ?? collect())->isNotEmpty())
