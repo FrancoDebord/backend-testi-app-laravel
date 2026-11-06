@@ -173,7 +173,7 @@ class TestimonyPlaylists
     public function resolveForComposer(User $user, ?string $playlistId, ?string $newTitle): ?TestimonyPlaylist
     {
         if (filled($newTitle)) {
-            return $this->create($user, ['title' => $newTitle]);
+            return $this->findOrCreateByTitle($user, $newTitle);
         }
         if (blank($playlistId)) {
             return null;
@@ -206,12 +206,34 @@ class TestimonyPlaylists
         if ($testimony->isInJournal()) {
             return null;
         }
-        $playlist = filled($newTitle) ? $this->create($user, ['title' => $newTitle]) : $existing;
+        $playlist = filled($newTitle) ? $this->findOrCreateByTitle($user, $newTitle) : $existing;
         if ($playlist) {
             $this->add($playlist, $testimony, $user);
         }
 
         return $playlist;
+    }
+
+    /**
+     * « Nouvelle liste » au moment de publier : une liste du compte portant déjà ce titre (casse et espaces
+     * ignorés) est reprise au lieu d'en créer une seconde. Sinon, deux épisodes publiés l'un après l'autre
+     * avec le même titre finissaient dans deux listes d'un seul témoignage, sans précédent ni suivant.
+     *
+     * @throws ContentActionException
+     */
+    public function findOrCreateByTitle(User $user, string $title): TestimonyPlaylist
+    {
+        $key = self::titleKey($this->cleanTitle($title));
+
+        return TestimonyPlaylist::where('user_id', $user->id)->oldest()->get()
+            ->first(fn (TestimonyPlaylist $p) => self::titleKey($p->title) === $key)
+            ?? $this->create($user, ['title' => $title]);
+    }
+
+    /** Titre comparé : espaces réduits, sans casse. */
+    public static function titleKey(string $title): string
+    {
+        return mb_strtolower(trim(preg_replace('/\s+/u', ' ', $title)));
     }
 
     /**

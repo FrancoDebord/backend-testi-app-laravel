@@ -47,6 +47,53 @@ class TestimonyPlaylistsTest extends TestCase
         ], $attrs));
     }
 
+    public function test_nouvelle_liste_du_meme_titre_reprend_la_liste_existante(): void
+    {
+        Sanctum::actingAs($this->author);
+        $base = ['type' => 'text', 'category' => 'autre', 'body_text' => 'Gloire'];
+        // Deux épisodes publiés avec « nouvelle liste » et le même titre (casse et espaces près).
+        $this->postJson('/api/v1/testimonies', [...$base, 'title' => 'Partie 1', 'playlist_title' => 'Testimony Culte'])->assertCreated();
+        $this->postJson('/api/v1/testimonies', [...$base, 'title' => 'Partie 2', 'playlist_title' => '  testimony   culte '])->assertCreated();
+
+        $this->assertSame(1, TestimonyPlaylist::count());
+        $playlist = TestimonyPlaylist::firstOrFail();
+        $this->assertSame(['Partie 1', 'Partie 2'], $playlist->testimonies()->pluck('title')->all());
+
+        // Le même titre chez un autre compte reste une autre liste.
+        Sanctum::actingAs($this->other);
+        $this->postJson('/api/v1/testimonies', [...$base, 'title' => 'Autre', 'playlist_title' => 'Testimony Culte'])->assertCreated();
+        $this->assertSame(2, TestimonyPlaylist::count());
+
+        // Le premier épisode a désormais un suivant.
+        $first = $playlist->testimonies()->first();
+        Sanctum::actingAs($this->author);
+        $this->getJson("/api/v1/testimonies/{$first->id}")->assertOk()
+            ->assertJsonPath('data.playlist.count', 2)
+            ->assertJsonPath('data.playlist.nextId', $playlist->testimonies()->skip(1)->first()->id);
+    }
+
+    public function test_commande_fusionne_les_listes_de_meme_titre(): void
+    {
+        [$one, $two, $three] = [$this->testimony('Partie 1'), $this->testimony('Partie 2'), $this->testimony('Partie 3')];
+        $service = app(\App\Services\TestimonyPlaylists::class);
+        $first = TestimonyPlaylist::create(['user_id' => $this->author->id, 'title' => 'Testimony Culte']);
+        $service->add($first, $one, $this->author);
+        $this->travel(1)->minutes();
+        $second = TestimonyPlaylist::create(['user_id' => $this->author->id, 'title' => 'testimony culte']);
+        $service->add($second, $two, $this->author);
+        $service->add($second, $three, $this->author);
+        $foreign = TestimonyPlaylist::create(['user_id' => $this->other->id, 'title' => 'Testimony Culte']);
+
+        // --dry-run : rien ne change.
+        $this->artisan('playlists:merge-duplicates', ['--dry-run' => true])->assertSuccessful();
+        $this->assertSame(3, TestimonyPlaylist::count());
+
+        $this->artisan('playlists:merge-duplicates')->assertSuccessful();
+        $this->assertNull(TestimonyPlaylist::find($second->id));
+        $this->assertNotNull(TestimonyPlaylist::find($foreign->id));
+        $this->assertSame(['Partie 1', 'Partie 2', 'Partie 3'], $first->testimonies()->pluck('title')->all());
+    }
+
     public function test_site_creer_une_liste_ajouter_ranger_et_lire_a_la_suite(): void
     {
         [$one, $two, $three] = [$this->testimony('Partie 1'), $this->testimony('Partie 2'), $this->testimony('Partie 3')];

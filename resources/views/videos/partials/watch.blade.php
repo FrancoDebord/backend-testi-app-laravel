@@ -183,8 +183,10 @@
 
             @elseif($type === 'audio')
                 <div class="overflow-hidden rounded-xl bg-slate-900">
+                    {{-- Image de couverture : 16:9 sur mobile, plus large sur grand écran --}}
                     @if($testimony->cover_url)
-                    <img src="{{ $testimony->cover_url }}" alt="" class="aspect-[21/9] w-full object-cover">
+                    <img src="{{ $testimony->cover_url }}" alt="" loading="eager" fetchpriority="high" decoding="async"
+                         class="aspect-video w-full object-cover sm:aspect-[21/9]" data-testimony-cover>
                     @else
                     <div class="flex aspect-[21/9] items-center justify-center text-5xl text-slate-600" aria-hidden="true"><i class="fa-solid fa-microphone"></i></div>
                     @endif
@@ -203,10 +205,12 @@
 
             @else
                 <article class="card overflow-hidden">
-                    <header class="p-5 pb-4 sm:p-8 sm:pb-6">@include('videos.partials.watch-heading')</header>
+                    {{-- Image de couverture choisie par l'auteur : en grand, en tête de l'article (visuel principal). --}}
                     @if($testimony->cover_url)
-                    <img src="{{ $testimony->cover_url }}" alt="" class="max-h-96 w-full object-cover">
+                    <img src="{{ $testimony->cover_url }}" alt="" loading="eager" fetchpriority="high" decoding="async"
+                         class="aspect-video w-full bg-slate-100 object-cover" data-testimony-cover>
                     @endif
+                    <header class="p-5 pb-4 sm:p-8 sm:pb-6">@include('videos.partials.watch-heading')</header>
                     {{-- Lecture à voix haute (resources/js/tts.js) : affichée seulement si le navigateur sait lire. --}}
                     <div class="border-y border-primary-100 bg-primary-50 px-5 py-3 sm:px-8" role="group" aria-label="{{ __('videos.watch.tts') }}"
                          data-tts data-tts-source="testimony-body" data-tts-title="{{ $testimony->title }}"
@@ -363,32 +367,49 @@
                         <i class="{{ $isSaved ? 'fa-solid' : 'fa-regular' }} fa-bookmark" aria-hidden="true" data-save-icon></i><span data-save-label>{{ $isSaved ? __('videos.watch.saved') : __('videos.watch.save') }}</span>
                     </button>
                     @endauth
-                    @if(!$inJournal && Auth::id() === $testimony->user_id)
-                    {{-- Ajouter à une de ses listes de témoignages (docs/fonctionnalites/listes-de-temoignages.md) --}}
-                    <button type="button" class="chip" data-modal-open="playlist-add-modal" title="{{ __('playlists.composer.add_to_title') }}">
-                        <i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">{{ __('playlists.composer.add_to') }}</span><span class="sr-only">{{ __('playlists.composer.add_to_title') }}</span>
-                    </button>
+                    @php
+                        // Actions moins fréquentes, regroupées dans le menu « Plus » pour alléger la barre.
+                        $isOwner   = !$inJournal && Auth::id() === $testimony->user_id;
+                        $canDelete = $testimony->canBeDeletedBy(Auth::user());
+                        $menuItem  = 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-primary-50 hover:text-primary-600';
+                    @endphp
+                    @if($isOwner || $canDelete || $canReport)
+                    <details class="relative sm:ml-auto" data-watch-more>
+                        <summary class="chip cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{ __('videos.watch.more_actions') }}">
+                            <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>{{ __('videos.watch.more') }}
+                        </summary>
+                        <div class="absolute right-0 z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-2 shadow-card">
+                            @if($isOwner)
+                            {{-- Ajouter à une de ses listes de témoignages (docs/fonctionnalites/listes-de-temoignages.md) --}}
+                            <button type="button" class="{{ $menuItem }}" data-modal-open="playlist-add-modal">
+                                <i class="fa-solid fa-layer-group w-4 text-center text-primary-600" aria-hidden="true"></i>{{ __('playlists.composer.add_to_title') }}
+                            </button>
+                            {{-- Retirer du public et ranger dans le carnet privé (docs/fonctionnalites/carnet-prive.md) --}}
+                            <button type="button" class="{{ $menuItem }}"
+                                    onclick="openConfirmModal('journal-store-form', @js(__('videos.watch.journal_store_confirm')), @js(__('videos.watch.journal_store')), @js(__('videos.watch.journal_store_button')), 'fa-lock')">
+                                <i class="fa-solid fa-lock w-4 text-center text-primary-600" aria-hidden="true"></i>{{ __('videos.watch.journal_store_long') }}
+                            </button>
+                            @endif
+                            @if($canReport)
+                            <button type="button" class="{{ $menuItem }}" data-modal-open="report-modal">
+                                <i class="fa-regular fa-flag w-4 text-center text-primary-600" aria-hidden="true"></i>{{ __('videos.watch.report_title') }}
+                            </button>
+                            @endif
+                            @if($canDelete)
+                            {{-- Auteur ou administrateur (jamais un modérateur) --}}
+                            <button type="button" class="{{ $menuItem }} text-error-600 hover:bg-error-50 hover:text-error-700"
+                                    onclick="openConfirmModal('testimony-delete-form', @js(Auth::id() === $testimony->user_id ? __('videos.watch.delete_confirm_own') : __('videos.watch.delete_confirm_other')), @js(__('videos.watch.delete_title')), @js(__('videos.watch.delete')), 'fa-trash')">
+                                <i class="fa-solid fa-trash w-4 text-center" aria-hidden="true"></i>{{ __('videos.watch.delete_title') }}
+                            </button>
+                            @endif
+                        </div>
+                    </details>
                     @endif
-                    @if(!$inJournal && Auth::id() === $testimony->user_id)
-                    {{-- Retirer du public et ranger dans le carnet privé (docs/fonctionnalites/carnet-prive.md) --}}
-                    <button type="button" class="chip" title="{{ __('videos.watch.journal_store_long') }}"
-                            onclick="openConfirmModal('journal-store-form', @js(__('videos.watch.journal_store_confirm')), @js(__('videos.watch.journal_store')), @js(__('videos.watch.journal_store_button')), 'fa-lock')">
-                        <i class="fa-solid fa-lock" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">{{ __('videos.watch.journal_store') }}</span><span class="sr-only">{{ __('videos.watch.journal_store_long') }}</span>
-                    </button>
+                    @if($isOwner)
                     <form id="journal-store-form" method="POST" action="{{ route('journal.store', $testimony->id) }}" data-loading-label="{{ __('videos.watch.saving') }}" hidden>@csrf</form>
                     @endif
-                    @if($testimony->canBeDeletedBy(Auth::user()))
-                    {{-- Auteur ou administrateur (jamais un modérateur) --}}
-                    <button type="button" class="chip text-error-600" title="{{ __('videos.watch.delete_title') }}"
-                            onclick="openConfirmModal('testimony-delete-form', @js(Auth::id() === $testimony->user_id ? __('videos.watch.delete_confirm_own') : __('videos.watch.delete_confirm_other')), @js(__('videos.watch.delete_title')), @js(__('videos.watch.delete')), 'fa-trash')">
-                        <i class="fa-solid fa-trash" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">{{ __('videos.watch.delete') }}</span><span class="sr-only">{{ __('videos.watch.delete_title') }}</span>
-                    </button>
+                    @if($canDelete)
                     <form id="testimony-delete-form" method="POST" action="{{ route('testimonies.destroy', $testimony->id) }}" data-loading-label="{{ __('videos.watch.deleting') }}" hidden>@csrf @method('DELETE')</form>
-                    @endif
-                    @if($canReport)
-                    <button type="button" class="chip" data-modal-open="report-modal" aria-label="{{ __('videos.watch.report_title') }}" title="{{ __('videos.watch.report') }}">
-                        <i class="fa-regular fa-flag" aria-hidden="true"></i><span class="hidden sm:inline" aria-hidden="true">{{ __('videos.watch.report') }}</span>
-                    </button>
                     @endif
                 </div>
             </div>
@@ -415,13 +436,17 @@
             </form>
             @endif
 
-            {{-- ── Description ──────────────────────────────────────────── --}}
+            {{-- ── Sections sous les actions : un titre et un filet chacune, plutôt qu'une pile de cartes ── --}}
             @php
-                $showEvent  = $testimony->event_id && $testimony->event?->isVisibleTo(Auth::user());
-                $hasDetails = $type !== 'text' || $showEvent || $testimony->bible_verse || !empty($testimony->tags) || $proofList->isNotEmpty();
+                $sectionClass = 'mt-8 border-t border-slate-200 pt-6';
+                $showEvent    = $testimony->event_id && $testimony->event?->isVisibleTo(Auth::user());
+                $hasAbout     = $type !== 'text' || $showEvent || !empty($testimony->tags);
             @endphp
-            @if($hasDetails)
-            <section class="card mt-4 space-y-3 p-4 text-sm sm:p-5" aria-label="{{ __('videos.watch.description') }}">
+
+            {{-- Description (vidéo, audio), événement, mots-clés --}}
+            @if($hasAbout)
+            <section class="{{ $sectionClass }} space-y-3 text-sm" aria-labelledby="about-title">
+                <h2 id="about-title" class="card-title">{{ __('videos.watch.description') }}</h2>
                 {{-- Témoignage officiel d'un événement (docs/fonctionnalites/evenements.md) --}}
                 @if($showEvent)
                 <p class="text-slate-700">
@@ -440,22 +465,29 @@
                 <p class="text-slate-500">{{ __('videos.common.no_description') }}</p>
                 @endif
 
-                @if($testimony->bible_verse)
-                <blockquote class="rounded-lg border-l-4 border-sun-400 bg-sun-50 px-4 py-3">
-                    <p class="flex gap-2 text-[15px] text-slate-800"><i class="fa-solid fa-book-bible mt-1 text-sun-700" aria-hidden="true"></i><span class="italic">{{ __('videos.index.quoted', ['q' => $testimony->bible_verse]) }}</span></p>
-                    @if($testimony->bible_ref)<p class="mt-1 pl-6 text-xs font-semibold text-sun-700">{{ $testimony->bible_ref }}</p>@endif
-                </blockquote>
-                @endif
-
                 @if(!empty($testimony->tags))
                 <p class="flex flex-wrap gap-1.5">
                     @foreach($testimony->tags as $tag)<span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">#{{ $tag }}</span>@endforeach
                 </p>
                 @endif
+            </section>
+            @endif
 
-                @if($proofList->isNotEmpty())
+            {{-- Verset biblique cité par l'auteur --}}
+            @if($testimony->bible_verse)
+            <section class="{{ $sectionClass }}" aria-labelledby="verse-title">
+                <h2 id="verse-title" class="card-title">{{ __('videos.watch.verse_title') }}</h2>
+                <blockquote class="mt-3 rounded-lg border-l-4 border-sun-400 bg-sun-50 px-4 py-3">
+                    <p class="flex gap-2 text-[15px] text-slate-800"><i class="fa-solid fa-book-bible mt-1 text-sun-700" aria-hidden="true"></i><span class="italic">{{ __('videos.index.quoted', ['q' => $testimony->bible_verse]) }}</span></p>
+                    @if($testimony->bible_ref)<p class="mt-1 pl-6 text-xs font-semibold text-sun-700">{{ $testimony->bible_ref }}</p>@endif
+                </blockquote>
+            </section>
+            @endif
+
+            {{-- Preuves (auteur, modération, ou public si l'auteur l'a accepté) --}}
+            @if($proofList->isNotEmpty())
+            <section class="{{ $sectionClass }} [&>div]:mt-0">
                 @include('testimonies.partials.proofs', ['testimony' => $testimony, 'proofs' => $proofList])
-                @endif
             </section>
             @endif
 
@@ -472,7 +504,7 @@
                 $fmtDate = fn ($d) => $d?->translatedFormat(__('testimonies.create.date_format'));
                 $audioLength = $prophecy->audio_duration ? sprintf('%d:%02d', intdiv($prophecy->audio_duration, 60), $prophecy->audio_duration % 60) : null;
             @endphp
-            <section class="card-insight mt-4 p-4 text-sm sm:p-5" aria-labelledby="prophecy-title">
+            <section class="card-insight mt-8 p-4 text-sm sm:p-5" aria-labelledby="prophecy-title">
                 <div class="flex flex-wrap items-center gap-2">
                     <h2 id="prophecy-title" class="flex items-center gap-2 text-base font-bold text-primary-700">
                         <i class="fa-solid fa-scroll text-sun-500" aria-hidden="true"></i>{{ __('videos.watch.prophecy_title') }}
@@ -521,7 +553,7 @@
             @endif
 
             {{-- ── Commentaires ─────────────────────────────────────────── --}}
-            <section class="card mt-8 scroll-mt-20 p-4 sm:p-6" aria-labelledby="comments-title" id="commentaires">
+            <section class="{{ $sectionClass }} scroll-mt-20" aria-labelledby="comments-title" id="commentaires">
                 <h2 id="comments-title" class="card-title text-lg">
                     {{ __('videos.watch.comments') }} <span class="font-normal text-slate-500">· <span data-comment-count>{{ \App\Support\Locales::number($testimony->comment_count) }}</span></span>
                 </h2>
@@ -682,3 +714,20 @@
     </form>
 </div>
 @endif
+
+{{-- Menu « Plus » (<details data-watch-more>) : se ferme au clic en dehors, avec Échap ou après le choix d'une action. --}}
+@push('scripts')
+<script>
+    (() => {
+        const menu = document.querySelector('[data-watch-more]');
+        if (!menu) return;
+        document.addEventListener('click', (e) => {
+            if (!menu.open) return;
+            if (!menu.contains(e.target) || e.target.closest('[data-watch-more] > div button')) menu.open = false;
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && menu.open) { menu.open = false; menu.querySelector('summary')?.focus(); }
+        });
+    })();
+</script>
+@endpush

@@ -22,7 +22,8 @@ class CategoryResource extends JsonResource
             'slug'           => $this->slug,
             'icon'           => $this->icon,
             'color'          => $this->color,
-            'testimonyCount' => $this->testimony_count,
+            // Témoignages publiés (liste des catégories), sinon le compteur stocké.
+            'testimonyCount' => $this->published_testimony_count ?? $this->testimony_count,
             'displayOrder'   => $this->display_order,
             'isActive'       => $this->is_active,
         ];

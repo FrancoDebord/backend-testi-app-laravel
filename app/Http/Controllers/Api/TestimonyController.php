@@ -102,6 +102,8 @@ class TestimonyController extends Controller
         match($sort) {
             'popular'                     => $query->orderByDesc('like_count')->orderByDesc('prayer_count')->orderByDesc('views_count'),
             'most_viewed', 'recommended'  => $query->orderByDesc('views_count'),
+            'most_prayed'                 => $query->orderByDesc('prayer_count'),
+            'most_liked'                  => $query->orderByDesc('like_count'),
             default                       => $query->latestPublished(),
         };
         $query->orderByDesc('id'); // ordre stable entre les pages

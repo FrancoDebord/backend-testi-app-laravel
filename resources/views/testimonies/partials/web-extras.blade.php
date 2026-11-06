@@ -7,10 +7,12 @@
     $webTheme  = \App\Support\Seo::themeForCategory($testimony->category_slug);
     $themeVerse = $webTheme ? \App\Support\Seo::keyVerse($webTheme) : null;
     $shareText = rawurlencode(trim((string) $testimony->title) . ' — ' . $testimony->share_url);
+    // Même découpage que la page de lecture (videos/partials/watch) : un titre et un filet par section.
+    $sectionClass ??= 'mt-8 border-t border-slate-200 pt-6';
 @endphp
 
 @if($testimony->resume || $testimony->transcription)
-<section class="card mt-4 p-5 sm:p-6" aria-labelledby="testimony-text-title">
+<section class="{{ $sectionClass }}" aria-labelledby="testimony-text-title">
     <h2 id="testimony-text-title" class="card-title">{{ __('seo.testimony.written') }}</h2>
     @if($testimony->resume)
     <div class="rich-text mt-3 text-[15px] leading-relaxed text-slate-800">{{ \App\Support\RichText::toHtml($testimony->resume) }}</div>
@@ -25,7 +27,7 @@
 @endif
 
 @if($webTheme && $themeVerse)
-<section class="card mt-4 p-5 sm:p-6" aria-labelledby="testimony-theme-title">
+<section class="{{ $sectionClass }}" aria-labelledby="testimony-theme-title">
     <h2 id="testimony-theme-title" class="card-title">{{ __('seo.testimony.theme_verse') }}</h2>
     <blockquote class="mt-3 border-l-4 border-sun-400 pl-4 text-[15px] leading-relaxed text-slate-800">
         <p>« {{ $themeVerse->verse_text }} »</p>
@@ -38,7 +40,7 @@
 @endif
 
 @if($testimony->isOnPublicWeb())
-<section class="card mt-4 flex flex-wrap items-center gap-2 p-4" aria-label="{{ __('seo.testimony.share') }}">
+<section class="mt-6 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-3" aria-label="{{ __('seo.testimony.share') }}">
     <span class="text-sm font-semibold text-slate-700">{{ __('seo.testimony.share') }}</span>
     <a href="https://wa.me/?text={{ $shareText }}" target="_blank" rel="noopener" class="chip"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i>WhatsApp</a>
     <a href="https://www.facebook.com/sharer/sharer.php?u={{ rawurlencode($testimony->share_url) }}" target="_blank" rel="noopener" class="chip"><i class="fa-brands fa-facebook" aria-hidden="true"></i>Facebook</a>

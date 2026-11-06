@@ -102,6 +102,7 @@ Cache : identifiants en cache `featured_cache_minutes` (10 min), **vidé** à ch
   - `recent` (**défaut**, sans `sort`) : date de publication, du plus récent au plus ancien ;
   - `popular` : réactions, puis vues ;
   - `most_viewed` : vues (`recommended` reste accepté comme ancien nom) ;
+  - `most_prayed` : prières ; `most_liked` : « J'aime » (page d'une catégorie dans l'application) ;
   - `for_you` : classement personnalisé, seulement s'il est demandé explicitement.
 
 Site : la liste « Témoignages récents » de l'accueil, Explorer et Vidéos sont triées du plus récemment publié au plus ancien par défaut (« Plus récents » sélectionné) ; les autres tris restent proposés.
